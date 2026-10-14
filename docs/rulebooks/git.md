@@ -7,3 +7,5 @@
 - No Claude / Anthropic names, no `Co-Authored-By`, no session links.
 - Never commit `backend/.env`, keys, `google-services.json`, `GoogleService-Info.plist` or service-account JSON.
 - Update the matching doc (decisions, phases, changes) in the same commit.
+- Push `working` after every finished piece (a screen, a module), and update `docs/phases/CURRENT.md` + the phase checklist in the same commit.
+  Usage limits can stop a session at any time; the repo must always be enough to resume.

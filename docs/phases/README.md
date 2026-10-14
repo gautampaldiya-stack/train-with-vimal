@@ -2,6 +2,7 @@
 
 | Phase | What | Status | File |
 |---|---|---|---|
+| — | **Handoff: what is happening right now** | — | [CURRENT.md](CURRENT.md) |
 | 1–3 | Backend: foundation, modules, offline sync, jobs, seeds, tests | Done | [phase-1-3-backend.md](phase-1-3-backend.md) |
 | 4 | Flutter foundation | In progress | [phase-4-flutter-foundation.md](phase-4-flutter-foundation.md) |
 | 5 | Flutter screens (all roles) | Planned | [phase-5-screens.md](phase-5-screens.md) |

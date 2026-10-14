@@ -1,6 +1,6 @@
 # Train With Vimal — notes for Claude Code
 
-Read this first, then `docs/memory/README.md` (project memory) before changing anything.
+Read this first, then `docs/memory/README.md` (project memory) and `docs/phases/CURRENT.md` (what is in progress, what is next) before changing anything.
 
 ## What this is
 A coaching app for one gym (owner: Vimal). Three roles: **Admin** (Vimal, exactly one), **Trainer**, **Client**.
