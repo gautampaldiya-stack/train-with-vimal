@@ -19,19 +19,32 @@ docker compose exec api python manage.py seed_demo       # demo team + clients f
 ```
 API: http://localhost:8000/api/v1/ · API docs: http://localhost:8000/api/docs/ · WebSocket: ws://localhost:8000/ws/notifications/?token=<access>
 
-### Without Docker (Windows / Mac / Linux)
-Needs Python 3.12+, PostgreSQL 15+ and Redis 7.
-```bash
-cd backend
-python -m venv .venv && .venv\Scripts\activate      # Mac/Linux: source .venv/bin/activate
-pip install -r requirements-dev.txt
-copy .env.example .env                               # Mac/Linux: cp
-python manage.py migrate
-python manage.py seed_defaults && python manage.py seed_demo
-uvicorn config.asgi:application --reload             # API + WebSocket on :8000
-celery -A config worker -l info                      # second terminal (on Windows add: --pool=solo)
-celery -A config beat -l info                        # third terminal
-```
+### Without Docker (Windows, Git Bash)
+Needs Python 3.12+ and PostgreSQL 16 (Windows installer from postgresql.org; remember the `postgres` password).
+Redis is optional: leave `REDIS_URL` empty and the API runs in one process (realtime works while the app is open;
+scheduled reminders need Redis + Celery later).
+
+1. Make the database once (SQL Shell "psql" from the Start menu, log in as `postgres`):
+   ```sql
+   CREATE USER twv WITH PASSWORD 'twv' CREATEDB;
+   CREATE DATABASE twv OWNER twv;
+   ```
+2. In Git Bash, from the repo folder:
+   ```bash
+   cd backend
+   python -m venv .venv
+   source .venv/Scripts/activate
+   pip install -r requirements-dev.txt
+   cp .env.example .env
+   sed -i 's#^REDIS_URL=.*#REDIS_URL=#' .env      # run without Redis
+   python manage.py migrate
+   python manage.py seed_demo                      # also runs seed_defaults
+   uvicorn config.asgi:application --reload        # API + WebSocket on :8000
+   ```
+3. Open http://localhost:8000/api/docs/ . Next time only: `cd backend && source .venv/Scripts/activate && uvicorn config.asgi:application --reload`.
+
+With Redis (Mac/Linux, or later on Windows): keep `REDIS_URL` set and run `celery -A config worker -l info`
+(Windows: add `--pool=solo`) and `celery -A config beat -l info` in two more terminals.
 
 Demo logins (password `Demo@1234` for all): `vimal@trainwithvimal.com` (admin), `aman@trainwithvimal.com` (trainer),
 `riya@example.com` (client). Mobile numbers work too.

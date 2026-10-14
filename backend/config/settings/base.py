@@ -210,13 +210,20 @@ CHANNEL_LAYERS = {
 }
 CELERY_BROKER_URL = env("CELERY_BROKER_URL", default=REDIS_URL)
 CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", default=REDIS_URL)
+
+# No Redis on this machine (REDIS_URL left empty in .env): run everything in one process.
+# Cache and realtime stay in memory, background jobs run straight away, scheduled reminders do not run.
+if not REDIS_URL:
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+    CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
+    CELERY_BROKER_URL, CELERY_RESULT_BACKEND = "memory://", "cache+memory://"
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_TASK_ACKS_LATE = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 CELERY_TASK_TIME_LIMIT = 300
 CELERY_TASK_SOFT_TIME_LIMIT = 240
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
-CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=False)
+CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=not REDIS_URL)
 CELERY_IMPORTS = ["apps.notifications.reminders"]
 
 _R = "apps.notifications.reminders."
