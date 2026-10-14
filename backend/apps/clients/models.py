@@ -11,6 +11,7 @@ class Goal(models.TextChoices):
     STRENGTH = "strength", "Strength"
     RECOMP = "recomp", "Recomp"
     GENERAL = "general", "General fitness"
+    EVENT = "event", "Event prep"
 
 
 class SignupSource(models.TextChoices):
@@ -21,6 +22,15 @@ class SignupSource(models.TextChoices):
 
 
 ONBOARDING_STEPS = ["account", "basics", "goal_body", "health", "food"]
+# What the client app asks (ClientLogin / ClientWelcome boards), in order. Staff boards show ONBOARDING_STEPS;
+# STAFF_STEP_FROM_CLIENT says which client steps complete each staff step.
+CLIENT_ONBOARDING_STEPS = ["goal", "about", "schedule", "health", "food"]
+STAFF_STEP_FROM_CLIENT = {
+    "basics": ("about", "schedule"),
+    "goal_body": ("goal", "about"),
+    "health": ("health",),
+    "food": ("food",),
+}
 ONBOARDING_LABELS = {
     "account": ("Account made", "Email and phone checked"),
     "basics": ("Basic details", "Name, age, city"),
@@ -81,6 +91,11 @@ class ClientProfile(TimeStampedModel):
     def onboarding_progress(self):
         done = [s for s in ONBOARDING_STEPS if s in (self.onboarding_done or [])]
         return {"done": len(done), "total": len(ONBOARDING_STEPS), "steps": done}
+
+    @property
+    def client_steps_done(self):
+        answers = self.onboarding or {}
+        return [k for k in CLIENT_ONBOARDING_STEPS if k in answers]
 
     @property
     def has_health_note(self):

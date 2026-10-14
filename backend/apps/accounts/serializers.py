@@ -1,11 +1,12 @@
 from django.contrib.auth import authenticate, password_validation
+from django.core.cache import cache
 from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from apps.common.validators import IMAGE_EXTENSIONS, normalize_phone, validate_file_size, validate_phone
 
-from .models import AccountStatus, User, UserSession
+from .models import AccountStatus, Role, User, UserSession
 
 
 def email_or_phone_taken(email=None, phone=None, exclude_id=None):
@@ -45,6 +46,7 @@ class UserSerializer(serializers.ModelSerializer):
     avatar_color = serializers.CharField(read_only=True)
     first_name = serializers.CharField(read_only=True)
     email_verified = serializers.SerializerMethodField()
+    client = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -52,12 +54,24 @@ class UserSerializer(serializers.ModelSerializer):
             "id", "email", "phone", "full_name", "first_name", "initials", "avatar_color", "avatar", "role",
             "status", "gender", "date_of_birth", "city", "email_verified", "pending_email",
             "unit_weight", "unit_length", "unit_water", "timezone", "date_joined", "last_seen_at",
-            "deletion_requested_at",
+            "deletion_requested_at", "client",
         ]
         read_only_fields = fields
 
     def get_email_verified(self, obj):
         return obj.email_verified_at is not None
+
+    def get_client(self, obj):
+        """Clients only: what the app needs right after log in (approval wait, setup steps, coach name)."""
+        cp = getattr(obj, "client_profile", None) if obj.role == Role.CLIENT else None
+        if cp is None:
+            return None
+        t = cp.trainer
+        return {
+            "setup_done": cp.client_steps_done,
+            "setup_total": 5,
+            "coach": {"id": t.id, "full_name": t.full_name, "first_name": t.first_name} if t else None,
+        }
 
 
 class MeUpdateSerializer(serializers.ModelSerializer):
@@ -97,12 +111,30 @@ class LoginSerializer(serializers.Serializer):
     device_name = serializers.CharField(required=False, allow_blank=True, max_length=120)
     platform = serializers.ChoiceField(choices=["android", "ios", "web"], required=False)
 
+    MAX_TRIES = 5
+    LOCK_SECONDS = 15 * 60
+
     def validate(self, attrs):
+        key = "login-fail:" + attrs["identifier"].strip().lower()
+        tries = cache.get(key, 0)
+        if tries >= self.MAX_TRIES:
+            raise serializers.ValidationError(
+                {"non_field_errors": [_("Too many tries. Wait 15 minutes, or reset your password.")]}, code="locked"
+            )
         user = authenticate(self.context.get("request"), username=attrs["identifier"], password=attrs["password"])
         if user is None:
+            tries += 1
+            cache.set(key, tries, self.LOCK_SECONDS)
+            left = self.MAX_TRIES - tries
+            if left <= 0:
+                raise serializers.ValidationError(
+                    {"non_field_errors": [_("Too many tries. Wait 15 minutes, or reset your password.")]}, code="locked"
+                )
             raise serializers.ValidationError(
-                {"non_field_errors": [_("That email or mobile and password do not match.")]}, code="invalid_login"
+                {"password": [_("Wrong password. Tap the field to type it again, or reset it.")],
+                 "tries_left": [str(left)]}, code="invalid_login"
             )
+        cache.delete(key)
         if user.status == AccountStatus.REJECTED:
             raise serializers.ValidationError(
                 {"non_field_errors": [_("Your sign-up was not approved. Talk to the gym team.")]}, code="rejected"

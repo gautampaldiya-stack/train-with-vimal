@@ -12,3 +12,5 @@ STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.InMemoryStorage"},
     "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
 }
+REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {  # noqa: F405
+    **REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"], "auth": "1000/min", "otp": "1000/min"}  # noqa: F405

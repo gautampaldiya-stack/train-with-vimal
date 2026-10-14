@@ -146,3 +146,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - App entry (`main.dart`, `app/app.dart`), go_router with role redirect and one shell route.
 - Shared widgets, API client, offline outbox, read cache, realtime socket, session.
 - Font + logo declared in `pubspec.yaml`. Analyzer clean, web build compiles.
+
+## 2026-10-14 · Login and setup backend
+- Setup steps follow the client boards (goal, about, schedule, health, food); staff checklist filled from them (D-14).
+- New goal `event` (Event prep). Migration `clients/0002`.
+- "Finish setup later?" reminder choice (Tonight / Tomorrow / In 3 days / Off).
+- Login: 5 wrong tries → 15 minute lock; error code `invalid_login` with `tries_left`, then `locked`.
+- Errors now carry our own code (e.g. `invalid_login`, `locked`) instead of always `validation_error`.
+- `user.client` in login and `auth/me/`: setup progress and coach name.
+- `gym/` is public (help sheet on the login screen).

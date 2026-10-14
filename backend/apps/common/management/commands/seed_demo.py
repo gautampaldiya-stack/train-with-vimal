@@ -103,7 +103,16 @@ class Command(BaseCommand):
                     user=c, trainer=trainers[tr], goal=goal, height_cm=h, start_weight_kg=start,
                     current_weight_kg=now, target_weight_kg=target, start_date=started, package_name=package,
                     package_ends_on=started + timedelta(days=90 if package.startswith("3") else 180),
-                    onboarding_done=["account", "basics", "goal_body", "health", "food"], ask_parq=False)
+                    onboarding_done=["account", "basics", "goal_body", "health", "food"], ask_parq=False,
+                    onboarding={
+                        "goal": {"goal": goal, "level": "intermediate"},
+                        "about": {"age": 24 + i, "height_cm": h, "weight_kg": start, "target_weight_kg": target,
+                                  "place": "gym"},
+                        "schedule": {"days": ["mon", "tue", "thu", "fri"], "session_min": 45, "wake_time": "06:30"},
+                        "health": {"injuries": ["none"], "conditions": ["none"], "activity": "desk",
+                                   "doctor_ok": True},
+                        "food": {"diet": "veg", "meals_per_day": 5, "avoid": [], "home_cooked": True},
+                    })
         return vimal
 
     def plans(self, vimal):

@@ -17,3 +17,4 @@ One file per decision. Add a new file for every new decision (next number), and 
 | [D-11](0011-every-screen-responsive-phone-tablet-desktop.md) | Every screen responsive (phone, tablet, desktop) | 2026-10-14 |
 | [D-12](0012-realtime-websocket-while-the-app-is-open-fcm-push.md) | Realtime: WebSocket while the app is open, FCM push when closed | 2026-10-14 |
 | [D-13](0013-branches-working-develop-main-commits-by-gautam-on.md) | Branches `working` → `develop` → `main`; commits by Gautam only | 2026-10-14 |
+| [D-14](0014-client-setup-steps-vs-staff-checklist.md) | Client setup steps vs the staff checklist | 2026-10-14 |

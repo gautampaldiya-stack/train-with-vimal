@@ -328,7 +328,7 @@ Constraints: uniq_pose_per_set
 | `updated_at` | DateTimeField |  |
 | `user` | OneToOneField | → User; indexed; unique |
 | `trainer` | ForeignKey | → User; optional; indexed |
-| `goal` | CharField | choices: fat_loss, muscle_gain, strength, recomp, general |
+| `goal` | CharField | choices: fat_loss, muscle_gain, strength, recomp, general, event |
 | `height_cm` | DecimalField | optional |
 | `start_weight_kg` | DecimalField | optional |
 | `current_weight_kg` | DecimalField | optional |

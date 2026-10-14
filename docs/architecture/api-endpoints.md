@@ -145,7 +145,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 
 | Path | Methods | View | Notes |
 |---|---|---|---|
-| `gym/` | GET | PublicGymView | What every signed-in person needs: gym name, contact (client About) and live branding. |
+| `gym/` | GET | PublicGymView | Gym name, contact and live branding. Public: the signed-out "Need help logging in?" sheet uses it too. |
 | `settings/branding/` | GET, PATCH | BrandingView | PATCH saves a draft ("Not applied yet"); POST apply makes it live for every client. |
 | `settings/branding/apply/` | POST | BrandingApplyView |  |
 | `settings/branding/logo/` | POST, DELETE | LogoView |  |

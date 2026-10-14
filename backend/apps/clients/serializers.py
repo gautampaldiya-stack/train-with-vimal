@@ -1,3 +1,4 @@
+import re
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import serializers
@@ -5,7 +6,7 @@ from rest_framework import serializers
 from apps.accounts.models import AccountStatus, Gender, Role
 from apps.accounts.serializers import PhoneField, email_or_phone_taken
 
-from .models import ONBOARDING_LABELS, ONBOARDING_STEPS, Approval, ClientNote, ClientProfile, Goal, InviteLink
+from .models import CLIENT_ONBOARDING_STEPS, ONBOARDING_LABELS, ONBOARDING_STEPS, Approval, ClientNote, ClientProfile, Goal, InviteLink
 
 User = get_user_model()
 
@@ -327,41 +328,76 @@ class MoveBackSerializer(serializers.Serializer):
 
 # ---------------------------------------------------------------- client self onboarding
 class OnboardingStepSerializer(serializers.Serializer):
-    step = serializers.ChoiceField(choices=ONBOARDING_STEPS[1:])
+    """One step of the client's profile setup. `step` is a client step (goal, about, schedule, health, food)."""
+
+    step = serializers.ChoiceField(choices=CLIENT_ONBOARDING_STEPS)
     data = serializers.DictField()
 
     INJURIES = {"none", "knee", "lower_back", "shoulder", "neck", "wrist", "ankle"}
     CONDITIONS = {"none", "diabetes", "thyroid", "high_bp", "pcos", "asthma", "heart"}
+    LEVELS = {"beginner", "intermediate", "advanced"}
+    PLACES = {"gym", "home", "both"}
+    DAYS = {"mon", "tue", "wed", "thu", "fri", "sat", "sun"}
+    ACTIVITY = {"desk", "on_feet", "very_active"}
+    DIETS = {"veg", "egg", "non_veg", "vegan", "jain"}
+    AVOID = {"eggs", "mushrooms", "onion_garlic", "dairy", "peanuts", "gluten"}
+
+    @staticmethod
+    def _num(d, key, lo, hi, errors, required=False):
+        if d.get(key) in (None, ""):
+            if required:
+                errors[key] = ["This is required."]
+            return
+        try:
+            val = float(d[key])
+        except (TypeError, ValueError):
+            errors[key] = ["Enter a number."]
+            return
+        if not lo <= val <= hi:
+            errors[key] = [f"Enter a value between {lo} and {hi}."]
+
+    @staticmethod
+    def _pick(d, key, allowed, errors, required=True, many=False):
+        v = d.get(key)
+        if v in (None, "", []):
+            if required:
+                errors[key] = ["Pick an option."]
+            return
+        vals = v if many else [v]
+        if not isinstance(vals, list) or set(vals) - allowed:
+            errors[key] = ["Unknown option."]
 
     def validate(self, attrs):
         d = attrs["data"]
         step = attrs["step"]
         errors = {}
-        if step == "goal_body":
-            if d.get("goal") and d["goal"] not in Goal.values:
-                errors["goal"] = ["Pick a goal from the list."]
-            for key, lo, hi in (("height_cm", 80, 250), ("weight_kg", 20, 400), ("target_weight_kg", 20, 400)):
-                if d.get(key) not in (None, ""):
-                    try:
-                        val = float(d[key])
-                    except (TypeError, ValueError):
-                        errors[key] = ["Enter a number."]
-                        continue
-                    if not lo <= val <= hi:
-                        errors[key] = [f"Enter a value between {lo} and {hi}."]
-        if step == "health":
-            bad = set(d.get("injuries") or []) - self.INJURIES
-            if bad:
-                errors["injuries"] = ["Unknown option."]
-            bad = set(d.get("conditions") or []) - self.CONDITIONS
-            if bad:
-                errors["conditions"] = ["Unknown option."]
-        if step == "basics" and d.get("age") not in (None, ""):
-            try:
-                if not 13 <= int(d["age"]) <= 100:
-                    errors["age"] = ["Enter an age between 13 and 100."]
-            except (TypeError, ValueError):
-                errors["age"] = ["Enter a number."]
+        if step == "goal":
+            if d.get("goal") not in Goal.values:
+                errors["goal"] = ["Pick your main goal."]
+            self._pick(d, "level", self.LEVELS, errors)
+        elif step == "about":
+            self._num(d, "age", 14, 80, errors, True)
+            self._num(d, "height_cm", 120, 220, errors, True)
+            self._num(d, "weight_kg", 35, 200, errors, True)
+            self._num(d, "target_weight_kg", 35, 200, errors, True)
+            self._pick(d, "place", self.PLACES, errors)
+        elif step == "schedule":
+            self._pick(d, "days", self.DAYS, errors, many=True)
+            if "days" not in errors and len(set(d["days"])) < 2:
+                errors["days"] = ["Pick at least 2 days."]
+            self._num(d, "session_min", 30, 75, errors, True)
+            if d.get("wake_time") and not re.fullmatch(r"[0-2]\d:[0-5]\d", str(d["wake_time"])):
+                errors["wake_time"] = ["Use HH:MM."]
+        elif step == "health":
+            self._pick(d, "injuries", self.INJURIES, errors, many=True)
+            self._pick(d, "conditions", self.CONDITIONS, errors, required=False, many=True)
+            self._pick(d, "activity", self.ACTIVITY, errors)
+            if len(str(d.get("notes") or "")) > 2000:
+                errors["notes"] = ["Keep it under 2000 characters."]
+        elif step == "food":
+            self._pick(d, "diet", self.DIETS, errors)
+            self._num(d, "meals_per_day", 2, 7, errors, True)
+            self._pick(d, "avoid", self.AVOID, errors, required=False, many=True)
         if errors:
             raise serializers.ValidationError({"data": errors})
         return attrs

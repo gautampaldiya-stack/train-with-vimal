@@ -1,7 +1,7 @@
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -13,8 +13,9 @@ from .serializers import BrandingSerializer, GymProfileSerializer, IntegrationSe
 
 
 class PublicGymView(APIView):
-    """What every signed-in person needs: gym name, contact (client About) and live branding."""
+    """Gym name, contact and live branding. Public: the signed-out "Need help logging in?" sheet uses it too."""
 
+    permission_classes = [AllowAny]
     allow_inactive_account = True
 
     def get(self, request):

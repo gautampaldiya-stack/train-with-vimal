@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
@@ -7,6 +9,7 @@ from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
@@ -22,7 +25,7 @@ from apps.notifications.services import notify, send_template
 
 from . import services
 from .filters import ClientFilter
-from .models import Approval, ClientNote, ClientProfile, InfoRequest, InviteLink, SignupSource
+from .models import CLIENT_ONBOARDING_STEPS, ONBOARDING_STEPS, STAFF_STEP_FROM_CLIENT, Approval, ClientNote, ClientProfile, InfoRequest, InviteLink, SignupSource
 from .serializers import (
     ApprovalDetailSerializer,
     ApprovalRowSerializer,
@@ -491,8 +494,9 @@ class MyOnboardingView(APIView):
 
     def get(self, request):
         cp = request.user.client_profile
-        return Response({"answers": cp.onboarding, "done": cp.onboarding_done, "progress": cp.onboarding_progress,
-                         "skipped_at": cp.onboarding_skipped_at})
+        return Response({"answers": cp.onboarding, "steps": CLIENT_ONBOARDING_STEPS, "done": cp.client_steps_done,
+                         "progress": cp.onboarding_progress, "skipped_at": cp.onboarding_skipped_at,
+                         "remind": (cp.onboarding or {}).get("_remind")})
 
     @transaction.atomic
     def post(self, request):
@@ -500,34 +504,49 @@ class MyOnboardingView(APIView):
         s.is_valid(raise_exception=True)
         cp = request.user.client_profile
         step, data = s.validated_data["step"], s.validated_data["data"]
-        cp.onboarding = {**cp.onboarding, step: data}
-        done = set(cp.onboarding_done or [])
-        done.add(step)
-        cp.onboarding_done = [k for k in ("account", "basics", "goal_body", "health", "food") if k in done]
-        if step == "goal_body":
-            cp.goal = data.get("goal") or cp.goal
-            cp.height_cm = data.get("height_cm") or cp.height_cm
-            if data.get("weight_kg"):
-                cp.current_weight_kg = data["weight_kg"]
-                cp.start_weight_kg = cp.start_weight_kg or data["weight_kg"]
-            cp.target_weight_kg = data.get("target_weight_kg") or cp.target_weight_kg
+        was_complete = len(cp.client_steps_done) == 5
+        cp.onboarding = {**(cp.onboarding or {}), step: data}
+        client_done = set(cp.client_steps_done)
+        staff_done = set(cp.onboarding_done or [])
+        for staff_key, needs in STAFF_STEP_FROM_CLIENT.items():
+            if all(k in client_done for k in needs):
+                staff_done.add(staff_key)
+        cp.onboarding_done = [k for k in ONBOARDING_STEPS if k in staff_done]
+        if step == "goal":
+            cp.goal = data["goal"]
+        if step == "about":
+            cp.height_cm = data["height_cm"]
+            cp.current_weight_kg = data["weight_kg"]
+            cp.start_weight_kg = cp.start_weight_kg or data["weight_kg"]
+            cp.target_weight_kg = data["target_weight_kg"]
         if step == "health" and data.get("notes"):
-            cp.health_notes = data["notes"][:2000]
-        if step == "basics" and data.get("city"):
-            request.user.city = data["city"][:80]
-            request.user.save(update_fields=["city"])
+            cp.health_notes = str(data["notes"])[:2000]
         cp.save()
-        if len(cp.onboarding_done) == 5 and cp.trainer:
+        if len(client_done) == 5 and not was_complete and cp.trainer:
             notify(cp.trainer, "setup_done", f"{request.user.full_name} finished profile setup",
                    "You can build their plan now.", data={"route": f"/clients/{request.user.id}"})
         return self.get(request)
 
+    REMIND = {"tonight": (0, 20), "tomorrow": (1, 9), "3days": (3, 9)}
+
     def delete(self, request):
-        """Save & leave: remind tomorrow 9 am."""
+        """Finish setup later → Save & leave. `remind`: tonight (8 pm) / tomorrow (9 am) / 3days (9 am) / off."""
+        choice = request.data.get("remind") or request.query_params.get("remind") or "tomorrow"
+        if choice not in (*self.REMIND, "off"):
+            raise ValidationError({"remind": ["Pick Tonight, Tomorrow, In 3 days or Off."]})
         cp = request.user.client_profile
+        now = timezone.localtime()
+        remind = {"choice": choice, "at": None, "sent": False}
+        if choice != "off":
+            days, hour = self.REMIND[choice]
+            at = (now + timedelta(days=days)).replace(hour=hour, minute=0, second=0, microsecond=0)
+            if at <= now:
+                at += timedelta(days=1)
+            remind["at"] = at.isoformat()
+        cp.onboarding = {**(cp.onboarding or {}), "_remind": remind}
         cp.onboarding_skipped_at = timezone.now()
-        cp.save(update_fields=["onboarding_skipped_at"])
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        cp.save(update_fields=["onboarding", "onboarding_skipped_at"])
+        return Response({"remind": remind})
 
 
 class MyTrainerView(APIView):

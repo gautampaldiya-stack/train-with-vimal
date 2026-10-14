@@ -165,16 +165,28 @@ def habit_reminders():
 # ---------------------------------------------------------------- onboarding
 @shared_task
 def onboarding_reminders():
-    """Next day, 9 am: setup not finished (up to 3 days)."""
+    """Setup not finished. The time the client picked in "Finish setup later?" wins;
+    otherwise next day, 9 am (up to 3 days). "Off" stops both."""
     local = _local_now()
-    if not (local.hour == 9 and local.minute < 15):
-        return 0
-    today = local.date()
     sent = 0
+    picked = _active_clients().filter(client_profile__onboarding__has_key="_remind")
+    for c in picked:
+        cp = c.client_profile
+        r = cp.onboarding.get("_remind") or {}
+        if r.get("sent") or not r.get("at") or len(cp.client_steps_done) >= 5:
+            continue
+        if datetime.fromisoformat(r["at"]) <= local:
+            send_template(c, "onboarding-form-reminder", data={"route": "/welcome"})
+            cp.onboarding["_remind"] = {**r, "sent": True}
+            cp.save(update_fields=["onboarding"])
+            sent += 1
+    if not (local.hour == 9 and local.minute < 15):
+        return sent
+    today = local.date()
     for c in _active_clients().filter(date_joined__date__lt=today,
                                       date_joined__date__gte=today - timedelta(days=3)):
         cp = c.client_profile
-        if len(cp.onboarding_done or []) >= 5:
+        if len(cp.onboarding_done or []) >= 5 or (cp.onboarding or {}).get("_remind"):
             continue
         if once(c, "onboarding", "setup", today):
             send_template(c, "onboarding-form-reminder", data={"route": "/welcome"})
