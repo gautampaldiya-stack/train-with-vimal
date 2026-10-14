@@ -1,0 +1,220 @@
+"""Demo team and clients from the design boards, with a few weeks of history so every screen has data.
+Run after seed_defaults. Safe to run again: people that already exist are skipped. Password: Demo@1234."""
+import random
+from datetime import timedelta
+from decimal import Decimal
+
+from django.core.management import call_command
+from django.core.management.base import BaseCommand
+from django.db import transaction
+from django.utils import timezone
+
+PASSWORD = "Demo@1234"
+
+# name, email, phone, speciality, max_clients, active
+TRAINERS = [
+    ("Aman Verma", "aman@trainwithvimal.com", "+919810000002", ["Strength", "Fat loss"], 30, True),
+    ("Neha Joshi", "neha@trainwithvimal.com", "+919810000003", ["Yoga", "Mobility"], 25, True),
+    ("Sahil Kapoor", "sahil@trainwithvimal.com", "+919810000004", ["Muscle gain"], 30, True),
+    ("Karan Mehta", "karan@trainwithvimal.com", "+919810000005", ["Strength"], 20, True),
+    ("Ritu Malhotra", "ritu@trainwithvimal.com", "+919810000006", ["Nutrition", "Fat loss"], 25, True),
+    ("Meera Shah", "meera@trainwithvimal.com", "+919810000007", ["Women's fitness"], 20, True),
+    ("Varun Kohli", "varun@trainwithvimal.com", "+919810000008", ["Conditioning"], 20, False),
+]
+
+# name, email, gender, goal, height, start kg, now kg, target kg, trainer email ("" = Vimal), package
+CLIENTS = [
+    ("Riya Sharma", "riya@example.com", "female", "fat_loss", 162, 72, 68.4, 62, "aman@trainwithvimal.com",
+     "3 months · Online"),
+    ("Rohan Kapoor", "rohan@example.com", "male", "muscle_gain", 178, 68, 70.2, 75, "aman@trainwithvimal.com",
+     "6 months · Gym"),
+    ("Ananya Iyer", "ananya@example.com", "female", "recomp", 165, 60, 59.1, 57, "neha@trainwithvimal.com",
+     "3 months · Online"),
+    ("Vikram Rao", "vikram@example.com", "male", "strength", 180, 82, 83, 85, "sahil@trainwithvimal.com",
+     "6 months · Gym"),
+    ("Dev Malhotra", "dev@example.com", "male", "fat_loss", 175, 94, 89.5, 80, "aman@trainwithvimal.com",
+     "3 months · Gym"),
+    ("Pooja Nair", "pooja@example.com", "female", "fat_loss", 158, 70, 67.8, 60, "ritu@trainwithvimal.com",
+     "3 months · Online"),
+    ("Arjun Rao", "arjun@example.com", "male", "muscle_gain", 172, 64, 66, 72, "", "12 months · Gym"),
+    ("Ishaan Mehta", "ishaan@example.com", "male", "general", 176, 78, 77, 74, "karan@trainwithvimal.com",
+     "1 month · Gym"),
+    ("Priya Nair", "priya@example.com", "female", "recomp", 160, 58, 57.5, 56, "meera@trainwithvimal.com",
+     "3 months · Online"),
+    ("Kavya Menon", "kavya@example.com", "female", "fat_loss", 163, 76, 73.2, 64, "neha@trainwithvimal.com",
+     "6 months · Online"),
+    ("Sneha Kulkarni", "sneha@example.com", "female", "general", 166, 62, 62, 60, "", "3 months · Gym"),
+    ("Nikhil Joshi", "nikhil@example.com", "male", "strength", 183, 88, 89, 90, "sahil@trainwithvimal.com",
+     "6 months · Gym"),
+]
+
+UPPER = ["Barbell Bench Press", "Lat Pulldown", "Incline Dumbbell Press", "Seated Cable Row", "Push-up"]
+LOWER = ["Barbell Back Squat", "Romanian Deadlift", "Leg Press", "Walking Lunge", "Dead Bug"]
+
+
+class Command(BaseCommand):
+    help = "Create the demo team, clients, a program, a meal plan and a few weeks of logs."
+
+    def handle(self, *args, **opts):
+        call_command("seed_defaults", verbosity=0)
+        random.seed(42)
+        with transaction.atomic():
+            vimal = self.people()
+            program, plan = self.plans(vimal)
+            self.history(program, plan)
+        self.stdout.write(self.style.SUCCESS(f"Demo ready. Log in with any demo email and {PASSWORD}"))
+
+    def user(self, *, email, **fields):
+        from apps.accounts.models import User
+
+        u = User.objects.filter(email__iexact=email).first()
+        if u:
+            return u, False
+        return User.objects.create_user(email=email, password=PASSWORD, email_verified_at=timezone.now(),
+                                        **fields), True
+
+    def people(self):
+        from apps.accounts.models import AccountStatus, Role
+        from apps.clients.models import ClientProfile
+        from apps.trainers.models import AccessMode, TrainerProfile
+
+        vimal, made = self.user(email="vimal@trainwithvimal.com", phone="+919810000001", full_name="Vimal Singh",
+                                role=Role.ADMIN, status=AccountStatus.ACTIVE, city="Delhi", gender="male")
+        if made:
+            TrainerProfile.objects.create(user=vimal, is_owner=True, speciality=["Strength", "Fat loss"],
+                                          max_clients=40, access_mode=AccessMode.ALL, experience_since=2012,
+                                          languages=["Hindi", "English"])
+        trainers = {"": vimal}
+        today = timezone.localdate()
+        for name, email, phone, spec, cap, active in TRAINERS:
+            t, made = self.user(email=email, phone=phone, full_name=name, role=Role.TRAINER, city="Delhi",
+                                status=AccountStatus.ACTIVE if active else AccountStatus.DEACTIVATED)
+            if made:
+                TrainerProfile.objects.create(user=t, speciality=spec, max_clients=cap, languages=["Hindi", "English"],
+                                              experience_since=random.choice([2016, 2018, 2020]),
+                                              joining_date=today - timedelta(days=random.randint(90, 900)))
+            trainers[email] = t
+        for i, (name, email, gender, goal, h, start, now, target, tr, package) in enumerate(CLIENTS):
+            c, made = self.user(email=email, phone=f"+91982000{i:04d}", full_name=name, role=Role.CLIENT,
+                                status=AccountStatus.ACTIVE, gender=gender, city="Delhi")
+            if made:
+                started = today - timedelta(weeks=6 + i % 4)
+                ClientProfile.objects.create(
+                    user=c, trainer=trainers[tr], goal=goal, height_cm=h, start_weight_kg=start,
+                    current_weight_kg=now, target_weight_kg=target, start_date=started, package_name=package,
+                    package_ends_on=started + timedelta(days=90 if package.startswith("3") else 180),
+                    onboarding_done=["account", "basics", "goal_body", "health", "food"], ask_parq=False)
+        return vimal
+
+    def plans(self, vimal):
+        from apps.accounts.models import User
+        from apps.nutrition.models import Food, MealItem, MealPlan, MealPlanAssignment
+        from apps.nutrition.services import new_plan
+        from apps.training.models import AssignmentStatus, Exercise, Program, ProgramAssignment, ProgramExercise
+        from apps.training.services import new_program
+
+        program = Program.objects.filter(name="Fat loss · 8 weeks").first()
+        if program is None:
+            program = new_program(name="Fat loss · 8 weeks", weeks=8, days_per_week=4, goal_line="Fat loss · gym",
+                                  actor=vimal)
+            ex = {e.name: e for e in Exercise.objects.filter(is_builtin=True)}
+            for week in program.program_weeks.all():
+                for day in week.days.filter(is_rest=False):
+                    names = UPPER if day.weekday % 2 == 0 else LOWER
+                    day.name = "Upper A" if day.weekday % 2 == 0 else "Lower A"
+                    day.save(update_fields=["name"])
+                    for order, n in enumerate(x for x in names if x in ex):
+                        e = ex[n]
+                        ProgramExercise.objects.create(day=day, exercise=e, order=order, sets=e.default_sets,
+                                                       reps=e.default_reps, rest_seconds=e.default_rest_seconds,
+                                                       rpe=e.default_rpe, tempo=e.default_tempo)
+                week.days.filter(is_rest=True).update(rest_note="8k steps and 10 minutes of mobility")
+
+        plan = MealPlan.objects.filter(name="Veg fat loss · 1,800").first()
+        if plan is None:
+            plan = new_plan(name="Veg fat loss · 1,800", diet="veg", kcal_target=1800, actor=vimal)
+            foods = {f.name: f for f in Food.objects.filter(source=Food.Source.BUILTIN).prefetch_related("units")}
+            menu = {"Breakfast": [("Oats", 1), ("Whey protein", 1), ("Banana", 1)],
+                    "Lunch": [("Whole wheat roti", 2), ("Dal tadka", 1), ("Mixed veg sabzi", 1), ("Curd", 1)],
+                    "Snack": [("Roasted chana", 1), ("Apple", 1)],
+                    "Dinner": [("Paneer bhurji", 1), ("Whole wheat roti", 2), ("Cucumber salad", 1)]}
+            for meal in plan.meals.all():
+                opt = meal.options.first()
+                for order, (n, qty) in enumerate(menu.get(meal.name, [])):
+                    f = foods[n]
+                    MealItem.objects.create(option=opt, food=f, quantity=qty, unit=f.default_unit, order=order)
+            plan.status, plan.published_at = MealPlan.Status.PUBLISHED, timezone.now()
+            plan.save(update_fields=["status", "published_at"])
+
+        for c in User.objects.filter(role="client", client_profile__isnull=False).select_related("client_profile"):
+            cp = c.client_profile
+            if not ProgramAssignment.objects.filter(client=c).exists():
+                ProgramAssignment.objects.create(client=c, program=program, start_date=cp.start_date,
+                                                 status=AssignmentStatus.ACTIVE, assigned_by=cp.trainer)
+            if not MealPlanAssignment.objects.filter(client=c).exists():
+                MealPlanAssignment.objects.create(client=c, plan=plan, start_date=cp.start_date, assigned_by=cp.trainer)
+        return program, plan
+
+    def history(self, program, plan):
+        """Weights, finished workouts, eaten meals, water and habits for the last 3 weeks."""
+        from apps.accounts.models import User
+        from apps.checkins.models import WeightLog
+        from apps.clients.metrics import refresh_client_stats
+        from apps.habits.models import Habit, HabitAssignment, HabitLog
+        from apps.nutrition.models import WaterLog
+        from apps.nutrition.services import mark_eaten
+        from apps.training.models import ProgramAssignment
+
+        today = timezone.localdate()
+        habits = list(Habit.objects.filter(name__in=["Drink 3 L water", "8,000 steps", "Sleep by 11 pm"]))
+        for c in User.objects.filter(role="client", client_profile__isnull=False).select_related("client_profile"):
+            if WeightLog.objects.filter(client=c).exists():
+                continue
+            cp = c.client_profile
+            steady = random.random() > 0.25  # a few clients fall behind, so "Needs attention" has rows
+            weeks = max(1, (today - cp.start_date).days // 7)
+            for w in range(weeks + 1):
+                d = cp.start_date + timedelta(weeks=w)
+                kg = cp.start_weight_kg + (cp.current_weight_kg - cp.start_weight_kg) * Decimal(w) / Decimal(weeks)
+                WeightLog.objects.get_or_create(client=c, date=min(d, today), defaults={"weight_kg": round(kg, 1)})
+            for h in habits:
+                HabitAssignment.objects.get_or_create(habit=h, client=c, defaults={"start_date": cp.start_date})
+            assignment = ProgramAssignment.objects.filter(client=c).first()
+            for back in range(21, 0, -1):
+                day = today - timedelta(days=back)
+                if not steady and back < 9:
+                    continue
+                WaterLog.objects.update_or_create(client=c, date=day, defaults={"ml": random.choice([2000, 2500, 3000])})
+                for h in habits:
+                    HabitLog.objects.update_or_create(habit=h, client=c, date=day, defaults={
+                        "done": random.random() > 0.3, "value": (h.target or 1) if random.random() > 0.3 else 0})
+                for meal in plan.meals.all():
+                    if random.random() > 0.2:
+                        mark_eaten(c, meal, day)
+                if day.weekday() < program.days_per_week and assignment:
+                    self.workout(c, assignment, program, day)
+            refresh_client_stats(cp)
+
+    def workout(self, client, assignment, program, day):
+        from apps.training.models import SetLog, WorkoutLog
+
+        week = program.program_weeks.order_by("number").first()
+        pday = week.days.filter(weekday=day.weekday(), is_rest=False).prefetch_related("exercises__exercise").first()
+        if pday is None:
+            return
+        start = timezone.make_aware(timezone.datetime.combine(day, timezone.datetime.min.time())) + timedelta(hours=7)
+        w = WorkoutLog.objects.create(client=client, assignment=assignment, program_day=pday, name=pday.name, date=day,
+                                      status=WorkoutLog.Status.COMPLETED, started_at=start,
+                                      finished_at=start + timedelta(minutes=55), duration_seconds=55 * 60,
+                                      effort=random.choice([6, 7, 8]))
+        sets = []
+        for pe in pday.exercises.all():
+            base = Decimal(random.choice([20, 30, 40, 50, 60]))
+            for n in range(1, pe.sets + 1):
+                bw = pe.exercise.log_type == "bodyweight_reps"
+                sets.append(SetLog(workout=w, program_exercise=pe, exercise=pe.exercise, set_number=n,
+                                   weight_kg=None if bw else base, reps=random.choice([8, 9, 10]), is_bodyweight=bw,
+                                   done=True, done_at=start + timedelta(minutes=3 * len(sets))))
+        SetLog.objects.bulk_create(sets)
+        w.sets_done = w.sets_planned = len(sets)
+        w.save(update_fields=["sets_done", "sets_planned"])

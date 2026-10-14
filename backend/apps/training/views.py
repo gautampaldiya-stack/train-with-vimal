@@ -1,0 +1,674 @@
+from django.db import transaction
+from django.db.models import Count, Prefetch, Q
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from drf_spectacular.utils import extend_schema
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from apps.activity.services import log as activity_log
+from apps.clients.services import get_visible_client, visible_clients
+from apps.common.mixins import SoftDeleteViewMixin
+from apps.common.permissions import HasTrainerPermission, IsClient, IsStaff
+
+from . import services
+from .models import (
+    AssignmentStatus,
+    Exercise,
+    Program,
+    ProgramAssignment,
+    ProgramDay,
+    ProgramExercise,
+    SetLog,
+    WorkoutLog,
+)
+from .serializers import (
+    AssignmentSerializer,
+    AssignSerializer,
+    ExerciseMiniSerializer,
+    ExerciseSerializer,
+    FinishSerializer,
+    ProgramCardSerializer,
+    ProgramCreateSerializer,
+    ProgramDetailSerializer,
+    ProgramExerciseSerializer,
+    SetLogSerializer,
+    StructureSerializer,
+    WorkoutLogSerializer,
+    WorkoutRowSerializer,
+    facet_counts,
+)
+
+
+def _multi(params, key):
+    raw = params.getlist(key) or []
+    out = []
+    for r in raw:
+        out.extend([x for x in r.split(",") if x])
+    return out
+
+
+# ---------------------------------------------------------------- exercises
+class ExerciseViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
+    serializer_class = ExerciseSerializer
+    permission_classes = [IsStaff, HasTrainerPermission]
+    required_permissions = {"create": "training.custom_exercises", "partial_update": "training.custom_exercises",
+                            "update": "training.custom_exercises", "destroy": "training.custom_exercises",
+                            "duplicate": "training.custom_exercises"}
+    search_fields = ["name", "primary_muscle"]
+    ordering_fields = ["name", "created_at", "updated_at", "n_programs"]
+    ordering = ["name"]
+
+    def get_queryset(self):
+        qs = Exercise.objects.select_related("video").annotate(
+            n_programs=Count("program_uses__day__week__program", distinct=True,
+                             filter=Q(program_uses__day__week__program__is_master=True,
+                                      program_uses__day__week__program__deleted_at__isnull=True)))
+        return qs
+
+    def filter_queryset(self, qs):
+        qs = super().filter_queryset(qs)
+        if self.action != "list":
+            return qs
+        return self._apply_facets(qs, self.request.query_params)
+
+    @staticmethod
+    def _apply_facets(qs, p, skip=None):
+        if skip != "muscle" and _multi(p, "muscle"):
+            qs = qs.filter(muscle_group__in=_multi(p, "muscle"))
+        if skip != "equipment" and _multi(p, "equipment"):
+            qs = qs.filter(equipment__in=_multi(p, "equipment"))
+        if skip != "level" and _multi(p, "level"):
+            qs = qs.filter(level__in=_multi(p, "level"))
+        src = _multi(p, "source")
+        if skip != "source" and src and len(src) == 1:
+            qs = qs.filter(is_builtin=src[0] == "builtin")
+        return qs
+
+    @action(detail=False)
+    def facets(self, request):
+        """Filter panel counts + the page sub-line ('28 built-in · 0 custom by your team')."""
+        base = Exercise.objects.all()
+        q = request.query_params.get("search")
+        if q:
+            base = base.filter(name__icontains=q)
+        data = facet_counts(base)
+        data["builtin"] = Exercise.objects.filter(is_builtin=True).count()
+        data["custom"] = Exercise.objects.filter(is_builtin=False).count()
+        return Response(data)
+
+    def perform_create(self, serializer):
+        ex = serializer.save(created_by=self.request.user, is_builtin=False)
+        activity_log("added an exercise", "plan", actor=self.request.user, target=ex, target_label=ex.name)
+
+    def perform_destroy(self, instance):
+        if instance.is_builtin:
+            raise PermissionDenied("Built-in exercises can't be deleted.")
+        instance.soft_delete()
+
+    @action(detail=True, methods=["post"])
+    def duplicate(self, request, pk=None):
+        """'Duplicate to edit': an editable copy of a built-in exercise."""
+        src = self.get_object()
+        fields = {f.name: getattr(src, f.name) for f in Exercise._meta.concrete_fields
+                  if f.name not in ("id", "created_at", "updated_at", "deleted_at", "is_builtin", "duplicated_from",
+                                    "created_by", "name")}
+        fields["video_id"] = fields.pop("video").id if fields.get("video") else None
+        ex = Exercise.objects.create(name=f"{src.name} (copy)"[:120], duplicated_from=src, is_builtin=False,
+                                     created_by=request.user, **fields)
+        return Response(ExerciseSerializer(ex).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, url_path="used-in")
+    def used_in(self, request, pk=None):
+        """'Used in N programs': program, day name, workouts logged, clients."""
+        ex = self.get_object()
+        rows = (ProgramExercise.objects.filter(exercise=ex, day__week__program__is_master=True,
+                                               day__week__program__deleted_at__isnull=True)
+                .select_related("day__week__program"))
+        progs = {}
+        for pe in rows:
+            p = pe.day.week.program
+            item = progs.setdefault(p.id, {"id": str(p.id), "name": p.name, "days": set()})
+            if pe.day.name:
+                item["days"].add(pe.day.name)
+        out = []
+        for pid, item in progs.items():
+            item["days"] = sorted(item["days"])
+            item["clients"] = ProgramAssignment.objects.filter(program_id=pid, status="active").count()
+            item["workouts"] = SetLog.objects.filter(exercise=ex, workout__assignment__program_id=pid,
+                                                     workout__status="completed").values("workout").distinct().count()
+            out.append(item)
+        return Response(out)
+
+
+# ---------------------------------------------------------------- programs
+class ProgramViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
+    permission_classes = [IsStaff, HasTrainerPermission]
+    search_fields = ["name", "goal_line"]
+    ordering = ["-updated_at"]
+    http_method_names = ["get", "post", "patch", "put", "delete"]
+
+    def check_permissions(self, request):
+        super().check_permissions(request)
+        user = request.user
+        if user.is_trainer and request.method not in ("GET", "HEAD", "OPTIONS"):
+            tp = user.trainer_profile
+            needed = "training.use_templates" if self.action in ("create", "duplicate") else "training.edit_templates"
+            if self.action == "assign":
+                needed = "training.programs_edit"
+            if not tp.has_perm(needed):
+                raise PermissionDenied("Your access does not include this. Ask Vimal for more access.")
+
+    def get_queryset(self):
+        qs = Program.objects.filter(is_master=True)
+        if self.action == "list":
+            tab = self.request.query_params.get("tab", "active")
+            qs = qs.filter(archived_at__isnull=tab != "archived")
+            qs = qs.annotate(n_clients=Count("assignments", filter=Q(assignments__status="active"), distinct=True))
+            qs = qs.prefetch_related(Prefetch("program_weeks__days", queryset=ProgramDay.objects.all()))
+        elif self.action == "retrieve":
+            qs = qs.annotate(n_clients=Count("assignments", filter=Q(assignments__status="active"), distinct=True))
+            qs = qs.prefetch_related("program_weeks__days__exercises__exercise")
+        return qs
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return ProgramCreateSerializer
+        if self.action == "retrieve":
+            return ProgramDetailSerializer
+        return ProgramCardSerializer
+
+    def list(self, request, *args, **kwargs):
+        qs = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(qs)
+        rows = page if page is not None else list(qs)
+        ids = [p.id for p in rows]
+        previews = {}
+        for a in (ProgramAssignment.objects.filter(program_id__in=ids, status="active")
+                  .select_related("client").order_by("program_id", "-created_at")):
+            lst = previews.setdefault(a.program_id, [])
+            if len(lst) < 3:
+                lst.append(a.client)
+        week1 = {}
+        for d in ProgramDay.objects.filter(week__program_id__in=ids, week__number=1).select_related("week"):
+            week1.setdefault(d.week.program_id, {})[d.weekday] = not d.is_rest
+        for p in rows:
+            p._preview_clients = previews.get(p.id, [])
+            p._week1 = week1.get(p.id, {})
+        data = ProgramCardSerializer(rows, many=True).data
+        return self.get_paginated_response(data) if page is not None else Response(data)
+
+    @action(detail=False)
+    def counts(self, request):
+        qs = Program.objects.filter(is_master=True)
+        return Response({"active": qs.filter(archived_at__isnull=True).count(),
+                         "archived": qs.filter(archived_at__isnull=False).count()})
+
+    def create(self, request, *args, **kwargs):
+        s = ProgramCreateSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+        p = services.new_program(actor=request.user, **s.validated_data)
+        activity_log("created a program", "plan", actor=request.user, target=p, target_label=p.name)
+        return Response(ProgramDetailSerializer(p).data,
+                        status=status.HTTP_201_CREATED)
+
+    def partial_update(self, request, *args, **kwargs):
+        p = self.get_object()
+        s = ProgramCreateSerializer(p, data=request.data, partial=True)
+        s.is_valid(raise_exception=True)
+        old = p.name
+        s.save()
+        if "name" in s.validated_data and old != p.name:
+            activity_log("renamed a program", "plan", actor=request.user, target=p, target_label=p.name,
+                         change=(old, p.name))
+        return Response(ProgramCardSerializer(p).data)
+
+    def destroy(self, request, *args, **kwargs):
+        p = self.get_object()
+        n = ProgramAssignment.objects.filter(program=p, status="active").count()
+        with transaction.atomic():
+            p.soft_delete()
+            ProgramAssignment.objects.filter(program=p, status__in=["active", "up_next"]).update(
+                status=AssignmentStatus.ENDED, end_date=timezone.localdate())
+        activity_log("deleted a program", "plan", actor=request.user, target=p, target_label=p.name,
+                     meta={"unassigned": n})
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, url_path="delete-preview")
+    def delete_preview(self, request, pk=None):
+        p = self.get_object()
+        return Response({"clients": ProgramAssignment.objects.filter(program=p, status="active").count()})
+
+    @action(detail=True, methods=["post"])
+    def duplicate(self, request, pk=None):
+        p = services.duplicate_program(self.get_object(), actor=request.user)
+        return Response(ProgramCardSerializer(p).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"])
+    def archive(self, request, pk=None):
+        p = self.get_object()
+        p.archived_at = timezone.now()
+        p.save(update_fields=["archived_at", "updated_at"])
+        activity_log("archived a program", "plan", actor=request.user, target=p, target_label=p.name)
+        return Response(ProgramCardSerializer(p).data)
+
+    @action(detail=True, methods=["post"])
+    def unarchive(self, request, pk=None):
+        p = self.get_object()
+        p.archived_at = None
+        p.save(update_fields=["archived_at", "updated_at"])
+        return Response(ProgramCardSerializer(p).data)
+
+    @extend_schema(request=StructureSerializer)
+    @action(detail=True, methods=["put"])
+    def structure(self, request, pk=None):
+        p = self.get_object()
+        s = StructureSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+        services.sync_structure(p, s.validated_data["weeks"])
+        p = Program.objects.prefetch_related("program_weeks__days__exercises__exercise").get(id=p.id)
+        return Response(ProgramDetailSerializer(p).data)
+
+    @action(detail=True, methods=["post"], url_path="copy-week")
+    def copy_week(self, request, pk=None):
+        p = self.get_object()
+        try:
+            n = int(request.data.get("week"))
+        except (TypeError, ValueError):
+            raise serializers.ValidationError({"week": ["Pick a week."]})
+        if not p.program_weeks.filter(number=n).exists():
+            raise serializers.ValidationError({"week": ["No such week."]})
+        services.copy_week(p, n)
+        p = Program.objects.prefetch_related("program_weeks__days__exercises__exercise").get(id=p.id)
+        return Response(ProgramDetailSerializer(p).data)
+
+    @action(detail=True)
+    def clients(self, request, pk=None):
+        """Clients drawer: who follows this program, Master or Custom."""
+        p = self.get_object()
+        rows = (ProgramAssignment.objects.filter(program=p, status="active")
+                .select_related("client", "client__client_profile__trainer"))
+        visible = set(visible_clients(request.user).values_list("id", flat=True))
+        return Response([{**AssignmentSerializer(a).data,
+                          "goal": a.client.client_profile.get_goal_display(),
+                          "trainer": a.client.client_profile.trainer.full_name
+                          if a.client.client_profile.trainer else None}
+                         for a in rows if a.client_id in visible])
+
+    @extend_schema(request=AssignSerializer)
+    @action(detail=True, methods=["post"])
+    def assign(self, request, pk=None):
+        """Assign drawer save: the followers become exactly the ticked clients."""
+        p = self.get_object()
+        s = AssignSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+        if p.archived_at:
+            raise serializers.ValidationError("Restore the program before assigning it.")
+        added, removed = services.set_program_clients(p, s.validated_data["clients"], actor=request.user)
+        return Response({"added": added, "removed": removed})
+
+    @action(detail=False, url_path="assign-options")
+    def assign_options(self, request):
+        """Assign drawer list: every visible client with goal, trainer and current program."""
+        current = {a.client_id: a.effective_program.name for a in
+                   ProgramAssignment.objects.filter(status="active").select_related("program", "custom_program")}
+        rows = visible_clients(request.user).filter(status__in=["active", "paused"]).select_related(
+            "client_profile__trainer")
+        return Response([{"id": str(u.id), "full_name": u.full_name, "initials": u.initials,
+                          "avatar_color": u.avatar_color, "goal": u.client_profile.get_goal_display(),
+                          "trainer": u.client_profile.trainer.full_name if u.client_profile.trainer else None,
+                          "current_program": current.get(u.id)} for u in rows])
+
+
+class ExercisePickerView(APIView):
+    """Add exercise picker in the builder: muscle chips with counts + rows."""
+
+    permission_classes = [IsStaff]
+
+    def get(self, request):
+        qs = Exercise.objects.all()
+        q = request.query_params.get("search")
+        if q:
+            qs = qs.filter(name__icontains=q)
+        counts = dict(qs.order_by().values_list("muscle_group").annotate(n=Count("id")))
+        m = request.query_params.get("muscle")
+        if m:
+            qs = qs.filter(muscle_group=m)
+        return Response({"counts": counts, "all": sum(counts.values()),
+                         "results": ExerciseMiniSerializer(qs[:300], many=True).data})
+
+
+# ---------------------------------------------------------------- client plans (staff)
+class ClientProgramViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    """Client profile → Plans → Workout slot."""
+
+    serializer_class = AssignmentSerializer
+    permission_classes = [IsStaff, HasTrainerPermission]
+    required_permission = None
+    pagination_class = None
+
+    def _client(self):
+        try:
+            return get_visible_client(self.request.user, self.kwargs["client_pk"])
+        except Exception:
+            from django.http import Http404
+
+            raise Http404
+
+    def check_permissions(self, request):
+        super().check_permissions(request)
+        if request.user.is_trainer and request.method not in ("GET", "HEAD", "OPTIONS"):
+            if not request.user.trainer_profile.has_perm("training.programs_edit"):
+                raise PermissionDenied("Your access does not include editing programs.")
+
+    def get_queryset(self):
+        return ProgramAssignment.objects.filter(client=self._client()).select_related(
+            "program", "custom_program", "client")
+
+    def list(self, request, *args, **kwargs):
+        qs = list(self.get_queryset())
+        ser = lambda xs: AssignmentSerializer(xs, many=True).data  # noqa: E731
+        return Response({
+            "current": ser([a for a in qs if a.status == "active"]),
+            "up_next": ser([a for a in qs if a.status == "up_next"]),
+            "history": ser([a for a in qs if a.status == "ended"]),
+        })
+
+    @extend_schema(request=AssignSerializer)
+    def create(self, request, client_pk=None):
+        client = self._client()
+        program = request.data.get("program")
+        when = request.data.get("when", "now")
+        if when not in ("now", "after_current"):
+            raise serializers.ValidationError({"when": ["Pick when it starts."]})
+        start = request.data.get("start_date")
+        from django.utils.dateparse import parse_date
+
+        a = services.assign_program(client, program, actor=request.user, when=when,
+                                    start_date=parse_date(start) if start else None)
+        return Response(AssignmentSerializer(a).data, status=status.HTTP_201_CREATED)
+
+    def _get(self, pk):
+        return get_object_or_404(self.get_queryset(), pk=pk)
+
+    @action(detail=True, methods=["post"])
+    def customise(self, request, client_pk=None, pk=None):
+        """'Edit X for Riya' → returns the client's own copy to open in the builder."""
+        a = self._get(pk)
+        copy = services.customise_for_client(a, actor=request.user)
+        copy = Program.objects.prefetch_related("program_weeks__days__exercises__exercise").get(id=copy.id)
+        return Response(ProgramDetailSerializer(copy).data)
+
+    @action(detail=True, methods=["get", "put"], url_path="custom-structure")
+    def custom_structure(self, request, client_pk=None, pk=None):
+        a = self._get(pk)
+        if request.method == "PUT":
+            copy = services.customise_for_client(a, actor=request.user)
+            s = StructureSerializer(data=request.data)
+            s.is_valid(raise_exception=True)
+            services.sync_structure(copy, s.validated_data["weeks"])
+        prog = a.custom_program or a.program
+        prog = Program.objects.prefetch_related("program_weeks__days__exercises__exercise").get(id=prog.id)
+        return Response(ProgramDetailSerializer(prog).data)
+
+    @action(detail=True, methods=["post"], url_path="new-from")
+    def new_from(self, request, client_pk=None, pk=None):
+        """'New plan for Riya: copy of X' + optional 'Also save to the library as a new master plan'."""
+        a = self._get(pk)
+        name = (request.data.get("name") or f"{a.effective_program.name} (copy)").strip()[:120]
+        also_master = bool(request.data.get("save_to_library"))
+        with transaction.atomic():
+            if also_master:
+                if request.user.is_trainer and not request.user.trainer_profile.has_perm("training.use_templates"):
+                    raise PermissionDenied("Ask Vimal to save new master plans.")
+                master = services.duplicate_program(a.effective_program, actor=request.user, name=name)
+                new_a = services.assign_program(a.client, master, actor=request.user)
+            else:
+                master = a.program
+                copy = services.duplicate_program(a.effective_program, actor=request.user, name=name,
+                                                  as_master=False, master=a.program)
+                new_a = services.assign_program(a.client, master, actor=request.user)
+                new_a.custom_program = copy
+                new_a.save(update_fields=["custom_program"])
+        return Response(AssignmentSerializer(new_a).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"], url_path="reset-to-master")
+    def reset_to_master(self, request, client_pk=None, pk=None):
+        a = services.reset_to_master(self._get(pk), actor=request.user)
+        return Response(AssignmentSerializer(a).data)
+
+    @action(detail=True, methods=["post"])
+    def replace(self, request, client_pk=None, pk=None):
+        a = self._get(pk)
+        new = services.assign_program(a.client, request.data.get("program"), actor=request.user)
+        return Response(AssignmentSerializer(new).data)
+
+    @action(detail=True, methods=["post"])
+    def end(self, request, client_pk=None, pk=None):
+        a = self._get(pk)
+        services.end_assignment(a, actor=request.user)
+        return Response(AssignmentSerializer(a).data)
+
+    @action(detail=False)
+    def compare(self, request, client_pk=None):
+        """A/B view: two programs side by side (ids in ?a=&b=)."""
+        visible_ids = set(Program.objects.filter(
+            Q(is_master=True) | Q(assignments__client=self._client()) |
+            Q(id__in=ProgramAssignment.objects.filter(client=self._client()).values("custom_program"))
+        ).values_list("id", flat=True))
+        out = []
+        for key in ("a", "b"):
+            pid = request.query_params.get(key)
+            p = Program.objects.filter(id=pid, id__in=visible_ids).prefetch_related(
+                "program_weeks__days__exercises__exercise").first() if pid else None
+            if p is None:
+                raise serializers.ValidationError({key: ["Pick a plan."]})
+            out.append(ProgramDetailSerializer(p).data)
+        return Response({"a": out[0], "b": out[1]})
+
+
+class ClientWorkoutLogViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+    """Client profile → Logs → Workouts (staff, read only)."""
+
+    permission_classes = [IsStaff]
+
+    def get_queryset(self):
+        try:
+            client = get_visible_client(self.request.user, self.kwargs["client_pk"])
+        except Exception:
+            from django.http import Http404
+
+            raise Http404
+        return WorkoutLog.objects.filter(client=client).exclude(status="discarded").prefetch_related("sets__exercise")
+
+    def get_serializer_class(self):
+        return WorkoutLogSerializer if self.action == "retrieve" else WorkoutRowSerializer
+
+
+# ---------------------------------------------------------------- client app
+class MyTrainView(APIView):
+    """Train tab: week strip, today's workout with targets, last time and PRs."""
+
+    permission_classes = [IsClient]
+
+    def get(self, request):
+        from django.utils.dateparse import parse_date
+
+        day = parse_date(request.query_params.get("date") or "") or timezone.localdate()
+        pa, pd, strip, week = services.today_plan(request.user, day)
+        exercises = []
+        if pd and not pd.is_rest:
+            rows = list(pd.exercises.select_related("exercise", "exercise__video"))
+            ids = [e.exercise_id for e in rows]
+            last = services.last_performance(request.user, ids)
+            prs = services.personal_bests(request.user, ids)
+            for e in rows:
+                d = ProgramExerciseSerializer(e).data
+                d["exercise_full"] = ExerciseSerializer(e.exercise).data
+                if e.override:
+                    d["exercise_full"].update({k: v for k, v in e.override.items() if k in d["exercise_full"]})
+                d["last_time"] = last.get(e.exercise_id)
+                d["pr"] = prs.get(e.exercise_id)
+                exercises.append(d)
+        done_today = WorkoutLog.objects.filter(client=request.user, date=day, status="completed").first()
+        in_progress = WorkoutLog.objects.filter(client=request.user, status="in_progress").first()
+        return Response({
+            "date": day,
+            "week": week,
+            "weeks": pa.effective_program.weeks if pa else None,
+            "program": pa.effective_program.name if pa else None,
+            "strip": strip,
+            "day": {"id": pd.id, "name": pd.name, "is_rest": pd.is_rest, "rest_note": pd.rest_note} if pd else None,
+            "exercises": exercises,
+            "completed_today": WorkoutRowSerializer(done_today).data if done_today else None,
+            "in_progress": str(in_progress.id) if in_progress else None,
+        })
+
+
+class MyWorkoutViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+    """The logger. Start → tick sets → finish (or discard / restart / clear)."""
+
+    permission_classes = [IsClient]
+
+    def get_queryset(self):
+        qs = WorkoutLog.objects.filter(client=self.request.user)
+        if self.action == "list":
+            return qs.filter(status="completed")
+        return qs.prefetch_related("sets__exercise")
+
+    def get_serializer_class(self):
+        return WorkoutRowSerializer if self.action == "list" else WorkoutLogSerializer
+
+    def create(self, request):
+        """Start workout (returns the open one if a workout is already running)."""
+        pd = None
+        if request.data.get("program_day"):
+            pa, today_pd, _, _ = services.today_plan(request.user)
+            pd = get_object_or_404(ProgramDay, id=request.data["program_day"],
+                                   week__program__in=[pa.effective_program] if pa else [])
+        wl, created = services.start_workout(request.user, program_day=pd, name=request.data.get("name", ""))
+        wl = self.get_queryset().get(id=wl.id)
+        return Response(WorkoutLogSerializer(wl).data, status=201 if created else 200)
+
+    def _open(self, pk):
+        return get_object_or_404(WorkoutLog, id=pk, client=self.request.user, status="in_progress")
+
+    @action(detail=True, methods=["post"], url_path="sets")
+    def add_set(self, request, pk=None):
+        wl = self._open(pk)
+        ex = get_object_or_404(Exercise, id=request.data.get("exercise"))
+        n = (wl.sets.filter(exercise=ex).order_by("-set_number").values_list("set_number", flat=True).first() or 0)
+        pe = wl.sets.filter(exercise=ex).values_list("program_exercise", flat=True).first()
+        s = SetLog.objects.create(workout=wl, exercise=ex, set_number=n + 1, program_exercise_id=pe,
+                                  is_bodyweight=bool(request.data.get("is_bodyweight")),
+                                  is_warmup=bool(request.data.get("is_warmup")))
+        return Response(SetLogSerializer(s).data, status=201)
+
+    @action(detail=True, methods=["patch", "delete"], url_path=r"sets/(?P<set_id>\d+)")
+    def set_detail(self, request, pk=None, set_id=None):
+        wl = self._open(pk)
+        s = get_object_or_404(SetLog, id=set_id, workout=wl)
+        if request.method == "DELETE":
+            data = SetLogSerializer(s).data  # returned so the app can Undo by re-adding
+            s.delete()
+            return Response(data)
+        ser = SetLogSerializer(s, data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        done = ser.validated_data.pop("done", None)
+        for f in ("program_exercise", "exercise", "set_number"):
+            ser.validated_data.pop(f, None)
+        ser.save()
+        is_pr = False
+        if done is not None:
+            is_pr = services.mark_set(s, done=done)
+        return Response({**SetLogSerializer(s).data, "new_best": is_pr})
+
+    @action(detail=True, methods=["post"], url_path="restore-set")
+    def restore_set(self, request, pk=None):
+        """Undo of 'Delete set'."""
+        wl = self._open(pk)
+        ser = SetLogSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        s = ser.save(workout=wl)
+        return Response(SetLogSerializer(s).data, status=201)
+
+    @extend_schema(request=FinishSerializer)
+    @action(detail=True, methods=["post"])
+    def finish(self, request, pk=None):
+        wl = self._open(pk)
+        s = FinishSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+        services.finish_workout(wl, **s.validated_data)
+        return Response(WorkoutLogSerializer(self.get_queryset().get(id=wl.id)).data)
+
+    @action(detail=True, methods=["post"])
+    def discard(self, request, pk=None):
+        wl = self._open(pk)
+        wl.status = WorkoutLog.Status.DISCARDED
+        wl.save(update_fields=["status"])
+        wl.sets.all().delete()
+        return Response(status=204)
+
+    @action(detail=True, methods=["post"])
+    def restart(self, request, pk=None):
+        """Timer from 0:00. Returns the previous start so Undo can put it back."""
+        wl = self._open(pk)
+        prev = wl.started_at
+        wl.started_at = timezone.now() if not request.data.get("started_at") else request.data["started_at"]
+        wl.save(update_fields=["started_at"])
+        return Response({"started_at": wl.started_at, "previous_started_at": prev})
+
+    @action(detail=True, methods=["post"], url_path="clear-sets")
+    def clear_sets(self, request, pk=None):
+        """'Remove logged work': un-tick every set (Undo re-ticks the returned ids)."""
+        wl = self._open(pk)
+        ids = list(wl.sets.filter(done=True).values_list("id", flat=True))
+        wl.sets.filter(id__in=ids).update(done=False, done_at=None, is_pr=False)
+        return Response({"cleared": ids})
+
+    @action(detail=False, methods=["post"])
+    def sync(self, request):
+        """A whole workout logged offline, sent when the network is back (send an Idempotency-Key)."""
+        from apps.common.utils import sync_day, sync_time
+
+        d = request.data
+        sets = d.get("sets") or []
+        if not isinstance(sets, list) or len(sets) > 200:
+            raise serializers.ValidationError({"sets": ["Send up to 200 sets."]})
+        day = sync_day(d.get("date"))
+        pa, _, _, _ = services.today_plan(request.user, day)
+        pd = None
+        if d.get("program_day"):
+            pd = ProgramDay.objects.filter(id=d["program_day"],
+                                           week__program=pa.effective_program if pa else None).first()
+        fin = FinishSerializer(data={k: d[k] for k in ("effort", "note", "duration_seconds", "time_breakdown")
+                                     if k in d})
+        fin.is_valid(raise_exception=True)
+        with transaction.atomic():
+            wl = WorkoutLog.objects.create(client=request.user, assignment=pa, program_day=pd,
+                                           name=(d.get("name") or (pd.name if pd else "Workout"))[:80], date=day,
+                                           started_at=sync_time(d.get("started_at")),
+                                           sets_planned=sum(e.sets for e in pd.exercises.all()) if pd else 0)
+            for row in sets:
+                ser = SetLogSerializer(data=row)
+                ser.is_valid(raise_exception=True)
+                sl = ser.save(workout=wl)
+                if row.get("done"):
+                    sl.done_at = sync_time(row.get("done_at"))
+                    sl.save(update_fields=["done_at"])
+                    services.mark_set(sl, done=True)
+            services.finish_workout(wl, **fin.validated_data)
+            if d.get("finished_at"):
+                wl.finished_at = sync_time(d["finished_at"])
+                wl.save(update_fields=["finished_at"])
+        return Response(WorkoutLogSerializer(self.get_queryset().get(id=wl.id)).data, status=201)
+
+    @action(detail=True, methods=["post"], url_path="retick-sets")
+    def retick_sets(self, request, pk=None):
+        wl = self._open(pk)
+        ids = [int(i) for i in request.data.get("ids", []) if str(i).isdigit()]
+        wl.sets.filter(id__in=ids).update(done=True, done_at=timezone.now())
+        return Response({"reticked": len(ids)})

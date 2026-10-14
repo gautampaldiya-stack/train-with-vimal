@@ -1,0 +1,357 @@
+from datetime import datetime, timedelta
+from decimal import Decimal
+
+from django.db import transaction
+from django.db.models import Sum
+from django.utils import timezone
+from rest_framework.exceptions import ValidationError
+
+from apps.activity.services import log as activity_log
+from apps.notifications.services import notify
+
+from .models import (
+    Food,
+    FoodLogEntry,
+    Meal,
+    MealDayState,
+    MealItem,
+    MealOption,
+    MealPlan,
+    MealPlanAssignment,
+    WaterLog,
+)
+
+
+# ---------------------------------------------------------------- plan tree
+@transaction.atomic
+def sync_meals(plan, meals_data):
+    """Make the plan's meals/options/items equal `meals_data` (ids are kept so day states stay linked)."""
+    keep_meals = set()
+    for mi, md in enumerate(meals_data):
+        meal = plan.meals.filter(id=md.get("id")).first() if md.get("id") else None
+        meal = meal or Meal(plan=plan)
+        meal.name, meal.time = md["name"], md["time"]
+        meal.kcal_target = md.get("kcal_target", 0)
+        meal.order = mi
+        meal.save()
+        keep_meals.add(meal.id)
+        keep_opts = set()
+        opts = md.get("options", [])
+        if opts and not any(o.get("is_default") for o in opts):
+            opts[0]["is_default"] = True
+        seen_default = False
+        for oi, od in enumerate(opts):
+            opt = meal.options.filter(id=od.get("id")).first() if od.get("id") else None
+            opt = opt or MealOption(meal=meal)
+            opt.name = od["name"]
+            opt.is_default = bool(od.get("is_default")) and not seen_default
+            seen_default = seen_default or opt.is_default
+            opt.order = oi
+            opt.save()
+            keep_opts.add(opt.id)
+            keep_items = set()
+            for ii, idata in enumerate(od.get("items", [])):
+                item = opt.items.filter(id=idata.get("id")).first() if idata.get("id") else None
+                item = item or MealItem(option=opt)
+                item.food = idata["food"]
+                item.quantity = idata["quantity"]
+                unit = idata.get("unit")
+                if unit is not None and unit.food_id != item.food.id:
+                    raise ValidationError({"unit": [f"{unit.name} is not a unit of {item.food.name}."]})
+                item.unit = unit
+                item.order = ii
+                item.save()
+                keep_items.add(item.id)
+            opt.items.exclude(id__in=keep_items).delete()
+        meal.options.exclude(id__in=keep_opts).delete()
+    plan.meals.exclude(id__in=keep_meals).delete()
+    if plan.status == MealPlan.Status.PUBLISHED:
+        plan.has_unpublished_changes = True
+    plan.save(update_fields=["has_unpublished_changes", "updated_at"])
+    return plan
+
+
+@transaction.atomic
+def duplicate_plan(src, *, actor):
+    dst = MealPlan.objects.create(
+        name=f"{src.name} (copy)"[:120], diet=src.diet, kcal_target=src.kcal_target, protein_g=src.protein_g,
+        carbs_g=src.carbs_g, fat_g=src.fat_g, fibre_g=src.fibre_g, water_ml=src.water_ml,
+        allow_swaps=src.allow_swaps, allow_search_any=src.allow_search_any,
+        allow_switch_options=src.allow_switch_options, allow_off_plan=src.allow_off_plan, created_by=actor,
+    )
+    for m in src.meals.prefetch_related("options__items"):
+        nm = Meal.objects.create(plan=dst, name=m.name, time=m.time, kcal_target=m.kcal_target, order=m.order)
+        for o in m.options.all():
+            no = MealOption.objects.create(meal=nm, name=o.name, is_default=o.is_default, order=o.order)
+            MealItem.objects.bulk_create([MealItem(option=no, food_id=i.food_id, quantity=i.quantity,
+                                                   unit_id=i.unit_id, order=i.order) for i in o.items.all()])
+    return dst
+
+
+DEFAULT_SPLIT = [("Breakfast", "08:00", 0.25), ("Lunch", "13:30", 0.30), ("Snack", "17:00", 0.12),
+                 ("Dinner", "20:30", 0.33)]
+
+
+@transaction.atomic
+def new_plan(*, name, diet, kcal_target, actor):
+    """'Breakfast, Lunch, Snack and Dinner split this target.'"""
+    p = MealPlan.objects.create(name=name, diet=diet, kcal_target=kcal_target, created_by=actor,
+                                protein_g=round(kcal_target * 0.25 / 4), carbs_g=round(kcal_target * 0.45 / 4),
+                                fat_g=round(kcal_target * 0.30 / 9))
+    label = dict(MealPlan._meta.get_field("diet").choices).get(diet, "Main")
+    for i, (n, t, share) in enumerate(DEFAULT_SPLIT):
+        m = Meal.objects.create(plan=p, name=n, time=t, kcal_target=round(kcal_target * share / 10) * 10, order=i)
+        MealOption.objects.create(meal=m, name=label.split()[0], is_default=True)
+    return p
+
+
+@transaction.atomic
+def set_plan_clients(plan, client_ids, *, actor):
+    from apps.clients.services import visible_clients
+
+    current = set(MealPlanAssignment.objects.filter(plan=plan, status="active").values_list("client_id", flat=True))
+    wanted = set(client_ids)
+    added, removed = wanted - current, current - wanted
+    clients = list(visible_clients(actor).filter(id__in=added))
+    today = timezone.localdate()
+    for c in clients:
+        # "Clients on another meal plan move to this one. Their logged meals stay."
+        MealPlanAssignment.objects.filter(client=c, status="active").update(status="ended", end_date=today)
+        MealPlanAssignment.objects.create(client=c, plan=plan, start_date=today, assigned_by=actor)
+        activity_log("assigned a meal plan", "plan", actor=actor, target=c, target_label=plan.name, client=c)
+    if clients and plan.status == MealPlan.Status.PUBLISHED:
+        notify(clients, "meal_plan_assigned", f"New meal plan: {plan.name}", "Open Food to see today's meals.",
+               actor=actor, data={"route": "/food"})
+    if removed:
+        MealPlanAssignment.objects.filter(plan=plan, status="active", client_id__in=removed).update(
+            status="ended", end_date=today)
+    return len(clients), len(removed)
+
+
+@transaction.atomic
+def publish(plan, *, actor):
+    plan.status = MealPlan.Status.PUBLISHED
+    plan.published_at = timezone.now()
+    plan.has_unpublished_changes = False
+    plan.save(update_fields=["status", "published_at", "has_unpublished_changes", "updated_at"])
+    rows = list(MealPlanAssignment.objects.filter(plan=plan, status="active").select_related(
+        "client__client_profile__trainer"))
+    clients = [a.client for a in rows]
+    if clients:
+        notify(clients, "meal_plan_updated", f"{plan.name} was updated", "Open Food to see your meals.",
+               actor=actor, data={"route": "/food"})
+    trainers = {a.client.client_profile.trainer for a in rows if a.client.client_profile.trainer}
+    trainers.discard(actor)
+    if trainers:
+        notify(list(trainers), "meal_plan_updated", f"{plan.name} was published",
+               f"{len(clients)} clients get the new version.", actor=actor, data={"route": f"/meal-plans/{plan.id}"})
+    activity_log("published a meal plan", "plan", actor=actor, target=plan, target_label=plan.name,
+                 meta={"clients": len(clients)})
+    return len(clients)
+
+
+# ---------------------------------------------------------------- the client's day
+def _grams(item, quantity=None):
+    q = Decimal(str(quantity)) if quantity is not None else item.quantity
+    return q * (item.unit.grams if item.unit else Decimal(1))
+
+
+def _entry_for_item(client, day, meal, item, state, now):
+    """FoodLogEntry for one planned food, with today's portion and swap applied."""
+    key = str(item.id)
+    qty = state.portions.get(key) if state else None
+    swap = state.swaps.get(key) if state else None
+    food, grams, swapped_from = item.food, _grams(item, qty), ""
+    unit_name = item.unit.name if item.unit else "g"
+    quantity = Decimal(str(qty)) if qty is not None else item.quantity
+    if swap:
+        alt = Food.objects.filter(id=swap.get("food")).first()
+        if alt:
+            swapped_from = food.name
+            food = alt
+            grams = Decimal(str(swap.get("grams") or grams))
+            quantity, unit_name = grams, "g"
+    m = food.per_grams(grams)
+    return FoodLogEntry(client=client, date=day, logged_at=now, meal_name=meal.name, meal=meal, food=food,
+                        name=food.name, quantity=quantity, unit_name=unit_name, grams=grams, kcal=m["kcal"],
+                        protein=m["protein"], carbs=m["carbs"], fat=m["fat"], source=FoodLogEntry.Source.PLAN,
+                        swapped_from=swapped_from)
+
+
+def _option_for(meal, state):
+    if state and state.option_id:
+        return state.option
+    return next((o for o in meal.options.all() if o.is_default), None) or meal.options.first()
+
+
+@transaction.atomic
+def mark_eaten(client, meal, day):
+    state, _ = MealDayState.objects.get_or_create(client=client, date=day, meal=meal)
+    if state.status == MealDayState.Status.LOGGED:
+        return state
+    opt = _option_for(meal, state)
+    now = timezone.now()
+    FoodLogEntry.objects.filter(client=client, date=day, meal=meal, source=FoodLogEntry.Source.PLAN).delete()
+    FoodLogEntry.objects.bulk_create([_entry_for_item(client, day, meal, it, state, now)
+                                      for it in opt.items.select_related("food", "unit")] if opt else [])
+    state.status = MealDayState.Status.LOGGED
+    state.option = opt
+    state.logged_at = now
+    state.save()
+    return state
+
+
+@transaction.atomic
+def unmark(client, meal, day):
+    state = MealDayState.objects.filter(client=client, date=day, meal=meal).first()
+    if state:
+        FoodLogEntry.objects.filter(client=client, date=day, meal=meal, source=FoodLogEntry.Source.PLAN).delete()
+        state.status = ""
+        state.logged_at = None
+        state.save(update_fields=["status", "logged_at", "updated_at"])
+    return state
+
+
+def skip(client, meal, day):
+    state, _ = MealDayState.objects.get_or_create(client=client, date=day, meal=meal)
+    FoodLogEntry.objects.filter(client=client, date=day, meal=meal, source=FoodLogEntry.Source.PLAN).delete()
+    state.status = MealDayState.Status.SKIPPED
+    state.save(update_fields=["status", "updated_at"])
+    return state
+
+
+def log_food(client, *, meal_name, food=None, quantity=1, unit=None, name="", kcal=None, protein=0, carbs=0,
+             fat=0, day=None):
+    day = day or timezone.localdate()
+    mp = _active_plan(client, day)
+    if food is not None:
+        grams = Decimal(str(quantity)) * (unit.grams if unit else Decimal(1))
+        m = food.per_grams(grams)
+        planned_ids = set(MealItem.objects.filter(option__meal__plan=mp.plan).values_list("food_id", flat=True)) \
+            if mp else set()
+        if mp and not mp.plan.allow_off_plan and food.id not in planned_ids:
+            raise ValidationError("Your plan does not allow food outside it. Tell your coach in your check-in.")
+        return FoodLogEntry.objects.create(
+            client=client, date=day, meal_name=meal_name, food=food, name=food.name, quantity=quantity,
+            unit_name=unit.name if unit else "g", grams=grams, kcal=m["kcal"], protein=m["protein"],
+            carbs=m["carbs"], fat=m["fat"],
+            source=FoodLogEntry.Source.PLAN if food.id in planned_ids else FoodLogEntry.Source.OFF_PLAN)
+    return FoodLogEntry.objects.create(client=client, date=day, meal_name=meal_name, name=name or "Quick add",
+                                       quantity=1, unit_name="serving", kcal=kcal, protein=protein or 0,
+                                       carbs=carbs or 0, fat=fat or 0, source=FoodLogEntry.Source.QUICK_ADD)
+
+
+def copy_yesterday(client, day=None):
+    day = day or timezone.localdate()
+    rows = FoodLogEntry.objects.filter(client=client, date=day - timedelta(days=1))
+    now = timezone.now()
+    new = [FoodLogEntry(client=client, date=day, logged_at=now, meal_name=r.meal_name, meal=r.meal, food=r.food,
+                        name=r.name, quantity=r.quantity, unit_name=r.unit_name, grams=r.grams, kcal=r.kcal,
+                        protein=r.protein, carbs=r.carbs, fat=r.fat, source=r.source, swapped_from=r.swapped_from)
+           for r in rows]
+    FoodLogEntry.objects.bulk_create(new)
+    for meal_id in {r.meal_id for r in rows if r.meal_id and r.source == FoodLogEntry.Source.PLAN}:
+        MealDayState.objects.update_or_create(client=client, date=day, meal_id=meal_id,
+                                              defaults={"status": "logged", "logged_at": now})
+    return len(new)
+
+
+def _active_plan(client, day):
+    return (MealPlanAssignment.objects.filter(client=client, status="active", start_date__lte=day)
+            .select_related("plan").order_by("-start_date").first())
+
+
+def totals(client, day):
+    agg = FoodLogEntry.objects.filter(client=client, date=day).aggregate(
+        kcal=Sum("kcal"), protein=Sum("protein"), carbs=Sum("carbs"), fat=Sum("fat"))
+    return {k: float(v or 0) for k, v in agg.items()}
+
+
+def add_water(client, ml, day=None):
+    day = day or timezone.localdate()
+    w, _ = WaterLog.objects.get_or_create(client=client, date=day)
+    w.ml = max(0, min(10000, w.ml + int(ml)))
+    w.save(update_fields=["ml", "updated_at"])
+    return w
+
+
+def pill_for(meal, state, day, now):
+    """Logged / Next / To log / Planned / Missed / Skipped."""
+    today = timezone.localdate()
+    if state and state.status == "logged":
+        return "logged"
+    if state and state.status == "skipped":
+        return "skipped"
+    if day > today:
+        return "planned"
+    if day < today:
+        return "missed"
+    meal_dt = timezone.make_aware(datetime.combine(day, meal.time))
+    if meal_dt <= now:
+        return "to_log"
+    return "next"
+
+
+def day_view(client, day):
+    """Food tab: ring, plan meals with pills, food log, water, week bars."""
+    today = timezone.localdate()
+    now = timezone.localtime()
+    mp = _active_plan(client, day)
+    plan = mp.plan if mp else None
+    states = {s.meal_id: s for s in MealDayState.objects.filter(client=client, date=day).select_related("option")}
+    meals = []
+    next_marked = False
+    if plan:
+        for meal in plan.meals.prefetch_related("options__items__food__units", "options__items__unit"):
+            st = states.get(meal.id)
+            opt = _option_for(meal, st)
+            pill = pill_for(meal, st, day, now)
+            if pill == "next":
+                if next_marked:
+                    pill = "planned"
+                next_marked = True
+            items = []
+            apply_today = day == today  # swaps/portions only apply to today
+            for it in (opt.items.all() if opt else []):
+                e = _entry_for_item(client, day, meal, it, st if apply_today else None, now)
+                items.append({"item": it.id, "food": e.food_id, "name": e.name, "quantity": float(e.quantity),
+                              "unit": e.unit_name, "grams": float(e.grams), "kcal": e.kcal,
+                              "protein": float(e.protein), "carbs": float(e.carbs), "fat": float(e.fat),
+                              "swapped_from": e.swapped_from, "swaps": it.food.swaps.count(),
+                              "planned_quantity": float(it.quantity)})
+            meals.append({
+                "id": meal.id, "name": meal.name, "time": meal.time, "kcal_target": meal.kcal_target, "pill": pill,
+                "option": opt.id if opt else None,
+                "options": [{"id": o.id, "name": o.name, "is_default": o.is_default} for o in meal.options.all()],
+                "items": items, "kcal": sum(i["kcal"] for i in items),
+                "logged_at": st.logged_at if st else None,
+            })
+    entries = list(FoodLogEntry.objects.filter(client=client, date=day).order_by("logged_at"))
+    eaten = totals(client, day)
+    target = plan.kcal_target if plan else None
+    planned_total = sum(m["kcal"] for m in meals)
+    still_ahead = sum(m["kcal"] for m in meals if m["pill"] in ("next", "planned", "to_log"))
+    water = WaterLog.objects.filter(client=client, date=today).first()
+    monday = day - timedelta(days=day.weekday())
+    week = []
+    for i in range(7):
+        d = monday + timedelta(days=i)
+        week.append({"date": d, **totals(client, d)})
+    return {
+        "date": day, "today": day == today, "can_log": day == today,
+        "plan": {"id": plan.id, "name": plan.name, "kcal": plan.kcal_target, "protein": plan.protein_g,
+                 "carbs": plan.carbs_g, "fat": plan.fat_g, "fibre": plan.fibre_g, "water_ml": plan.water_ml,
+                 "version_note": mp.version_note, "allow_swaps": plan.allow_swaps,
+                 "allow_search_any": plan.allow_search_any, "allow_switch_options": plan.allow_switch_options,
+                 "allow_off_plan": plan.allow_off_plan} if plan else None,
+        "ring": {"target": target, "eaten": eaten["kcal"], "left": max((target or 0) - eaten["kcal"], 0),
+                 "planned": planned_total, "still_ahead": still_ahead},
+        "macros": eaten,
+        "meals": meals,
+        "log": [{"id": e.id, "time": e.logged_at, "meal_name": e.meal_name, "meal": e.meal_id, "name": e.name,
+                 "quantity": float(e.quantity), "unit": e.unit_name, "kcal": e.kcal, "protein": float(e.protein),
+                 "carbs": float(e.carbs), "fat": float(e.fat), "source": e.source,
+                 "swapped_from": e.swapped_from} for e in entries],
+        "water": {"ml": water.ml if water else 0, "goal_ml": plan.water_ml if plan else 3000},
+        "week": week,
+    }
