@@ -284,6 +284,7 @@ Future<T?> showAppSheet<T>(
   bool tall = false,
   double webWidth = 520,
   Widget? headerAction,
+  bool footerStretch = false,
 }) {
   Widget header(BuildContext ctx) => title == null
       ? const SizedBox(height: 6)
@@ -307,7 +308,7 @@ Future<T?> showAppSheet<T>(
         if (footer != null)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: phone
+            child: phone || footerStretch
                 ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: footer(ctx))
                 : Row(mainAxisAlignment: MainAxisAlignment.end, spacing: 8, children: footer(ctx)),
           ),
@@ -376,6 +377,9 @@ class ToastHost extends StatefulWidget {
 
   /// 20 without a bottom bar; 83 above a 71-high bottom bar. Shells set it with [ToastOffset].
   static final bottomOffset = ValueNotifier<double>(20);
+
+  /// Sideways nudge from the centre; the desktop log-in pages use 60 (`.wl-w .ca-toast`).
+  static final shiftX = ValueNotifier<double>(0);
   static _ToastHostState? _instance;
 
   @override
@@ -435,7 +439,14 @@ class _ToastHostState extends State<ToastHost> {
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 180),
               transitionBuilder: (c, a) => FadeTransition(opacity: a, child: SlideTransition(position: Tween(begin: const Offset(0, .3), end: Offset.zero).animate(a), child: c)),
-              child: _t == null ? const SizedBox.shrink() : Center(key: ValueKey(_t), child: _ToastBox(t: _t!, close: hide)),
+              child: _t == null
+                  ? const SizedBox.shrink()
+                  : ValueListenableBuilder(
+                      key: ValueKey(_t),
+                      valueListenable: ToastHost.shiftX,
+                      builder: (context, dx, child) => Transform.translate(offset: Offset(dx, 0), child: child),
+                      child: Center(child: _ToastBox(t: _t!, close: hide)),
+                    ),
             ),
           ),
         ),
@@ -444,29 +455,49 @@ class _ToastHostState extends State<ToastHost> {
 
 /// Placed by a shell that has a bottom bar: moves toasts above it while the shell is on screen.
 class ToastOffset extends StatefulWidget {
-  const ToastOffset({super.key, required this.offset, required this.child});
-  final double offset;
+  const ToastOffset({super.key, required this.offset, this.dx = 0, required this.child});
+  final double offset, dx;
   final Widget child;
   @override
   State<ToastOffset> createState() => _ToastOffsetState();
 }
 
 class _ToastOffsetState extends State<ToastOffset> {
+  static _ToastOffsetState? _current;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => ToastHost.bottomOffset.value = widget.offset);
+    _current = this;
+    _apply();
   }
 
   @override
   void didUpdateWidget(ToastOffset old) {
     super.didUpdateWidget(old);
-    WidgetsBinding.instance.addPostFrameCallback((_) => ToastHost.bottomOffset.value = widget.offset);
+    _apply();
   }
+
+  // Changed outside the frame: a notifier changed while a frame is finishing
+  // (e.g. from dispose) marks the toast dirty with no next frame, and the whole
+  // app stops repainting until the next tap.
+  void _apply() => Timer.run(() {
+        if (!mounted || _current != this) return;
+        ToastHost.bottomOffset.value = widget.offset;
+        ToastHost.shiftX.value = widget.dx;
+      });
 
   @override
   void dispose() {
-    ToastHost.bottomOffset.value = 20;
+    // A newer ToastOffset (the next page) already took over: leave its values alone.
+    if (_current == this) {
+      _current = null;
+      Timer.run(() {
+        if (_current != null) return;
+        ToastHost.bottomOffset.value = 20;
+        ToastHost.shiftX.value = 0;
+      });
+    }
     super.dispose();
   }
 

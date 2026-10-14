@@ -38,6 +38,15 @@ abstract final class AppColors {
   static const caWebBg = Color(0xFFFAFAF8);
   static const caAvBg = Color(0xFFE0E7FF), caAvText = Color(0xFF3730A3);
   static const grab = Color(0xFFD9D9D4);
+
+  // Login / setup boards (wl-*)
+  static const amberBg = Color(0xFFFFF4DB), amberText = Color(0xFFA15C00);
+  static const sky = Color(0xFF4FB8EE), skyMid = Color(0xFF2F8FE6), skySoft = Color(0xFFE3F3FD), skyFade = Color(0xFFF7FBFE);
+  static const brandSoft = Color(0xFFEEF3FD); // web login side panel
+  static const pickBg = Color(0xFFF7FAFF); // selected goal / diet / option card
+  static const segTrack = Color(0xFFE4E4DF); // setup progress segments
+  static const dayOff = Color(0xFFE8E8E4);
+  static const vegGreen = Color(0xFF16A34A), eggAmber = Color(0xFFD97706), meatRed = Color(0xFFB91C1C);
   static const track = Color(0xFFECECE8);
 
   // Toasts

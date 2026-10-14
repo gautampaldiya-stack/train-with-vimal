@@ -15,3 +15,6 @@ Things a new person (or a new Claude session) must know. Update when Gautam deci
 - Git: `working` → `develop` → `main`. Commits by Gautam only, no Claude names. Claude pushes, Gautam pulls and tests.
 - Demo logins after `seed_demo`: vimal@trainwithvimal.com (admin), aman@trainwithvimal.com (trainer), riya@example.com (client); password `Demo@1234`.
 - Deadline: working build by Saturday 2026-10-17.
+- Gautam (2026-10-15): never leave part of a flow unbuilt without saying so. Build every page a flow's buttons,
+  links and emails open; keep `docs/screens/status.md` current; name unbuilt boards in notes and replies.
+  Rules: `docs/rulebooks/definition-of-done.md`.

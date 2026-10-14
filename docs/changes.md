@@ -14,6 +14,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 
 ---
 
+### 2026-10-15 · Process — whole flow and board status list
+- **Pehle:** Screens flow ke first pages tak bante the; reset password page (email link wala) chhut gaya aur CURRENT.md me "Reset password" likha tha, jo done jaisa lagta tha.
+- **Ab:** Flow tabhi done jab uske har button / link / email se khulne wala page bhi bana ho. Har board ka status `docs/screens/status.md` me; Done sirf browser check (phone + desktop) ke baad. Jo nahi bana, uska board naam likhna zaroori.
+- **Kyun:** Gautam ne testing me pakda; aisi galti dobara na ho.
+- **Updated:** docs/rulebooks/definition-of-done.md, docs/screens/status.md, CLAUDE.md, docs/memory/README.md, docs/phases/CURRENT.md
+
 ### 2026-10-14 · Docs — one file per topic
 - **Pehle:** decisions, rulebooks, prd, phases ek-ek README me the.
 - **Ab:** Har decision ki alag file (`decisions/0001-…`), har rulebook alag (`api, backend, flutter, git, local-setup, notifications`), PRD alag-alag (roles, auth, admin, trainer, client, notifications), phases alag files, aur architecture me poori API list + data model. `design-system.md` ka naam ab `design.md`.
@@ -155,3 +161,9 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - Errors now carry our own code (e.g. `invalid_login`, `locked`) instead of always `validation_error`.
 - `user.client` in login and `auth/me/`: setup progress and coach name.
 - `gym/` is public (help sheet on the login screen).
+
+## 2026-10-14 · Login and setup screens (Flutter)
+- Welcome, Log in, Need help, Reset password, Terms, Approval wait, 5 setup steps, Finish later, Checklist, All set.
+- Client components in `core/widgets/client.dart`. "Keep me logged in" off keeps tokens in memory only.
+- Seed: pending sign-ups (Neha, Karan) and a client with setup to do (Isha).
+- `user.client.setup_later` so log in skips the setup steps after "Save & leave".

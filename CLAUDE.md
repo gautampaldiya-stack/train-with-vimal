@@ -18,6 +18,7 @@ Targets: Android, iOS and web, every screen responsive (phone, tablet, desktop).
 | Need | File |
 |---|---|
 | What every screen and button does | `docs/screens/behaviour.md` |
+| Which boards are built / missing | `docs/screens/status.md` (rules: `docs/rulebooks/definition-of-done.md`) |
 | Colours, type, components | `docs/design.md` |
 | Every API endpoint, every table | `docs/architecture/api-endpoints.md`, `docs/architecture/data-model.md` |
 | Product scope and roles | `docs/prd/README.md` |
@@ -42,6 +43,8 @@ See `README.md`. Short version: `docker compose up --build`, then
 `docker compose exec api python manage.py seed_defaults` and `seed_demo`.
 
 ## Ground rules
+- A flow is done only when every page its buttons, links and emails open is built too. Track each board in
+  `docs/screens/status.md`; mark Done only after a browser check on phone and desktop. Name what is not built.
 - UI is same-to-same as the canvas. No hard-coded colours outside the theme tokens. Every button does something.
 - Client app: clients **log**, they never change their plan.
 - Client logging works **offline**: writes go to a local outbox with an `Idempotency-Key` and sync later.

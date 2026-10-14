@@ -5,6 +5,9 @@ class TokenStore {
   static const _a = 'twv.access', _r = 'twv.refresh';
   String? access, refresh;
 
+  /// "Keep me logged in". Off = tokens live in memory only and are gone when the app closes.
+  bool remember = true;
+
   Future<void> load() async {
     final p = await SharedPreferences.getInstance();
     access = p.getString(_a);
@@ -15,8 +18,13 @@ class TokenStore {
     this.access = access;
     this.refresh = refresh;
     final p = await SharedPreferences.getInstance();
-    await p.setString(_a, access);
-    await p.setString(_r, refresh);
+    if (remember) {
+      await p.setString(_a, access);
+      await p.setString(_r, refresh);
+    } else {
+      await p.remove(_a);
+      await p.remove(_r);
+    }
   }
 
   Future<void> clear() async {

@@ -23,6 +23,22 @@ class Me {
   bool get emailVerified => json['email_verified'] == true;
   Role get role => switch (json['role']) { 'admin' => Role.admin, 'trainer' => Role.trainer, _ => Role.client };
   bool get isStaff => role != Role.client;
+  String get status => '${json['status'] ?? 'active'}';
+
+  /// Client signed up from an invite link and waits in Approvals.
+  bool get pending => status == 'pending';
+  Map<String, dynamic> get _client => (json['client'] as Map?)?.cast<String, dynamic>() ?? const {};
+  List<String> get setupDone => [for (final s in (_client['setup_done'] as List? ?? const [])) '$s'];
+  bool get setupComplete => setupDone.length >= 5;
+
+  /// Chose "Finish setup later" once, so log in goes to Home instead of the setup steps.
+  bool get setupLater => _client['setup_later'] == true;
+  Map<String, dynamic>? get coach => (_client['coach'] as Map?)?.cast<String, dynamic>();
+
+  /// "Aman" — the coach's first name, or "Your coach" when none is set yet.
+  String get coachFirst => coach?['first_name'] as String? ?? 'Your coach';
+  String get coachFull => coach?['full_name'] as String? ?? 'your coach';
+  bool get hasCoach => coach != null;
 }
 
 /// App-wide singletons. Created once in main() before runApp.
@@ -63,10 +79,16 @@ class Session extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> signIn(String identifier, String password) async {
+  /// The API knows android / ios / web. Desktop builds count as web.
+  static String get _platform => kIsWeb
+      ? 'web'
+      : switch (defaultTargetPlatform) { TargetPlatform.android => 'android', TargetPlatform.iOS => 'ios', _ => 'web' };
+
+  Future<void> signIn(String identifier, String password, {bool keep = true}) async {
+    Services.tokens.remember = keep;
     final r = await Services.api.post<Map<String, dynamic>>(
       'auth/login/',
-      {'identifier': identifier.trim(), 'password': password, 'platform': defaultTargetPlatform.name, 'device_name': kIsWeb ? 'Web browser' : defaultTargetPlatform.name},
+      {'identifier': identifier.trim(), 'password': password, 'platform': _platform, 'device_name': kIsWeb ? 'Web browser' : defaultTargetPlatform.name},
       null,
       false,
     );
@@ -87,6 +109,7 @@ class Session extends ChangeNotifier {
 
   Future<void> refreshMe() async {
     me = Me(await Services.api.get<Map<String, dynamic>>('auth/me/'));
+    await Services.cache.write('me', me!.json);
     notifyListeners();
   }
 

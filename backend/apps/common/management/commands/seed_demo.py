@@ -97,6 +97,15 @@ class Command(BaseCommand):
         for i, (name, email, gender, goal, h, start, now, target, tr, package) in enumerate(CLIENTS):
             c, made = self.user(email=email, phone=f"+91982000{i:04d}", full_name=name, role=Role.CLIENT,
                                 status=AccountStatus.ACTIVE, gender=gender, city="Delhi")
+            answers = {
+                "goal": {"goal": goal, "level": "intermediate"},
+                "about": {"age": 24 + i, "height_cm": h, "weight_kg": start, "target_weight_kg": target, "place": "gym"},
+                "schedule": {"days": ["mon", "tue", "thu", "fri"], "session_min": 45, "wake_time": "06:30"},
+                "health": {"injuries": ["none"], "conditions": ["none"], "activity": "desk", "doctor_ok": True},
+                "food": {"diet": "veg", "meals_per_day": 5, "avoid": [], "home_cooked": True},
+            }
+            if not made and not c.client_profile.onboarding:
+                ClientProfile.objects.filter(user=c).update(onboarding=answers)
             if made:
                 started = today - timedelta(weeks=6 + i % 4)
                 ClientProfile.objects.create(
@@ -104,16 +113,32 @@ class Command(BaseCommand):
                     current_weight_kg=now, target_weight_kg=target, start_date=started, package_name=package,
                     package_ends_on=started + timedelta(days=90 if package.startswith("3") else 180),
                     onboarding_done=["account", "basics", "goal_body", "health", "food"], ask_parq=False,
-                    onboarding={
-                        "goal": {"goal": goal, "level": "intermediate"},
-                        "about": {"age": 24 + i, "height_cm": h, "weight_kg": start, "target_weight_kg": target,
-                                  "place": "gym"},
-                        "schedule": {"days": ["mon", "tue", "thu", "fri"], "session_min": 45, "wake_time": "06:30"},
-                        "health": {"injuries": ["none"], "conditions": ["none"], "activity": "desk",
-                                   "doctor_ok": True},
-                        "food": {"diet": "veg", "meals_per_day": 5, "avoid": [], "home_cooked": True},
-                    })
+                    onboarding=answers)
+        self.signups(vimal, trainers)
         return vimal
+
+    def signups(self, vimal, trainers):
+        """People who joined from an invite link and wait in Approvals, plus one added by a coach with setup to do."""
+        from apps.accounts.models import User
+        from apps.clients.models import SignupSource
+        from apps.clients.services import create_client
+
+        aman = trainers.get("aman@trainwithvimal.com") or next(iter(trainers.values()))
+        rows = [
+            ("Neha Gupta", "neha@example.com", True, {}),
+            ("Karan Mehta", "karan@example.com", True, {"goal": {"goal": "muscle_gain", "level": "beginner"}}),
+            ("Isha Rao", "isha@example.com", False, {}),
+        ]
+        for name, email, pending, answers in rows:
+            if User.objects.filter(email__iexact=email).exists():
+                continue
+            u, cp = create_client(actor=vimal, full_name=name, email=email, trainer=aman, send_to_approvals=pending,
+                                  send_login_link=False, password=PASSWORD,
+                                  source=SignupSource.WEB if pending else SignupSource.ADDED)
+            User.objects.filter(pk=u.pk).update(email_verified_at=timezone.now())
+            if answers:
+                cp.onboarding = answers
+                cp.save(update_fields=["onboarding"])
 
     def plans(self, vimal):
         from apps.accounts.models import User
@@ -155,7 +180,7 @@ class Command(BaseCommand):
             plan.status, plan.published_at = MealPlan.Status.PUBLISHED, timezone.now()
             plan.save(update_fields=["status", "published_at"])
 
-        for c in User.objects.filter(role="client", client_profile__isnull=False).select_related("client_profile"):
+        for c in User.objects.filter(role="client", client_profile__start_date__isnull=False).select_related("client_profile"):
             cp = c.client_profile
             if not ProgramAssignment.objects.filter(client=c).exists():
                 ProgramAssignment.objects.create(client=c, program=program, start_date=cp.start_date,
@@ -176,7 +201,7 @@ class Command(BaseCommand):
 
         today = timezone.localdate()
         habits = list(Habit.objects.filter(name__in=["Drink 3 L water", "8,000 steps", "Sleep by 11 pm"]))
-        for c in User.objects.filter(role="client", client_profile__isnull=False).select_related("client_profile"):
+        for c in User.objects.filter(role="client", client_profile__start_date__isnull=False).select_related("client_profile"):
             if WeightLog.objects.filter(client=c).exists():
                 continue
             cp = c.client_profile

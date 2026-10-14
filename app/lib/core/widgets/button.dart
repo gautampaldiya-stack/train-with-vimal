@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../icons/app_icon.dart';
 import '../theme/theme.dart';
 import 'hover.dart';
+import 'tooltip.dart';
 
 enum BtnKind { primary, dark, outline, danger, text, soft }
 
@@ -69,7 +70,7 @@ class AppButton extends StatelessWidget {
           child: content,
         );
         final out = Opacity(opacity: disabled && !loading ? 0.45 : 1, child: btn);
-        return iconOnly ? Tooltip(message: label, child: out) : out;
+        return iconOnly ? AppTooltip(message: label, child: out) : out;
       },
     );
   }
@@ -87,7 +88,7 @@ class AppIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = small ? 30.0 : 36.0;
-    return Tooltip(
+    return AppTooltip(
       message: tooltip,
       child: Hover(
         onTap: onPressed,

@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/widgets/card.dart';
+import '../features/auth/login_screen.dart';
+import '../features/auth/pending_screen.dart';
+import '../features/auth/setup/checklist_screen.dart';
+import '../features/auth/setup/done_screen.dart';
+import '../features/auth/setup/setup_screen.dart';
 import 'services.dart';
 import 'shell/app_shell.dart';
 import 'shell/page.dart';
@@ -10,6 +15,17 @@ import 'shell/page.dart';
 const _public = ['/login', '/forgot', '/reset', '/join', '/verify'];
 
 String homeFor(Role role) => role == Role.client ? '/home' : '/dashboard';
+
+/// Where a person lands after log in: approval wait, the setup steps, or their home.
+String landingFor(Me me) {
+  if (me.role != Role.client) return homeFor(me.role);
+  if (me.pending) return '/pending';
+  if (!me.setupComplete && !me.setupLater) return '/setup';
+  return '/home';
+}
+
+/// A client waiting for approval can only see these.
+const _pendingAllowed = ['/pending', '/setup'];
 
 /// Screens register here as they get built (path -> page). Anything missing
 /// shows a holding page so every nav item still opens something.
@@ -26,12 +42,27 @@ final appRouter = GoRouter(
     final path = state.uri.path;
     final isPublic = _public.any((p) => path == p || path.startsWith('$p/'));
     if (!s.signedIn) return isPublic ? null : '/login';
-    if (path == '/' || path == '/login') return homeFor(s.me!.role);
+    final me = s.me!;
+    if (path == '/' || isPublic) return landingFor(me);
+    if (me.role == Role.client && me.pending && !_pendingAllowed.any((p) => path == p || path.startsWith('$p/'))) return '/pending';
     return null;
   },
   routes: [
     GoRoute(path: '/', builder: (_, _) => const SizedBox()),
-    GoRoute(path: '/login', builder: (_, st) => _public$('/login', st)),
+    GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
+    GoRoute(path: '/pending', builder: (_, _) => const PendingScreen()),
+    // Checklist and done are separate pages, not children of /setup: a child route
+    // would keep a hidden step page (and its own load) underneath.
+    GoRoute(path: '/setup/checklist', builder: (_, _) => const ChecklistScreen()),
+    GoRoute(path: '/setup/done', builder: (_, _) => const DoneScreen()),
+    GoRoute(
+      path: '/setup',
+      builder: (_, st) => SetupScreen(
+        key: ValueKey(st.uri.query),
+        step: int.tryParse(st.uri.queryParameters['step'] ?? ''),
+        edit: st.uri.queryParameters['edit'] == '1',
+      ),
+    ),
     GoRoute(path: '/forgot', builder: (_, st) => _public$('/forgot', st)),
     GoRoute(path: '/reset/:token', builder: (_, st) => _public$('/reset', st)),
     GoRoute(path: '/join/:code', builder: (_, st) => _public$('/join', st)),

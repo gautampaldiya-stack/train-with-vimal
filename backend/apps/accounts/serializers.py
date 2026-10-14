@@ -70,6 +70,7 @@ class UserSerializer(serializers.ModelSerializer):
         return {
             "setup_done": cp.client_steps_done,
             "setup_total": 5,
+            "setup_later": cp.onboarding_skipped_at is not None,
             "coach": {"id": t.id, "full_name": t.full_name, "first_name": t.first_name} if t else None,
         }
 

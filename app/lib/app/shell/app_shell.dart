@@ -9,6 +9,7 @@ import '../../core/widgets/badge.dart';
 import '../../core/widgets/hover.dart';
 import '../../core/widgets/overlays.dart';
 import '../../core/widgets/responsive.dart';
+import '../../core/widgets/tooltip.dart';
 import '../services.dart';
 import 'nav_items.dart';
 
@@ -31,6 +32,8 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   bool _mini = false;
+  // Pointer on the sidebar / on the edge button: the edge button only shows while either is true.
+  bool _sideHover = false, _edgeHover = false;
 
   @override
   void initState() {
@@ -65,8 +68,15 @@ class _AppShellState extends State<AppShell> {
       child: Scaffold(
         backgroundColor: AppColors.bg,
         body: SafeArea(
-          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            _Sidebar(items: sidebarFor(me.role), location: widget.location, mini: mini, canToggle: context.isDesktop, onToggle: _toggle, me: me),
+          // The edge button sits in this Stack, above the page panel: inside the sidebar it was
+          // painted under the panel and could not be clicked on its right half.
+          child: Stack(children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            MouseRegion(
+              onEnter: (_) => setState(() => _sideHover = true),
+              onExit: (_) => setState(() => _sideHover = false),
+              child: _Sidebar(items: sidebarFor(me.role), location: widget.location, mini: mini, me: me),
+            ),
             Expanded(
               child: Container(
                 margin: const EdgeInsets.fromLTRB(0, 8, 8, 8),
@@ -81,20 +91,64 @@ class _AppShellState extends State<AppShell> {
               ),
             ),
           ]),
+          if (context.isDesktop)
+            Positioned(
+              top: 26,
+              left: (mini ? 68 : 240) - 14,
+              child: MouseRegion(
+                onEnter: (_) => setState(() => _edgeHover = true),
+                onExit: (_) => setState(() => _edgeHover = false),
+                child: AnimatedOpacity(
+                  opacity: _sideHover || _edgeHover ? 1 : 0,
+                  duration: const Duration(milliseconds: 120),
+                  child: _EdgeButton(mini: mini, onTap: _toggle),
+                ),
+              ),
+            ),
+          ]),
         ),
       ),
     );
   }
 }
 
+/// Round collapse / expand button on the sidebar edge (`.side .edge`). Its tooltip opens toward
+/// the sidebar when expanded and below it when collapsed, so it never covers the page.
+class _EdgeButton extends StatelessWidget {
+  const _EdgeButton({required this.mini, required this.onTap});
+  final bool mini;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => AppTooltip(
+        message: mini ? 'Expand sidebar' : 'Collapse sidebar',
+        side: mini ? TipSide.below : TipSide.left,
+        gap: mini ? 6 : 8,
+        child: Hover(
+          onTap: onTap,
+          builder: (_, h, _) => Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              shape: BoxShape.circle,
+              border: Border.all(color: h ? AppColors.line2 : AppColors.line),
+              boxShadow: const [BoxShadow(color: Color(0x14171717), blurRadius: 3, offset: Offset(0, 1))],
+            ),
+            alignment: Alignment.center,
+            child: Transform.rotate(angle: mini ? 3.14159 : 0, child: AppIcon(AppIcons.collapse, size: 16, color: h ? AppColors.text : AppColors.text2)),
+          ),
+        ),
+      );
+}
+
 bool _active(String location, String path) => location == path || location.startsWith('$path/');
 
 class _Sidebar extends StatelessWidget {
-  const _Sidebar({required this.items, required this.location, required this.mini, required this.canToggle, required this.onToggle, required this.me});
+  const _Sidebar({required this.items, required this.location, required this.mini, required this.me});
   final List<NavItem> items;
   final String location;
-  final bool mini, canToggle;
-  final VoidCallback onToggle;
+  final bool mini;
   final Me me;
 
   @override
@@ -111,11 +165,9 @@ class _Sidebar extends StatelessWidget {
       }
       children.add(_NavTile(item: it, on: _active(location, it.path), mini: mini));
     }
-    return _HoverReveal(
-      builder: (hover) => SizedBox(
+    return SizedBox(
         width: mini ? 68 : 240,
-        child: Stack(clipBehavior: Clip.none, children: [
-          SingleChildScrollView(
+        child: SingleChildScrollView(
             padding: EdgeInsets.symmetric(vertical: 16, horizontal: mini ? 10 : 12),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 2, children: [
               Padding(
@@ -134,54 +186,8 @@ class _Sidebar extends StatelessWidget {
               ...children,
             ]),
           ),
-          if (canToggle)
-            Positioned(
-              top: 26,
-              right: -14,
-              child: AnimatedOpacity(
-                opacity: hover ? 1 : 0,
-                duration: const Duration(milliseconds: 120),
-                child: Tooltip(
-                  message: mini ? 'Expand sidebar' : 'Collapse sidebar',
-                  child: Hover(
-                    onTap: onToggle,
-                    builder: (_, h, _) => Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: AppColors.card,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: h ? AppColors.line2 : AppColors.line),
-                        boxShadow: const [BoxShadow(color: Color(0x14171717), blurRadius: 3, offset: Offset(0, 1))],
-                      ),
-                      alignment: Alignment.center,
-                      child: Transform.rotate(angle: mini ? 3.14159 : 0, child: AppIcon(AppIcons.collapse, size: 16, color: h ? AppColors.text : AppColors.text2)),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ]),
-      ),
-    );
+        );
   }
-}
-
-class _HoverReveal extends StatefulWidget {
-  const _HoverReveal({required this.builder});
-  final Widget Function(bool hover) builder;
-  @override
-  State<_HoverReveal> createState() => _HoverRevealState();
-}
-
-class _HoverRevealState extends State<_HoverReveal> {
-  bool _h = false;
-  @override
-  Widget build(BuildContext context) => MouseRegion(
-        onEnter: (_) => setState(() => _h = true),
-        onExit: (_) => setState(() => _h = false),
-        child: widget.builder(_h),
-      );
 }
 
 class _NavTile extends StatelessWidget {
@@ -222,7 +228,7 @@ class _NavTile extends StatelessWidget {
         ),
       ),
     );
-    return mini ? Tooltip(message: item.label, preferBelow: false, verticalOffset: 0, margin: const EdgeInsets.only(left: 60), child: tile) : tile;
+    return mini ? AppTooltip(message: item.label, side: TipSide.right, gap: 10, child: tile) : tile;
   }
 }
 

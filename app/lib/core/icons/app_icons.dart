@@ -87,4 +87,12 @@ abstract final class AppIcons {
   static const export = Ic.i5eeb6e;
   static const filter = Ic.ib740a9;
   static const download = Ic.ie16151;
+
+  // Login and setup (ClientLogin board)
+  static const flame = Ic.i51337a;
+  static const heartPulse = Ic.i4345de;
+  static const lock = Ic.i0fe635;
+  static const logout = Ic.ic0d03f;
+  static const phone = Ic.ie0d0d2;
+  static const arrowRight = Ic.i2f724c;
 }

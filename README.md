@@ -64,3 +64,13 @@ flutter run -d emulator-5554 --dart-define=API_URL=http://10.0.2.2:8000   # Andr
 
 ## Branches
 `working` (daily work) → `develop` (testing / staging) → `main` (production).
+
+
+## Flutter app (needs Flutter 3.47+ / Dart 3.13+)
+```bash
+flutter upgrade            # once, if `flutter --version` shows an older Flutter
+cd app
+flutter pub get
+flutter run -d chrome --web-port 5173 --dart-define=API_URL=http://localhost:8000
+```
+`--web-port 5173` matches `CORS_ALLOWED_ORIGINS` in `backend/.env`. Demo logins: see `docs/phases/CURRENT.md`.
