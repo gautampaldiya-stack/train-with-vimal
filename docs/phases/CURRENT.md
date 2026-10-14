@@ -13,7 +13,14 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
   router with role redirect (`lib/app/router.dart`). `flutter analyze` clean, `flutter build web` OK.
 
 ## Doing now
-- Phase 5: login + onboarding (boards `ClientLogin`, `ClientLoginWeb`).
+- Phase 5: login + onboarding (boards `ClientLogin`, `ClientLoginWeb`, `ClientWelcome`). Paused 2026-10-14
+  before writing code. Notes so far:
+  - Code goes in `app/lib/features/auth/` (feature-first folders; `features/` is still empty).
+  - Welcome illustration is in `app/assets/welcome.svg`.
+  - Client onboarding steps (board) = goal, about, schedule, health, food. Backend `me/onboarding/`
+    still uses account/basics/goal_body/health/food (staff Approvals board). Plan: backend accepts the
+    client keys and fills the staff checklist (basics = about + schedule, goal_body = goal + about).
+  - The "Demo · after log in" box on the board is canvas-only, do not build it.
 
 ## Next
 1. Client screens, then trainer, then admin (order in `phase-5-screens.md`).
