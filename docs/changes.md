@@ -14,6 +14,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 
 ---
 
+### 2026-10-14 · Docs — one file per topic
+- **Pehle:** decisions, rulebooks, prd, phases ek-ek README me the.
+- **Ab:** Har decision ki alag file (`decisions/0001-…`), har rulebook alag (`api, backend, flutter, git, local-setup, notifications`), PRD alag-alag (roles, auth, admin, trainer, client, notifications), phases alag files, aur architecture me poori API list + data model. `design-system.md` ka naam ab `design.md`.
+- **Kyun:** Gautam: docs detail me aur alag files me chahiye.
+- **Updated:** docs/*, CLAUDE.md
+
 ### 2026-10-14 · Fresh start — backend built, scope reset
 - **Pehle:** Purane docs me SaaS / independent coaches, payouts, branches the.
 - **Ab:** Scratch se build. Sirf ek gym (Admin = Vimal, Trainer, Client). Django backend poora bana (sab modules), offline-first client logging, realtime notifications, seeds aur tests. Neeche ke purane entries sirf history hain.

@@ -1,5 +1,8 @@
 # Architecture
 
+More detail: [api-endpoints.md](api-endpoints.md) (every endpoint) · [data-model.md](data-model.md) (every table and field).
+Both are generated: `cd backend && PYTHONPATH=. python scripts/gen_docs.py`.
+
 ```
 Flutter app (Android / iOS / web)
    │  HTTPS JSON  /api/v1/...        WebSocket /ws/notifications/?token=<access>

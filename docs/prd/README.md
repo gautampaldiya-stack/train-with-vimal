@@ -11,6 +11,16 @@ Platforms: Android, iOS, web. Every screen works on phone, tablet and desktop.
 | Trainer | Gym coaches | Their own clients (or more, if Admin widens access), programs, meal plans, check-ins, sessions, content |
 | Client | Gym members | Log workouts, food, water, habits, supplements, weight, photos, check-ins. Never edits their own plan |
 
+## Detailed specs
+| File | About |
+|---|---|
+| [roles-and-permissions.md](roles-and-permissions.md) | Who can see and do what |
+| [auth-and-onboarding.md](auth-and-onboarding.md) | Login, joining, approvals, onboarding |
+| [admin.md](admin.md) | Every admin screen |
+| [trainer.md](trainer.md) | Every trainer screen |
+| [client.md](client.md) | Every client screen |
+| [notifications.md](notifications.md) | Push, email, realtime, reminders, automations |
+
 ## Modules (all in scope for v1)
 - **Auth** — login by email or mobile + password, forgot/reset, sessions list with sign-out, invite links, approvals.
 - **Team** — trainers list, add/edit, access (assigned / all / custom), public card visibility, documents with expiry, access requests, deactivate with client move.

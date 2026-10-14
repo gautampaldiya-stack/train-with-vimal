@@ -1,13 +1,10 @@
 # Phases
 
-| Phase | What | Status |
-|---|---|---|
-| 1 | Backend foundation: auth, roles, gym settings, error shape, notifications, realtime | Done |
-| 2 | Backend modules: team, clients, training, nutrition, check-ins, habits, content, scheduling, automations, dashboards | Done |
-| 3 | Offline sync (idempotency, back-dated logs, workout sync), reminders, seeds, tests | Done |
-| 4 | Flutter foundation: theme tokens, components, responsive shells, router, api client, outbox, realtime | Next |
-| 5 | Flutter screens: auth + onboarding, client app, trainer area, admin area | Planned |
-| 6 | Push (FCM) wiring, polish, test on `develop` | Planned |
-| 7 | Release to `main` | Planned |
+| Phase | What | Status | File |
+|---|---|---|---|
+| 1–3 | Backend: foundation, modules, offline sync, jobs, seeds, tests | Done | [phase-1-3-backend.md](phase-1-3-backend.md) |
+| 4 | Flutter foundation | In progress | [phase-4-flutter-foundation.md](phase-4-flutter-foundation.md) |
+| 5 | Flutter screens (all roles) | Planned | [phase-5-screens.md](phase-5-screens.md) |
+| 6–7 | Push, polish, release | Planned | [phase-6-7-release.md](phase-6-7-release.md) |
 
-Target: working build by Saturday 2026-10-17.
+Target: working build by Saturday 2026-10-17. Tick items in the phase file in the same commit as the work.

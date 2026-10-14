@@ -18,7 +18,8 @@ Targets: Android, iOS and web, every screen responsive (phone, tablet, desktop).
 | Need | File |
 |---|---|
 | What every screen and button does | `docs/screens/behaviour.md` |
-| Colours, type, components | `docs/design-system.md` |
+| Colours, type, components | `docs/design.md` |
+| Every API endpoint, every table | `docs/architecture/api-endpoints.md`, `docs/architecture/data-model.md` |
 | Product scope and roles | `docs/prd/README.md` |
 | How the system is built | `docs/architecture/README.md` |
 | Why things are the way they are | `docs/decisions/README.md` |
