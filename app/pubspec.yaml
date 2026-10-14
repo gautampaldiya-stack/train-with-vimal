@@ -68,6 +68,7 @@ flutter:
 
   assets:
     - assets/logo.svg
+    - assets/welcome.svg
 
   fonts:
     - family: PlusJakartaSans
