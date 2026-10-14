@@ -141,3 +141,8 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Ab:** Ek variable `--toast-b` sab decide karta hai: bar nahi to **20**, bar hai to **83** (bar 71 + 12 gap), sheet khuli to wapas **20** aur sheet ke upar float. Sheet apna `padding-bottom` **78** kar leti hai taaki uske buttons na dhakein. `:root:has(.ca-tabs)` / `:has(.mb-nav)` / `:has(.ca-back)` se — ek board = ek screen, to CSS khud dekh leta hai.
 - **Kyun:** Gautam: *"toast appears correct dynamically at bottom… agar bottom navbar hai to uske thoda sa uper hi… and bottom sheet ho to ache se aae."*
 - **Updated:** canvas `twv.css` + `Main.dc.html` captions (v278), `docs/design.md` (placement table), `docs/screens/behaviour.md` §6.5
+
+## 2026-10-14 · Flutter foundation done
+- App entry (`main.dart`, `app/app.dart`), go_router with role redirect and one shell route.
+- Shared widgets, API client, offline outbox, read cache, realtime socket, session.
+- Font + logo declared in `pubspec.yaml`. Analyzer clean, web build compiles.
