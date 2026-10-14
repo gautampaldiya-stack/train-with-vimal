@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Nutrition</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="twv.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="ca" style="font-family: 'Plus Jakarta Sans', system-ui, sans-serif">
+<div class="ca-sb"><b>5:40</b><span class="ca-sbi"><svg class="i" viewBox="0 0 24 24"><path d="M2.5 9a14 14 0 0 1 19 0M5.5 12.5a9.5 9.5 0 0 1 13 0M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19" r=".8"/></svg><svg class="i" viewBox="0 0 24 24"><rect x="3" y="7.5" width="16" height="9" rx="2.5"/><rect x="5" y="9.5" width="9" height="5" rx="1" fill="currentColor" stroke="none"/><path d="M21 11v2"/></svg></span></div>
+<div class="ca-scroll">
+<div class="fd-top"><div class="grow"><h1>Nutrition</h1><span>{{ring.sub}}</span></div><a class="ca-btn dark sm" href="ClientFoodLog.dc.html"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Log food</a></div><div class="ca-card nv-cal {{ring.cls}}" onClick="{{ring.open}}"><div class="ch-ch"><b class="grow">Today’s calories</b><span class="nv-tgt">Target 1,650 kcal</span><svg class="i" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></div><div class="ch-fb"><div class="ch-ring"><svg viewBox="0 0 80 80"><circle cx="40" cy="40" r="34" class="tr"/><circle cx="40" cy="40" r="34" class="fg" style="stroke-dasharray: {{ring.dash}}"/></svg><div><b>{{ring.left}}</b><span>{{ring.lbl}}</span></div></div><div class="ch-mac"><sc-for list="{{ring.mac}}" as="m" hint-placeholder-count="3"><div class="ch-m"><div class="ch-ml"><span>{{m.n}}</span><b>{{m.v}}</b></div><div class="ch-mb"><i class="{{m.c}}" style="width: {{m.p}}"></i></div></div></sc-for></div></div></div><div class="ca-card nv-wk"><div class="ch-ch"><b class="grow">This week</b><span class="nv-tgt">Target 1,650 kcal</span></div><div class="nv-bars"><span class="nv-tlw"><i class="nv-tl" style="bottom: {{week.tl}}"></i></span><sc-for list="{{week.bars}}" as="b" hint-placeholder-count="7"><button class="nv-b {{b.cls}}" onClick="{{b.pick}}"><span class="nv-bt"><i style="height: {{b.h}}"></i></span><em>{{b.l}}</em></button></sc-for></div><div class="nv-sel"><b>{{week.sel}}</b><span>{{week.selV}}</span></div><p class="fd-cap">{{week.avg}}</p></div><div class="ca-card ch-water"><div class="ch-ch"><span class="ch-ic warm"><svg class="i" viewBox="0 0 24 24"><path d="M12 3.5s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg></span><div class="grow"><b>Water</b><span>{{wt.sub}}</span></div></div><div class="ch-wbig"><b>{{wt.now}}</b><span>/ 3 L · {{wt.gl}}</span></div><div class="ch-glasses"><sc-for list="{{wt.g}}" as="g" hint-placeholder-count="12"><i class="{{g.c}}"></i></sc-for></div><div class="ch-wbtns"><button class="ca-btn out sm" onClick="{{wt.minus}}">−250 ml</button><button class="ca-btn dark sm" onClick="{{wt.plus}}">+250 ml · 1 glass</button></div></div><div class="tabs fl-tabs nv-tabs"><sc-for list="{{tabs}}" as="t" hint-placeholder-count="2"><button class="tab {{t.cls}}" onClick="{{t.pick}}">{{t.n}}</button></sc-for></div><sc-if value="{{isPlan}}" hint-placeholder-val="{{true}}"><div class="ca-card nv-list"><sc-for list="{{meals}}" as="m" hint-placeholder-count="5"><div class="nv-mr {{m.cls}}" onClick="{{m.menu}}"><i class="ch-tick"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></svg></i><div class="grow"><b><span>{{m.n}}</span><small> · {{m.t}}</small></b><span>{{m.foods}}</span><em>{{m.line}}</em></div><sc-if value="{{m.open}}" hint-placeholder-val="{{false}}"><button class="ca-btn sm {{m.btnCls}}">Log</button></sc-if><sc-if value="{{m.eaten}}" hint-placeholder-val="{{false}}"><span class="nv-dots"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span></sc-if></div></sc-for></div><a class="fd-else" href="ClientFood.dc.html"><svg class="i" viewBox="0 0 24 24"><path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10"/><path d="M17 21V3c-2 0-3.5 2.5-3.5 6s1.5 4 3.5 4"/></svg>Open full meal plan · options and portions</a></sc-if><sc-if value="{{isLog}}" hint-placeholder-val="{{false}}"><div class="ca-card nv-list"><sc-for list="{{rows}}" as="r" hint-placeholder-count="5"><button class="nv-lr" onClick="{{r.tap}}"><em>{{r.time}}</em><div class="grow"><b>{{r.t}}</b><span>{{r.s}}</span></div><span class="fd-fk">{{r.kc}}</span></button></sc-for><sc-if value="{{noRows}}" hint-placeholder-val="{{false}}"><p class="fl-empty">Nothing logged yet today.</p></sc-if></div><div class="cl-ebtns"><a class="ca-btn dark" href="ClientFoodLog.dc.html"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Log food</a><button class="ca-btn out" onClick="{{copyY}}"><svg class="i" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/></svg>Copy yesterday</button></div></sc-if>
+</div>
+<nav class="ca-tabs"><a class="ca-tab" href="ClientHome.dc.html"><svg class="i" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20h-5v-6H9v6H4z"/></svg><span>Home</span></a><a class="ca-tab" href="ClientTrain.dc.html"><svg class="i" viewBox="0 0 24 24"><path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/></svg><span>Train</span></a><a class="ca-tab on" href="ClientFood.dc.html"><svg class="i" viewBox="0 0 24 24"><path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10"/><path d="M17 21V3c-2 0-3.5 2.5-3.5 6s1.5 4 3.5 4"/></svg><span>Food</span></a><a class="ca-tab" href="ClientProgress.dc.html"><svg class="i" viewBox="0 0 24 24"><path d="M4 20V4M4 20h16"/><path d="m7 15 4-4 3 3 5-6"/></svg><span>Progress</span></a><a class="ca-tab" href="ClientMore.dc.html"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span>More</span></a></nav>
+<sc-if value="{{calO}}" hint-placeholder-val="{{false}}"><div class="ca-back" onClick="{{closeCal}}"><div class="ca-sheet" onClick="{{stop}}"><i class="ca-grab"></i><div class="ca-sh"><div class="grow"><h3>Today’s calories</h3><p>Target 1,650 kcal · set by Aman</p></div><button class="ca-x" aria-label="Close" onClick="{{closeCal}}"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div><div class="ca-sbody"><div><sc-for list="{{cal.rows}}" as="x" hint-placeholder-count="5"><div class="fd-kv"><span>{{x.l}}</span><b>{{x.v}}</b></div></sc-for></div><p class="fd-cap">Workout calories are not added back. Your plan already accounts for training.</p></div><div class="ca-sf"><button class="ca-btn pri" onClick="{{closeCal}}">Got it</button></div></div></div></sc-if><sc-if value="{{mnO}}" hint-placeholder-val="{{false}}"><div class="ca-back" onClick="{{closeMn}}"><div class="ca-sheet" onClick="{{stop}}"><i class="ca-grab"></i><div class="ca-sh"><div class="grow"><h3>{{mn.title}}</h3><p>{{mn.sub}}</p></div><button class="ca-x" aria-label="Close" onClick="{{closeMn}}"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div><div class="ca-sbody"><div class="fd-menu"><sc-if value="{{mn.notEaten}}" hint-placeholder-val="{{false}}"><button class="fd-mi" onClick="{{mn.eat}}"><span class="fd-mic"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></svg></span><div class="grow"><b>Ate as planned</b><span>{{mn.eatS}}</span></div><svg class="i" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button></sc-if><sc-if value="{{mn.canSw}}" hint-placeholder-val="{{false}}"><a class="fd-mi" href="ClientFood.dc.html"><span class="fd-mic"><svg class="i" viewBox="0 0 24 24"><path d="M7 4 3.5 7.5 7 11"/><path d="M3.5 7.5h13"/><path d="m17 13 3.5 3.5L17 20"/><path d="M20.5 16.5h-13"/></svg></span><div class="grow"><b>Swap a food first</b><span>Pick an option Aman approved</span></div><svg class="i" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></a></sc-if><a class="fd-mi" href="ClientFoodLog.dc.html"><span class="fd-mic"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><div class="grow"><b>Search food</b><span>Log something that is not in the plan</span></div><svg class="i" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></a><sc-if value="{{mn.eaten}}" hint-placeholder-val="{{false}}"><button class="fd-mi danger" onClick="{{mn.uneat}}"><span class="fd-mic"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></span><div class="grow"><b>Mark as not eaten</b><span>Removes it from today’s totals</span></div></button></sc-if></div></div></div></div></sc-if><sc-if value="{{enO}}" hint-placeholder-val="{{false}}"><div class="ca-back" onClick="{{closeEn}}"><div class="ca-sheet" onClick="{{stop}}"><i class="ca-grab"></i><div class="ca-sh"><div class="grow"><h3>{{en.n}}</h3><p>{{en.sub}}</p></div><button class="ca-x" aria-label="Close" onClick="{{closeEn}}"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div><div class="ca-sbody"><div class="fd-menu"><a class="fd-mi" href="ClientFoodLog.dc.html"><span class="fd-mic"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><div class="grow"><b>Log more to {{en.meal}}</b><span>Search and add another food</span></div><svg class="i" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></a><button class="fd-mi danger" onClick="{{en.del}}"><span class="fd-mic"><svg class="i" viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13"/></svg></span><div class="grow"><b>Delete entry</b><span>You can undo this</span></div></button></div></div></div></div></sc-if>
+<sc-if value="{{hasToast}}" hint-placeholder-val="{{false}}"><div class="ca-toast {{toast.k}}"><span class="ca-ti"><sc-if value="{{toast.i_ok}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></svg></sc-if><sc-if value="{{toast.i_star}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg></sc-if><sc-if value="{{toast.i_water}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M12 3.5s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg></sc-if><sc-if value="{{toast.i_info}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/></svg></sc-if><sc-if value="{{toast.i_warn}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M12 4 2.5 20h19z"/><path d="M12 10v4.5M12 17.5h.01"/></svg></sc-if><sc-if value="{{toast.i_del}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13"/></svg></sc-if></span><div><b>{{toast.t}}</b><sc-if value="{{toast.s}}" hint-placeholder-val="{{true}}"><span>{{toast.s}}</span></sc-if></div><sc-if value="{{toast.undo}}" hint-placeholder-val="{{true}}"><button class="ca-tbtn" onClick="{{toast.undo}}">Undo</button></sc-if><button class="ca-tx" aria-label="Dismiss" onClick="{{toast.close}}"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div></sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = {}; }
+  renderVals() {
+    const st = this.state;
+    const toast = (t, s, k, prev) => this.setState({ toast: { t, s, k, prev } });
+    if (st.toast && this._tk !== st.toast) { this._tk = st.toast; clearTimeout(this._tt); this._tt = setTimeout(() => this.setState({ toast: null }), st.toast.prev ? 7000 : 5000); }
+
+    const PLAN = [{"n": "Breakfast", "t": "8:00 am", "f": [{"n": "Oats", "per": [3.75, 0.125, 0.675, 0.075], "q": 60.0, "sw": true}, {"n": "Whey protein", "per": [120.0, 24.0, 3.008, 1.984], "q": 1, "sw": true}, {"n": "Banana", "per": [105.02, 0.944, 27.022, 0.0], "q": 1, "sw": true}]}, {"n": "Snack", "t": "11:00 am", "f": [{"n": "Greek yogurt", "per": [0.733, 0.1, 0.04, 0.02], "q": 150, "sw": true}, {"n": "Almonds", "per": [6.9996, 0.3, 0.2004, 0.6], "q": 10, "sw": true}]}, {"n": "Lunch", "t": "1:30 pm", "f": [{"n": "Paneer", "per": [2.65, 0.18, 0.03, 0.21], "q": 100, "sw": true}, {"n": "Brown rice (cooked)", "per": [1.12, 0.03, 0.24, 0.01], "q": 120.0, "sw": true}, {"n": "Cucumber salad", "per": [30.0, 1.0, 6.0, 0.0], "q": 1, "sw": false}]}, {"n": "Snack", "t": "5:00 pm", "f": [{"n": "Sprouts chaat", "per": [180.0, 10.95, 28.05, 3.0], "q": 1, "sw": true}]}, {"n": "Dinner", "t": "8:30 pm", "f": [{"n": "Tofu (firm)", "per": [1.44, 0.15, 0.03, 0.09], "q": 150.0, "sw": true}, {"n": "Whole wheat roti", "per": [110.0, 3.0, 20.0, 2.0], "q": 2, "sw": true}]}];
+
+    const TG = [1650, 120, 170, 52], NOW = 17 * 60 + 40;
+    const r0 = (v) => Math.round(v), nf = (v) => Math.round(v).toLocaleString('en-IN');
+    const add4 = (a, b) => a.map((x, i) => x + b[i]);
+    const tm = (m) => { const h = Math.floor(m / 60), mi = m % 60; return ((h + 11) % 12 + 1) + ':' + String(mi).padStart(2, '0') + (h < 12 ? ' am' : ' pm'); };
+    const MM = PLAN.map((m) => m.f.reduce((a, f) => add4(a, f.per.map((x) => x * f.q)), [0, 0, 0, 0]));
+    const mline = (m) => nf(m[0]) + ' kcal · ' + r0(m[1]) + ' g P · ' + r0(m[2]) + ' g C · ' + r0(m[3]) + ' g F';
+    const summ = (i) => PLAN[i].f.map((f, j) => (j ? f.n.toLowerCase() : f.n)).join(', ');
+    // eaten meals (index → minute of the day) and extra food-log entries
+    const AT0 = { 0: 490, 1: 665, 2: 820 };
+    const EX0 = [{ id: 'tea', n: 'Green tea, no sugar', qy: '1 cup', mi: 0, at: 500, m: [0, 0, 0, 0] }];
+    const YEST = [{ id: 'chai', n: 'Masala chai', qy: '1 cup', mi: 3, at: 990, m: [90, 3, 12, 3] }, { id: 'makh', n: 'Roasted makhana', qy: '30 g', mi: 3, at: 1035, m: [105, 3, 23, 0] }];
+    const at = st.at || AT0, ex = st.ex || EX0, tab = st.tab || 'plan';
+    const eaten = Object.keys(at).map(Number);
+    const tot = ex.reduce((a, e) => add4(a, e.m), eaten.reduce((a, i) => add4(a, MM[i]), [0, 0, 0, 0]));
+    const left = TG[0] - tot[0], over = left < 0, C = 2 * Math.PI * 34;
+    const ring = { left: nf(Math.abs(left)), lbl: over ? 'kcal over' : 'kcal left', cls: over ? 'nv-over' : tot[0] <= 0 ? 'nv-zero' : '', dash: (Math.min(1, tot[0] / TG[0]) * C).toFixed(1) + ' ' + C.toFixed(1),
+      sub: 'Today · ' + nf(tot[0]) + ' of ' + nf(TG[0]) + ' kcal',
+      mac: [['Protein', 'p'], ['Carbs', 'c'], ['Fat', 'f']].map(([n, c], k) => ({ n, c, v: r0(tot[k + 1]) + ' / ' + TG[k + 1] + ' g', p: Math.min(100, Math.round(tot[k + 1] / TG[k + 1] * 100)) + '%' })),
+      open: () => this.setState({ calO: true }) };
+    const cal = { rows: [['Eaten', nf(tot[0]) + ' kcal'], [over ? 'Over' : 'Left', nf(Math.abs(left)) + ' kcal'], ['Protein', r0(tot[1]) + ' / ' + TG[1] + ' g'], ['Carbs', r0(tot[2]) + ' / ' + TG[2] + ' g'], ['Fat', r0(tot[3]) + ' / ' + TG[3] + ' g']].map(([l, v]) => ({ l, v })) };
+    // this week (Mon 5 – Sun 11 Oct, today Fri): past days from her food log
+    const PAST = [[1610, 118], [1702, 124], [1580, 109], [1655, 121]], WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const wk = PAST.concat([[r0(tot[0]), r0(tot[1])], null, null]);
+    const logged = wk.filter((d) => d && d[0] > 0), top = Math.max(TG[0], ...logged.map((d) => d[0])) * 1.08;
+    const wsel = st.wsel == null ? 4 : st.wsel, ws = wk[wsel];
+    const week = { tl: Math.round(TG[0] / top * 100) + '%',
+      bars: wk.map((d, i) => ({ l: WD[i][0], h: d ? Math.max(4, Math.round(d[0] / top * 100)) + '%' : '0%', cls: (i === wsel ? 'on' : '') + (i === 4 ? ' today' : '') + (!d ? ' none' : '') + (d && d[0] > TG[0] * 1.03 ? ' hi' : ''),
+        pick: () => this.setState({ wsel: i }) })),
+      sel: WD[wsel] + ' ' + (5 + wsel) + ' Oct' + (wsel === 4 ? ' · today' : ''), selV: ws && ws[0] > 0 ? nf(ws[0]) + ' kcal · ' + ws[1] + ' g protein' : wsel === 4 ? 'Nothing logged yet today' : 'Not logged yet',
+      avg: logged.length ? 'Average ' + nf(logged.reduce((a, d) => a + d[0], 0) / logged.length) + ' kcal · ' + r0(logged.reduce((a, d) => a + d[1], 0) / logged.length) + ' g protein on ' + logged.length + ' logged days' : 'Nothing logged this week yet' };
+    // water: 250 ml glasses, goal 3 L (her habit), same as Home
+    const ml = st.ml == null ? 1500 : st.ml, GOAL = 3000, fmtL = (x) => (x / 1000).toFixed(x % 1000 ? (x % 500 ? 2 : 1) : 0).replace(/\.0+$/, '') + ' L';
+    const setWater = (d) => { if (d < 0 && ml === 0) return toast('Nothing to remove', 'No water logged yet', 'info');
+      const now = ml + d, lw = GOAL - now, g = Math.ceil(lw / 250);
+      if (d > 0 && ml < GOAL && now >= GOAL) return this.setState({ ml: now, toast: { t: 'Water goal complete!', s: fmtL(now) + ' today', k: 'star' } });
+      this.setState({ ml: now, toast: lw > 0 ? { t: d > 0 ? fmtL(lw) + ' to go' : 'Removed 250 ml · ' + fmtL(now) + ' logged', s: g + (g === 1 ? ' glass' : ' glasses') + ' more', k: d > 0 ? 'water' : 'info' } : { t: fmtL(now) + ' today', s: 'Goal complete', k: 'water' } }); };
+    const gl = Math.round(ml / 250), leftG = Math.max(0, Math.ceil((GOAL - ml) / 250));
+    const wt = { sub: ml >= GOAL ? 'Goal complete · nice work' : fmtL(GOAL - ml) + ' to go · ' + leftG + (leftG === 1 ? ' glass' : ' glasses') + ' more', now: fmtL(ml), gl: gl + (gl === 1 ? ' glass' : ' glasses'),
+      plus: () => setWater(250), minus: () => setWater(-250), g: Array.from({ length: 12 }, (_, i) => ({ c: i < gl ? 'on' : '' })) };
+    // meals: eat / un-eat
+    const eat = (i) => { const n = Object.assign({}, at, { [i]: NOW }), all = Object.keys(n).length === PLAN.length, nt = add4(tot, MM[i]);
+      this.setState({ at: n, mn: null, toast: all ? { t: 'All meals logged for today', s: nf(nt[0]) + ' kcal' + (nt[0] > TG[0] ? ' · ' + nf(nt[0] - TG[0]) + ' kcal over' : '') + ' · ' + r0(nt[1]) + ' g protein', k: 'star', prev: { at } }
+        : { t: PLAN[i].n + ' logged', s: nf(MM[i][0]) + ' kcal · ' + (TG[0] - nt[0] >= 0 ? nf(TG[0] - nt[0]) + ' kcal left' : nf(nt[0] - TG[0]) + ' kcal over'), k: 'ok', prev: { at } } }); };
+    const uneat = (i) => { const n = Object.assign({}, at); delete n[i];
+      this.setState({ at: n, mn: null, toast: { t: PLAN[i].n + ' marked as not eaten', s: nf(MM[i][0]) + ' kcal removed from today', k: 'del', prev: { at } } }); };
+    const nxt = PLAN.findIndex((_, i) => at[i] == null);
+    const meals = PLAN.map((m, i) => { const e = at[i] != null;
+      return { n: m.n, t: m.t, foods: summ(i), line: e ? 'Logged ' + tm(at[i]) + ' · ' + nf(MM[i][0]) + ' kcal' : 'Plan: ' + nf(MM[i][0]) + ' kcal · ' + r0(MM[i][1]) + ' g P',
+        eaten: e, open: !e, cls: (e ? 'on' : '') + (i === nxt ? ' nx' : ''), btnCls: i === nxt ? 'pri' : 'out', menu: () => this.setState({ mn: i }) }; });
+    let mn = {};
+    if (st.mn != null) { const i = st.mn, e = at[i] != null;
+      mn = { title: e ? 'Add to ' + PLAN[i].n : 'Log ' + PLAN[i].n.toLowerCase(), sub: e ? 'Already logged: ' + mline(MM[i]) : 'Plan: ' + summ(i), notEaten: !e, eaten: e,
+        canSw: !e && PLAN[i].f.some((f) => f.sw), eatS: nf(MM[i][0]) + ' kcal · ' + r0(MM[i][1]) + ' g P · one tap', eat: () => eat(i), uneat: () => uneat(i) }; }
+    // food log tab: plan meals that were eaten + extra entries, by time
+    const rows = eaten.map((i) => ({ k: at[i], time: tm(at[i]), t: summ(i), s: PLAN[i].n + ' · from plan', kc: nf(MM[i][0]) + ' kcal', tap: () => this.setState({ mn: i }) }))
+      .concat(ex.map((e) => ({ k: e.at, time: tm(e.at), t: e.n, s: PLAN[e.mi].n + ' · ' + e.qy, kc: nf(e.m[0]) + ' kcal', tap: () => this.setState({ en: e.id }) })))
+      .sort((a, b) => a.k - b.k);
+    let en = {};
+    const E = ex.find((e) => e.id === st.en);
+    if (E) en = { n: E.n, sub: PLAN[E.mi].n + ' · ' + E.qy + ' · ' + nf(E.m[0]) + ' kcal', meal: PLAN[E.mi].n,
+      del: () => this.setState({ en: null, ex: ex.filter((e) => e.id !== E.id), toast: { t: 'Entry deleted', s: E.n + ' · ' + nf(E.m[0]) + ' kcal', k: 'del', prev: { ex } } }) };
+    const copyY = () => { const add = YEST.filter((y) => !ex.some((e) => e.id === y.id));
+      if (!add.length) return toast('Nothing to copy', 'Yesterday’s extra foods are already in today’s log', 'info');
+      this.setState({ ex: ex.concat(add), tab: 'log', toast: { t: 'Copied ' + add.length + (add.length === 1 ? ' food' : ' foods') + ' from yesterday', s: add.map((y) => y.n).join(', ') + ' · ' + nf(add.reduce((a, y) => a + y.m[0], 0)) + ' kcal', k: 'ok', prev: { ex } } }); };
+    const tabs = [['plan', 'My plan'], ['log', 'Food log']].map(([id, n]) => ({ n: id === 'log' ? n + ' · ' + rows.length : n, cls: tab === id ? 'on' : '', pick: () => this.setState({ tab: id }) }));
+
+    return {
+      stop: (e) => { if (e && e.stopPropagation) e.stopPropagation(); },
+      hasToast: !!st.toast, toast: st.toast ? (() => { const k = { '': 'info', blue: 'water' }[st.toast.k || ''] || st.toast.k; return { t: st.toast.t, s: st.toast.s || '', k, ['i_' + k]: true,
+        undo: st.toast.prev ? () => this.setState(Object.assign({ toast: null }, st.toast.prev)) : null, close: () => this.setState({ toast: null }) }; })() : {},
+
+      ring, cal, week, wt, meals, mn, rows, en, tabs, isPlan: tab === 'plan', isLog: tab === 'log', hasRows: rows.length > 0, noRows: rows.length === 0, copyY,
+      calO: !!st.calO, closeCal: () => this.setState({ calO: false }), mnO: st.mn != null, closeMn: () => this.setState({ mn: null }), enO: !!E, closeEn: () => this.setState({ en: null }),
+
+    };
+  }
+}
+</script>
+</body>
+</html>

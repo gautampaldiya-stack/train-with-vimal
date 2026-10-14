@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+backend/.env
+backend/media/
+backend/staticfiles/
+*.sqlite3
+# Flutter
+app/.dart_tool/
+app/build/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/ios/Pods/
+app/ios/.symlinks/
+app/android/.gradle/
+app/android/local.properties
+app/android/app/google-services.json
+app/ios/Runner/GoogleService-Info.plist
+# Secrets and editors
+*.pem
+*service-account*.json
+.env
+.idea/
+.vscode/
+.DS_Store

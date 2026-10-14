@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Admin dashboard (phone)</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="twv.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0; }
+a{color:#1D4ED8}a:hover{color:#1E3A8A}
+</style>
+</helmet>
+<div class="app mob mob-AdminDashboard {{sideCls}}" style="font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #171717; flex-direction: row; background-color: #FFFFFF">
+
+
+<div class="ca-sb"><b>5:40</b><span class="ca-sbi"><svg class="i" viewBox="0 0 24 24"><path d="M2.5 9a14 14 0 0 1 19 0M5.5 12.5a9.5 9.5 0 0 1 13 0M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19" r=".8"/></svg><svg class="i" viewBox="0 0 24 24"><rect x="3" y="7.5" width="16" height="9" rx="2.5"/><rect x="5" y="9.5" width="9" height="5" rx="1" fill="currentColor" stroke="none"/><path d="M21 11v2"/></svg></span></div>
+<main class="main">
+<div class="wrap">
+<div class="top">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h1 class="h1">Good evening, Vimal</h1>
+<p class="sub">Thursday, 8 October · 3 things need you today</p>
+</div>
+<div class="acts">
+<button class="ibtn" aria-label="Search"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg></button>
+<button class="ibtn" aria-label="Notifications"><svg class="i" viewBox="0 0 24 24"><path d="M6 10a6 6 0 0 1 12 0c0 5 2 6.5 2 6.5H4S6 15 6 10z"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg><span class="dot"></span></button>
+<button class="btn pri"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>Add client</button>
+<button class="profile" aria-label="Account menu" data-tip="Vimal · Admin"><span class="pav">V</span></button>
+</div>
+</div>
+
+<div class="stats">
+<div class="stat"><div class="lbl"><span class="ic"><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"></path></svg></span>Active clients</div><div class="val">142</div><div class="delta up"><svg class="i" viewBox="0 0 24 24"><path d="m4 16 5-5 4 4 7-7"></path><path d="M15 8h5v5"></path></svg>+8 this month</div></div>
+<div class="stat"><div class="lbl"><span class="ic"><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5 1.6 0 3 .4 4.1 1.2"></path><path d="m15.5 18 2 2 4-4.5"></path></svg></span>Pending approvals</div><div class="val">5</div><div class="delta" style="color: #6B6B70">Oldest waiting 2 days</div></div>
+<div class="stat"><div class="lbl"><span class="ic"><svg class="i" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"></rect><path d="M8.5 10h7M8.5 14h7"></path></svg></span>Check-in rate</div><div class="val">86%</div><div class="delta down">−2% vs last week</div></div>
+<div class="stat"><div class="lbl"><span class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"></path></svg></span>Avg adherence</div><div class="val">81%</div><div class="delta up">+3% vs last week</div></div>
+</div>
+
+<div class="glance">
+<a class="gl " href="ClientsMobile.dc.html"><span class="ic"><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"></path><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .7 3.2 2.5 3.5 5.2"></path></svg></span><span class="gt"><span class="gn">156</span><span class="gl-l">Clients</span><span class="gs">142 active · 14 paused</span></span><svg class="i go" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"></path></svg></a>
+<a class="gl warn" href="#"><span class="ic"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M4 20.5c.8-4 4-6 8-6s7.2 2 8 6"></path></svg></span><span class="gt"><span class="gn">8</span><span class="gl-l">Trainers</span><span class="gs">1 over capacity</span></span><svg class="i go" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"></path></svg></a>
+<a class="gl warn" href="#"><span class="ic"><svg class="i" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"></rect><path d="M9 4V2.8h6V4M8.5 10h7M8.5 14h7M8.5 18h4"></path></svg></span><span class="gt"><span class="gn">12</span><span class="gl-l">Check-ins to review</span><span class="gs">4 waiting over 48 h</span></span><svg class="i go" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"></path></svg></a>
+<a class="gl " href="#"><span class="ic"><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5 1.6 0 3 .4 4.1 1.2"></path><path d="M18 14v6M15 17h6"></path></svg></span><span class="gt"><span class="gn">5</span><span class="gl-l">Onboarding pending</span><span class="gs">2 forms not complete</span></span><svg class="i go" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"></path></svg></a>
+<a class="gl " href="#"><span class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M12 7c-1.5-1.2-5-1.5-6.5 1.5S5 16 7.5 19c1.5 1.8 3 1.3 4.5.6 1.5.7 3 1.2 4.5-.6 2.5-3 3.5-7.5 2-10.5S13.5 5.8 12 7z"></path><path d="M12 7c0-2 1-3.5 3-4"></path></svg></span><span class="gt"><span class="gn">4</span><span class="gl-l">Nutrition plans pending</span><span class="gs">Clients without a meal plan</span></span><svg class="i go" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"></path></svg></a>
+<a class="gl " href="#"><span class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"></path></svg></span><span class="gt"><span class="gn">2</span><span class="gl-l">Programs ending</span><span class="gs">This week · plan what is next</span></span><svg class="i go" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"></path></svg></a>
+</div>
+
+<div class="dash-cols">
+<div class="dash-col">
+<div class="card">
+<div class="card-h"><div style="display: flex; align-items: center; gap: 8px"><h2 class="h3">Needs action</h2><span class="count">{{total}}</span></div><span class="cap">Oldest first</span></div>
+<div class="na-kinds">
+<sc-for list="{{kinds}}" as="k" hint-placeholder-count="5">
+<span class="fchip {{k.cls}}" onClick="{{k.pick}}">{{k.label}}<span class="n">{{k.n}}</span></span>
+</sc-for>
+</div>
+<div class="card-b">
+<sc-for list="{{rows}}" as="a" hint-placeholder-count="5">
+<div class="row na"><span class="av {{a.av}}" style="border-radius: 10px"><sc-if value="{{a.is_approval}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5 1.6 0 3 .4 4.1 1.2"></path><path d="m15.5 18 2 2 4-4.5"></path></svg></sc-if><sc-if value="{{a.is_client}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"></path></svg></sc-if><sc-if value="{{a.is_checkin}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg></sc-if><sc-if value="{{a.is_trainer}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M4 20.5c.8-4 4-6 8-6s7.2 2 8 6"></path></svg></sc-if><sc-if value="{{a.is_program}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"></path></svg></sc-if></span><div class="grow"><div class="t">{{a.title}}</div><div class="s">{{a.sub}}</div></div><button class="btn out sm">{{a.cta}}</button><button class="ibtn sm ghost x" aria-label="Dismiss" data-tip="Dismiss" onClick="{{a.dismiss}}"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></div>
+</sc-for>
+<sc-if value="{{hasMore}}" hint-placeholder-val="{{true}}"><button class="na-more" onClick="{{toggleMore}}">{{moreLabel}}</button></sc-if>
+<sc-if value="{{empty}}" hint-placeholder-val="{{false}}"><div class="cap" style="padding: 14px 12px">All clear. Nothing needs you right now.</div></sc-if>
+</div>
+</div>
+
+
+<div class="card">
+<div class="card-h"><div><h2 class="h3">Trainer performance</h2><div class="cap" style="margin-top: 2px">Lowest adherence first</div></div><div class="select" style="min-width: 0; height: 32px">This week<svg class="i" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg></div></div>
+<div class="tbl-wrap" style="padding-top: 6px">
+<table class="tbl cmp">
+<thead><tr><th>Trainer</th><th>Clients</th><th>Adherence</th><th class="num">Avg reply</th></tr></thead>
+<tbody>
+<sc-for list="{{trainers}}" as="t" hint-placeholder-count="5">
+<tr><td><div class="who"><span class="av sm {{t.av}}">{{t.ini}}</span><b>{{t.name}}</b></div></td><td><span class="{{t.loadCls}}">{{t.load}}</span></td><td><div style="display: flex; align-items: center; gap: 8px"><span class="bar"><i style="width: {{t.adh}}"></i></span><span class="cap">{{t.adh}}</span></div></td><td class="num">{{t.reply}}</td></tr>
+</sc-for>
+</tbody>
+</table>
+<sc-if value="{{tHasMore}}" hint-placeholder-val="{{true}}"><div style="padding: 4px 8px 8px"><button class="na-more" style="width: 100%; margin: 0" onClick="{{toggleTrainers}}">{{tMoreLabel}}</button></div></sc-if>
+</div>
+</div>
+</div>
+
+<div class="dash-col">
+<div class="card">
+<div class="card-h"><div style="display: flex; align-items: center; gap: 8px"><h2 class="h3">At-risk clients</h2><span class="count">{{riskTotal}}</span></div><button class="btn text" style="font-size: 13px" onClick="{{openRemind}}">Remind all</button></div>
+<div class="card-b">
+<sc-for list="{{risk}}" as="r" hint-placeholder-count="3">
+<div class="row cmp"><span class="av sm {{r.av}}">{{r.ini}}</span><div class="grow"><div class="t">{{r.name}}</div><div class="s">{{r.why}}</div></div><button class="btn out sm">Remind</button></div>
+</sc-for>
+<sc-if value="{{riskHasMore}}" hint-placeholder-val="{{true}}"><button class="na-more" onClick="{{toggleRisk}}">{{riskMoreLabel}}</button></sc-if>
+</div>
+</div>
+
+<div class="card">
+<div class="card-h"><h2 class="h3">Recent activity</h2><a href="ActivityMobile.dc.html" style="font-size: 13px; font-weight: 700">View all</a></div>
+<div class="card-b">
+<div class="row act-mini"><span class="av sm c1">AV</span><div class="grow trunc" data-full="Aman Verma changed rest to 90 s in Rohan's Push day"><span class="tx"><b>Aman Verma</b> changed rest to 90 s in Rohan's Push day</span></div><span class="when">14m</span></div>
+<div class="row act-mini"><span class="av sm c2">RK</span><div class="grow trunc" data-full="Rohan Kapoor swapped paneer for tofu at lunch"><span class="tx"><b>Rohan Kapoor</b> swapped paneer for tofu at lunch</span></div><span class="when">38m</span></div>
+<div class="row act-mini"><span class="av sm c4">S</span><div class="grow trunc" data-full="System sent check-in reminder to 18 clients"><span class="tx"><b>System</b> sent check-in reminder to 18 clients</span></div><span class="when">1h</span></div>
+<div class="row act-mini"><span class="av sm c1">V</span><div class="grow trunc" data-full="Vimal approved Sana Khan"><span class="tx"><b>Vimal</b> approved Sana Khan</span></div><span class="when">2h</span></div>
+<div class="row act-mini"><span class="av sm c3">AR</span><div class="grow trunc" data-full="Arjun Rao added a note for Kabir Mehta"><span class="tx"><b>Arjun Rao</b> added a note for Kabir Mehta</span></div><span class="when">3h</span></div>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</main>
+<nav class="mb-nav"><a class="mb-tab on" href="AdminDashboardMobile.dc.html"><span class="mb-ti"><svg class="i" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20h-5v-6H9v6H4z"/></svg></span><span>Home</span></a><a class="mb-tab" href="ClientsMobile.dc.html"><span class="mb-ti"><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .7 3.2 2.5 3.5 5.2"/></svg></span><span>Clients</span></a><a class="mb-tab" href="ApprovalsMobile.dc.html"><span class="mb-ti"><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5 1.6 0 3 .4 4.1 1.2"/><path d="m15.5 18 2 2 4-4.5"/></svg><i class="mb-badge">5</i></span><span>Approvals</span></a><a class="mb-tab" href="CalendarMobile.dc.html"><span class="mb-ti"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></span><span>Calendar</span></a><a class="mb-tab" href="AdminMoreMobile.dc.html"><span class="mb-ti"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span><span>More</span></a></nav>
+<sc-if value="{{remindOpen}}" hint-placeholder-val="{{false}}">
+<div class="modal-back" onClick="{{closeRemind}}">
+<div class="modal" role="dialog" aria-modal="true" onClick="{{stop}}">
+<div class="modal-h"><span class="modal-ic"><svg class="i lg" viewBox="0 0 24 24"><path d="M6 10a6 6 0 0 1 12 0c0 5 2 6.5 2 6.5H4S6 15 6 10z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span><div class="grow"><h3>Remind 7 at-risk clients?</h3><p>Each client gets a push and WhatsApp message to log today's workout. Their trainer is copied.</p></div><button class="ibtn sm ghost" aria-label="Close" data-tip="Close" onClick="{{closeRemind}}"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+<div class="modal-b"><label class="cap" style="display: flex; align-items: center; gap: 8px; color: #3F3F46; font-weight: 600"><span class="box on"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></svg></span>Skip clients reminded in the last 24 hours (2)</label></div>
+<div class="modal-f"><button class="btn out" onClick="{{closeRemind}}">Cancel</button><button class="btn pri" onClick="{{closeRemind}}">Remind 5 clients</button></div>
+</div>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.state || {};
+    const kindLabel = { approval: 'Approvals', client: 'Clients', checkin: 'Check-ins', trainer: 'Trainers', program: 'Programs' };
+    const avOf = { approval: 'c4', client: 'c1', checkin: 'c3', trainer: 'c5', program: 'c6' };
+    const all = [
+      ['a1', 'approval', '5 sign-ups waiting', "Ishaan and Rohit are ready · Pooja's health form is not done", 'Review'],
+      ['a2', 'checkin', '4 check-ins waiting over 48 hours', 'Aman Verma (3) · Arjun Rao (1)', 'Open'],
+      ['a3', 'client', '3 clients need a trainer', 'Joined this week · not assigned yet', 'Assign'],
+      ['a4', 'trainer', 'Arjun Rao is over capacity', '24 of 20 clients · move 4 to another trainer', 'Rebalance'],
+      ['a5', 'program', "2 programs end this week", 'Riya Sharma · Kabir Mehta · pick what comes next', 'Plan'],
+      ['a6', 'checkin', 'Aisha Sheikh flagged low energy', 'Energy 2/5 for two weeks · Meera Shah', 'Open'],
+      ['a7', 'client', '2 clients have not logged in 7 days', 'Ananya Iyer · Dev Patel', 'View'],
+      ['a8', 'approval', 'Neha Jain asked to change trainer', 'From Aman Verma · reason: timings', 'Review'],
+      ['a9', 'trainer', 'Meera Shah has 5 replies pending', 'Oldest from yesterday 7 pm', 'Open']
+    ];
+    const gone = st.gone || [];
+    const open = all.filter((a) => !gone.includes(a[0]));
+    const kind = st.kind && open.some((a) => a[1] === st.kind) ? st.kind : '';
+    const kinds = [{ label: 'All', n: String(open.length), cls: kind ? '' : 'on', pick: () => this.setState({ kind: '' }) }];
+    Object.keys(kindLabel).forEach((k) => {
+      const n = open.filter((a) => a[1] === k).length;
+      if (n) kinds.push({ label: kindLabel[k], n: String(n), cls: kind === k ? 'on' : '', pick: () => this.setState({ kind: k }) });
+    });
+    const list = open.filter((a) => !kind || a[1] === kind);
+    const more = !!st.more;
+    const rows = (more ? list : list.slice(0, 5)).map(([id, k, title, sub, cta]) => {
+      const r = { title, sub, cta, av: avOf[k], dismiss: () => this.setState({ gone: gone.concat(id) }) };
+      Object.keys(kindLabel).forEach((x) => { r['is_' + x] = x === k; });
+      return r;
+    });
+    const riskAll = [
+      ['PR', 'c5', 'Priya Reddy', 'No workout for 5 days · Meera Shah'],
+      ['AS', 'c2', 'Aisha Sheikh', 'Energy 2/5 for two weeks · Meera Shah'],
+      ['AI', 'c3', 'Ananya Iyer', 'Paused 9 days ago · Aman Verma'],
+      ['DP', 'c6', 'Dev Patel', 'No login for 7 days · Arjun Rao'],
+      ['KM', 'c1', 'Kabir Mehta', 'Missed 2 check-ins · Arjun Rao'],
+      ['NJ', 'c4', 'Neha Jain', 'Adherence 42% this week · Aman Verma'],
+      ['RS', 'c2', 'Riya Sharma', 'Program ends in 2 days, nothing next · Sahil Kapoor']
+    ];
+    const riskOpen = !!st.riskMore;
+    const risk = (riskOpen ? riskAll : riskAll.slice(0, 3)).map(([ini, av, name, why]) => ({ ini, av, name, why }));
+    const tAll = [
+      ['AR', 'c3', 'Arjun Rao', 24, 71, '5.1 h'],
+      ['NK', 'c2', 'Nikhil Kumar', 16, 74, '3.0 h'],
+      ['MS', 'c5', 'Meera Shah', 15, 78, '2.4 h'],
+      ['PG', 'c4', 'Pooja Gupta', 11, 80, '1.9 h'],
+      ['AV', 'c1', 'Aman Verma', 18, 84, '1.2 h'],
+      ['RT', 'c6', 'Rahul Tiwari', 9, 86, '1.0 h'],
+      ['SK', 'c6', 'Sahil Kapoor', 12, 88, '0.8 h'],
+      ['DS', 'c5', 'Divya Singh', 14, 90, '0.6 h']
+    ];
+    const tOpen = !!st.tMore;
+    const trainers = (tOpen ? tAll : tAll.slice(0, 5)).map(([ini, av, name, n, adh, reply]) => ({
+      ini, av, name, reply, load: n + ' / 20', loadCls: n > 20 ? 'over' : '', adh: adh + '%'
+    }));
+    return {
+      riskTotal: String(riskAll.length), risk, riskHasMore: riskAll.length > 3,
+      riskMoreLabel: riskOpen ? 'Show less' : 'Show all ' + riskAll.length, toggleRisk: () => this.setState({ riskMore: !riskOpen }),
+      trainers, tHasMore: tAll.length > 5, tMoreLabel: tOpen ? 'Show less' : 'Show all ' + tAll.length + ' trainers',
+      toggleTrainers: () => this.setState({ tMore: !tOpen }),
+      remindOpen: !!st.remind, openRemind: () => this.setState({ remind: true }), closeRemind: () => this.setState({ remind: false }), stop: (e) => { if (e && e.stopPropagation) e.stopPropagation(); },
+      sideCls: st.mini ? 'mini' : '', sideTip: st.mini ? 'Expand sidebar' : 'Collapse sidebar', toggleSide: () => this.setState({ mini: !st.mini }),
+      total: String(open.length), kinds, rows, empty: open.length === 0,
+      hasMore: list.length > 5, moreLabel: more ? 'Show less' : 'Show all ' + list.length,
+      toggleMore: () => this.setState({ more: !more })
+    };
+  }
+}
+</script>
+</body>
+</html>

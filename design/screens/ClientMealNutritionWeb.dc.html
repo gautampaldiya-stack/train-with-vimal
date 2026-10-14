@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Food</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="twv.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1D4ED8}a:hover{color:#1E3A8A}
+</style>
+</helmet>
+<div class="app {{sideCls}}" style="font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #171717; background: #FFFFFF">
+<aside class="side">
+<button class="edge" aria-label="Collapse or expand sidebar" onClick="{{toggleSide}}"><svg class="i" viewBox="0 0 24 24"><path d="m14.5 6-6 6 6 6"/></svg></button>
+<div class="brand"><img src="/_blob/7f1b8d133ad89eaba73fd8ba3d41bf1e" alt=""><span class="bt"><b>Train With Vimal</b><small>Riya Sharma</small></span><button class="ibtn sm ghost tog" aria-label="Expand sidebar" onClick="{{toggleSide}}"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.5 4.5v15"/></svg></button></div>
+<a data-tip="Today" class="nav" href="ClientHomeWeb.dc.html"><svg class="i lg" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20h-5v-6H9v6H4z"/></svg>Today</a>
+<a data-tip="Training" class="nav" href="ClientTrainWeb.dc.html"><svg class="i lg" viewBox="0 0 24 24"><path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/></svg>Training</a>
+<a data-tip="Nutrition" class="nav on" href="ClientMealNutritionWeb.dc.html"><svg class="i lg" viewBox="0 0 24 24"><path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10"/><path d="M17 21V3c-2 0-3.5 2.5-3.5 6s1.5 4 3.5 4"/></svg>Nutrition</a>
+<a data-tip="Habits" class="nav" href="ClientHabitsWeb.dc.html"><svg class="i lg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg>Habits</a>
+<a data-tip="Progress" class="nav" href="ClientProgressWeb.dc.html"><svg class="i lg" viewBox="0 0 24 24"><path d="M4 20V4M4 20h16"/><path d="m7 15 4-4 3 3 5-6"/></svg>Progress</a>
+<a data-tip="Check-ins" class="nav" href="ClientCheckinWeb.dc.html"><svg class="i lg" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2.8h6V4M8.5 10h7M8.5 14h7M8.5 18h4"/></svg>Check-ins</a>
+<a data-tip="Library" class="nav" href="ClientLibraryWeb.dc.html"><svg class="i lg" viewBox="0 0 24 24"><path d="M5 4.5h9.5a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h9.5"/></svg>Library</a>
+<div class="grp over">You</div>
+<a data-tip="My account" class="nav" href="ClientMoreWeb.dc.html"><svg class="i lg" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>My account</a>
+</aside>
+<main class="main ca-web">
+<div class="cw">
+<div class="fd-top"><div class="grow"><h1>Food</h1><span>{{ring.sub}}</span></div><a class="ca-btn dark sm" href="ClientFoodLogWeb.dc.html"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Log food</a></div>
+<div class="ca-card tn-week"><sc-for list="{{strip}}" as="d" hint-placeholder-count="7"><button class="tn-wd {{d.cls}}" onClick="{{d.pick}}"><span>{{d.wd}}</span><b>{{d.n}}</b><i><sc-if value="{{d.done}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></svg></sc-if></i></button></sc-for></div>
+<div class="cw-cols nv-wcols"><div class="cw-col"><div class="ca-card nv-cal {{ring.cls}}" onClick="{{ring.open}}"><div class="ch-ch"><b class="grow">{{ring.head}}</b><span class="nv-tgt">Target 1,650 kcal</span><svg class="i" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></div><div class="ch-fb"><div class="ch-ring"><svg viewBox="0 0 80 80"><circle cx="40" cy="40" r="34" class="tr"/><circle cx="40" cy="40" r="34" class="fg" style="stroke-dasharray: {{ring.dash}}"/></svg><div><b>{{ring.left}}</b><span>{{ring.lbl}}</span></div></div><div class="ch-mac"><sc-for list="{{ring.mac}}" as="m" hint-placeholder-count="3"><div class="ch-m"><div class="ch-ml"><span>{{m.n}}</span><b>{{m.v}}</b></div><div class="ch-mb"><i class="{{m.c}}" style="width: {{m.p}}"></i></div></div></sc-for></div></div><p class="fd-cap">{{ring.done}}</p></div><div class="ca-card nv-wk"><div class="ch-ch"><b class="grow">This week</b><span class="nv-tgt">Target 1,650 kcal</span></div><div class="nv-bars"><span class="nv-tlw"><i class="nv-tl" style="bottom: {{week.tl}}"></i></span><sc-for list="{{week.bars}}" as="b" hint-placeholder-count="7"><button class="nv-b {{b.cls}}" onClick="{{b.pick}}"><span class="nv-bt"><i style="height: {{b.h}}"></i></span><em>{{b.l}}</em></button></sc-for></div><div class="nv-sel"><b>{{week.sel}}</b><span>{{week.selV}}</span></div><p class="fd-cap">{{week.avg}}</p></div><div class="ca-card ch-water"><div class="ch-ch"><span class="ch-ic warm"><svg class="i" viewBox="0 0 24 24"><path d="M12 3.5s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg></span><div class="grow"><b>Water</b><span>{{wt.sub}}</span></div></div><div class="ch-wbig"><b>{{wt.now}}</b><span>/ 3 L · {{wt.gl}}</span></div><div class="ch-glasses"><sc-for list="{{wt.g}}" as="g" hint-placeholder-count="12"><i class="{{g.c}}"></i></sc-for></div><div class="ch-wbtns"><button class="ca-btn out sm" onClick="{{wt.minus}}">−250 ml</button><button class="ca-btn dark sm" onClick="{{wt.plus}}">+250 ml · 1 glass</button></div></div></div>
+<div class="cw-col"><div class="tabs fl-tabs nv-tabs"><sc-for list="{{tabs}}" as="t" hint-placeholder-count="2"><button class="tab {{t.cls}}" onClick="{{t.pick}}">{{t.n}}</button></sc-for></div>
+<sc-if value="{{isPlan}}" hint-placeholder-val="{{true}}"><sc-for list="{{meals}}" as="m" hint-placeholder-count="5"><div class="ca-card fd-meal {{m.cls}}"><div class="fd-mh"><div class="grow"><b class="fd-mt"><span>{{m.n}}</span><small>· {{m.t}}</small></b><span class="fd-ml">{{m.line}}</span></div><em class="fd-pill {{m.pc}}">{{m.pill}}</em><sc-if value="{{m.today}}" hint-placeholder-val="{{false}}"><button class="ca-ib sm" aria-label="Meal options" onClick="{{m.menu}}"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button></sc-if></div><div class="fd-fs"><sc-for list="{{m.f}}" as="f" hint-placeholder-count="3"><div class="fd-f"><div class="grow"><b>{{f.n}}</b><span>{{f.amt}}<sc-if value="{{f.sw}}" hint-placeholder-val="{{false}}"><em> · swapped from {{f.from}}</em></sc-if></span></div><span class="fd-fk">{{f.k}} kcal</span><sc-if value="{{f.canSw}}" hint-placeholder-val="{{false}}"><button class="ca-btn out sm fd-swb" onClick="{{f.swap}}"><svg class="i" viewBox="0 0 24 24"><path d="M7 4 3.5 7.5 7 11"/><path d="M3.5 7.5h13"/><path d="m17 13 3.5 3.5L17 20"/><path d="M20.5 16.5h-13"/></svg>Swap</button></sc-if></div></sc-for></div><sc-if value="{{m.open}}" hint-placeholder-val="{{false}}"><div class="fd-mf"><button class="ca-btn out sm" onClick="{{m.edit}}"><svg class="i" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg>Edit portions</button><button class="ca-btn sm {{m.eatCls}}" onClick="{{m.eat}}"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></svg>Mark as eaten</button></div></sc-if><sc-if value="{{m.eaten}}" hint-placeholder-val="{{false}}"><div class="fd-mf"><button class="ca-btn out sm fd-done" onClick="{{m.undo}}"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></svg>Logged · Undo</button></div></sc-if><sc-if value="{{m.skipped}}" hint-placeholder-val="{{false}}"><div class="fd-mf"><button class="ca-btn out sm" onClick="{{m.unskip}}"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></svg>Eaten after all</button></div></sc-if></div></sc-for><a class="fd-else" href="ClientFoodLogWeb.dc.html"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Ate something else</a></sc-if>
+<sc-if value="{{isLog}}" hint-placeholder-val="{{false}}"><div class="ca-card nv-list"><sc-for list="{{rows}}" as="r" hint-placeholder-count="5"><button class="nv-lr" onClick="{{r.tap}}"><em>{{r.time}}</em><div class="grow"><b>{{r.t}}</b><span>{{r.s}}</span></div><span class="fd-fk">{{r.kc}}</span><svg class="i" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button></sc-for><sc-if value="{{noRows}}" hint-placeholder-val="{{false}}"><p class="fl-empty">Nothing logged on {{dayName}}.</p></sc-if></div><sc-if value="{{isToday}}" hint-placeholder-val="{{true}}"><div class="cl-ebtns"><a class="ca-btn dark" href="ClientFoodLogWeb.dc.html"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Log food</a><button class="ca-btn out" onClick="{{copyY}}"><svg class="i" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/></svg>Copy yesterday</button></div></sc-if><sc-if value="{{notToday}}" hint-placeholder-val="{{false}}"><p class="fd-cap">You can only add food to today. Tap Today in the strip above to log.</p></sc-if></sc-if>
+</div></div>
+</div>
+<sc-if value="{{calO}}" hint-placeholder-val="{{false}}"><div class="ca-back" onClick="{{closeCal}}"><div class="ca-sheet" onClick="{{stop}}"><i class="ca-grab"></i><div class="ca-sh"><div class="grow"><h3>{{cal.head}}</h3><p>Target 1,650 kcal · set by Aman</p></div><button class="ca-x" aria-label="Close" onClick="{{closeCal}}"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div><div class="ca-sbody"><div><sc-for list="{{cal.rows}}" as="x" hint-placeholder-count="6"><div class="fd-kv"><span>{{x.l}}</span><b>{{x.v}}</b></div></sc-for></div><p class="fd-cap">Workout calories are not added back. Your plan already accounts for training.</p></div><div class="ca-sf"><button class="ca-btn pri" onClick="{{closeCal}}">Got it</button></div></div></div></sc-if><sc-if value="{{mnO}}" hint-placeholder-val="{{false}}"><div class="ca-back" onClick="{{closeMn}}"><div class="ca-sheet" onClick="{{stop}}"><i class="ca-grab"></i><div class="ca-sh"><div class="grow"><h3>{{mn.title}}</h3><p>{{mn.sub}}</p></div><button class="ca-x" aria-label="Close" onClick="{{closeMn}}"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div><div class="ca-sbody"><div class="fd-menu"><sc-if value="{{mn.canSw}}" hint-placeholder-val="{{false}}"><button class="fd-mi" onClick="{{mn.swap}}"><span class="fd-mic"><svg class="i" viewBox="0 0 24 24"><path d="M7 4 3.5 7.5 7 11"/><path d="M3.5 7.5h13"/><path d="m17 13 3.5 3.5L17 20"/><path d="M20.5 16.5h-13"/></svg></span><div class="grow"><b>Swap a food</b><span>Similar macros, different dish</span></div><svg class="i" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button></sc-if><button class="fd-mi" onClick="{{mn.edit}}"><span class="fd-mic"><svg class="i" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg></span><div class="grow"><b>Edit portions</b><span>Change grams, pieces or katori</span></div><svg class="i" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button><a class="fd-mi" href="ClientFoodLogWeb.dc.html"><span class="fd-mic"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><div class="grow"><b>Log something different</b><span>Ate outside the plan? No stress</span></div><svg class="i" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></a><sc-if value="{{mn.notSk}}" hint-placeholder-val="{{false}}"><button class="fd-mi danger" onClick="{{mn.skip}}"><span class="fd-mic"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></span><div class="grow"><b>Skip meal</b><span>It will not count towards today</span></div></button></sc-if></div></div></div></div></sc-if><sc-if value="{{swO}}" hint-placeholder-val="{{false}}"><div class="ca-back" onClick="{{closeSwap}}"><div class="ca-sheet" onClick="{{stop}}"><i class="ca-grab"></i><div class="ca-sh"><div class="grow"><h3>Swap from {{sw.meal}}</h3><p>{{sw.sub}}</p></div><button class="ca-x" aria-label="Close" onClick="{{closeSwap}}"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div><div class="ca-sbody"><sc-if value="{{sw.many}}" hint-placeholder-val="{{false}}"><div class="fd-swf"><sc-for list="{{sw.foods}}" as="x" hint-placeholder-count="3"><button class="{{x.cls}}" onClick="{{x.pick}}">{{x.n}}</button></sc-for></div></sc-if><div class="fd-ok"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></svg><span>Approved by Aman · portions matched to your plan</span><span class="cp-info" tabindex="0" aria-label="How swaps work" data-tip="Each option is portioned to match the planned food. Match % compares calories, protein and fat."><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/></svg></span></div><div class="dr-opts fd-alts"><sc-for list="{{sw.opts}}" as="o" hint-placeholder-count="3"><div class="dr-opt {{o.cls}}" onClick="{{o.pick}}"><span class="dr-radio"></span><div class="grow"><div class="t">{{o.n}}<sc-if value="{{o.plan}}" hint-placeholder-val="{{false}}"><span class="fd-tag">Planned</span></sc-if></div><div class="s">{{o.s}}</div></div><sc-if value="{{o.hasM}}" hint-placeholder-val="{{false}}"><em class="fd-match">{{o.m}}% match</em></sc-if></div></sc-for></div><a class="fd-else sm" href="ClientFoodLogWeb.dc.html"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Search any other food</a></div><div class="ca-sf"><div class="fd-swfoot"><span>Applies to today’s plan only</span><button class="ca-btn pri {{sw.btnCls}}" onClick="{{sw.go}}"><svg class="i" viewBox="0 0 24 24"><path d="M7 4 3.5 7.5 7 11"/><path d="M3.5 7.5h13"/><path d="m17 13 3.5 3.5L17 20"/><path d="M20.5 16.5h-13"/></svg><span>{{sw.btn}}</span></button></div></div></div></div></sc-if><sc-if value="{{poO}}" hint-placeholder-val="{{false}}"><div class="ca-back" onClick="{{closePort}}"><div class="ca-sheet" onClick="{{stop}}"><i class="ca-grab"></i><div class="ca-sh"><div class="grow"><h3>Edit portions · {{po.meal}}</h3><p>{{po.sub}}</p></div><button class="ca-x" aria-label="Close" onClick="{{closePort}}"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div><div class="ca-sbody"><div class="fd-pl"><sc-for list="{{po.f}}" as="x" hint-placeholder-count="3"><div class="fd-pr"><div class="grow"><b>{{x.n}}</b><span>{{x.k}} kcal · {{x.p}} g P</span></div><div class="fd-step"><button class="ca-ib sm" aria-label="Less" onClick="{{x.minus}}"><svg class="i" viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button><b>{{x.amt}}</b><button class="ca-ib sm" aria-label="More" onClick="{{x.plus}}"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div></div></sc-for></div><div class="fd-ptot"><b>{{po.tot}}</b><span>{{po.diff}}</span></div><p class="fd-cap">Calories and macros follow your portions. This changes today only.</p></div><div class="ca-sf"><div class="cl-ebtns"><button class="ca-btn out" onClick="{{closePort}}">Cancel</button><button class="ca-btn pri" onClick="{{po.save}}">Save portions</button></div></div></div></div></sc-if><sc-if value="{{enO}}" hint-placeholder-val="{{false}}"><div class="ca-back" onClick="{{closeEn}}"><div class="ca-sheet" onClick="{{stop}}"><i class="ca-grab"></i><div class="ca-sh"><div class="grow"><h3>{{en.n}}</h3><p>{{en.sub}}</p></div><button class="ca-x" aria-label="Close" onClick="{{closeEn}}"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div><div class="ca-sbody"><div class="fd-fs en-fs"><sc-for list="{{en.f}}" as="x" hint-placeholder-count="3"><div class="fd-f"><div class="grow"><b>{{x.n}}</b><span>{{x.amt}}</span></div><span class="fd-fk">{{x.k}} kcal</span></div></sc-for></div><div><sc-for list="{{en.kv}}" as="x" hint-placeholder-count="5"><div class="fd-kv"><span>{{x.l}}</span><b>{{x.v}}</b></div></sc-for></div><div class="fd-menu"><sc-if value="{{en.canEdit}}" hint-placeholder-val="{{false}}"><button class="fd-mi" onClick="{{en.edit}}"><span class="fd-mic"><svg class="i" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg></span><div class="grow"><b>Edit portions</b><span>Change grams, pieces or katori</span></div><svg class="i" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button><button class="fd-mi danger" onClick="{{en.uneat}}"><span class="fd-mic"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></span><div class="grow"><b>Mark as not eaten</b><span>Removes it from today’s totals</span></div></button></sc-if><sc-if value="{{en.isOff}}" hint-placeholder-val="{{false}}"><a class="fd-mi" href="ClientFoodLogWeb.dc.html"><span class="fd-mic"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><div class="grow"><b>Log more to {{en.meal}}</b><span>Search and add another food</span></div><svg class="i" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></a></sc-if><sc-if value="{{en.canDel}}" hint-placeholder-val="{{false}}"><button class="fd-mi danger" onClick="{{en.del}}"><span class="fd-mic"><svg class="i" viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13"/></svg></span><div class="grow"><b>Delete entry</b><span>You can undo this</span></div></button></sc-if></div></div></div></div></sc-if>
+<sc-if value="{{hasToast}}" hint-placeholder-val="{{false}}"><div class="ca-toast {{toast.k}}"><span class="ca-ti"><sc-if value="{{toast.i_ok}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></svg></sc-if><sc-if value="{{toast.i_star}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg></sc-if><sc-if value="{{toast.i_water}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M12 3.5s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg></sc-if><sc-if value="{{toast.i_info}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/></svg></sc-if><sc-if value="{{toast.i_warn}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M12 4 2.5 20h19z"/><path d="M12 10v4.5M12 17.5h.01"/></svg></sc-if><sc-if value="{{toast.i_del}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13"/></svg></sc-if></span><div><b>{{toast.t}}</b><sc-if value="{{toast.s}}" hint-placeholder-val="{{true}}"><span>{{toast.s}}</span></sc-if></div><sc-if value="{{toast.undo}}" hint-placeholder-val="{{true}}"><button class="ca-tbtn" onClick="{{toast.undo}}">Undo</button></sc-if><button class="ca-tx" aria-label="Dismiss" onClick="{{toast.close}}"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div></sc-if>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = {}; }
+  renderVals() {
+    const st = this.state;
+    const toast = (t, s, k, prev) => this.setState({ toast: { t, s, k, prev } });
+    if (st.toast && this._tk !== st.toast) { this._tk = st.toast; clearTimeout(this._tt); this._tt = setTimeout(() => this.setState({ toast: null }), st.toast.prev ? 7000 : 5000); }
+
+    const PLAN = [{"n": "Breakfast", "t": "8:00 am", "f": [{"n": "Oats", "u": "g", "q": 60.0, "per": [3.75, 0.125, 0.675, 0.075], "step": 10, "units": [["g", 1], ["1 tbsp", 8], ["1 cup", 80]], "p100": [375.0, 12.5, 67.5, 7.5], "alts": [{"n": "Poha", "u": "1 plate", "q": 1, "per": [250.05, 4.95, 45.0, 6.0], "step": 1, "units": [["g", 1], ["1 plate", 150], ["1 katori", 100]], "p100": [166.7, 3.3, 30.0, 4.0], "m": 82}]}, {"n": "Whey protein", "u": "1 scoop", "q": 1, "per": [120.0, 24.0, 3.008, 1.984], "step": 1, "units": [["g", 1], ["1 scoop", 32]], "p100": [375.0, 75.0, 9.4, 6.2], "alts": [{"n": "Greek yogurt", "u": "g", "q": 225, "per": [0.733, 0.1, 0.04, 0.02], "step": 10, "units": [["g", 1], ["1 cup", 200], ["1 tbsp", 15]], "p100": [73.3, 10.0, 4.0, 2.0], "m": 74}]}, {"n": "Banana", "u": "1 medium", "q": 1, "per": [105.02, 0.944, 27.022, 0.0], "step": 1, "units": [["g", 1], ["1 medium", 118], ["1 small", 90]], "p100": [89.0, 0.8, 22.9, 0.0], "alts": [{"n": "Apple", "u": "1 medium", "q": 1, "per": [94.95, 0.0, 25.05, 0.0], "step": 1, "units": [["g", 1], ["1 medium", 150]], "p100": [63.3, 0.0, 16.7, 0.0], "m": 91}]}]}, {"n": "Snack", "t": "11:00 am", "f": [{"n": "Greek yogurt", "u": "g", "q": 150, "per": [0.733, 0.1, 0.04, 0.02], "step": 10, "units": [["g", 1], ["1 cup", 200], ["1 tbsp", 15]], "p100": [73.3, 10.0, 4.0, 2.0], "alts": [{"n": "Curd (dahi)", "u": "1 katori", "q": 2.0, "per": [90.0, 4.95, 7.05, 4.95], "step": 1, "units": [["g", 1], ["1 katori", 150], ["1 tbsp", 15]], "p100": [60.0, 3.3, 4.7, 3.3], "m": 70}]}, {"n": "Almonds", "u": "1 piece", "q": 10, "per": [6.9996, 0.3, 0.2004, 0.6], "step": 1, "units": [["g", 1], ["1 piece", 1.2], ["1 handful", 25]], "p100": [583.3, 25.0, 16.7, 50.0], "alts": [{"n": "Peanut butter", "u": "1 tbsp", "q": 1, "per": [95.008, 4.0, 3.008, 8.0], "step": 1, "units": [["g", 1], ["1 tbsp", 16], ["1 tsp", 5]], "p100": [593.8, 25.0, 18.8, 50.0], "m": 88}]}]}, {"n": "Lunch", "t": "1:30 pm", "f": [{"n": "Paneer", "u": "g", "q": 100, "per": [2.65, 0.18, 0.03, 0.21], "step": 10, "units": [["g", 1], ["1 cube", 25]], "p100": [265.0, 18.0, 3.0, 21.0], "alts": [{"n": "Tofu (firm)", "u": "g", "q": 180.0, "per": [1.44, 0.15, 0.03, 0.09], "step": 10, "units": [["g", 1], ["1 cube", 25]], "p100": [144.0, 15.0, 3.0, 9.0], "m": 93}, {"n": "Low-fat paneer", "u": "g", "q": 130.0, "per": [2.0, 0.2, 0.04, 0.12], "step": 10, "units": [["g", 1], ["1 cube", 25]], "p100": [200.0, 20.0, 4.0, 12.0], "m": 90}]}, {"n": "Brown rice (cooked)", "u": "g", "q": 120.0, "per": [1.12, 0.03, 0.24, 0.01], "step": 10, "units": [["g", 1], ["1 katori", 150], ["1 tbsp", 15]], "p100": [112.0, 3.0, 24.0, 1.0], "alts": [{"n": "Whole wheat roti", "u": "1 medium", "q": 1, "per": [110.0, 3.0, 20.0, 2.0], "step": 0.5, "units": [["g", 1], ["1 medium", 40], ["1 small", 30]], "p100": [275.0, 7.5, 50.0, 5.0], "m": 88}]}, {"n": "Cucumber salad", "u": "1 bowl", "q": 1, "per": [30.0, 1.0, 6.0, 0.0], "step": 1, "units": [["g", 1], ["1 bowl", 100]], "p100": [30.0, 1.0, 6.0, 0.0], "alts": []}]}, {"n": "Snack", "t": "5:00 pm", "f": [{"n": "Sprouts chaat", "u": "1 plate", "q": 1, "per": [180.0, 10.95, 28.05, 3.0], "step": 1, "units": [["g", 1], ["1 plate", 150], ["1 katori", 100]], "p100": [120.0, 7.3, 18.7, 2.0], "alts": [{"n": "Roasted chana", "u": "g", "q": 45, "per": [3.667, 0.2, 0.6, 0.067], "step": 10, "units": [["g", 1], ["1 handful", 30], ["1 katori", 60]], "p100": [366.7, 20.0, 60.0, 6.7], "m": 84}]}]}, {"n": "Dinner", "t": "8:30 pm", "f": [{"n": "Tofu (firm)", "u": "g", "q": 150.0, "per": [1.44, 0.15, 0.03, 0.09], "step": 10, "units": [["g", 1], ["1 cube", 25]], "p100": [144.0, 15.0, 3.0, 9.0], "alts": [{"n": "Paneer", "u": "g", "q": 80.0, "per": [2.65, 0.18, 0.03, 0.21], "step": 10, "units": [["g", 1], ["1 cube", 25]], "p100": [265.0, 18.0, 3.0, 21.0], "m": 93}]}, {"n": "Whole wheat roti", "u": "1 medium", "q": 2, "per": [110.0, 3.0, 20.0, 2.0], "step": 0.5, "units": [["g", 1], ["1 medium", 40], ["1 small", 30]], "p100": [275.0, 7.5, 50.0, 5.0], "alts": [{"n": "Brown rice (cooked)", "u": "g", "q": 200.0, "per": [1.12, 0.03, 0.24, 0.01], "step": 10, "units": [["g", 1], ["1 katori", 150], ["1 tbsp", 15]], "p100": [112.0, 3.0, 24.0, 1.0], "m": 88}]}]}];
+    const TG = [1650, 120, 170, 52], NOW = 17 * 60 + 40;
+
+    const r0 = (v) => Math.round(v), nf = (v) => Math.round(v).toLocaleString('en-IN');
+    const add4 = (a, b) => a.map((x, i) => x + b[i]);
+    const tm = (m) => { const h = Math.floor(m / 60), mi = m % 60; return ((h + 11) % 12 + 1) + ':' + String(mi).padStart(2, '0') + (h < 12 ? ' am' : ' pm'); };
+    const PL = { piece: 'pieces', scoop: 'scoops', plate: 'plates', bowl: 'bowls', slice: 'slices', glass: 'glasses', 'egg white': 'egg whites', cube: 'cubes', large: 'large', medium: 'medium', small: 'small' };
+    const amtOf = (u, q) => { if (u === 'g') return r0(q) + ' g'; const w = u.replace(/^1 /, ''); const qs = Number.isInteger(q) ? String(q) : String(Math.round(q * 10) / 10);
+      return qs + ' ' + (q === 1 ? w : PL[w] || w); };
+    const macOf = (x, q) => x.per.map((v) => v * q);
+    const mline = (m) => nf(m[0]) + ' kcal · ' + r0(m[1]) + ' g P · ' + r0(m[2]) + ' g C · ' + r0(m[3]) + ' g F';
+
+    // ---- the week: Mon 5 - Sun 11 Oct, today is Friday
+    const WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], DT = [5, 6, 7, 8, 9, 10, 11], TODAY = 4;
+    const ALL = { 0: 480, 1: 660, 2: 810, 3: 1020, 4: 1245 };
+    // what she logged on each day: meal index -> minute of the day
+    const AT0 = { 0: ALL, 1: ALL, 2: { 0: 485, 1: 655, 2: 800, 4: 1250 }, 3: ALL, 4: { 0: 490, 1: 665, 2: 820 } };
+    // extra foods she logged outside the plan, per day
+    const EX0 = { 0: [{ id: 'd0-chai', n: 'Masala chai', qy: '1 cup', mi: 3, at: 990, m: [90, 3, 12, 3] }],
+      1: [{ id: 'd1-chai', n: 'Masala chai', qy: '1 cup', mi: 3, at: 985, m: [90, 3, 12, 3] }, { id: 'd1-makh', n: 'Roasted makhana', qy: '30 g', mi: 3, at: 1035, m: [105, 3, 23, 0] }],
+      3: [{ id: 'd3-chana', n: 'Roasted chana', qy: '45 g', mi: 3, at: 1010, m: [165, 9, 27, 3] }],
+      4: [{ id: 'd4-tea', n: 'Green tea, no sugar', qy: '1 cup', mi: 0, at: 500, m: [0, 0, 0, 0] }] };
+    const YEST = [{ id: 'd4-chai', n: 'Masala chai', qy: '1 cup', mi: 3, at: 990, m: [90, 3, 12, 3] }, { id: 'd4-makh', n: 'Roasted makhana', qy: '30 g', mi: 3, at: 1035, m: [105, 3, 23, 0] }];
+
+    const atAll = st.at || AT0, exAll = st.ex || EX0, skAll = st.sk || {};
+    const day = st.day == null ? TODAY : st.day;
+    const isToday = day === TODAY, past = day < TODAY, future = day > TODAY;
+    const at = atAll[day] || {}, ex = exAll[day] || [], skipped = skAll[day] || [];
+    const SW = st.sw || {}, PQ = st.pq || {};   // swaps and portions apply to today only
+
+    // a food in a meal: the planned one or (today) its swap, with the portion set for today
+    const foodAt = (d, mi, fi) => { const b = PLAN[mi].f[fi], s = d === TODAY ? SW[mi + ':' + fi] : null, x = s != null ? b.alts[s] : b;
+      const key = mi + ':' + fi + ':' + (s == null ? 'p' : s); const q = d === TODAY && PQ[key] != null ? PQ[key] : x.q; return { b, x, s, q, key }; };
+    const mealMacD = (d, mi, pq) => PLAN[mi].f.reduce((a, _, fi) => { const o = foodAt(d, mi, fi); const q = pq && pq[o.key] != null ? pq[o.key] : o.q; return add4(a, macOf(o.x, q)); }, [0, 0, 0, 0]);
+    const mealMac = (mi, pq) => mealMacD(day, mi, pq);
+    const dayTot = (d) => { const a = atAll[d] || {}, e = exAll[d] || [];
+      return e.reduce((s, x) => add4(s, x.m), Object.keys(a).map(Number).reduce((s, i) => add4(s, mealMacD(d, Number(i))), [0, 0, 0, 0])); };
+    const TOTS = WD.map((_, i) => dayTot(i));
+    const tot = TOTS[day];
+    const PLANTOT = PLAN.reduce((a, _, i) => add4(a, mealMacD(day, i)), [0, 0, 0, 0]);
+    const dlabel = (d) => WD[d] + ', ' + DT[d] + ' Oct';
+    const setAt = (n, extra) => this.setState(Object.assign({ at: Object.assign({}, atAll, { [day]: n }), mn: null }, extra));
+    const setEx = (n, extra) => this.setState(Object.assign({ ex: Object.assign({}, exAll, { [day]: n }) }, extra));
+    const setSk = (n, extra) => this.setState(Object.assign({ sk: Object.assign({}, skAll, { [day]: n }), mn: null }, extra));
+
+    // ---- the day strip: changes the meals and the food log below, nothing else
+    const eaten = Object.keys(at).map(Number);
+    const nDone = eaten.length, nAll = PLAN.length, nLeft = nAll - nDone - skipped.length;
+    const ahead = PLAN.reduce((a, _, i) => (at[i] == null && !skipped.includes(i)) ? add4(a, mealMac(i)) : a, [0, 0, 0, 0]);
+    const strip = WD.map((w, i) => { const done = Object.keys(atAll[i] || {}).length === nAll;
+      return { wd: i === TODAY ? 'Today' : w, n: String(DT[i]), done, cls: (i === day ? 'today' : '') + (done ? ' done' : '') + (i > TODAY ? ' rest' : ''),
+        pick: () => this.setState({ day: i, mn: null, en: null, swp: null, po: null, pd: null }) }; });
+
+    // ---- calories for the day she is looking at: what is done, what is still ahead
+    const left = TG[0] - tot[0], over = left < 0, C = 2 * Math.PI * 34;
+    const shown = future ? PLANTOT : tot;
+    const ring = { cls: future ? 'nv-zero' : over ? 'nv-over' : tot[0] <= 0 ? 'nv-zero' : '',
+      dash: (Math.min(1, shown[0] / TG[0]) * C).toFixed(1) + ' ' + C.toFixed(1),
+      left: nf(future ? PLANTOT[0] : Math.abs(isToday ? left : tot[0])),
+      lbl: future ? 'kcal planned' : isToday ? (over ? 'kcal over' : 'kcal left') : 'kcal eaten',
+      head: isToday ? 'Today’s calories' : future ? WD[day] + '’s plan' : WD[day] + '’s calories',
+      sub: dlabel(day) + (isToday ? ' · today' : '') + ' · ' + nf(shown[0]) + ' of ' + nf(TG[0]) + ' kcal',
+      done: future ? nAll + ' meals planned · ' + nf(PLANTOT[0]) + ' kcal for the day'
+        : isToday ? nDone + ' of ' + nAll + ' meals logged' + (skipped.length ? ' · ' + skipped.length + ' skipped' : '') + (nLeft > 0 ? ' · ' + nLeft + (nLeft === 1 ? ' meal' : ' meals') + ' still ahead, ' + nf(ahead[0]) + ' kcal' : ' · all done for today')
+        : nDone + ' of ' + nAll + ' meals logged' + (nAll - nDone ? ' · ' + (nAll - nDone) + ' missed' : ''),
+      mac: [['Protein', 'p'], ['Carbs', 'c'], ['Fat', 'f']].map(([n, c], k) => ({ n, c, v: r0(shown[k + 1]) + ' / ' + TG[k + 1] + ' g', p: Math.min(100, Math.round(shown[k + 1] / TG[k + 1] * 100)) + '%' })),
+      open: () => this.setState({ calO: true }) };
+    const cal = { head: ring.head, rows: (future
+      ? [['Planned', nf(PLANTOT[0]) + ' kcal'], ['Protein', r0(PLANTOT[1]) + ' / ' + TG[1] + ' g'], ['Carbs', r0(PLANTOT[2]) + ' / ' + TG[2] + ' g'], ['Fat', r0(PLANTOT[3]) + ' / ' + TG[3] + ' g']]
+      : [['Eaten', nf(tot[0]) + ' kcal'], [isToday ? (over ? 'Over' : 'Left') : 'Against target', nf(Math.abs(left)) + ' kcal' + (isToday ? '' : over ? ' over' : ' under')], ['Still ahead', isToday ? nf(ahead[0]) + ' kcal' : '—'], ['Protein', r0(tot[1]) + ' / ' + TG[1] + ' g'], ['Carbs', r0(tot[2]) + ' / ' + TG[2] + ' g'], ['Fat', r0(tot[3]) + ' / ' + TG[3] + ' g']]).map(([l, v]) => ({ l, v })) };
+
+    // ---- this week: does NOT follow the day strip, it keeps its own selection
+    const wk = TOTS.map((t) => t[0] > 0 ? [r0(t[0]), r0(t[1])] : null);
+    const logged = wk.filter((d) => d && d[0] > 0), top = Math.max(TG[0], ...logged.map((d) => d[0])) * 1.08;
+    const wsel = st.wsel == null ? TODAY : st.wsel, ws = wk[wsel];
+    const week = { tl: Math.round(TG[0] / top * 100) + '%',
+      bars: wk.map((d, i) => ({ l: WD[i][0], h: d ? Math.max(4, Math.round(d[0] / top * 100)) + '%' : '0%',
+        cls: (i === wsel ? 'on' : '') + (i === TODAY ? ' today' : '') + (!d ? ' none' : '') + (d && d[0] > TG[0] * 1.03 ? ' hi' : ''),
+        pick: () => this.setState({ wsel: i }) })),
+      sel: dlabel(wsel) + (wsel === TODAY ? ' · today' : ''),
+      selV: ws && ws[0] > 0 ? nf(ws[0]) + ' kcal · ' + ws[1] + ' g protein' : wsel === TODAY ? 'Nothing logged yet today' : 'Not logged yet',
+      avg: logged.length ? 'Average ' + nf(logged.reduce((a, d) => a + d[0], 0) / logged.length) + ' kcal · ' + r0(logged.reduce((a, d) => a + d[1], 0) / logged.length) + ' g protein on ' + logged.length + ' logged days' : 'Nothing logged this week yet' };
+
+    // ---- water: the whole day's habit, so it does not follow the day strip either
+    const ml = st.ml == null ? 1500 : st.ml, GOAL = 3000, fmtL = (x) => (x / 1000).toFixed(x % 1000 ? (x % 500 ? 2 : 1) : 0).replace(/\.0+$/, '') + ' L';
+    const setWater = (d) => { if (d < 0 && ml === 0) return toast('Nothing to remove', 'No water logged yet', 'info');
+      const now = ml + d, lw = GOAL - now, g = Math.ceil(lw / 250);
+      if (d > 0 && ml < GOAL && now >= GOAL) return this.setState({ ml: now, toast: { t: 'Water goal complete!', s: fmtL(now) + ' today', k: 'star' } });
+      this.setState({ ml: now, toast: lw > 0 ? { t: d > 0 ? fmtL(lw) + ' to go' : 'Removed 250 ml · ' + fmtL(now) + ' logged', s: g + (g === 1 ? ' glass' : ' glasses') + ' more', k: d > 0 ? 'water' : 'info' } : { t: fmtL(now) + ' today', s: 'Goal complete', k: 'water' } }); };
+    const gl = Math.round(ml / 250), leftG = Math.max(0, Math.ceil((GOAL - ml) / 250));
+    const wt = { sub: ml >= GOAL ? 'Goal complete · nice work' : fmtL(GOAL - ml) + ' to go · ' + leftG + (leftG === 1 ? ' glass' : ' glasses') + ' more', now: fmtL(ml), gl: gl + (gl === 1 ? ' glass' : ' glasses'),
+      plus: () => setWater(250), minus: () => setWater(-250), g: Array.from({ length: 12 }, (_, i) => ({ c: i < gl ? 'on' : '' })) };
+
+    // ---- the meals of the day she is looking at, with their foods inside
+    const eat = (i) => { const n = Object.assign({}, at, { [i]: NOW }), m = mealMac(i), all = Object.keys(n).length + skipped.filter((x) => x !== i).length === nAll, nt = add4(tot, m);
+      this.setState({ at: Object.assign({}, atAll, { [day]: n }), sk: Object.assign({}, skAll, { [day]: skipped.filter((x) => x !== i) }), mn: null,
+        toast: all ? { t: 'All meals logged for today', s: nf(nt[0]) + ' kcal' + (nt[0] > TG[0] ? ' · ' + nf(nt[0] - TG[0]) + ' kcal over' : '') + ' · ' + r0(nt[1]) + ' g protein', k: 'star', prev: { at: atAll, sk: skAll } }
+          : { t: PLAN[i].n + ' logged', s: nf(m[0]) + ' kcal · ' + (TG[0] - nt[0] >= 0 ? nf(TG[0] - nt[0]) + ' kcal left' : nf(nt[0] - TG[0]) + ' kcal over'), k: 'ok', prev: { at: atAll, sk: skAll } } }); };
+    const uneat = (i) => { const n = Object.assign({}, at); delete n[i];
+      setAt(n, { en: null, toast: { t: PLAN[i].n + ' un-logged', s: nf(mealMac(i)[0]) + ' kcal removed from ' + (isToday ? 'today' : WD[day]), k: 'del', prev: { at: atAll } } }); };
+    const nxt = PLAN.findIndex((_, i) => at[i] == null && !skipped.includes(i));
+    const meals = PLAN.map((m, i) => { const mac = mealMac(i), e = at[i] != null, sk = skipped.includes(i), isNext = isToday && i === nxt;
+      const pill = e ? 'Logged' : sk ? 'Skipped' : future ? 'Planned' : past ? 'Missed' : isNext ? 'Next' : 'To log';
+      return { n: m.n, t: m.t, line: sk ? 'Skipped · not counted today' : e ? 'Logged ' + tm(at[i]) + ' · ' + mline(mac) : mline(mac),
+        pill, pc: { Logged: 'green', Skipped: 'amber', Missed: 'amber', Next: 'blue', Planned: '', 'To log': '' }[pill],
+        cls: (e ? 'on' : '') + (isNext ? ' nx' : '') + (sk || (past && !e) ? ' sk' : ''),
+        f: m.f.map((_, fi) => { const o = foodAt(day, i, fi); return { n: o.x.n, amt: amtOf(o.x.u, o.q), k: r0(o.x.per[0] * o.q), sw: o.s != null, from: o.b.n,
+          canSw: isToday && !e && !sk && o.b.alts.length > 0, swap: () => openSwap(i, fi) }; }),
+        today: isToday, open: isToday && !e && !sk, eaten: isToday && e, skipped: sk,
+        eatCls: isNext ? 'pri' : 'dark',
+        eat: () => eat(i), undo: () => uneat(i), unskip: () => eat(i), edit: () => this.setState({ po: i, pd: null, mn: null }), menu: () => this.setState({ mn: i }) }; });
+
+    // ---- swap a food (today only), same sheet as the Meal plan screen
+    const openSwap = (mi, fi) => { const s = SW[mi + ':' + fi]; this.setState({ swp: [mi, fi], spk: s == null ? -1 : s, mn: null }); };
+    const swp = st.swp;
+    let sw = {};
+    if (swp) { const [mi, fi] = swp, b = PLAN[mi].f[fi], cur = SW[mi + ':' + fi], pk = st.spk == null ? -1 : st.spk;
+      const bm = macOf(b, b.q);
+      const opts = [{ x: b, idx: -1, m: 0 }].concat(b.alts.map((a, j) => ({ x: a, idx: j, m: a.m })));
+      const sws = PLAN[mi].f.map((f, j) => [f, j]).filter(([f]) => f.alts.length);
+      sw = { meal: PLAN[mi].n, sub: b.n + ' · ' + amtOf(b.u, b.q) + ' · ' + r0(bm[0]) + ' kcal · ' + r0(bm[1]) + ' g P', many: sws.length > 1,
+        foods: sws.map(([f, j]) => ({ n: f.n, cls: j === fi ? 'on' : '', pick: () => openSwap(mi, j) })),
+        opts: opts.map((o) => { const mm = macOf(o.x, o.x.q); return { n: o.x.n, s: amtOf(o.x.u, o.x.q) + ' · ' + r0(mm[0]) + ' kcal · ' + r0(mm[1]) + ' g P', plan: o.idx === -1, hasM: o.idx >= 0, m: o.m,
+          cls: o.idx === pk ? 'on' : '', pick: () => this.setState({ spk: o.idx }) }; }),
+        btnCls: pk === (cur == null ? -1 : cur) ? 'dis' : '', btn: pk === -1 && cur != null ? 'Back to ' + b.n : 'Swap',
+        go: () => { if (pk === (cur == null ? -1 : cur)) return; const n = Object.assign({}, SW); const a = pk >= 0 ? b.alts[pk] : null; const am = a ? macOf(a, a.q) : null;
+          if (pk < 0) delete n[mi + ':' + fi]; else n[mi + ':' + fi] = pk;
+          this.setState({ sw: n, swp: null, toast: a ? { t: 'Swapped: ' + b.n + ' → ' + a.n, s: amtOf(a.u, a.q) + ' · ' + r0(am[0]) + ' kcal · today only', k: 'ok', prev: { sw: SW } }
+            : { t: b.n + ' is back in your ' + PLAN[mi].n, s: 'Swap removed', k: 'info', prev: { sw: SW } } }); } }; }
+
+    // ---- edit portions (draft until Save), same sheet as the Meal plan screen
+    let po = {};
+    if (st.po != null) { const mi = st.po, pd = st.pd || {}, plan = mealMac(mi), now = mealMac(mi, pd);
+      po = { meal: PLAN[mi].n, sub: PLAN[mi].t + ' · ' + nf(plan[0]) + ' kcal now', tot: mline(now),
+        diff: Math.round(now[0] - plan[0]) === 0 ? 'Same as now' : (now[0] > plan[0] ? '+' : '−') + Math.abs(Math.round(now[0] - plan[0])) + ' kcal',
+        f: PLAN[mi].f.map((_, fi) => { const o = foodAt(day, mi, fi), q = pd[o.key] != null ? pd[o.key] : o.q, st2 = o.x.u === 'g' ? 10 : (o.x.step || 1);
+          const set = (d) => this.setState({ pd: Object.assign({}, pd, { [o.key]: Math.max(st2, Math.round((q + d * st2) * 10) / 10) }) });
+          return { n: o.x.n, amt: amtOf(o.x.u, q), k: r0(o.x.per[0] * q), p: r0(o.x.per[1] * q), minus: () => set(-1), plus: () => set(1) }; }),
+        save: () => this.setState({ po: null, pd: null, pq: Object.assign({}, PQ, pd), toast: { t: PLAN[mi].n + ' portions saved', s: 'Now ' + nf(now[0]) + ' kcal · ' + r0(now[1]) + ' g protein', k: 'ok', prev: { pq: PQ } } }) }; }
+
+    // ---- the meal menu behind the ⋯ button, same four items as the Meal plan screen
+    let mn = {};
+    if (st.mn != null) { const i = st.mn, mac = mealMac(i);
+      mn = { title: PLAN[i].n + ' · ' + PLAN[i].t, sub: nf(mac[0]) + ' kcal planned', canSw: PLAN[i].f.some((f) => f.alts.length), notSk: !skipped.includes(i),
+        swap: () => openSwap(i, PLAN[i].f.findIndex((f) => f.alts.length)), edit: () => this.setState({ mn: null, po: i, pd: null }),
+        skip: () => setSk(skipped.concat([i]), { toast: { t: PLAN[i].n + ' skipped', s: 'Try to get your protein in the next meal', k: 'warn', prev: { sk: skAll } } }) }; }
+
+    // ---- the food log of that same day, every row opens its details
+    const rows = eaten.map((i) => ({ k: at[i], time: tm(at[i]), t: PLAN[i].n, s: PLAN[i].f.map((_, fi) => foodAt(day, i, fi).x.n).join(', '), kc: nf(mealMac(i)[0]) + ' kcal',
+        tap: () => this.setState({ en: 'm' + i }) }))
+      .concat(ex.map((e) => ({ k: e.at, time: tm(e.at), t: e.n, s: PLAN[e.mi].n + ' · ' + e.qy, kc: nf(e.m[0]) + ' kcal', tap: () => this.setState({ en: e.id }) })))
+      .sort((a, b) => a.k - b.k);
+
+    // ---- the details sheet for one food-log row
+    let en = {};
+    const sel = st.en, mi = sel && sel[0] === 'm' ? Number(sel.slice(1)) : null, E = ex.find((e) => e.id === sel);
+    if (mi != null && at[mi] != null) { const mac = mealMac(mi);
+      en = { n: PLAN[mi].n, sub: 'Logged ' + tm(at[mi]) + ' · planned for ' + PLAN[mi].t + ' · from your plan', isMeal: true, meal: PLAN[mi].n,
+        f: PLAN[mi].f.map((_, fi) => { const o = foodAt(day, mi, fi); return { n: o.x.n, amt: amtOf(o.x.u, o.q) + (o.s != null ? ' · swapped from ' + o.b.n : ''), k: r0(o.x.per[0] * o.q) }; }),
+        kv: [['Calories', nf(mac[0]) + ' kcal'], ['Protein', r0(mac[1]) + ' g'], ['Carbs', r0(mac[2]) + ' g'], ['Fat', r0(mac[3]) + ' g'], ['Share of today', Math.round(mac[0] / TG[0] * 100) + '% of 1,650 kcal']].map(([l, v]) => ({ l, v })),
+        canEdit: isToday, edit: () => this.setState({ en: null, po: mi, pd: null }), uneat: () => uneat(mi) }; }
+    else if (E) { en = { n: E.n, sub: 'Logged ' + tm(E.at) + ' · ' + PLAN[E.mi].n + ' · outside the plan', isOff: true, meal: PLAN[E.mi].n,
+        f: [{ n: E.n, amt: E.qy, k: r0(E.m[0]) }],
+        kv: [['Calories', nf(E.m[0]) + ' kcal'], ['Protein', r0(E.m[1]) + ' g'], ['Carbs', r0(E.m[2]) + ' g'], ['Fat', r0(E.m[3]) + ' g'], ['Share of today', Math.round(E.m[0] / TG[0] * 100) + '% of 1,650 kcal']].map(([l, v]) => ({ l, v })),
+        canDel: isToday, del: () => setEx(ex.filter((e) => e.id !== E.id), { en: null, toast: { t: 'Entry deleted', s: E.n + ' · ' + nf(E.m[0]) + ' kcal', k: 'del', prev: { ex: exAll } } }) }; }
+
+    const copyY = () => { const add = YEST.filter((y) => !ex.some((e) => e.id === y.id));
+      if (!add.length) return toast('Nothing to copy', 'Yesterday’s extra foods are already in today’s log', 'info');
+      setEx(ex.concat(add), { tab: 'log', toast: { t: 'Copied ' + add.length + (add.length === 1 ? ' food' : ' foods') + ' from yesterday', s: add.map((y) => y.n).join(', ') + ' · ' + nf(add.reduce((a, y) => a + y.m[0], 0)) + ' kcal', k: 'ok', prev: { ex: exAll } } }); };
+    const tab = st.tab || 'plan';
+    const tabs = [['plan', 'My plan'], ['log', 'Food log']].map(([id, n]) => ({ n: id === 'log' ? n + ' · ' + rows.length : n, cls: tab === id ? 'on' : '', pick: () => this.setState({ tab: id }) }));
+
+    return {
+      stop: (e) => { if (e && e.stopPropagation) e.stopPropagation(); },
+      hasToast: !!st.toast, toast: st.toast ? (() => { const k = { '': 'info', blue: 'water' }[st.toast.k || ''] || st.toast.k; return { t: st.toast.t, s: st.toast.s || '', k, ['i_' + k]: true,
+        undo: st.toast.prev ? () => this.setState(Object.assign({ toast: null }, st.toast.prev)) : null, close: () => this.setState({ toast: null }) }; })() : {},
+
+      strip, ring, cal, week, wt, meals, mn, sw, po, rows, en, tabs, copyY,
+      isPlan: tab === 'plan', isLog: tab === 'log', noRows: rows.length === 0,
+      isToday, notToday: !isToday, future, dayName: dlabel(day),
+      calO: !!st.calO, closeCal: () => this.setState({ calO: false }),
+      mnO: st.mn != null, closeMn: () => this.setState({ mn: null }),
+      swO: !!st.swp, closeSwap: () => this.setState({ swp: null }),
+      poO: st.po != null, closePort: () => this.setState({ po: null, pd: null }),
+      enO: !!(en && en.n), closeEn: () => this.setState({ en: null }),
+    };
+  }
+}
+</script>
+</body>
+</html>

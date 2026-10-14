@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Calendar (phone)</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="twv.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1D4ED8}a:hover{color:#1E3A8A}
+</style>
+</helmet>
+<div class="app mob mob-Calendar {{sideCls}}" style="font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #171717; background: #FFFFFF">
+
+
+<div class="ca-sb"><b>5:40</b><span class="ca-sbi"><svg class="i" viewBox="0 0 24 24"><path d="M2.5 9a14 14 0 0 1 19 0M5.5 12.5a9.5 9.5 0 0 1 13 0M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19" r=".8"/></svg><svg class="i" viewBox="0 0 24 24"><rect x="3" y="7.5" width="16" height="9" rx="2.5"/><rect x="5" y="9.5" width="9" height="5" rx="1" fill="currentColor" stroke="none"/><path d="M21 11v2"/></svg></span></div>
+<main class="main">
+<div class="wrap">
+<div class="top">
+<div style="display: flex; flex-direction: column; gap: 4px"><h1 class="h1">Calendar</h1><p class="sub">{{sub}}</p></div>
+<div class="acts"><button class="btn out" onClick="{{openAv}}"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12h4"/></svg>Availability</button><button class="btn pri" onClick="{{openNew}}"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New session</button></div>
+</div>
+<div class="stats"><sc-for list="{{stats}}" as="s" hint-placeholder-count="4"><div class="stat"><div class="lbl"><span class="ic"><sc-if value="{{s.cal}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="15" rx="2"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></svg></sc-if><sc-if value="{{s.chk}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></svg></sc-if><sc-if value="{{s.call}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M5 4.5h3.5l1.5 4-2 1.5a10 10 0 0 0 6 6l1.5-2 4 1.5V19a1.5 1.5 0 0 1-1.5 1.5A15.5 15.5 0 0 1 3.5 6 1.5 1.5 0 0 1 5 4.5z"/></svg></sc-if><sc-if value="{{s.user}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20.5c.8-4 4-6 8-6s7.2 2 8 6"/></svg></sc-if></span>{{s.label}}</div><div class="val">{{s.val}}</div><div class="delta">{{s.d}}</div></div></sc-for></div>
+<div class="cal-bar"><div class="cal-nav"><button class="ibtn" aria-label="Previous" data-tip="Previous" onClick="{{prev}}"><svg class="i" viewBox="0 0 24 24"><path d="m14.5 6-6 6 6 6"/></svg></button><button class="btn out" style="height: 32px" onClick="{{toToday}}">Today</button><button class="ibtn" aria-label="Next" data-tip="Next" onClick="{{next}}"><svg class="i" viewBox="0 0 24 24"><path d="m9.5 6 6 6-6 6"/></svg></button><b class="cal-range">{{range}}</b></div><div class="cal-tools"><div class="fm-wrap"><button class="btn out" onClick="{{toggleTr}}"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20.5c.8-4 4-6 8-6s7.2 2 8 6"/></svg>{{trLabel}}<svg class="i" viewBox="0 0 24 24" style="width: 14px; height: 14px"><path d="m6 9 6 6 6-6"/></svg></button><sc-if value="{{tro}}" hint-placeholder-val="{{false}}"><div class="menu row-menu cal-trmenu" onClick="{{stop}}"><div class="mhead">Show sessions of</div><sc-for list="{{trOpts}}" as="o" hint-placeholder-count="8"><div class="mi {{o.cls}}" onClick="{{o.pick}}">{{o.label}}<span class="end">{{o.n}}</span><span class="tk"><sc-if value="{{o.on}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></svg></sc-if></span></div></sc-for></div></sc-if></div><div class="tabs sm"><sc-for list="{{views}}" as="t" hint-placeholder-count="2"><sc-if value="{{t.on}}" hint-placeholder-val="{{false}}"><span class="tab on">{{t.label}}</span></sc-if><sc-if value="{{t.off}}" hint-placeholder-val="{{true}}"><span class="tab" onClick="{{t.pick}}">{{t.label}}</span></sc-if></sc-for></div></div></div>
+<div class="mcal-strip"><sc-for list="{{strip}}" as="d" hint-placeholder-count="7"><div class="mcal-sd {{d.cls}}" onClick="{{d.pick}}"><span>{{d.wd}}</span><b>{{d.n}}</b><i></i></div></sc-for></div><div class="cal-legend"><sc-for list="{{kinds}}" as="k" hint-placeholder-count="4"><span class="cal-lg {{k.c}}"><i></i>{{k.label}}<span>{{k.min}} min</span></span></sc-for><span class="cal-lg off"><i></i>Outside working hours</span><span class="cal-lg done"><i></i>Done</span></div>
+<div class="card cal-card"><div class="cal-head" style="grid-template-columns: 56px repeat({{cols}}, minmax(0, 1fr))"><span></span><sc-for list="{{days}}" as="d" hint-placeholder-count="7"><div class="cal-dh {{d.cls}}" onClick="{{d.open}}"><span>{{d.wd}}</span><b>{{d.n}}</b><em>{{d.cnt}}</em></div></sc-for></div><div class="cal-body" style="grid-template-columns: 56px repeat({{cols}}, minmax(0, 1fr))"><div class="cal-times"><sc-for list="{{hours}}" as="h" hint-placeholder-count="16"><span>{{h}}</span></sc-for></div><sc-for list="{{days}}" as="d" hint-placeholder-count="7"><div class="cal-col {{d.cls}}"><sc-if value="{{d.offTop}}" hint-placeholder-val="{{false}}"><div class="cal-off" style="top: 0; height: {{d.offTop}}"></div></sc-if><sc-if value="{{d.offBot}}" hint-placeholder-val="{{false}}"><div class="cal-off" style="bottom: 0; height: {{d.offBot}}"></div></sc-if><sc-if value="{{d.dayOff}}" hint-placeholder-val="{{false}}"><div class="cal-off full"><span>Day off</span></div></sc-if><sc-for list="{{d.blocks}}" as="b" hint-placeholder-count="2"><div class="cal-b {{b.c}}" style="top: {{b.top}}; height: {{b.h}}; left: {{b.l}}; width: {{b.w}}" data-tip="{{b.tip}}" onClick="{{b.open}}"><div class="cal-bi"><b>{{b.client}}</b><span class="cal-bs">{{b.sub}}</span></div></div></sc-for><sc-if value="{{d.now}}" hint-placeholder-val="{{false}}"><div class="cal-now" style="top: {{nowTop}}"><i></i></div></sc-if></div></sc-for></div><sc-if value="{{empty}}" hint-placeholder-val="{{false}}"><div class="cal-empty"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="15" rx="2"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></svg><b>No sessions this week</b><span>Use New session to book one.</span></div></sc-if></div>
+</div>
+<sc-if value="{{so}}" hint-placeholder-val="{{false}}"><div class="modal-back" onClick="{{closeS}}"><div class="modal cal-det" onClick="{{stop}}"><div class="cal-dhd {{s.c}}"><span class="cal-kind {{s.c}}">{{s.kind}}</span><span class="badge plain {{s.bc}}">{{s.status}}</span><button class="ibtn sm ghost" style="margin-left: auto" aria-label="Close" data-tip="Close" onClick="{{closeS}}"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div><div class="modal-b" style="padding-top: 6px"><div class="cal-dnr"><h3 class="cal-dname">{{s.client}}</h3><a class="btn text" style="font-size: 13px" href="ClientProfileMobile.dc.html">Open profile<svg class="i" viewBox="0 0 24 24"><path d="m9.5 6 6 6-6 6"/></svg></a></div><div class="cal-dwhen">{{s.when}}</div><dl class="cp-kv c2 cal-kv"><div><dt>Trainer</dt><dd>{{s.trainer}}</dd></div><div><dt>Length</dt><dd>{{s.min}} min</dd></div><div><dt>{{s.whereL}}</dt><dd>{{s.where}}</dd></div><div><dt>Booked by</dt><dd>{{s.by}}</dd></div></dl><sc-if value="{{s.note}}" hint-placeholder-val="{{true}}"><div class="cal-note"><svg class="i" viewBox="0 0 24 24"><path d="M5 4.5h14v15H5z"/><path d="M8.5 9h7M8.5 12.5h7M8.5 16h4"/></svg><span>{{s.note}}</span></div></sc-if></div><div class="modal-f cal-dfoot"><button class="btn text danger" onClick="{{askCancel}}"><svg class="i" viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13"/></svg>Cancel session</button><span style="flex: 1"></span><button class="btn out" onClick="{{openMove}}"><svg class="i" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M8 7l4-4 4 4M8 17l4 4 4-4"/></svg>Reschedule</button><sc-if value="{{s.notDone}}" hint-placeholder-val="{{true}}"><button class="btn pri" onClick="{{s.toggle}}"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></svg>Mark as done</button></sc-if><sc-if value="{{s.done}}" hint-placeholder-val="{{false}}"><button class="btn out" onClick="{{s.toggle}}">Mark as not done</button></sc-if></div></div></div></sc-if>
+<sc-if value="{{co}}" hint-placeholder-val="{{false}}"><div class="modal-back" onClick="{{closeCancel}}"><div class="modal" onClick="{{stop}}"><div class="modal-h"><span class="modal-ic" style="background: var(--bad-bg); color: var(--bad-text)"><svg class="i" viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13"/></svg></span><div class="grow"><h3>Cancel this session?</h3><p>{{s.client}}, {{s.when}}. It is removed from the calendar.</p></div></div><div class="modal-b"><div class="dr-sw"><span class="cp-tog on"><i></i></span><div class="grow"><div class="t">Tell the client</div><div class="s">Push notice and WhatsApp with the time that was cancelled</div></div></div></div><div class="modal-f"><button class="btn out" onClick="{{closeCancel}}">Keep it</button><button class="btn danger" onClick="{{doCancel}}">Cancel session</button></div></div></div></sc-if>
+<sc-if value="{{nfo}}" hint-placeholder-val="{{false}}"><div class="drawer-back" onClick="{{closeNew}}"><aside class="drawer" onClick="{{stop}}" aria-label="{{f.title}}"><div class="drawer-h"><span class="modal-ic"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="15" rx="2"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></svg></span><div class="grow"><h3>{{f.title}}</h3><p>{{f.sub}}</p></div><button class="ibtn sm ghost" aria-label="Close" data-tip="Close" onClick="{{closeNew}}"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div><div class="drawer-b"><section class="dr-sec"><div class="dr-st"><div class="grow"><h4>Who</h4></div></div><div class="cp-g2"><div class="field"><label>Client<span class="req">*</span></label><div class="fm-wrap cal-sw full"><div class="select" style="width: 100%; min-width: 0; cursor: pointer" onClick="{{f.cl.toggle}}">{{f.cl.label}}<svg class="i" viewBox="0 0 24 24" style="margin-left: auto"><path d="m6 9 6 6 6-6"/></svg></div><sc-if value="{{f.cl.open}}" hint-placeholder-val="{{false}}"><div class="menu row-menu cal-smenu" onClick="{{stop}}"><sc-for list="{{f.cl.opts}}" as="o" hint-placeholder-count="6"><div class="mi {{o.cls}}" onClick="{{o.pick}}">{{o.label}}<span class="end">{{o.end}}</span><span class="tk"><sc-if value="{{o.on}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></svg></sc-if></span></div></sc-for></div></sc-if></div><span class="hint">Shows clients of the picked trainer first</span></div><div class="field"><label>Trainer<span class="req">*</span></label><div class="fm-wrap cal-sw full"><div class="select" style="width: 100%; min-width: 0; cursor: pointer" onClick="{{f.tr.toggle}}">{{f.tr.label}}<svg class="i" viewBox="0 0 24 24" style="margin-left: auto"><path d="m6 9 6 6 6-6"/></svg></div><sc-if value="{{f.tr.open}}" hint-placeholder-val="{{false}}"><div class="menu row-menu cal-smenu" onClick="{{stop}}"><sc-for list="{{f.tr.opts}}" as="o" hint-placeholder-count="6"><div class="mi {{o.cls}}" onClick="{{o.pick}}">{{o.label}}<span class="end">{{o.end}}</span><span class="tk"><sc-if value="{{o.on}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></svg></sc-if></span></div></sc-for></div></sc-if></div><span class="hint">Their trainer is picked for you</span></div></div></section><section class="dr-sec"><div class="dr-st"><div class="grow"><h4>Type</h4></div></div><div class="cal-types"><sc-for list="{{f.kinds}}" as="k" hint-placeholder-count="4"><div class="cal-type {{k.c}} {{k.cls}}" onClick="{{k.pick}}"><i></i><b>{{k.label}}</b><span>{{k.min}} min</span></div></sc-for></div></section><section class="dr-sec"><div class="dr-st"><div class="grow"><h4>When</h4></div></div><div class="cal-dp"><button class="ibtn sm" aria-label="Week before" data-tip="Week before" onClick="{{f.wPrev}}"><svg class="i" viewBox="0 0 24 24"><path d="m14.5 6-6 6 6 6"/></svg></button><sc-for list="{{f.days}}" as="d" hint-placeholder-count="7"><div class="cal-dpd {{d.cls}}" onClick="{{d.pick}}"><span>{{d.wd}}</span><b>{{d.n}}</b></div></sc-for><button class="ibtn sm" aria-label="Week after" data-tip="Week after" onClick="{{f.wNext}}"><svg class="i" viewBox="0 0 24 24"><path d="m9.5 6 6 6-6 6"/></svg></button></div><div class="cp-g2" style="grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr)"><div class="field"><label>Starts</label><div class="cal-tp"><div class="fm-wrap cal-sw"><div class="select" style="width: 100%; min-width: 0; cursor: pointer" onClick="{{f.hr.toggle}}">{{f.hr.label}}<svg class="i" viewBox="0 0 24 24" style="margin-left: auto"><path d="m6 9 6 6 6-6"/></svg></div><sc-if value="{{f.hr.open}}" hint-placeholder-val="{{false}}"><div class="menu row-menu cal-smenu" onClick="{{stop}}"><sc-for list="{{f.hr.opts}}" as="o" hint-placeholder-count="6"><div class="mi {{o.cls}}" onClick="{{o.pick}}">{{o.label}}<span class="end">{{o.end}}</span><span class="tk"><sc-if value="{{o.on}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></svg></sc-if></span></div></sc-for></div></sc-if></div><div class="cal-mins"><sc-for list="{{f.mins}}" as="m" hint-placeholder-count="4"><span class="{{m.cls}}" onClick="{{m.pick}}">{{m.label}}</span></sc-for></div></div></div><div class="field"><label>Length</label><div class="inp">{{f.min}}<span class="ph" style="margin-left: 6px">min</span></div><span class="hint">{{f.range}}</span></div></div><sc-if value="{{f.conflict}}" hint-placeholder-val="{{false}}"><div class="cal-warn"><svg class="i" viewBox="0 0 24 24"><path d="M12 4 2.5 20h19z"/><path d="M12 10v4.5M12 17.5h.01"/></svg><div><b>{{f.conflict}}</b><span>Pick another time or another trainer.</span></div></div></sc-if><sc-if value="{{f.free}}" hint-placeholder-val="{{true}}"><div class="cal-ok"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></svg><span>{{f.free}}</span></div></sc-if></section><section class="dr-sec"><div class="dr-st"><div class="grow"><h4>Where</h4></div></div><div class="tabs sm" style="align-self: flex-start"><sc-for list="{{f.wheres}}" as="t" hint-placeholder-count="2"><sc-if value="{{t.on}}" hint-placeholder-val="{{false}}"><span class="tab on">{{t.label}}</span></sc-if><sc-if value="{{t.off}}" hint-placeholder-val="{{true}}"><span class="tab" onClick="{{t.pick}}">{{t.label}}</span></sc-if></sc-for></div><sc-if value="{{f.inPerson}}" hint-placeholder-val="{{true}}"><div class="field"><label>Place</label><div class="inp">Andheri gym floor</div><span class="hint">Where they meet</span></div></sc-if><sc-if value="{{f.onCall}}" hint-placeholder-val="{{false}}"><div class="field"><label>Call link or number</label><div class="inp"><span class="ph">meet.google.com/abc-defg-hij</span></div><span class="hint">Optional</span></div></sc-if></section><section class="dr-sec"><div class="dr-st"><div class="grow"><h4>Note</h4></div></div><div class="field"><div class="inp area"><span class="ph">e.g. Check the left shoulder first</span></div><span class="hint">Optional. The trainer sees it on the session.</span></div><div class="dr-sw"><span class="cp-tog on"><i></i></span><div class="grow"><div class="t">Tell the client</div><div class="s">Push notice and WhatsApp with the time and place</div></div></div></section></div><div class="drawer-f"><span class="dr-fnote">{{f.foot}}</span><button class="btn out" onClick="{{closeNew}}">Cancel</button><button class="btn pri {{f.btnCls}}" onClick="{{f.save}}"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></svg>{{f.btn}}</button></div></aside></div></sc-if>
+<sc-if value="{{avo}}" hint-placeholder-val="{{false}}"><div class="drawer-back" onClick="{{closeAv}}"><aside class="drawer" onClick="{{stop}}" aria-label="Availability"><div class="drawer-h"><span class="modal-ic"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12h4"/></svg></span><div class="grow"><h3>Availability</h3><p>Working hours of each trainer</p></div><button class="ibtn sm ghost" aria-label="Close" data-tip="Close" onClick="{{closeAv}}"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div><div class="drawer-b"><section class="dr-sec"><div class="dr-st"><div class="grow"><h4>Trainer</h4><p>Working hours repeat every week. The calendar shades the rest, and a session outside them shows a warning.</p></div></div><div class="fm-wrap cal-sw full"><div class="select" style="width: 100%; min-width: 0; cursor: pointer" onClick="{{av.tm.toggle}}">{{av.tm.label}}<svg class="i" viewBox="0 0 24 24" style="margin-left: auto"><path d="m6 9 6 6 6-6"/></svg></div><sc-if value="{{av.tm.open}}" hint-placeholder-val="{{false}}"><div class="menu row-menu cal-smenu" onClick="{{stop}}"><sc-for list="{{av.tm.opts}}" as="o" hint-placeholder-count="6"><div class="mi {{o.cls}}" onClick="{{o.pick}}">{{o.label}}<span class="end">{{o.end}}</span><span class="tk"><sc-if value="{{o.on}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></svg></sc-if></span></div></sc-for></div></sc-if></div></section><section class="dr-sec"><div class="dr-st"><div class="grow"><h4>Working hours, week after week</h4><p>{{av.sum}}</p></div></div><div class="cal-avl"><sc-for list="{{av.days}}" as="d" hint-placeholder-count="7"><div class="cal-av {{d.cls}}"><span class="cal-avd">{{d.day}}</span><span onClick="{{d.toggle}}" style="cursor: pointer"><sc-if value="{{d.open}}" hint-placeholder-val="{{true}}"><span class="cp-tog on"><i></i></span></sc-if><sc-if value="{{d.closed}}" hint-placeholder-val="{{false}}"><span class="cp-tog"><i></i></span></sc-if></span><sc-if value="{{d.open}}" hint-placeholder-val="{{true}}"><div class="cal-avt"><div class="select sm">{{d.from}}<svg class="i" viewBox="0 0 24 24" style="margin-left: auto"><path d="m6 9 6 6 6-6"/></svg></div><span>to</span><div class="select sm">{{d.to}}<svg class="i" viewBox="0 0 24 24" style="margin-left: auto"><path d="m6 9 6 6 6-6"/></svg></div></div></sc-if><sc-if value="{{d.closed}}" hint-placeholder-val="{{false}}"><span class="cal-avoff">Day off</span></sc-if></div></sc-for></div></section></div><div class="drawer-f"><span class="dr-fnote">Booked sessions stay as they are</span><button class="btn out" onClick="{{closeAv}}">Cancel</button><button class="btn pri" onClick="{{closeAv}}"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></svg>Save availability</button></div></aside></div></sc-if>
+</main>
+<nav class="mb-nav"><a class="mb-tab" href="AdminDashboardMobile.dc.html"><span class="mb-ti"><svg class="i" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20h-5v-6H9v6H4z"/></svg></span><span>Home</span></a><a class="mb-tab" href="ClientsMobile.dc.html"><span class="mb-ti"><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .7 3.2 2.5 3.5 5.2"/></svg></span><span>Clients</span></a><a class="mb-tab" href="ApprovalsMobile.dc.html"><span class="mb-ti"><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5 1.6 0 3 .4 4.1 1.2"/><path d="m15.5 18 2 2 4-4.5"/></svg><i class="mb-badge">5</i></span><span>Approvals</span></a><a class="mb-tab on" href="CalendarMobile.dc.html"><span class="mb-ti"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></span><span>Calendar</span></a><a class="mb-tab" href="AdminMoreMobile.dc.html"><span class="mb-ti"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span><span>More</span></a></nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { mini: false }; }
+  renderVals() {
+    const st = this.state;
+
+    const am = st.am || 'active';
+    const add = { modes: [['active', 'Active now'], ['appr', 'Send to Approvals']].map(([id, t]) => ({ t, on: am === id, off: am !== id, pick: () => this.setState({ am: id }) })),
+      modeS: am === 'active' ? 'She can log in as soon as she opens the link.' : 'She shows up in Approvals first, like people who sign up with a link.',
+      btn: am === 'active' ? 'Add client' : 'Add and send to Approvals' };
+    const FV = st.fv || {};
+    const mkF = (G) => G.map(([id, label, opts]) => { const cur = FV[id] || opts[0];
+      return { label, val: cur, opts: opts.map((o) => ({ label: o, on: o === cur, cls: o === cur ? 'sel' : '', pick: () => this.setState({ fv: Object.assign({}, FV, { [id]: o }), fo: false }) })) }; });
+    const fOn = (id, first) => FV[id] && FV[id] !== first;
+    const LK0 = [['AMAN-4821', '', 'Aman Verma', 'Made 9 Oct', '30 days · till 8 Nov', 'till 8 Nov', 'No limit', 'Quarterly plan', 6, 1, true, 'on'],
+      ['VIMAL-0007', 'Website', 'Vimal', 'Made 1 Jan', 'No end date', 'no end date', 'No limit', 'Quarterly plan', 41, 1, true, 'on'],
+      ['NEHA-3307', 'Instagram · Sept', 'Neha Joshi', 'Made 20 Sep', '30 days · till 20 Oct', 'till 20 Oct', '20 people · 3 used', 'Monthly plan', 3, 1, true, 'on'],
+      ['SAHIL-1190', '', 'Sahil Kapoor', 'Made 15 Sep', '30 days · till 15 Oct', 'till 15 Oct', 'No limit', 'Monthly plan', 9, 1, true, 'on'],
+      ['MEERA-2210', 'Yoga batch', 'Meera Shah', 'Made 1 Oct', '7 days · till 8 Oct', 'ended 8 Oct', '10 people · 4 used', 'Quarterly plan', 4, 1, true, 'end']];
+    if (st.newLink) LK0.unshift(['AMAN-5530', 'Instagram · October', 'Aman Verma', 'Made today', '30 days · till 8 Nov', 'till 8 Nov', 'No limit', 'Quarterly plan', 0, 0, true, 'on']);
+    const LOFF = st.loff || {}; const LDEL = st.ldel || {};
+    const LK = LK0.filter((l) => !LDEL[l[0]]).map((l) => { const x = l.slice(); if (LOFF[x[0]] && x[11] === 'on') x[11] = 'off'; return x; });
+    const ic0 = st.ic && LK.find((l) => l[0] === st.ic) ? st.ic : LK[0][0];
+    const cl = LK.find((l) => l[0] === ic0);
+    const invAppr = (st.ia || {})[ic0] !== false;
+    const iv = st.iv || 'main';
+    const STT = { on: ['On', 'b-ok'], off: ['Off', 'b-neu'], end: ['Ended', 'b-neu'] };
+    const IVT = [['main', 'Invite link', ''], ['new', 'New link', ''], ['all', 'All links', LK.length]];
+    const inv = { tabs: IVT.map(([id, t, n]) => ({ t, n, on: iv === id, off: iv !== id, pick: () => this.setState({ iv: id, ivFrom: iv, lm: null }) })),
+      sub: { main: 'Share it on WhatsApp or Instagram. People sign up and fill their own details.', new: 'For a new trainer or a campaign. The old links keep working.', all: 'Every link your team made. Open one to share it again or turn it off.' }[iv],
+      sumT: LK.filter((l) => l[11] === 'on').length + ' of ' + LK.length + ' links are on',
+      code: ic0, tr: cl[2], till: cl[4], max: cl[6], pkg: cl[7], appr: invAppr, apprOff: !invAppr,
+      isMain: iv === 'main', isAll: iv === 'all', isNew: iv === 'new',
+      openAll: () => this.setState({ iv: 'all', lm: null }), openNew: () => this.setState({ iv: 'new', ivFrom: iv, lm: null }), back: () => this.setState({ iv: st.ivFrom === 'all' ? 'all' : 'main', lm: null }),
+      create: () => this.setState({ newLink: true, ic: 'AMAN-5530', iv: 'main' }),
+      step3: invAppr ? 'She waits in Approvals. You or ' + cl[2] + ' approve her, then she can log in.' : 'She can log in straight away. ' + cl[2] + ' gets a notice.',
+      meta: (cl[11] === 'on' ? (invAppr ? 'Sign-ups wait in Approvals' : 'Sign-ups join straight away') : 'This link is ' + STT[cl[11]][0].toLowerCase()) + ' · ' + cl[8] + ' joined · ' + cl[9] + ' waiting · ' + cl[5],
+      others: (LK.length - 1) + ' other links: ' + LK.filter((l) => l[0] !== ic0).map((l) => l[2] + (l[11] !== 'on' ? ' (' + STT[l[11]][0].toLowerCase() + ')' : '')).join(', ') + '.',
+      sum: [[LK.length, 'links'], [LK.filter((l) => l[11] === 'on').length, 'on now'], [LK.reduce((a, l) => a + l[8], 0), 'people joined'], [LK.reduce((a, l) => a + l[9], 0), 'waiting now']].map(([v, k]) => ({ v, k })),
+      links: LK.map(([code, name, tr, made, till, tl, max, pkg, n, w, , stt]) => ({ code, name, b: STT[stt][0], bc: STT[stt][1], cls: (code === ic0 ? 'on' : '') + (stt !== 'on' ? ' dis' : ''),
+        s: tr + ' · ' + made + ' · ' + tl, n: n + ' joined', w: w ? w + ' waiting' : 'none waiting', mo: st.lm === code,
+        menu: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setState({ lm: st.lm === code ? null : code }); },
+        open: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setState({ ic: code, iv: 'main', lm: null }); },
+        copy: () => this.setState({ lm: null }), tog: stt === 'off' ? 'Turn on' : 'Turn off',
+        toggle: () => this.setState({ lm: null, loff: Object.assign({}, LOFF, { [code]: stt !== 'off' }) }),
+        del: () => this.setState({ lm: null, ldel: Object.assign({}, LDEL, { [code]: true }) }) })) };
+
+    const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const WDL = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const K = { session: ['1:1 session', 60, 'k-ss'], call: ['Quick call', 15, 'k-qc'], review: ['Program review', 30, 'k-rv'] };
+    // parked (Probid, 9 Oct): Body scan 20 min, k-bs. Only for gyms with a body composition machine; check-ins cover weight and photos.
+    const TR = ['Vimal', 'Aman Verma', 'Neha Joshi', 'Sahil Kapoor', 'Karan Mehta', 'Ritu Malhotra', 'Meera Shah'];
+    const CLT = { 'Riya Sharma': 'Aman Verma', 'Rohan Kapoor': 'Aman Verma', 'Kabir Mehta': 'Aman Verma', 'Dev Malhotra': 'Aman Verma', 'Aisha Sheikh': 'Meera Shah', 'Ishita Bose': 'Aman Verma', 'Sana Khan': 'Neha Joshi', 'Vikram Rao': 'Sahil Kapoor', 'Ananya Iyer': 'Ritu Malhotra', 'Arjun Nair': 'Karan Mehta', 'Pooja Nair': 'Vimal' };
+    // [id, day 0=Mon, start minute, kind, client, trainer, minutes, place ('' = on a call), note, done, booked by]
+    const BASE = [['s1', 0, 420, 'session', 'Riya Sharma', 'Aman Verma', 60, 'Andheri gym floor', 'Check the left knee before squats', 1, 'Aman Verma'],
+      ['s2', 0, 540, 'call', 'Rohan Kapoor', 'Aman Verma', 15, '', '', 1, 'Aman Verma'], ['s3', 0, 600, 'review', 'Sana Khan', 'Neha Joshi', 30, '', '', 1, 'Vimal'],
+      ['s4', 0, 1080, 'session', 'Vikram Rao', 'Sahil Kapoor', 60, 'Andheri gym floor', '', 1, 'Sahil Kapoor'],
+      ['s5', 1, 450, 'session', 'Kabir Mehta', 'Aman Verma', 60, 'Andheri gym floor', '', 1, 'Aman Verma'], ['s6', 1, 660, 'review', 'Ananya Iyer', 'Ritu Malhotra', 30, '', 'Restart plan after the pause', 1, 'Ritu Malhotra'],
+      ['s7', 1, 1110, 'session', 'Aisha Sheikh', 'Meera Shah', 60, 'Yoga room', '', 1, 'Meera Shah'],
+      ['s8', 2, 420, 'session', 'Riya Sharma', 'Aman Verma', 60, 'Andheri gym floor', '', 1, 'Aman Verma'], ['s9', 2, 435, 'session', 'Arjun Nair', 'Karan Mehta', 60, 'Andheri gym floor', '', 1, 'Karan Mehta'],
+      ['s10', 2, 900, 'call', 'Pooja Nair', 'Vimal', 15, '', 'Welcome call', 1, 'Vimal'],
+      ['s11', 3, 480, 'review', 'Dev Malhotra', 'Aman Verma', 30, '', 'New trainer, go over his program', 1, 'Vimal'], ['s12', 3, 1140, 'session', 'Vikram Rao', 'Sahil Kapoor', 60, 'Andheri gym floor', '', 0, 'Sahil Kapoor'],
+      ['s13', 4, 420, 'session', 'Kabir Mehta', 'Aman Verma', 60, 'Andheri gym floor', '', 1, 'Aman Verma'], ['s14', 4, 600, 'call', 'Riya Sharma', 'Aman Verma', 15, '', 'Week 6 check-in questions', 1, 'Aman Verma'],
+      ['s15', 4, 1140, 'session', 'Riya Sharma', 'Aman Verma', 60, 'Andheri gym floor', '', 0, 'Aman Verma'], ['s16', 4, 1215, 'call', 'Ishita Bose', 'Aman Verma', 15, '', '', 0, 'Aman Verma'],
+      ['s17', 4, 1200, 'session', 'Aisha Sheikh', 'Meera Shah', 60, 'Yoga room', '', 0, 'Meera Shah'],
+      ['s18', 5, 540, 'session', 'Rohan Kapoor', 'Aman Verma', 60, 'Andheri gym floor', '', 0, 'Aman Verma'], ['s19', 5, 600, 'review', 'Sana Khan', 'Neha Joshi', 30, '', '', 0, 'Neha Joshi'],
+      ['s20', 5, 660, 'session', 'Arjun Nair', 'Karan Mehta', 60, 'Andheri gym floor', '', 0, 'Karan Mehta']];
+    const cancelled = st.cx || [], doneT = st.dn || {}, moved = st.mv || {};
+    const WK = st.wo || 0;
+    const sessIn = (wo) => (wo === 0 ? BASE : wo === -1 ? BASE.filter((s, i) => i % 2 === 0).map((s) => s.slice(0, 9).concat([1, s[10]])) : wo === 1 ? BASE.filter((s, i) => i % 3 === 0).map((s) => s.slice(0, 9).concat([0, s[10]])) : [])
+      .map((s) => moved[s[0]] && wo === 0 ? [s[0], moved[s[0]][0], moved[s[0]][1]].concat(s.slice(3)) : s)
+      .filter((s) => wo !== 0 || !cancelled.includes(s[0]))
+      .map((s) => wo === 0 && doneT[s[0]] != null ? s.slice(0, 9).concat([doneT[s[0]], s[10]]) : s);
+    const tr = st.tr || '';
+    const ALL = sessIn(WK), SS = ALL.filter((s) => !tr || s[5] === tr);
+    const dayDate = (wo, i) => new Date(2026, 9, 5 + 7 * wo + i);
+    const d0 = dayDate(WK, 0), d6 = dayDate(WK, 6);
+    const range = d0.getMonth() === d6.getMonth() ? d0.getDate() + ' – ' + d6.getDate() + ' ' + MON[d6.getMonth()] + ' ' + d6.getFullYear()
+      : d0.getDate() + ' ' + MON[d0.getMonth()] + ' – ' + d6.getDate() + ' ' + MON[d6.getMonth()] + ' ' + d6.getFullYear();
+    const fmt = (m) => { const h = Math.floor(m / 60) % 24, mm = m % 60, h12 = h % 12 === 0 ? 12 : h % 12; return h12 + (mm ? ':' + String(mm).padStart(2, '0') : '') + ' ' + (h < 12 ? 'am' : 'pm'); };
+    const fmtR = (m, len) => { const a = fmt(m), b = fmt(m + len); return (a.slice(-2) === b.slice(-2) ? a.slice(0, -3) : a) + ' – ' + b; };
+    // availability: [open, from, to] per weekday
+    const AVD = { 'Aman Verma': [[1, 390, 1200], [1, 390, 1200], [1, 390, 1200], [1, 390, 1200], [1, 390, 1260], [1, 480, 780], [0, 0, 0]] };
+    const avOf = (t) => (st.av && st.av[t]) || AVD[t] || [[1, 420, 1260], [1, 420, 1260], [1, 420, 1260], [1, 420, 1260], [1, 420, 1260], [1, 480, 840], [0, 0, 0]];
+    const fmtL = (m) => { const h = Math.floor(m / 60) % 24; return (h % 12 === 0 ? 12 : h % 12) + ':' + String(m % 60).padStart(2, '0') + ' ' + (h < 12 ? 'am' : 'pm'); };
+    const fmtRL = (m, len) => { const a = fmtL(m), b = fmtL(m + len); return (a.slice(-2) === b.slice(-2) ? a.slice(0, -3) : a) + ' – ' + b; };
+    const HP = 60, H0 = 6, H1 = 22;
+    const px = (m) => Math.round((m - H0 * 60) / 60 * HP) + 'px';
+    const view = st.view || 'day', dayI = st.day == null ? 4 : st.day;
+    const w0 = Math.min(4, Math.max(0, dayI - 1)); const idxs = view === 'day' ? [dayI] : [w0, w0 + 1, w0 + 2];
+    const blocksOf = (i) => { const xs = SS.filter((s) => s[1] === i).sort((a, b) => a[2] - b[2]); const cols = [];
+      xs.forEach((s) => { let c = cols.findIndex((end) => end <= s[2]); if (c < 0) { c = cols.length; cols.push(0); } cols[c] = s[2] + s[6]; s.col = c; });
+      return xs.map((s) => { const grp = xs.filter((o) => o[2] < s[2] + s[6] && o[2] + o[6] > s[2]); const n = Math.max(...grp.map((o) => o.col)) + 1;
+        return { c: K[s[3]][2] + (s[9] ? ' done' : '') + (s[6] < 45 ? ' tiny' : ''), top: px(s[2]), h: Math.max(22, s[6] / 60 * HP - 3) + 'px', l: (s.col / n * 100) + '%', w: 'calc(' + (100 / n) + '% - 4px)',
+          client: s[4], sub: fmtL(s[2]) + ' · ' + (tr ? (s[7] || 'On a call') : s[5].split(' ')[0]), tip: [s[4], K[s[3]][0], fmtRL(s[2], s[6]), s[5], s[9] ? 'Done' : 'Booked'].join(' · '), done: !!s[9], open: () => this.setState({ sel: s[0] }) }; }); };
+    const isToday = (i) => WK === 0 && i === 4;
+    const days = idxs.map((i) => { const dt = dayDate(WK, i), av = tr ? avOf(tr)[i] : null, n = SS.filter((s) => s[1] === i).length;
+      return { wd: view === 'day' ? WDL[i] : WD[i], n: dt.getDate(), cnt: n ? n + (n === 1 ? ' session' : ' sessions') : '', cls: (isToday(i) ? 'today' : '') + (i > 4 ? ' wknd' : ''),
+        open: () => this.setState({ view: 'day', day: i }), blocks: blocksOf(i), now: isToday(i),
+        dayOff: !!av && !av[0], offTop: av && av[0] && av[1] > H0 * 60 ? px(av[1]) : '', offBot: av && av[0] && av[2] < H1 * 60 ? Math.round((H1 * 60 - av[2]) / 60 * HP) + 'px' : '' }; });
+    const hours = []; for (let h = H0; h < H1; h++) hours.push(fmt(h * 60));
+    const sel = ALL.find((s) => s[0] === st.sel);
+    const sv = sel ? { kind: K[sel[3]][0], c: K[sel[3]][2], client: sel[4], trainer: sel[5], min: sel[6], when: WDL[sel[1]] + ', ' + dayDate(WK, sel[1]).getDate() + ' ' + MON[dayDate(WK, sel[1]).getMonth()] + ' · ' + fmtR(sel[2], sel[6]),
+      whereL: sel[7] ? 'Place' : 'Where', where: sel[7] || 'On a call', note: sel[8], by: sel[10], done: !!sel[9], notDone: !sel[9], status: sel[9] ? 'Done' : 'Booked', bc: sel[9] ? 'b-ok' : 'b-info',
+      toggle: () => this.setState({ dn: Object.assign({}, doneT, { [sel[0]]: sel[9] ? 0 : 1 }) }) } : {};
+    // new / move session form
+    const om = st.om;
+    const mkS = (id, label, opts, cur, pick) => ({ label, open: om === id, toggle: () => this.setState({ om: om === id ? null : id }),
+      opts: opts.map(([v, l, end]) => ({ label: l, end: end || '', on: v === cur, cls: v === cur ? 'sel' : '', pick: () => this.setState(Object.assign({ om: null }, pick(v))) })) });
+    const mv = st.fm === 'move' && sel;
+    const fk = st.fk || (mv ? sel[3] : 'session'), fcl = st.fcl || (mv ? sel[4] : 'Riya Sharma'), ftr = st.ftr || (mv && fcl === sel[4] ? sel[5] : CLT[fcl]);
+    const fwo = st.fwo || 0, fday = st.fday == null ? (mv ? sel[1] : 5) : st.fday, fh = st.fh == null ? (mv ? Math.floor(sel[2] / 60) : 8) : st.fh, fmn = st.fmn == null ? (mv ? sel[2] % 60 : 0) : st.fmn;
+    const fstart = fh * 60 + fmn, flen = K[fk][1], fwhere = st.fw || (K[fk][0] === 'Quick call' || fk === 'review' ? 'call' : 'person');
+    const clash = sessIn(fwo).find((s) => s[5] === ftr && s[1] === fday && s[0] !== (mv ? sel[0] : '') && s[2] < fstart + flen && s[2] + s[6] > fstart);
+    const fav = avOf(ftr)[fday], outside = !fav[0] || fstart < fav[1] || fstart + flen > fav[2];
+    const f = { title: mv ? 'Move session' : 'New session', sub: mv ? sel[4] + ' · now ' + sv.when : 'Book a client with a trainer', client: fcl, trainer: ftr, min: flen,
+      range: fmtR(fstart, flen), btn: mv ? 'Move session' : 'Create session', btnCls: clash ? 'dis' : '',
+      foot: WDL[fday] + ', ' + dayDate(fwo, fday).getDate() + ' ' + MON[dayDate(fwo, fday).getMonth()] + ' · ' + fmtR(fstart, flen),
+      conflict: clash ? ftr.split(' ')[0] + ' already has ' + clash[4] + ' at ' + fmtR(clash[2], clash[6]) : '',
+      free: clash ? '' : outside ? '' : ftr.split(' ')[0] + ' is free at this time',
+      kinds: Object.entries(K).map(([id, [label, min, c]]) => ({ label, min, c, cls: id === fk ? 'on' : '', pick: () => this.setState({ fk: id, fw: null }) })),
+      days: WD.map((wd, i) => ({ wd, n: dayDate(fwo, i).getDate(), cls: (i === fday ? 'on' : '') + (fwo === 0 && i < 4 ? ' past' : ''), pick: () => this.setState({ fday: i }) })),
+      wPrev: () => this.setState({ fwo: fwo - 1 }), wNext: () => this.setState({ fwo: fwo + 1 }),
+      hr: mkS('hr', fmt(fh * 60), Array.from({ length: 16 }, (_, i) => [i + 6, fmt((i + 6) * 60)]), fh, (v) => ({ fh: v })),
+      cl: mkS('cl', fcl, Object.keys(CLT).sort((a, b) => (CLT[b] === ftr) - (CLT[a] === ftr)).map((c) => [c, c, CLT[c] === ftr ? 'Their client' : '']), fcl, (v) => ({ fcl: v, ftr: null })),
+      tr: mkS('tr', ftr, TR.map((t) => [t, t, t === CLT[fcl] ? 'Their trainer' : '']), ftr, (v) => ({ ftr: v })), mins: [0, 15, 30, 45].map((m) => ({ label: ':' + String(m).padStart(2, '0'), cls: m === fmn ? 'on' : '', pick: () => this.setState({ fmn: m }) })),
+      wheres: [['person', 'In person'], ['call', 'Call']].map(([id, label]) => ({ label, on: id === fwhere, off: id !== fwhere, pick: () => this.setState({ fw: id }) })),
+      inPerson: fwhere === 'person', onCall: fwhere === 'call',
+      save: () => { if (clash) return; if (mv) this.setState({ nfo: false, mv: Object.assign({}, moved, { [sel[0]]: [fday, fstart] }), sel: null }); else this.setState({ nfo: false }); } };
+    if (outside && !clash) f.conflict = 'Outside ' + ftr.split(' ')[0] + '’s working hours (' + (fav[0] ? fmtR(fav[1], fav[2] - fav[1]) : 'day off') + ')';
+    // availability
+    const avT = st.avt || 'Aman Verma', avD = avOf(avT);
+    const av = { trainer: avT, tm: mkS('avt', avT, TR.map((t) => [t, t]), avT, (v) => ({ avt: v })), sum: avD.filter((d) => d[0]).length + ' working days', days: WDL.map((day, i) => ({ day, open: !!avD[i][0], closed: !avD[i][0], cls: avD[i][0] ? '' : 'off',
+      from: fmt(avD[i][1] || 420), to: fmt(avD[i][2] || 1260), toggle: () => { const n = avD.map((d, j) => j === i ? (d[0] ? [0, 0, 0] : [1, 420, 1260]) : d); this.setState({ av: Object.assign({}, st.av, { [avT]: n }) }); } })) };
+    const nDone = SS.filter((s) => s[9]).length, nCall = SS.filter((s) => !s[7]).length;
+    const per = {}; SS.forEach((s) => { per[s[5]] = (per[s[5]] || 0) + 1; });
+    const busy = Object.entries(per).sort((a, b) => b[1] - a[1])[0];
+    return {
+      addo: !!st.addo, openAdd: () => this.setState({ addo: true }), closeAdd: () => this.setState({ addo: false }), add,
+      invo: !!st.invo, openInv: () => this.setState({ invo: true }), closeInv: () => this.setState({ invo: false, iv: 'main', lm: null }), inv, toggleInvAppr: () => this.setState({ ia: Object.assign({}, st.ia, { [ic0]: !invAppr }) }),
+      fo: !!st.fo, toggleF: () => this.setState({ fo: !st.fo }), clearF: () => this.setState({ fv: {}, fo: false }),
+      stop: (e) => { if (e && e.stopPropagation) e.stopPropagation(); },
+      sideCls: st.mini ? 'mini' : '', sideTip: st.mini ? 'Expand sidebar' : 'Collapse sidebar', toggleSide: () => this.setState({ mini: !st.mini }),
+      sub: (tr ? tr + '’s' : 'Your team’s') + ' sessions, ' + range,
+      stats: [['cal', 'Sessions this week', SS.length, view === 'day' ? SS.filter((s) => s[1] === dayI).length + ' on ' + WD[dayI] : ''], ['chk', 'Done', nDone, SS.length ? Math.round(nDone / SS.length * 100) + '% of the week' : ''],
+        ['call', 'On a call', nCall, 'Quick calls and reviews'], tr ? ['user', 'Working days', avOf(tr).filter((d) => d[0]).length, avOf(tr)[dayI][0] ? WD[dayI] + ' ' + fmtR(avOf(tr)[dayI][1], avOf(tr)[dayI][2] - avOf(tr)[dayI][1]) : WD[dayI] + ' off'] : ['user', 'Busiest trainer', busy ? busy[0] : '—', busy ? busy[1] + ' sessions' : '']]
+        .map(([k, label, val, d]) => ({ [k]: true, label, val, d })),
+      range: view === 'day' ? WDL[dayI] + ', ' + dayDate(WK, dayI).getDate() + ' ' + MON[dayDate(WK, dayI).getMonth()] + ' ' + dayDate(WK, dayI).getFullYear() : range,
+      prev: () => this.setState(view === 'day' ? (dayI === 0 ? { wo: WK - 1, day: 6 } : { day: dayI - 1 }) : { wo: WK - 1, sel: null }),
+      next: () => this.setState(view === 'day' ? (dayI === 6 ? { wo: WK + 1, day: 0 } : { day: dayI + 1 }) : { wo: WK + 1, sel: null }), toToday: () => this.setState({ wo: 0, day: 4 }),
+      tro: !!st.tro, toggleTr: () => this.setState({ tro: !st.tro }), trLabel: tr || 'All trainers',
+      trOpts: [''].concat(TR).map((t) => ({ label: t || 'All trainers', n: t ? ALL.filter((s) => s[5] === t).length : ALL.length, on: t === tr, cls: t === tr ? 'sel' : '', pick: () => this.setState({ tr: t, tro: false }) })),
+      views: [['week', 'Week'], ['day', 'Day']].map(([id, label]) => ({ label, on: id === view, off: id !== view, pick: () => this.setState({ view: id }) })),
+      strip: [0, 1, 2, 3, 4, 5, 6].map((i) => ({ wd: WD[i].slice(0, 1), n: dayDate(WK, i).getDate(), cls: (i === dayI ? 'on' : '') + (isToday(i) ? ' today' : '') + (view !== 'day' && idxs.includes(i) ? ' win' : '') + (SS.some((x) => x[1] === i) ? ' has' : ''), pick: () => this.setState({ day: i }) })),
+      kinds: Object.values(K).map(([label, min, c]) => ({ label, min, c })),
+      cols: idxs.length, days, hours, nowTop: px(1090), empty: SS.length === 0,
+      so: !!sel && !st.co && !st.nfo, s: sv, closeS: () => this.setState({ sel: null }),
+      co: !!st.co && !!sel, askCancel: () => this.setState({ co: true }), closeCancel: () => this.setState({ co: false }),
+      doCancel: () => this.setState({ co: false, cx: cancelled.concat([sel[0]]), sel: null }),
+      nfo: !!st.nfo, openNew: () => this.setState({ nfo: true, fm: 'new', sel: null, fcl: null, ftr: null, om: null, fk: null, fday: null, fh: null, fmn: null, fw: null, fwo: 0 }),
+      openMove: () => this.setState({ nfo: true, fm: 'move', fcl: null, ftr: null, om: null, fk: null, fday: null, fh: null, fmn: null, fw: null, fwo: 0 }), closeNew: () => this.setState({ nfo: false }), f,
+      avo: !!st.avo, openAv: () => this.setState({ avo: true, om: null }), closeAv: () => this.setState({ avo: false }), av,
+    };
+  }
+}
+</script>
+</body>
+</html>

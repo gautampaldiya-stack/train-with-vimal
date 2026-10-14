@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Exercise library (phone)</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="twv.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1D4ED8}a:hover{color:#1E3A8A}
+</style>
+</helmet>
+<div class="app mob mob-ExerciseLibrary {{sideCls}}" style="font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #171717; background: #FFFFFF">
+
+
+<div class="ca-sb"><b>5:40</b><span class="ca-sbi"><svg class="i" viewBox="0 0 24 24"><path d="M2.5 9a14 14 0 0 1 19 0M5.5 12.5a9.5 9.5 0 0 1 13 0M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19" r=".8"/></svg><svg class="i" viewBox="0 0 24 24"><rect x="3" y="7.5" width="16" height="9" rx="2.5"/><rect x="5" y="9.5" width="9" height="5" rx="1" fill="currentColor" stroke="none"/><path d="M21 11v2"/></svg></span></div>
+<main class="main">
+<div class="wrap">
+<div class="top">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h1 class="h1">Exercise library</h1>
+<p class="sub">28 built-in · 0 custom by your team</p>
+</div>
+<div class="acts">
+<a class="btn pri" href="ExerciseAddMobile.dc.html" style="color: #FFFFFF"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New exercise</a>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; position: relative">
+<div class="search" style="width: 340px"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Search exercises</div>
+<sc-if value="{{hasFilters}}" hint-placeholder-val="{{true}}">
+<button class="btn out" onClick="{{toggle}}" style="border-color: #2563EB; color: #1D4ED8; background: #EAF0FE"><svg class="i" viewBox="0 0 24 24"><path d="M4 5h16l-6 7.5V19l-4 1.5v-8z"/></svg>Filter<span class="count" style="background: #2563EB">{{filterCount}}</span></button>
+</sc-if>
+<sc-if value="{{noFilters}}" hint-placeholder-val="{{false}}">
+<button class="btn out" onClick="{{toggle}}"><svg class="i" viewBox="0 0 24 24"><path d="M4 5h16l-6 7.5V19l-4 1.5v-8z"/></svg>Filter</button>
+</sc-if>
+<div class="select" style="margin-left: auto; min-width: 0"><span class="lead">Sort</span>Name A–Z<svg class="i" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></div>
+
+<sc-if value="{{open}}" hint-placeholder-val="{{true}}">
+<div style="position: absolute; top: 44px; left: 348px; z-index: 5; display: flex; gap: 6px; align-items: flex-start">
+<div class="menu" style="width: 210px">
+<sc-for list="{{cats}}" as="c" hint-placeholder-count="4">
+<div class="mi {{c.cls}}" onClick="{{c.pick}}">{{c.label}}<span class="end"><sc-if value="{{c.set}}" hint-placeholder-val="{{false}}"><span class="count" style="background: #2563EB; min-width: 18px; height: 18px">{{c.count}}</span></sc-if><svg class="i" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></span></div>
+</sc-for>
+<div class="msep"></div>
+<div class="mi" onClick="{{clear}}" style="color: #6B6B70">Clear filters</div>
+</div>
+<div class="menu" style="width: 220px">
+<div class="mhead">{{catLabel}}</div>
+<sc-for list="{{opts}}" as="o" hint-placeholder-count="5">
+<div class="mi {{o.cls}}" onClick="{{o.pick}}">
+{{o.label}}<span class="end">{{o.n}}</span><span class="tk"><sc-if value="{{o.on}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"></path></svg></sc-if></span>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+</div>
+
+<sc-if value="{{hasFilters}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center">
+<sc-for list="{{chips}}" as="ch" hint-placeholder-count="2">
+<span class="chip">{{ch.cat}} <b>{{ch.label}}</b><span class="x" onClick="{{ch.remove}}"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></span></span>
+</sc-for>
+<button class="btn text" onClick="{{clear}}" style="font-size: 12.5px">Clear all</button>
+<span class="cap" style="margin-left: auto">{{shown}} of 28 exercises</span>
+</div>
+</sc-if>
+</div>
+
+<div class="ex-grid v2">
+<sc-for list="{{items}}" as="e" hint-placeholder-count="10">
+<a class="card ex-c" href="ExerciseDetailMobile.dc.html"><span class="media {{e.tone}} ex-cth" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/></svg><sc-if value="{{e.video}}" hint-placeholder-val="{{false}}"><span class="play"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>{{e.dur}}</span></sc-if><sc-if value="{{e.noVideo}}" hint-placeholder-val="{{false}}"><span class="ex-cimg">Image</span></sc-if></span><span class="ex-cb"><span class="trunc ex-name" data-full="{{e.name}}"><span class="tx">{{e.name}}</span></span><span class="ex-cm"><span class="ex-cmu">{{e.muscle}}</span><span class="tx">{{e.equipment}}</span></span><span class="ex-cf"><span class="badge plain {{e.lvl}}">{{e.level}}</span><span class="ex-cu">{{e.used}}</span><span class="ibtn sm ghost" aria-label="More actions" data-tip="More actions"><svg class="i fill dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.3"/><circle cx="12" cy="12" r="2.3"/><circle cx="19" cy="12" r="2.3"/></svg></span></span></span></a>
+</sc-for>
+</div>
+
+</div>
+</main>
+<nav class="mb-nav"><a class="mb-tab" href="AdminDashboardMobile.dc.html"><span class="mb-ti"><svg class="i" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20h-5v-6H9v6H4z"/></svg></span><span>Home</span></a><a class="mb-tab" href="ClientsMobile.dc.html"><span class="mb-ti"><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .7 3.2 2.5 3.5 5.2"/></svg></span><span>Clients</span></a><a class="mb-tab" href="ApprovalsMobile.dc.html"><span class="mb-ti"><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5 1.6 0 3 .4 4.1 1.2"/><path d="m15.5 18 2 2 4-4.5"/></svg><i class="mb-badge">5</i></span><span>Approvals</span></a><a class="mb-tab" href="CalendarMobile.dc.html"><span class="mb-ti"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></span><span>Calendar</span></a><a class="mb-tab on" href="AdminMoreMobile.dc.html"><span class="mb-ti"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span><span>More</span></a></nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { open: false, cat: 'muscle', picked: { muscle: ['Chest'], equipment: [], level: [], source: [] } };
+  }
+  renderVals() {
+    const all = [
+      ['Barbell Bench Press', 'Chest', 'Barbell', 'Intermediate'], ['Incline Dumbbell Press', 'Chest', 'Dumbbell', 'Intermediate'],
+      ['Cable Fly', 'Chest', 'Cable', 'Beginner'], ['Push-up', 'Chest', 'Bodyweight', 'Beginner'],
+      ['Dips', 'Chest', 'Bodyweight', 'Intermediate'], ['Pull-up', 'Back', 'Bodyweight', 'Intermediate'],
+      ['Barbell Row', 'Back', 'Barbell', 'Intermediate'], ['Seated Cable Row', 'Back', 'Cable', 'Beginner'],
+      ['Lat Pulldown', 'Back', 'Machine', 'Beginner'], ['One-arm Dumbbell Row', 'Back', 'Dumbbell', 'Beginner'],
+      ['Back Squat', 'Legs', 'Barbell', 'Intermediate'], ['Goblet Squat', 'Legs', 'Dumbbell', 'Beginner'],
+      ['Romanian Deadlift', 'Legs', 'Barbell', 'Intermediate'], ['Walking Lunge', 'Legs', 'Dumbbell', 'Beginner'],
+      ['Leg Press', 'Legs', 'Machine', 'Beginner'], ['Overhead Press', 'Shoulders', 'Barbell', 'Intermediate'],
+      ['Arnold Press', 'Shoulders', 'Dumbbell', 'Intermediate'], ['Cable Lateral Raise', 'Shoulders', 'Cable', 'Beginner'],
+      ['EZ Bar Curl', 'Arms', 'Barbell', 'Beginner'], ['Hammer Curl', 'Arms', 'Dumbbell', 'Beginner'],
+      ['Tricep Rope Pushdown', 'Arms', 'Cable', 'Beginner'], ['Plank', 'Core', 'Bodyweight', 'Beginner'],
+      ['Pallof Press', 'Core', 'Cable', 'Beginner'], ['Incline Treadmill Walk', 'Cardio', 'Machine', 'Beginner']
+    ].map(([name, muscle, equipment, level], i) => ({ name, muscle, equipment, level, lvl: level === 'Beginner' ? 'b-ok' : 'b-warn', source: 'Built-in', video: i % 3 !== 1, noVideo: i % 3 === 1, used: ['2 programs', '1 program', 'No program yet', '3 programs'][i % 4], dur: ['0:42', '0:35', '0:51', '0:28'][i % 4], tone: ['t1', 't2', 't3', 't4'][i % 4] }));
+    const data = {
+      muscle: { label: 'Muscle', key: 'muscle', opts: ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Cardio'] },
+      equipment: { label: 'Equipment', key: 'equipment', opts: ['Barbell', 'Dumbbell', 'Cable', 'Machine', 'Bodyweight'] },
+      level: { label: 'Level', key: 'level', opts: ['Beginner', 'Intermediate'] },
+      source: { label: 'Source', key: 'source', opts: ['Built-in', 'Custom'] }
+    };
+    const picked = this.state.picked;
+    const set = (k, list) => this.setState({ picked: Object.assign({}, picked, { [k]: list }) });
+    const items = all.filter((e) => Object.keys(picked).every((k) => picked[k].length === 0 || picked[k].includes(e[data[k].key])));
+    const cats = Object.keys(data).map((k) => ({
+      label: data[k].label, cls: k === this.state.cat ? 'on' : '', set: picked[k].length > 0,
+      count: String(picked[k].length), pick: () => this.setState({ cat: k })
+    }));
+    const k = this.state.cat;
+    const opts = data[k].opts.map((label) => {
+      const on = picked[k].includes(label);
+      const n = all.filter((e) => e[data[k].key] === label).length;
+      return { label, n: String(n), on, off: !on, cls: on ? 'sel' : '', pick: () => set(k, on ? picked[k].filter((x) => x !== label) : picked[k].concat(label)) };
+    });
+    const chips = [];
+    Object.keys(picked).forEach((ck) => picked[ck].forEach((label) => chips.push({
+      cat: data[ck].label, label, remove: () => set(ck, picked[ck].filter((x) => x !== label))
+    })));
+    return {
+      sideCls: (this.state && this.state.mini) ? 'mini' : '', sideTip: (this.state && this.state.mini) ? 'Expand sidebar' : 'Collapse sidebar', toggleSide: () => this.setState({ mini: !(this.state && this.state.mini) }), 
+      items, cats, opts, chips, catLabel: data[k].label,
+      open: this.state.open, hasFilters: chips.length > 0, noFilters: chips.length === 0,
+      filterCount: String(chips.length), shown: String(items.length),
+      toggle: () => this.setState({ open: !this.state.open }),
+      clear: () => this.setState({ picked: { muscle: [], equipment: [], level: [], source: [] } })
+    };
+  }
+}
+</script>
+</body>
+</html>

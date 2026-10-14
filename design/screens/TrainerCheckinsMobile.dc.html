@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Check-ins (phone)</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="twv.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1D4ED8}a:hover{color:#1E3A8A}
+</style>
+</helmet>
+<div class="app mob mob-TrainerCheckins {{sideCls}}" style="font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #171717; background: #FFFFFF">
+
+
+<div class="ca-sb"><b>5:40</b><span class="ca-sbi"><svg class="i" viewBox="0 0 24 24"><path d="M2.5 9a14 14 0 0 1 19 0M5.5 12.5a9.5 9.5 0 0 1 13 0M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19" r=".8"/></svg><svg class="i" viewBox="0 0 24 24"><rect x="3" y="7.5" width="16" height="9" rx="2.5"/><rect x="5" y="9.5" width="9" height="5" rx="1" fill="currentColor" stroke="none"/><path d="M21 11v2"/></svg></span></div>
+<main class="main">
+<div class="wrap"><div class="top"><div style="display: flex; flex-direction: column; gap: 4px"><h1 class="h1">Check-ins</h1><p class="sub">{{subline}}</p></div><div class="acts"><a class="profile" href="TrainerMeMobile.dc.html" aria-label="My profile" data-tip="Aman Verma · Trainer"><span class="pav">AV</span></a></div></div><div class="card tc-box {{mdetCls}}"><div class="tc-list"><div class="utabs"><sc-for list="{{tabs}}" as="m" hint-placeholder-count="3"><span class="utab {{m.cls}}" onClick="{{m.pick}}">{{m.t}}<sc-if value="{{m.n}}" hint-placeholder-val="{{false}}"><span class="n">{{m.n}}</span></sc-if></span></sc-for></div><div class="tc-tools"><div class="search"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Search client</span></div></div><div class="na-kinds tc-kinds"><sc-for list="{{kinds}}" as="k" hint-placeholder-count="4"><span class="fchip {{k.cls}}" onClick="{{k.pick}}">{{k.t}}<span class="n">{{k.n}}</span></span></sc-for></div><div class="tc-items"><sc-for list="{{items}}" as="r" hint-placeholder-count="6"><div class="tc-it {{r.cls}}" onClick="{{r.pick}}"><span class="av sm {{r.c}}">{{r.ini}}</span><div class="grow"><div class="tc-t"><b>{{r.name}}</b><span class="tc-age {{r.ac}}">{{r.age}}</span></div><div class="tc-s">{{r.kind}}</div><div class="tc-l"><sc-if value="{{r.done}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></svg></sc-if>{{r.line}}</div></div></div></sc-for><sc-if value="{{empty}}" hint-placeholder-val="{{false}}"><div class="tc-empty"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/></svg><b>{{emptyT}}</b><span>{{emptyS}}</span></div></sc-if></div></div><div class="tc-det"><sc-if value="{{hasSel}}" hint-placeholder-val="{{false}}"><div class="tc-dh"><button class="ibtn sm ghost tc-mback" aria-label="Back to check-ins" onClick="{{back}}"><svg class="i" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg></button><span class="av {{s.c}}">{{s.ini}}</span><div class="grow"><h2 class="h3"><a href="TrainerClientProfileMobile.dc.html">{{s.name}}</a></h2><p class="cap">{{s.kind}} · sent {{s.sent}} · {{s.plan}}</p></div><button class="ibtn sm" aria-label="Previous" data-tip="Previous" onClick="{{s.prev}}"><svg class="i" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg></button><button class="ibtn sm" aria-label="Next" data-tip="Next" onClick="{{s.next}}"><svg class="i" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button><a class="btn out sm" href="TrainerClientProfileMobile.dc.html"><svg class="i" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>Open profile</a></div><div class="tc-db"><div class="dr-kpis"><sc-for list="{{s.kpis}}" as="k" hint-placeholder-count="4"><div><span class="k">{{k.k}}</span><b class="v {{k.c}}">{{k.v}}</b></div></sc-for></div><div class="tc-sec"><div class="tc-sh"><h4>Answers</h4><span class="cap">Compared with last time</span></div><div class="dr-qa"><sc-for list="{{s.rows}}" as="q" hint-placeholder-count="6"><div><span>{{q.k}}</span><b>{{q.v}}</b><em class="{{q.mc}}">{{q.m}}</em></div></sc-for></div></div><sc-if value="{{s.hasNote}}" hint-placeholder-val="{{true}}"><div class="tc-sec"><div class="dr-quote"><b>{{s.first}} wrote</b>{{s.note}}</div></div></sc-if><sc-if value="{{s.hasPh}}" hint-placeholder-val="{{false}}"><div class="tc-sec"><div class="tc-sh"><h4>Photos</h4><span class="cap">{{s.phS}} · click to open</span></div><div class="td-ph"><sc-for list="{{s.photos}}" as="p" hint-placeholder-count="3"><span class="td-phi tc-phi {{p.t2}}" onClick="{{p.open}}" data-tip="Open photo"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="m4 18 5-5 4 4 2.5-2.5L20 19"/></svg><em>{{p.t}}</em></span></sc-for></div></div></sc-if><div class="tc-sec"><div class="tc-sh"><h4>Your reply</h4><span class="cp-info" tabindex="0" aria-label="About this" data-tip="The client gets your reply in the app with their check-in. To change their plan, open their profile."><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8v.01"/></svg></span></div><sc-if value="{{s.open}}" hint-placeholder-val="{{true}}"><div class="dr-reply"><div class="inp area" style="min-height: 64px"><sc-if value="{{s.has}}" hint-placeholder-val="{{false}}">{{s.reply}}</sc-if><sc-if value="{{s.none}}" hint-placeholder-val="{{true}}"><span class="ph">Write a short reply for {{s.first}}…</span></sc-if></div><div class="dr-reply-f"><div class="td-quick"><sc-for list="{{s.quick}}" as="q" hint-placeholder-count="3"><span class="fchip" onClick="{{q.pick}}">{{q.t}}</span></sc-for></div></div></div></sc-if><sc-if value="{{s.done}}" hint-placeholder-val="{{false}}"><div class="tc-done"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/></svg><div><b>Reviewed {{s.when}}</b><span>{{s.reply}}</span></div><button class="btn text" onClick="{{s.reopen}}">Mark as not reviewed</button></div></sc-if></div></div><sc-if value="{{s.open}}" hint-placeholder-val="{{true}}"><div class="tc-df"><span class="cap">{{s.left}}</span><button class="btn pri" onClick="{{s.mark}}"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></svg>{{s.doneT}}</button></div></sc-if></sc-if><sc-if value="{{noSel}}" hint-placeholder-val="{{false}}"><div class="tc-none"><svg class="i" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2.8h6V4M8.5 10h7M8.5 14h7M8.5 18h4"/></svg><b>Pick a check-in</b><span>Its answers show here.</span></div></sc-if></div></div></div><sc-if value="{{pvo}}" hint-placeholder-val="{{false}}"><div class="pv-back" onClick="{{closePv}}"><div class="phv" onClick="{{stop}}"><div class="pv-h"><div class="grow"><b>{{pv.title}}</b><span>{{pv.sub}}</span></div><div class="tabs pv-ang"><sc-for list="{{pv.angles}}" as="a" hint-placeholder-count="3"><sc-if value="{{a.on}}" hint-placeholder-val="{{false}}"><span class="tab on">{{a.t}}</span></sc-if><sc-if value="{{a.off}}" hint-placeholder-val="{{true}}"><span class="tab" onClick="{{a.pick}}">{{a.t}}</span></sc-if></sc-for></div><div class="pv-pick tc-zoom"><button aria-label="Zoom out" onClick="{{pv.zout}}"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4-4M8.5 11h5"/></svg></button><span>{{pv.zT}}</span><button aria-label="Zoom in" onClick="{{pv.zin}}"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4-4M8.5 11h5M11 8.5v5"/></svg></button></div><sc-if value="{{pv.canCmp}}" hint-placeholder-val="{{true}}"><button class="pv-btn {{pv.cmpCls}}" onClick="{{pv.toggleCmp}}"><svg class="i" viewBox="0 0 24 24"><path d="M4 8h13l-3.5-3.5M20 16H7l3.5 3.5"/></svg>Compare with last time</button></sc-if><button class="pv-x" aria-label="Close" onClick="{{closePv}}"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div><div class="pv-body"><sc-if value="{{pv.one}}" hint-placeholder-val="{{true}}"><div class="pv-one"><button class="pv-nav" aria-label="Previous photo" onClick="{{pv.prev}}"><svg class="i" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg></button><div class="pv-img {{pv.cls}}" style="--z: {{pv.z}}"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="m4 18 5-5 4 4 2.5-2.5L20 19"/></svg><span class="pv-tag">{{pv.tag}}</span></div><button class="pv-nav" aria-label="Next photo" onClick="{{pv.next}}"><svg class="i" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button></div></sc-if><sc-if value="{{pv.cmp}}" hint-placeholder-val="{{false}}"><div class="pv-two"><div><div class="pv-img t3" style="--z: {{pv.z}}"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="m4 18 5-5 4 4 2.5-2.5L20 19"/></svg><span class="pv-tag">{{pv.lastTag}}</span></div></div><div><div class="pv-img {{pv.cls}}" style="--z: {{pv.z}}"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="m4 18 5-5 4 4 2.5-2.5L20 19"/></svg><span class="pv-tag">{{pv.tag}}</span></div></div></div></sc-if></div><sc-if value="{{pv.cmp}}" hint-placeholder-val="{{false}}"><div class="tc-pvd"><sc-for list="{{pv.diff}}" as="d" hint-placeholder-count="3"><span><b>{{d.k}}</b>{{d.v}}</span></sc-for></div></sc-if><div class="pv-strip"><sc-for list="{{pv.thumbs}}" as="t" hint-placeholder-count="3"><button class="pv-th {{t.cls}}" onClick="{{t.pick}}"><span class="media {{t.m}}"></span>{{t.t}}</button></sc-for></div></div></div></sc-if><sc-if value="{{hasToast}}" hint-placeholder-val="{{false}}"><div class="pg-toast"><div><b>{{toast.t}}</b><span>{{toast.s}}</span></div><sc-if value="{{toast.undo}}" hint-placeholder-val="{{true}}"><button class="btn text" onClick="{{toast.undo}}">Undo</button></sc-if><button class="ibtn sm ghost" aria-label="Close" onClick="{{toast.close}}"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div></sc-if>
+</main>
+<nav class="mb-nav"><a class="mb-tab" href="TrainerDashboardMobile.dc.html"><span class="mb-ti"><svg class="i" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20h-5v-6H9v6H4z"/></svg></span><span>Home</span></a><a class="mb-tab" href="TrainerClientsMobile.dc.html"><span class="mb-ti"><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .7 3.2 2.5 3.5 5.2"/></svg></span><span>Clients</span></a><a class="mb-tab on" href="TrainerCheckinsMobile.dc.html"><span class="mb-ti"><svg class="i" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M8.5 11l2 2 4-4M8.5 17h7"/></svg><i class="mb-badge">{{ciN}}</i></span><span>Check-ins</span></a><a class="mb-tab" href="TrainerCalendarMobile.dc.html"><span class="mb-ti"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></span><span>Calendar</span></a><a class="mb-tab" href="TrainerMoreMobile.dc.html"><span class="mb-ti"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span><span>More</span></a></nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { mini: false }; }
+  renderVals() {
+    const st = this.state;
+
+    const am = st.am || 'active';
+    const add = { modes: [['active', 'Active now'], ['appr', 'Send to Approvals']].map(([id, t]) => ({ t, on: am === id, off: am !== id, pick: () => this.setState({ am: id }) })),
+      modeS: am === 'active' ? 'She can log in as soon as she opens the link.' : 'She shows up in Approvals first, like people who sign up with a link.',
+      btn: am === 'active' ? 'Add client' : 'Add and send to Approvals' };
+    const FV = st.fv || {};
+    const mkF = (G) => G.map(([id, label, opts]) => { const cur = FV[id] || opts[0];
+      return { label, val: cur, opts: opts.map((o) => ({ label: o, on: o === cur, cls: o === cur ? 'sel' : '', pick: () => this.setState({ fv: Object.assign({}, FV, { [id]: o }), fo: false }) })) }; });
+    const fOn = (id, first) => FV[id] && FV[id] !== first;
+    const LK0 = [['AMAN-4821', '', 'Aman Verma', 'Made 9 Oct', '30 days · till 8 Nov', 'till 8 Nov', 'No limit', 'Quarterly plan', 6, 1, true, 'on'],
+      ['VIMAL-0007', 'Website', 'Vimal', 'Made 1 Jan', 'No end date', 'no end date', 'No limit', 'Quarterly plan', 41, 1, true, 'on'],
+      ['NEHA-3307', 'Instagram · Sept', 'Neha Joshi', 'Made 20 Sep', '30 days · till 20 Oct', 'till 20 Oct', '20 people · 3 used', 'Monthly plan', 3, 1, true, 'on'],
+      ['SAHIL-1190', '', 'Sahil Kapoor', 'Made 15 Sep', '30 days · till 15 Oct', 'till 15 Oct', 'No limit', 'Monthly plan', 9, 1, true, 'on'],
+      ['MEERA-2210', 'Yoga batch', 'Meera Shah', 'Made 1 Oct', '7 days · till 8 Oct', 'ended 8 Oct', '10 people · 4 used', 'Quarterly plan', 4, 1, true, 'end']];
+    if (st.newLink) LK0.unshift(['AMAN-5530', 'Instagram · October', 'Aman Verma', 'Made today', '30 days · till 8 Nov', 'till 8 Nov', 'No limit', 'Quarterly plan', 0, 0, true, 'on']);
+    const LOFF = st.loff || {}; const LDEL = st.ldel || {};
+    const LK = LK0.filter((l) => !LDEL[l[0]]).map((l) => { const x = l.slice(); if (LOFF[x[0]] && x[11] === 'on') x[11] = 'off'; return x; });
+    const ic0 = st.ic && LK.find((l) => l[0] === st.ic) ? st.ic : LK[0][0];
+    const cl = LK.find((l) => l[0] === ic0);
+    const invAppr = (st.ia || {})[ic0] !== false;
+    const iv = st.iv || 'main';
+    const STT = { on: ['On', 'b-ok'], off: ['Off', 'b-neu'], end: ['Ended', 'b-neu'] };
+    const IVT = [['main', 'Invite link', ''], ['new', 'New link', ''], ['all', 'All links', LK.length]];
+    const inv = { tabs: IVT.map(([id, t, n]) => ({ t, n, on: iv === id, off: iv !== id, pick: () => this.setState({ iv: id, ivFrom: iv, lm: null }) })),
+      sub: { main: 'Share it on WhatsApp or Instagram. People sign up and fill their own details.', new: 'For a new trainer or a campaign. The old links keep working.', all: 'Every link your team made. Open one to share it again or turn it off.' }[iv],
+      sumT: LK.filter((l) => l[11] === 'on').length + ' of ' + LK.length + ' links are on',
+      code: ic0, tr: cl[2], till: cl[4], max: cl[6], pkg: cl[7], appr: invAppr, apprOff: !invAppr,
+      isMain: iv === 'main', isAll: iv === 'all', isNew: iv === 'new',
+      openAll: () => this.setState({ iv: 'all', lm: null }), openNew: () => this.setState({ iv: 'new', ivFrom: iv, lm: null }), back: () => this.setState({ iv: st.ivFrom === 'all' ? 'all' : 'main', lm: null }),
+      create: () => this.setState({ newLink: true, ic: 'AMAN-5530', iv: 'main' }),
+      step3: invAppr ? 'She waits in Approvals. You or ' + cl[2] + ' approve her, then she can log in.' : 'She can log in straight away. ' + cl[2] + ' gets a notice.',
+      meta: (cl[11] === 'on' ? (invAppr ? 'Sign-ups wait in Approvals' : 'Sign-ups join straight away') : 'This link is ' + STT[cl[11]][0].toLowerCase()) + ' · ' + cl[8] + ' joined · ' + cl[9] + ' waiting · ' + cl[5],
+      others: (LK.length - 1) + ' other links: ' + LK.filter((l) => l[0] !== ic0).map((l) => l[2] + (l[11] !== 'on' ? ' (' + STT[l[11]][0].toLowerCase() + ')' : '')).join(', ') + '.',
+      sum: [[LK.length, 'links'], [LK.filter((l) => l[11] === 'on').length, 'on now'], [LK.reduce((a, l) => a + l[8], 0), 'people joined'], [LK.reduce((a, l) => a + l[9], 0), 'waiting now']].map(([v, k]) => ({ v, k })),
+      links: LK.map(([code, name, tr, made, till, tl, max, pkg, n, w, , stt]) => ({ code, name, b: STT[stt][0], bc: STT[stt][1], cls: (code === ic0 ? 'on' : '') + (stt !== 'on' ? ' dis' : ''),
+        s: tr + ' · ' + made + ' · ' + tl, n: n + ' joined', w: w ? w + ' waiting' : 'none waiting', mo: st.lm === code,
+        menu: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setState({ lm: st.lm === code ? null : code }); },
+        open: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setState({ ic: code, iv: 'main', lm: null }); },
+        copy: () => this.setState({ lm: null }), tog: stt === 'off' ? 'Turn on' : 'Turn off',
+        toggle: () => this.setState({ lm: null, loff: Object.assign({}, LOFF, { [code]: stt !== 'off' }) }),
+        del: () => this.setState({ lm: null, ldel: Object.assign({}, LDEL, { [code]: true }) }) })) };
+
+    // id, client, ini, colour, kind, line, age, hours, sent, plan, kpis, rows [k, v, last, better?], note, photos, reviewed reply, reviewed when
+    const C0 = [['c1', 'Riya Sharma', 'RS', 'c1', 'Weekly', 'Weight 61.8 kg · energy 3/5 · knees sore', '2 d', 50, 'Tue 6 Oct, 7:40 pm', 'Fat Loss Phase 1 · week 6',
+        [['Weight', '61.8 kg'], ['Change', '−0.6 kg', 'up'], ['Workouts', '3 of 4'], ['Meals on plan', '82%']],
+        [['Energy', '3 / 5', '4 / 5', 'down'], ['Sleep', '6 h a night', '6.5 h', 'down'], ['Hunger', '4 / 5', '3 / 5', 'down'], ['Stress', '3 / 5', '3 / 5', ''], ['Water', '2.5 L a day', '2.5 L', ''], ['Steps', '7,400 a day', '6,900', 'up']],
+        'Knees hurt a bit on walking lunges. Lunch at office is hard on Thursdays.', ['Front', 'Side', 'Back'], '', ''],
+      ['c2', 'Rohan Kapoor', 'RK', 'c2', 'Weekly', 'Weight 74.2 kg · bench up 2.5 kg', '1 d', 26, 'Wed 7 Oct, 3:50 pm', 'Hypertrophy PPL · week 3',
+        [['Weight', '74.2 kg'], ['Change', '+0.3 kg', 'up'], ['Workouts', '5 of 5'], ['Meals on plan', '90%']],
+        [['Energy', '4 / 5', '4 / 5', ''], ['Sleep', '7.5 h a night', '7 h', 'up'], ['Hunger', '3 / 5', '3 / 5', ''], ['Stress', '2 / 5', '3 / 5', 'up'], ['Water', '3 L a day', '3 L', ''], ['Steps', '9,100 a day', '8,800', 'up']],
+        'Bench felt strong. Can we add one more arm day?', ['Front', 'Side'], '', ''],
+      ['c3', 'Sana Khan', 'SK', 'c6', 'Weekly', 'Weight 68.4 kg · sleep 5 h', '6 h', 6, 'Today, 11:45 am', 'Beginner Full Body · week 2',
+        [['Weight', '68.4 kg'], ['Change', '−0.2 kg', 'up'], ['Workouts', '2 of 3'], ['Meals on plan', '71%', 'down']],
+        [['Energy', '2 / 5', '3 / 5', 'down'], ['Sleep', '5 h a night', '6 h', 'down'], ['Hunger', '3 / 5', '3 / 5', ''], ['Stress', '4 / 5', '3 / 5', 'down'], ['Water', '1.5 L a day', '2 L', 'down'], ['Steps', '4,800 a day', '5,600', 'down']],
+        'Exams this week, very tired.', [], '', ''],
+      ['c4', 'Aditya Rao', 'AR', 'c4', 'Monthly progress', 'Waist −2 cm · 4 photos', '3 h', 3, 'Today, 2:40 pm', 'Strength Base · week 8',
+        [['Weight', '82.0 kg'], ['Change', '−1.8 kg', 'up'], ['Workouts', '14 of 16'], ['Meals on plan', '86%']],
+        [['Waist', '88 cm', '90 cm', 'up'], ['Chest', '101 cm', '101 cm', ''], ['Hips', '99 cm', '100 cm', 'up'], ['Energy', '4 / 5', '4 / 5', ''], ['Sleep', '7 h a night', '7 h', ''], ['Steps', '8,200 a day', '7,500', 'up']],
+        '', ['Front', 'Side', 'Back', 'Flex'], '', ''],
+      ['c5', 'Neha Jain', 'NJ', 'c5', 'Weekly', 'Weight 58.9 kg · all workouts done', 'Yesterday', 30, 'Wed 7 Oct, 9:10 am', 'Women’s Strength · week 4',
+        [['Weight', '58.9 kg'], ['Change', '−0.4 kg', 'up'], ['Workouts', '4 of 4'], ['Meals on plan', '88%']],
+        [['Energy', '4 / 5', '3 / 5', 'up'], ['Sleep', '7 h a night', '7 h', ''], ['Hunger', '2 / 5', '3 / 5', 'up'], ['Stress', '2 / 5', '2 / 5', ''], ['Water', '3 L a day', '2.5 L', 'up'], ['Steps', '10,200 a day', '9,000', 'up']],
+        'Loving the new squat routine!', ['Front', 'Side'], 'Great week, keep going! Next week we add 2.5 kg on squats.', 'yesterday, 6:05 pm'],
+      ['c6', 'Vikram Singh', 'VS', 'c3', 'Daily', 'Slept 6 h · skipped evening walk', 'Yesterday', 28, 'Wed 7 Oct, 10:30 pm', 'Strength Base · week 3',
+        [['Sleep', '6 h'], ['Energy', '3 / 5'], ['Workout', 'Rest day'], ['Steps', '5,100', 'down']],
+        [['Mood', 'Okay', 'Good', 'down'], ['Water', '2 L', '2.5 L', 'down'], ['Meals on plan', '3 of 4', '4 of 4', 'down'], ['Soreness', 'Low', 'Medium', 'up']],
+        'Long day at work.', [], 'Rest is fine. Try a 15 min walk after dinner tomorrow.', 'today, 8:15 am'],
+      ['c7', 'Priya Nair', 'PN', 'c4', 'Weekly', 'Weight 64.1 kg · knee pain on squats', '2 d', 52, 'Tue 6 Oct, 6:20 pm', 'Fat Loss Phase 1 · week 2',
+        [['Weight', '64.1 kg'], ['Change', '+0.2 kg', 'down'], ['Workouts', '1 of 4', 'down'], ['Meals on plan', '64%', 'down']],
+        [['Energy', '3 / 5', '3 / 5', ''], ['Sleep', '6.5 h a night', '7 h', 'down'], ['Hunger', '4 / 5', '4 / 5', ''], ['Stress', '4 / 5', '3 / 5', 'down'], ['Water', '2 L a day', '2 L', ''], ['Steps', '6,000 a day', '6,400', 'down']],
+        'Right knee hurts on squats, so I skipped leg day.', [], 'Thanks for telling me. I swapped squats for leg press, let’s check your knee on Friday.', 'Tue 6 Oct, 9:00 pm'],
+      ['c8', 'Tanvi Desai', 'TD', 'c2', 'Monthly progress', 'Weight −1.2 kg this month', '5 d', 120, 'Sat 3 Oct, 8:00 am', 'Recomp 3-day · week 9',
+        [['Weight', '57.3 kg'], ['Change', '−1.2 kg', 'up'], ['Workouts', '11 of 12'], ['Meals on plan', '84%']],
+        [['Waist', '74 cm', '76 cm', 'up'], ['Hips', '94 cm', '95 cm', 'up'], ['Energy', '2 / 5', '3 / 5', 'down'], ['Sleep', '6 h a night', '7 h', 'down']],
+        'Feeling a bit low on energy lately.', ['Front', 'Side', 'Back'], 'Good progress! Let’s add 100 kcal on training days for energy.', 'Sat 3 Oct, 1:30 pm']];
+    const DONE = Object.assign({ c5: 1, c6: 1, c7: 1, c8: 1 }, st.dn || {});
+    const RP = st.rp || {};
+    const tab = st.tab || 'rev', kind = st.kind || 'all';
+    const KINDS = [['all', 'All types'], ['Weekly', 'Weekly'], ['Daily', 'Daily'], ['Monthly progress', 'Monthly']];
+    const inTab = (c) => tab === 'all' || (tab === 'rev' ? !DONE[c[0]] : !!DONE[c[0]]);
+    const byAge = (a, b) => (!!DONE[a[0]] - !!DONE[b[0]]) || (DONE[a[0]] ? a[7] - b[7] : b[7] - a[7]);
+    const L = C0.filter((c) => inTab(c) && (kind === 'all' || c[4] === kind)).sort(byAge);
+    const toRev = C0.filter((c) => !DONE[c[0]]).sort(byAge);
+    const sel = L.find((c) => c[0] === st.sel) || L[0];
+    const si = sel ? L.indexOf(sel) : -1;
+    const QUICK = ['Great week, keep going!', 'Let’s talk at your next session.', 'I’ve updated your plan.'];
+
+    return {
+      addo: !!st.addo, openAdd: () => this.setState({ addo: true }), closeAdd: () => this.setState({ addo: false }), add,
+      invo: !!st.invo, openInv: () => this.setState({ invo: true }), closeInv: () => this.setState({ invo: false, iv: 'main', lm: null }), inv, toggleInvAppr: () => this.setState({ ia: Object.assign({}, st.ia, { [ic0]: !invAppr }) }),
+      fo: !!st.fo, toggleF: () => this.setState({ fo: !st.fo }), clearF: () => this.setState({ fv: {}, fo: false }),
+      stop: (e) => { if (e && e.stopPropagation) e.stopPropagation(); },
+      sideCls: st.mini ? 'mini' : '', sideTip: st.mini ? 'Expand sidebar' : 'Collapse sidebar', toggleSide: () => this.setState({ mini: !st.mini }),
+      hasToast: !!st.toast, toast: st.toast ? { t: st.toast.t, s: st.toast.s || '', undo: st.toast.prev ? () => this.setState(Object.assign({ toast: null }, st.toast.prev)) : null, close: () => this.setState({ toast: null }) } : {},
+
+      stop: (e) => { if (e && e.stopPropagation) e.stopPropagation(); },
+      ciN: toRev.length,
+      mdetCls: st.mdet && sel ? 'tc-mdet' : '', back: () => this.setState({ mdet: false }),
+      subline: toRev.length ? toRev.length + ' to review · oldest from ' + toRev[0][6] + ' ago' : 'All check-ins reviewed',
+      tabs: [['rev', 'To review', toRev.length], ['done', 'Reviewed', C0.length - toRev.length], ['all', 'All', C0.length]]
+        .map(([id, t, n]) => ({ t, n, cls: tab === id ? 'on' : '', pick: () => this.setState({ tab: id, sel: null }) })),
+      kinds: KINDS.map(([id, t]) => ({ t, n: C0.filter((c) => inTab(c) && (id === 'all' || c[4] === id)).length, cls: kind === id ? 'on' : '', pick: () => this.setState({ kind: id, sel: null }) })),
+      items: L.map((c) => ({ name: c[1], ini: c[2], c: c[3], kind: c[4] + (c[4] === 'Monthly progress' ? '' : ' check-in'), line: DONE[c[0]] ? 'Replied: ' + (RP[c[0]] || c[14] || 'Reviewed') : c[5], age: c[6], done: !!DONE[c[0]],
+        ac: !DONE[c[0]] && c[7] >= 48 ? 'late' : '', cls: (sel && sel[0] === c[0] ? 'on' : '') + (DONE[c[0]] ? ' rv' : ''), pick: () => this.setState({ sel: c[0], mdet: true }) })),
+      empty: L.length === 0, emptyT: tab === 'rev' ? 'All caught up' : 'Nothing here', emptyS: tab === 'rev' ? 'New check-ins show up here as clients send them.' : 'Try another type.',
+
+      pvo: !!st.pvo && !!sel && sel[13].length > 0, closePv: () => this.setState({ pvo: false }),
+      pv: sel && sel[13].length ? (() => { const P = sel[13], n = P.length, i = Math.min(st.pvi || 0, n - 1), z = st.pvz || 100, cmp = !!st.pvc;
+        const LAST = { c1: ['Tue 29 Sep', '62.4 kg'], c2: ['Wed 30 Sep', '73.9 kg'], c4: ['Thu 10 Sep', '83.8 kg'], c5: ['Wed 30 Sep', '59.3 kg'], c8: ['Thu 3 Sep', '58.5 kg'] }[sel[0]] || ['Last time', ''];
+        const go = (k) => this.setState({ pvi: (i + k + n) % n });
+        return { title: sel[1] + ' · ' + P[i], sub: sel[4] + (sel[4] === 'Monthly progress' ? '' : ' check-in') + ' · ' + sel[8] + ' · photo ' + (i + 1) + ' of ' + n,
+          tag: P[i] + ' · ' + sel[8].split(',')[0], cls: 't' + (i % 3 + 1), lastTag: P[i] + ' · ' + LAST[0], z: (z / 100), zT: z + '%',
+          zin: () => this.setState({ pvz: Math.min(z + 25, 200) }), zout: () => this.setState({ pvz: Math.max(z - 25, 50) }),
+          one: !cmp, cmp, canCmp: true, cmpCls: cmp ? 'on' : '', toggleCmp: () => this.setState({ pvc: !cmp }),
+          diff: [['Weight', LAST[1] + ' → ' + sel[10][0][1]], ['Change', sel[10][1][1]], ['Between', LAST[0] + ' and ' + sel[8].split(',')[0]]].map(([k, v]) => ({ k, v })),
+          prev: () => go(-1), next: () => go(1),
+          angles: P.map((t, j) => ({ t, on: j === i, off: j !== i, pick: () => this.setState({ pvi: j }) })),
+          thumbs: P.map((t, j) => ({ t, m: 't' + (j % 3 + 1), cls: j === i ? 'on' : '', pick: () => this.setState({ pvi: j }) })) }; })() : {},
+      hasSel: !!sel, noSel: !sel,
+      s: sel ? (() => { const id = sel[0], d = !!DONE[id], rp = RP[id] || sel[14]; const first = sel[1].split(' ')[0];
+        const go = (k) => { const n = L[si + k]; if (n) this.setState({ sel: n[0] }); };
+        const nextRev = toRev.filter((c) => c[0] !== id && (kind === 'all' || c[4] === kind))[0];
+        return { name: sel[1], ini: sel[2], c: sel[3], first, kind: sel[4] + (sel[4] === 'Monthly progress' ? '' : ' check-in'), sent: sel[8], plan: sel[9],
+          kpis: sel[10].map(([k, v, c]) => ({ k, v, c: c ? 'tc-' + c : '' })), rows: sel[11].map(([k, v, m, b]) => ({ k, v, m: 'last ' + m, mc: b ? 'tc-' + b : '' })),
+          note: sel[12], hasNote: !!sel[12], photos: sel[13].map((t, i) => ({ t, t2: 't' + (i % 3 + 1), open: () => this.setState({ pvo: true, pvi: i, pvc: false, pvz: 100 }) })), hasPh: sel[13].length > 0, phS: sel[13].length + ' new',
+          open: !d, done: d, has: !!RP[id], none: !RP[id], reply: d ? (rp || 'No reply, marked as seen') : (RP[id] || ''), when: sel[15] || 'just now',
+          quick: QUICK.map((t) => ({ t, pick: () => this.setState({ rp: Object.assign({}, RP, { [id]: t }) }) })),
+          prev: () => go(-1), next: () => go(1),
+          left: toRev.length - 1 > 0 ? (toRev.length - 1) + ' more to review after this' : 'Last one to review',
+          doneT: RP[id] ? 'Send and mark reviewed' : 'Mark reviewed',
+          mark: () => this.setState({ dn: Object.assign({}, DONE, { [id]: 1 }), sel: tab === 'rev' && nextRev ? nextRev[0] : id,
+            toast: { t: first + '’s check-in reviewed', s: RP[id] ? 'Your reply was sent' : 'Moved to Reviewed', prev: { dn: st.dn || {}, sel: id } } }),
+          reopen: () => { this.setState({ dn: Object.assign({}, st.dn || {}, { [id]: 0 }) }); } }; })() : {},
+
+    };
+  }
+}
+</script>
+</body>
+</html>

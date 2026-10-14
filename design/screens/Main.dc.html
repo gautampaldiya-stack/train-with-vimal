@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Design system</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="twv.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1D4ED8}a:hover{color:#1E3A8A}
+</style>
+</helmet>
+<div style="background: #FFFFFF; color: #171717; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; padding: 48px 32px 80px">
+<div style="max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; border-radius: 9px; background-color: transparent">
+
+<header style="display: flex; align-items: center; gap: 16px">
+<img src="/_blob/7f1b8d133ad89eaba73fd8ba3d41bf1e" alt="Train With Vimal logo" style="width: 56px; height: 56px">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h1 class="h1">Design system</h1>
+<p class="sub">Every screen uses these parts. Change a part here first, then the screens follow.</p>
+</div>
+</header>
+
+<!-- Colours -->
+<section style="display: flex; flex-direction: column; gap: 14px">
+<div class="over">Colours</div>
+<div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 6px"><div class="swatch" style="background: #FFFFFF; box-shadow: inset 0 0 0 1px #E6E6E1"></div><div class="cap"><b style="color: #171717">Sidebar</b><br>#FFFFFF · active item #FAFAFA, 34 high</div></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><div class="swatch" style="background: #FFFFFF"></div><div class="cap"><b style="color: #171717">Content panel</b><br>#FFFFFF · white</div></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><div class="swatch" style="background: #FFFFFF"></div><div class="cap"><b style="color: #171717">Card</b><br>#FFFFFF</div></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><div class="swatch" style="background: #F1F1EE"></div><div class="cap"><b style="color: #171717">Sub surface</b><br>#F1F1EE</div></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><div class="swatch" style="background: #EEF3FE"></div><div class="cap"><b style="color: #171717">Row hover</b><br>#EEF3FE</div></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><div class="swatch" style="background: #E6E6E1"></div><div class="cap"><b style="color: #171717">Line</b><br>#E6E6E1</div></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><div class="swatch" style="background: #171717"></div><div class="cap"><b style="color: #171717">Text</b><br>#171717</div></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><div class="swatch" style="background: #6B6B70"></div><div class="cap"><b style="color: #171717">Muted text</b><br>#6B6B70</div></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><div class="swatch" style="background: #2563EB"></div><div class="cap"><b style="color: #171717">Accent</b><br>#2563EB</div></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><div class="swatch" style="background: #FFFFFF; box-shadow: 0 4px 16px rgba(23,23,23,.12)"></div><div class="cap"><b style="color: #171717">Tooltip</b><br>#FFFFFF · line border</div></div>
+</div>
+</section>
+
+<!-- Type + radius -->
+<section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px">
+<div class="card pad" style="display: flex; flex-direction: column; gap: 14px">
+<div class="over">Type · Plus Jakarta Sans</div>
+<div class="h1">Page title 28</div>
+<div class="h2">Section title 20</div>
+<div class="h3">Card title 15</div>
+<div style="font-size: 14px; font-weight: 500">Body 14 — the text people read most.</div>
+<div class="sub">Secondary 13 — under titles and in rows.</div>
+<div class="cap">Caption 12 — hints, time stamps.</div>
+</div>
+<div class="card pad" style="display: flex; flex-direction: column; gap: 14px">
+<div class="over">Corner radius</div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; align-items: end">
+<div style="display: flex; flex-direction: column; gap: 6px"><div style="height: 44px; border: 1.5px solid #2563EB; background: #EAF0FE; border-radius: 6px"></div><div class="cap">Badge · tab 6</div></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><div style="height: 44px; border: 1.5px solid #2563EB; background: #EAF0FE; border-radius: 8px"></div><div class="cap">Button · input · chip · row 8</div></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><div style="height: 44px; border: 1.5px solid #2563EB; background: #EAF0FE; border-radius: 8px"></div><div class="cap">Tab track 8</div></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><div style="height: 44px; border: 1.5px solid #2563EB; background: #EAF0FE; border-radius: 12px"></div><div class="cap">Menu 12</div></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><div style="height: 44px; border: 1.5px solid #2563EB; background: #EAF0FE; border-radius: 12px"></div><div class="cap">Card · stat · table 12</div></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><div style="height: 44px; border: 1.5px solid #2563EB; background: #EAF0FE; border-radius: 16px"></div><div class="cap">Modal 16</div></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><div style="height: 44px; width: 44px; border: 1.5px solid #2563EB; background: #EAF0FE; border-radius: 50%"></div><div class="cap">Avatar round</div></div>
+</div>
+</div>
+</section>
+
+<!-- Buttons -->
+<section class="card pad" style="display: flex; flex-direction: column; gap: 18px; border-style: dashed; border-color: #6b6b70">
+<div class="sec-h"><div class="over">Buttons</div><div class="cap">Hover makes a button a shade darker. It never turns see-through.</div></div>
+<div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center">
+<button class="btn pri" style="border-radius: 8px; position: static; display: flex; padding-right: 12px; padding-left: 12px; border-style: none; font-family: Plus Jakarta Sans"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>New exercise</button>
+<button class="btn dark">Save changes</button>
+<button class="btn out">Cancel</button>
+<button class="btn danger"><svg class="i" viewBox="0 0 24 24"><path d="M5 7h14M10 7V4.5h4V7M7 7l1 13h8l1-13"></path></svg>Delete</button>
+<button class="btn text">Save for later</button>
+<span style="width: 1px; height: 28px; background: #E6E6E1; margin: 0 6px"></span>
+<button class="btn pri sm">Small 30</button>
+<button class="btn pri">Default 36</button>
+<button class="btn pri lg">Large 42</button>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center">
+<button class="ibtn" aria-label="Search"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg></button>
+<button class="ibtn" aria-label="Notifications"><svg class="i" viewBox="0 0 24 24"><path d="M6 10a6 6 0 0 1 12 0c0 5 2 6.5 2 6.5H4S6 15 6 10z"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg><span class="dot"></span></button>
+<button class="ibtn" aria-label="More actions"><svg class="i fill dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.3"></circle><circle cx="12" cy="12" r="2.3"></circle><circle cx="19" cy="12" r="2.3"></circle></svg></button>
+<button class="ibtn sm ghost" aria-label="More actions" style="background: #FFFFFF; border-color: #E6E6E1"><svg class="i fill dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.3"></circle><circle cx="12" cy="12" r="2.3"></circle><circle cx="19" cy="12" r="2.3"></circle></svg></button>
+<button class="ibtn round" aria-label="More actions"><svg class="i fill dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.3"></circle><circle cx="12" cy="12" r="2.3"></circle><circle cx="19" cy="12" r="2.3"></circle></svg></button><button class="ibtn sm round ghost" aria-label="More actions" style="background: #FFFFFF; border-color: #E6E6E1"><svg class="i fill dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.3"></circle><circle cx="12" cy="12" r="2.3"></circle><circle cx="19" cy="12" r="2.3"></circle></svg></button>
+<span class="cap">3-dot button: 36 (30 inside cards), square radius 10 or round. Dots are r 2 so they read clearly. The red notification dot sits in the corner with no white ring, so it never cuts the bell.</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 14px; align-items: center">
+<span style="width: 36px; height: 36px; border-radius: 8px; background: #FFFFFF; border: 1px solid #E6E6E1; display: inline-grid; place-items: center; color: #2563EB"><svg class="i lg" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20h-5v-6H9v6H4z"></path></svg></span>
+<span style="display: inline-flex; align-items: center; background: #FFFFFF; color: #171717; border: 1px solid #E6E6E1; font-size: 12.5px; font-weight: 600; padding: 7px 12px; border-radius: 8px; box-shadow: 0 4px 16px rgba(23,23,23,.12), 0 1px 3px rgba(23,23,23,.06)">Dashboard</span>
+<span class="cap">Tooltip (same as the app): white card, thin border, soft shadow, dark text, radius 8. Shows on the collapsed sidebar and every icon-only button.</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 14px; align-items: center">
+<span class="tip-dark">Meera Shah replied to Aisha Sheikh's weekly check-in</span>
+<span class="trunc" data-full="Sahil Kapoor set a new calorie target for Riya Sharma" style="width: 220px; font-size: 13px; color: #3F3F46; cursor: default"><span class="tx"><b style="color: #171717">Sahil Kapoor</b> set a new calorie target for Riya Sharma</span></span>
+<span class="cap">Text tooltip: dark, radius 6. Shows the full text when a line is cut with "…" (hover the line on the left). In the app it only appears when the text really overflows.</span>
+</div>
+</section>
+
+<!-- Inputs -->
+<section class="card pad" style="display: flex; flex-direction: column; gap: 18px">
+<div class="over">Inputs</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px">
+<div class="field"><label>Full name</label><div class="inp" style="border-radius: 8px">Riya Sharma</div></div>
+<div class="field"><label>Email</label><div class="inp focus">riya.sharma@email.com</div><span class="hint">We send the login link here.</span></div>
+<div class="field"><label>Mobile number</label><div class="inp bad"><span class="pre">+91</span>98201 4556</div><span class="err">Enter a 10-digit mobile number</span></div>
+<div class="field"><label>Weight</label><div class="inp">72.5<span class="ph" style="margin-left: auto">kg</span></div></div>
+<div class="field"><label>Search</label><div class="search"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>Search exercises<span class="kbd">Ctrl K</span></div></div>
+<div class="field"><label>Dropdown</label><div class="select"><span class="lead">Trainer</span>Aman Verma<svg class="i" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg></div></div>
+</div>
+</section>
+
+<!-- Tabs -->
+<section class="card pad" style="display: flex; flex-direction: column; gap: 18px">
+<div class="over">Tabs</div>
+<div style="display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div class="tabs" style="border-radius: 8px">
+<sc-for list="{{tabs}}" as="t" hint-placeholder-count="3">
+<sc-if value="{{t.on}}" hint-placeholder-val="{{false}}"><span class="tab on" style="border-radius: 6px">{{t.label}}<span class="n">{{t.n}}</span></span></sc-if>
+<sc-if value="{{t.off}}" hint-placeholder-val="{{true}}"><span class="tab" onClick="{{t.pick}}">{{t.label}}<span class="n">{{t.n}}</span></span></sc-if>
+</sc-for>
+</div>
+<span class="cap">Segmented: switch views inside a card. Click to try.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px; min-width: 360px">
+<div class="utabs"><span class="utab on">Overview</span><span class="utab">Program</span><span class="utab">Nutrition</span><span class="utab">Check-ins</span></div>
+<span class="cap">Underline: sections of a page (client profile).</span>
+</div>
+</div>
+</section>
+
+<!-- Filter + 3-dot menu -->
+<section class="card pad" style="display: flex; flex-direction: column; gap: 18px">
+<div class="sec-h"><div class="over">Filter, dropdown and 3-dot menu</div><div class="cap">One Filter button with the search next to it. Set filters show as chips under it.</div></div>
+<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap">
+<div class="search" style="width: 320px; border-radius: 8px"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>Search exercises</div>
+<button class="btn out" style="border-color: #2563EB; color: #1D4ED8; background: #EAF0FE"><svg class="i" viewBox="0 0 24 24"><path d="M4 5h16l-6 7.5V19l-4 1.5v-8z"></path></svg>Filter<span class="count" style="background: #2563EB">2</span></button>
+<div class="select" style="margin-left: auto; min-width: 0"><span class="lead">Sort</span>Name A–Z<svg class="i" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg></div>
+</div>
+<div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center">
+<span class="chip">Muscle <b>Chest</b><span class="x"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"></path></svg></span></span>
+<span class="chip">Equipment <b>Barbell</b><span class="x"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"></path></svg></span></span>
+<button class="btn text" style="font-size: 12.5px">Clear all</button>
+</div>
+<div style="display: flex; gap: 40px; align-items: flex-start; flex-wrap: wrap; padding-top: 4px">
+<div style="display: flex; gap: 6px; align-items: flex-start">
+<div class="menu" style="width: 210px">
+<sc-for list="{{cats}}" as="c" hint-placeholder-count="4">
+<div class="mi {{c.cls}}" onClick="{{c.pick}}">
+<span class="i" style="display: grid; place-items: center"><sc-if value="{{c.set}}" hint-placeholder-val="{{false}}"><span style="width: 7px; height: 7px; border-radius: 50%; background: #2563EB"></span></sc-if></span>
+{{c.label}}<span class="end">{{c.count}}<svg class="i" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"></path></svg></span>
+</div>
+</sc-for>
+<div class="msep"></div>
+<div class="mi" style="color: #6B6B70">Clear filters</div>
+</div>
+<div class="menu" style="width: 220px">
+<div class="mhead">{{catLabel}}</div>
+<sc-for list="{{opts}}" as="o" hint-placeholder-count="5">
+<div class="mi {{o.cls}}" onClick="{{o.pick}}">
+{{o.label}}<span class="end">{{o.n}}</span><span class="tk"><sc-if value="{{o.on}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"></path></svg></sc-if></span>
+</div>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; justify-content: flex-end"><button class="ibtn" aria-label="More actions" style="border-color: #2563EB; background: #EAF0FE; color: #1D4ED8"><svg class="i fill dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.3"></circle><circle cx="12" cy="12" r="2.3"></circle><circle cx="19" cy="12" r="2.3"></circle></svg></button></div>
+<div class="menu" style="width: 200px">
+<div class="mi"><svg class="i" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"></path></svg>Edit</div>
+<div class="mi"><svg class="i" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"></path></svg>Duplicate</div>
+<div class="mi"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>Add to program</div>
+<div class="msep"></div>
+<div class="mi danger"><svg class="i" viewBox="0 0 24 24"><path d="M5 7h14M10 7V4.5h4V7M7 7l1 13h8l1-13"></path></svg>Delete</div>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div class="select">Last 7 days<svg class="i" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg></div>
+<div class="menu" style="width: 200px">
+<div class="mi">Today</div>
+<div class="mi on">Last 7 days<svg class="i tick" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"></path></svg></div>
+<div class="mi">Last 30 days</div>
+<div class="mi">This month</div>
+<div class="msep"></div>
+<div class="mi">Custom range…</div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- Badges + breadcrumbs -->
+<section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px">
+<div class="card pad" style="display: flex; flex-direction: column; gap: 14px">
+<div class="over">Badges</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<span class="badge b-ok">Active</span><span class="badge b-warn">Pending</span><span class="badge b-bad">At risk</span><span class="badge b-info">Updated</span><span class="badge b-neu">Paused</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<span class="badge plain b-neu">Beginner</span><span class="badge plain b-neu">Intermediate</span><span class="badge plain b-info">Primary</span><span class="badge plain b-neu">Secondary</span><span class="count">3</span>
+</div>
+<span class="cap">Status badges have a dot. Labels (level, muscle role) have none.</span>
+</div>
+<div class="card pad" style="display: flex; flex-direction: column; gap: 14px">
+<div class="over">Breadcrumbs</div>
+<nav class="crumbs" aria-label="Breadcrumb"><a href="#">Build</a><svg class="i" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"></path></svg><a href="#">Exercises</a><svg class="i" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"></path></svg><span class="cur">Barbell Bench Press</span></nav>
+<span class="cap">On hover only the text gets darker. No background.</span>
+</div>
+</section>
+
+<!-- Stats -->
+<section style="display: flex; flex-direction: column; gap: 14px">
+<div class="over">Stats cards</div>
+<div class="stats">
+<div class="stat"><div class="lbl"><span class="ic"><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"></path><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .7 3.2 2.5 3.5 5.2"></path></svg></span>Active clients</div><div class="val">142</div><div class="delta up"><svg class="i" viewBox="0 0 24 24"><path d="m4 16 5-5 4 4 7-7"></path><path d="M15 8h5v5"></path></svg>+8 this month</div></div>
+<div class="stat"><div class="lbl"><span class="ic"><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5 1.6 0 3 .4 4.1 1.2"></path><path d="m15.5 18 2 2 4-4.5"></path></svg></span>Pending approvals</div><div class="val">3</div><div class="delta" style="color: #6B6B70">Oldest 2 days</div></div>
+<div class="stat"><div class="lbl"><span class="ic"><svg class="i" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"></rect><path d="M9 4V2.8h6V4M8.5 10h7M8.5 14h7M8.5 18h4"></path></svg></span>Check-in rate</div><div class="val">86%</div><div class="delta down">−2% vs last week</div></div>
+<div class="stat"><div class="lbl"><span class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"></path></svg></span>Avg adherence</div><div class="val">81%</div><div class="delta up">+3% vs last week</div></div>
+</div>
+</section>
+
+<!-- List rows + details -->
+<section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px">
+<div class="card">
+<div class="card-h"><div class="h3">Used in 2 programs</div></div>
+<div class="card-b">
+<a class="row" href="#" style="color: inherit; background: #EEF3FE"><div class="grow"><div class="t">Fat Loss Phase 1</div><div class="s">Upper A · 12 workouts · 4 clients</div></div><svg class="i go" viewBox="0 0 24 24" style="color: #2563EB"><path d="m9 6 6 6-6 6"></path></svg></a>
+<a class="row" href="#" style="color: inherit"><div class="grow"><div class="t">Hypertrophy · Push / Pull / Legs</div><div class="s">Push A · 8 workouts · 4 clients</div></div><svg class="i go" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"></path></svg></a>
+</div>
+<div style="padding: 0 20px 16px" class="cap">List row: 12px padding left and right, 4px gap between rows, soft blue tint on hover (first row shows it).</div>
+</div>
+<div class="card pad" style="display: flex; flex-direction: column; gap: 6px">
+<div class="h3">Details</div>
+<dl class="dl" style="margin: 0">
+<div><dt>Muscle group</dt><dd>Chest</dd></div>
+<div><dt>Equipment</dt><dd>Barbell</dd></div>
+<div><dt>Level</dt><dd>Intermediate</dd></div>
+<div><dt>Source</dt><dd>Built-in</dd></div>
+</dl>
+<div class="cap" style="padding-top: 8px">Details: label above value, only a bottom line. No table, no inner box.</div>
+</div>
+</section>
+
+<!-- Data table -->
+<section style="display: flex; flex-direction: column; gap: 14px">
+<div class="sec-h"><div class="over">Data table</div><div class="cap">Web / desktop: a toolbar in the card (search left; Filter and Export right). The main action (Add client) sits in the page header, uppercase header on a grey band that stays put on vertical scroll, a select box, and a 3-dot button in the last column that opens the row menu (View, Edit, Change trainer, Pause, Delete). No column is pinned on horizontal scroll. Thin scrollbar only on hover. Pagination under the card. Phone: rows become cards, tabs move into Filter, and tapping a row opens its actions in a bottom sheet.</div></div>
+<div class="card">
+<div class="tbl-tools"><div class="search" style="width: 300px; min-width: 0"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>Search clients</div><div class="tt-end"><button class="btn out"><svg class="i" viewBox="0 0 24 24"><path d="M4 5h16l-6 7.5V19l-4 1.5v-8z"></path></svg>Filter</button><button class="btn out"><svg class="i" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"></path></svg>Export<svg class="i" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg></button><button class="btn dark"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>Add client</button></div></div>
+<div class="tbl-wrap scroll" style="max-height: 230px">
+<table class="tbl dt" style="min-width: 1100px">
+<thead><tr><th style="width: 40px"><span class="box"></span></th><th style="width: 240px">Client</th><th>Trainer</th><th>Goal</th><th>Status</th><th>Adherence</th><th>Phone</th><th>Joined</th><th class="num">Last active</th><th class="num" style="width: 64px">Actions</th></tr></thead>
+<tbody>
+<tr><td><span class="box"></span></td><td><div class="who"><span class="av c1">RS</span><div><div style="font-weight: 700">Riya Sharma</div><div class="cap">riya.sharma@email.com</div></div></div></td><td>Aman Verma</td><td>Fat loss</td><td><span class="badge b-ok">Active</span></td><td><div style="display: flex; align-items: center; gap: 8px"><span class="bar"><i style="width: 88%"></i></span><span class="cap">88%</span></div></td><td class="cap">+91 98200 12345</td><td class="cap">12 Jan 2026</td><td class="num cap">2 h ago</td><td><div class="row-dots"><button class="ibtn sm" aria-label="More actions" data-tip="More actions"><svg class="i fill dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.3"></circle><circle cx="12" cy="12" r="2.3"></circle><circle cx="19" cy="12" r="2.3"></circle></svg></button></div></td></tr>
+<tr><td><span class="box"></span></td><td><div class="who"><span class="av c3">NJ</span><div><div style="font-weight: 700">Neha Jain</div><div class="cap">neha@email.com</div></div></div></td><td>Aman Verma</td><td>General fitness</td><td><span class="badge b-warn">Pending</span></td><td><span class="cap">—</span></td><td class="cap">+91 98200 12345</td><td class="cap">12 Jan 2026</td><td class="num cap">1 d ago</td><td><div class="row-dots"><button class="ibtn sm" aria-label="More actions" data-tip="More actions"><svg class="i fill dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.3"></circle><circle cx="12" cy="12" r="2.3"></circle><circle cx="19" cy="12" r="2.3"></circle></svg></button></div></td></tr>
+<tr><td><span class="box"></span></td><td><div class="who"><span class="av c5">PR</span><div><div style="font-weight: 700">Priya Reddy</div><div class="cap">priya.reddy@email.com</div></div></div></td><td>Meera Shah</td><td>Fat loss</td><td><span class="badge b-bad">At risk</span></td><td><div style="display: flex; align-items: center; gap: 8px"><span class="bar"><i style="width: 34%; background: #A4231B"></i></span><span class="cap">34%</span></div></td><td class="cap">+91 98200 12345</td><td class="cap">12 Jan 2026</td><td class="num cap">5 d ago</td><td><div class="row-dots"><button class="ibtn sm" aria-label="More actions" data-tip="More actions"><svg class="i fill dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.3"></circle><circle cx="12" cy="12" r="2.3"></circle><circle cx="19" cy="12" r="2.3"></circle></svg></button></div></td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="pager"><span>Showing 1–3 of 14</span><div class="pgs"><button class="pg" disabled="" aria-label="Previous page"><svg class="i" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"></path></svg></button><button class="pg on">1</button><button class="pg">2</button><button class="pg">3</button><span class="cap" style="padding: 0 2px">…</span><button class="pg">5</button><button class="pg" aria-label="Next page"><svg class="i" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"></path></svg></button></div></div>
+</section>
+
+
+<!-- Sidebar -->
+<section style="display: flex; flex-direction: column; gap: 14px">
+<div class="sec-h"><div class="over">Sidebar</div><div class="cap">The left rail on every web page. 240 wide, white, items 34 high with radius 8; hover and the active item both use #FAFAFA with a 1px line, and the active item's icon turns accent blue. Group labels (Build, Engage, Workspace) are uppercase 11. A count chip sits at the right end of an item that is waiting on you (Approvals). The round 28 chevron on the panel edge collapses the rail to 68 icons-only and shows only while the pointer is on the rail; in the collapsed rail the labels become tooltips, group labels become a 1px divider, and the count moves to a corner badge. Width does not animate. The brand block shows the logo, the workspace name and the role line — “Owner workspace” for admin, “Trainer workspace” for a trainer. On a phone there is no rail: a 5-tab bottom bar takes its place and everything else moves to the More page.</div></div>
+<div style="display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap">
+<div style="display: flex; flex-direction: column; gap: 8px"><div class="app" style="min-height: 0; background: #FFFFFF; border: 1px solid #E6E6E1; border-radius: 16px; overflow: hidden; width: 242px; flex: none"><aside class="side"><button class="edge" aria-label="Collapse or expand sidebar" data-tip="Collapse sidebar"><svg class="i" viewBox="0 0 24 24"><path d="m14.5 6-6 6 6 6"></path></svg></button><div class="brand"><img src="/_blob/7f1b8d133ad89eaba73fd8ba3d41bf1e" alt=""><span class="bt"><b>Train With Vimal</b><small>Owner workspace</small></span><button class="ibtn sm ghost tog" aria-label="Expand sidebar"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"></rect><path d="M9.5 4.5v15"></path></svg></button></div><span data-tip="Dashboard" class="nav"><svg class="i lg" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20h-5v-6H9v6H4z"></path></svg>Dashboard</span>
+<span data-tip="Clients" class="nav"><svg class="i lg" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"></path><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .7 3.2 2.5 3.5 5.2"></path></svg>Clients</span>
+<span data-tip="Approvals" class="nav"><svg class="i lg" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5 1.6 0 3 .4 4.1 1.2"></path><path d="m15.5 18 2 2 4-4.5"></path></svg>Approvals<span class="count" style="margin-left: auto">5</span></span>
+<span data-tip="Trainers" class="nav"><svg class="i lg" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M4 20.5c.8-4 4-6 8-6s7.2 2 8 6"></path></svg>Trainers</span>
+<span data-tip="Calendar" class="nav"><svg class="i lg" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"></rect><path d="M3.5 10h17M8 3v4M16 3v4"></path></svg>Calendar</span>
+<span data-tip="Activity log" class="nav"><svg class="i lg" viewBox="0 0 24 24"><path d="M3 12h4l3-7 4 14 3-7h4"></path></svg>Activity log</span>
+<div class="grp over">Build</div>
+<span data-tip="Programs" class="nav"><svg class="i lg" viewBox="0 0 24 24"><path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"></path></svg>Programs</span>
+<span data-tip="Exercises" class="nav on"><svg class="i lg" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"></rect><rect x="13" y="4" width="7" height="7" rx="1.5"></rect><rect x="4" y="13" width="7" height="7" rx="1.5"></rect><rect x="13" y="13" width="7" height="7" rx="1.5"></rect></svg>Exercises</span>
+<span data-tip="Nutrition &amp; foods" class="nav"><svg class="i lg" viewBox="0 0 24 24"><path d="M12 7c-1.5-1.2-5-1.5-6.5 1.5S5 16 7.5 19c1.5 1.8 3 1.3 4.5.6 1.5.7 3 1.2 4.5-.6 2.5-3 3.5-7.5 2-10.5S13.5 5.8 12 7z"></path><path d="M12 7c0-2 1-3.5 3-4"></path></svg>Nutrition &amp; foods</span>
+<span data-tip="Habits &amp; supplements" class="nav"><svg class="i lg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"></circle><path d="m8.5 12.5 2.5 2.5 4.5-5"></path></svg>Habits &amp; supplements</span>
+<span data-tip="Forms &amp; check-ins" class="nav"><svg class="i lg" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"></rect><path d="M9 4V2.8h6V4M8.5 10h7M8.5 14h7M8.5 18h4"></path></svg>Forms &amp; check-ins</span>
+<span data-tip="Content library" class="nav"><svg class="i lg" viewBox="0 0 24 24"><path d="M5 4.5h9.5a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z"></path><path d="M5 17a3 3 0 0 1 3-3h9.5"></path></svg>Content library</span>
+<div class="grp over">Engage</div>
+<span data-tip="Automations" class="nav"><svg class="i lg" viewBox="0 0 24 24"><path d="M13 3 5 13.5h6L10 21l8-10.5h-6z"></path></svg>Automations</span>
+<span data-tip="Emails &amp; alerts" class="nav"><svg class="i lg" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2"></rect><path d="m4 7 8 6 8-6"></path></svg>Emails &amp; alerts</span>
+<div class="grp over">Workspace</div>
+<span data-tip="Settings" class="nav"><svg class="i lg" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"></path><circle cx="16" cy="7" r="2"></circle><circle cx="10" cy="17" r="2"></circle></svg>Settings</span></aside></div><div class="cap"><b style="color: #171717">Open · 240</b><br>Default. Hover the rail to see the edge chevron.</div></div>
+<div style="display: flex; flex-direction: column; gap: 8px"><div class="app mini" style="min-height: 0; background: #FFFFFF; border: 1px solid #E6E6E1; border-radius: 16px; overflow: hidden; width: 70px; flex: none"><aside class="side"><button class="edge" aria-label="Collapse or expand sidebar" data-tip="Expand sidebar"><svg class="i" viewBox="0 0 24 24"><path d="m14.5 6-6 6 6 6"></path></svg></button><div class="brand"><img src="/_blob/7f1b8d133ad89eaba73fd8ba3d41bf1e" alt=""><span class="bt"><b>Train With Vimal</b><small>Owner workspace</small></span><button class="ibtn sm ghost tog" aria-label="Expand sidebar"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"></rect><path d="M9.5 4.5v15"></path></svg></button></div><span data-tip="Dashboard" class="nav"><svg class="i lg" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20h-5v-6H9v6H4z"></path></svg>Dashboard</span>
+<span data-tip="Clients" class="nav"><svg class="i lg" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"></path><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .7 3.2 2.5 3.5 5.2"></path></svg>Clients</span>
+<span data-tip="Approvals" class="nav"><svg class="i lg" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5 1.6 0 3 .4 4.1 1.2"></path><path d="m15.5 18 2 2 4-4.5"></path></svg>Approvals<span class="count" style="margin-left: auto">5</span></span>
+<span data-tip="Trainers" class="nav"><svg class="i lg" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M4 20.5c.8-4 4-6 8-6s7.2 2 8 6"></path></svg>Trainers</span>
+<span data-tip="Calendar" class="nav"><svg class="i lg" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"></rect><path d="M3.5 10h17M8 3v4M16 3v4"></path></svg>Calendar</span>
+<span data-tip="Activity log" class="nav"><svg class="i lg" viewBox="0 0 24 24"><path d="M3 12h4l3-7 4 14 3-7h4"></path></svg>Activity log</span>
+<div class="grp over">Build</div>
+<span data-tip="Programs" class="nav"><svg class="i lg" viewBox="0 0 24 24"><path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"></path></svg>Programs</span>
+<span data-tip="Exercises" class="nav on"><svg class="i lg" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"></rect><rect x="13" y="4" width="7" height="7" rx="1.5"></rect><rect x="4" y="13" width="7" height="7" rx="1.5"></rect><rect x="13" y="13" width="7" height="7" rx="1.5"></rect></svg>Exercises</span>
+<span data-tip="Nutrition &amp; foods" class="nav"><svg class="i lg" viewBox="0 0 24 24"><path d="M12 7c-1.5-1.2-5-1.5-6.5 1.5S5 16 7.5 19c1.5 1.8 3 1.3 4.5.6 1.5.7 3 1.2 4.5-.6 2.5-3 3.5-7.5 2-10.5S13.5 5.8 12 7z"></path><path d="M12 7c0-2 1-3.5 3-4"></path></svg>Nutrition &amp; foods</span>
+<span data-tip="Habits &amp; supplements" class="nav"><svg class="i lg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"></circle><path d="m8.5 12.5 2.5 2.5 4.5-5"></path></svg>Habits &amp; supplements</span>
+<span data-tip="Forms &amp; check-ins" class="nav"><svg class="i lg" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"></rect><path d="M9 4V2.8h6V4M8.5 10h7M8.5 14h7M8.5 18h4"></path></svg>Forms &amp; check-ins</span>
+<span data-tip="Content library" class="nav"><svg class="i lg" viewBox="0 0 24 24"><path d="M5 4.5h9.5a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z"></path><path d="M5 17a3 3 0 0 1 3-3h9.5"></path></svg>Content library</span>
+<div class="grp over">Engage</div>
+<span data-tip="Automations" class="nav"><svg class="i lg" viewBox="0 0 24 24"><path d="M13 3 5 13.5h6L10 21l8-10.5h-6z"></path></svg>Automations</span>
+<span data-tip="Emails &amp; alerts" class="nav"><svg class="i lg" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2"></rect><path d="m4 7 8 6 8-6"></path></svg>Emails &amp; alerts</span>
+<div class="grp over">Workspace</div>
+<span data-tip="Settings" class="nav"><svg class="i lg" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"></path><circle cx="16" cy="7" r="2"></circle><circle cx="10" cy="17" r="2"></circle></svg>Settings</span></aside></div><div class="cap"><b style="color: #171717">Collapsed · 68</b><br>Icons only, label on hover, Approvals count as a corner badge.</div></div>
+<div class="card pad" style="display: flex; flex-direction: column; gap: 10px; min-width: 300px; flex: 1">
+<div class="over">Rules</div>
+<div class="cap"><b style="color: #171717">Order</b><br>Admin: Dashboard, Clients, Approvals, Trainers, Calendar, Activity log · Build: Programs, Exercises, Nutrition &amp; foods, Habits &amp; supplements, Forms &amp; check-ins, Content library · Engage: Automations, Emails &amp; alerts · Workspace: Settings.</div>
+<div class="cap"><b style="color: #171717">Trainer workspace</b><br>Dashboard, My clients, Check-ins, Calendar · Library: Programs, Exercises, Nutrition &amp; foods, Habits &amp; supplements, Content library · You: My profile. Same parts, shorter list, no Approvals, Trainers, Automations, Emails or Settings.</div>
+<div class="cap"><b style="color: #171717">Phone</b><br>Admin tabs: Home, Clients, Approvals (badge), Calendar, More. Trainer tabs: Home, Clients, Check-ins, Calendar, More. The More page repeats the same groups as rows, with the account card on top and Log out at the bottom.</div>
+<div class="cap"><b style="color: #171717">Never</b><br>No scrollbar in the rail, no second level of nesting, no page opening in the rail itself, and the rail never scrolls away from the content panel.</div>
+</div>
+</div>
+</section>
+
+<!-- Page header -->
+<section style="display: flex; flex-direction: column; gap: 14px">
+<div class="sec-h"><div class="over">Page header</div><div class="cap">Title on the left, actions always on the right in one line. The title shrinks with the width (28 desktop → 20 phone) and wraps to 2 lines max. Under ~760px the outline buttons become icon-only (tooltip keeps the name); on a phone every button is icon-only.</div></div>
+<div style="display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap">
+<div style="display: flex; flex-direction: column; gap: 6px; width: 100%">
+<div class="cap">Web / desktop</div>
+<div class="card pad" style="padding: 16px"><div class="wrap" style="max-width: none; margin: 0">
+<div class="top">
+<div style="display: flex; gap: 14px; align-items: center; min-width: 0">
+<span class="ex-head-ic" style="flex: none; width: 52px; height: 52px; border-radius: 14px; background: #FFFFFF; border: 1px solid #E6E6E1; display: grid; place-items: center; color: #3F3F46"><svg class="i" viewBox="0 0 24 24" style="width: 22px; height: 22px"><path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"></path></svg></span>
+<div style="display: flex; flex-direction: column; gap: 4px; min-width: 0"><h1 class="h1">Barbell Bench Press</h1><p class="sub">Chest · Barbell · Built-in exercise</p></div>
+</div>
+<div class="acts"><button class="btn out" aria-label="Duplicate to edit"><svg class="i" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"></path></svg>Duplicate to edit</button><button class="btn pri" aria-label="Add to program"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>Add to program</button><button class="ibtn" aria-label="More actions" data-tip="More actions"><svg class="i fill dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.3"></circle><circle cx="12" cy="12" r="2.3"></circle><circle cx="19" cy="12" r="2.3"></circle></svg></button></div>
+</div>
+</div></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; width: 620px">
+<div class="cap">Tablet</div>
+<div class="card pad" style="padding: 16px"><div class="wrap" style="max-width: none; margin: 0">
+<div class="top">
+<div style="display: flex; gap: 14px; align-items: center; min-width: 0">
+<span class="ex-head-ic" style="flex: none; width: 52px; height: 52px; border-radius: 14px; background: #FFFFFF; border: 1px solid #E6E6E1; display: grid; place-items: center; color: #3F3F46"><svg class="i" viewBox="0 0 24 24" style="width: 22px; height: 22px"><path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"></path></svg></span>
+<div style="display: flex; flex-direction: column; gap: 4px; min-width: 0"><h1 class="h1">Barbell Bench Press</h1><p class="sub">Chest · Barbell · Built-in exercise</p></div>
+</div>
+<div class="acts"><button class="btn out" aria-label="Duplicate to edit"><svg class="i" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"></path></svg>Duplicate to edit</button><button class="btn pri" aria-label="Add to program"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>Add to program</button><button class="ibtn" aria-label="More actions" data-tip="More actions"><svg class="i fill dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.3"></circle><circle cx="12" cy="12" r="2.3"></circle><circle cx="19" cy="12" r="2.3"></circle></svg></button></div>
+</div>
+</div></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; width: 375px">
+<div class="cap">Phone</div>
+<div class="card pad" style="padding: 16px"><div class="wrap" style="max-width: none; margin: 0">
+<div class="top">
+<div style="display: flex; gap: 14px; align-items: center; min-width: 0">
+<span class="ex-head-ic" style="flex: none; width: 52px; height: 52px; border-radius: 14px; background: #FFFFFF; border: 1px solid #E6E6E1; display: grid; place-items: center; color: #3F3F46"><svg class="i" viewBox="0 0 24 24" style="width: 22px; height: 22px"><path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"></path></svg></span>
+<div style="display: flex; flex-direction: column; gap: 4px; min-width: 0"><h1 class="h1">Barbell Bench Press</h1><p class="sub">Chest · Barbell · Built-in exercise</p></div>
+</div>
+<div class="acts"><button class="btn out" aria-label="Duplicate to edit"><svg class="i" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"></path></svg>Duplicate to edit</button><button class="btn pri" aria-label="Add to program"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>Add to program</button><button class="ibtn" aria-label="More actions" data-tip="More actions"><svg class="i fill dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.3"></circle><circle cx="12" cy="12" r="2.3"></circle><circle cx="19" cy="12" r="2.3"></circle></svg></button></div>
+</div>
+</div></div>
+</div>
+</div>
+</section>
+
+<!-- Profile button -->
+<section class="card pad" style="display: flex; flex-direction: column; gap: 18px; border-style: dashed; border-color: #6b6b70">
+<div class="sec-h"><div class="over">Profile button · A chosen</div><div class="cap">Top right of every page, next to the bell. Click opens the account menu. On phone all of them shrink to the photo only. Hover each to see the effect.</div></div>
+<div class="pv-grid">
+<div class="pv-opt"><div class="pv-bar"><span class="bell"><svg class="i" viewBox="0 0 24 24"><path d="M6 9a6 6 0 1 1 12 0c0 5 2 6.5 2 6.5H4S6 14 6 9"></path><path d="M10 19.5a2 2 0 0 0 4 0"></path></svg></span><button class="pv pv-a" aria-label="Account menu"><span class="av">V</span></button></div><div class="cap"><b style="color: #171717">A · Photo only ✓ in use</b><br>Round photo 36. Hover adds a soft blue ring. Cleanest, name shows inside the menu.</div></div>
+<div class="pv-opt"><div class="pv-bar"><span class="bell"><svg class="i" viewBox="0 0 24 24"><path d="M6 9a6 6 0 1 1 12 0c0 5 2 6.5 2 6.5H4S6 14 6 9"></path><path d="M10 19.5a2 2 0 0 0 4 0"></path></svg></span><button class="pv pv-b" aria-label="Account menu"><span class="av">V</span><span class="nm">Vimal</span></button></div><div class="cap"><b style="color: #171717">B · Photo + name</b><br>Square photo (radius 8, same as buttons) + bold name. No box. Current version.</div></div>
+<div class="pv-opt"><div class="pv-bar"><span class="bell"><svg class="i" viewBox="0 0 24 24"><path d="M6 9a6 6 0 1 1 12 0c0 5 2 6.5 2 6.5H4S6 14 6 9"></path><path d="M10 19.5a2 2 0 0 0 4 0"></path></svg></span><button class="pv pv-c" aria-label="Account menu"><span class="av">V</span><span class="nm">Vimal<span class="rl">Admin</span></span></button></div><div class="cap"><b style="color: #171717">C · Photo + name + role</b><br>Name with a small grey role line under it. Tells who is signed in at a glance.</div></div>
+<div class="pv-opt"><div class="pv-bar"><span class="bell"><svg class="i" viewBox="0 0 24 24"><path d="M6 9a6 6 0 1 1 12 0c0 5 2 6.5 2 6.5H4S6 14 6 9"></path><path d="M10 19.5a2 2 0 0 0 4 0"></path></svg></span><button class="pv pv-d" aria-label="Account menu"><span class="av">V</span><span class="nm">Vimal</span><svg class="i chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg></button></div><div class="cap"><b style="color: #171717">D · Outline button</b><br>Looks like our outline buttons: border, height 36, radius 8, small photo + name + arrow.</div></div>
+<div class="pv-opt"><div class="pv-bar"><span class="bell"><svg class="i" viewBox="0 0 24 24"><path d="M6 9a6 6 0 1 1 12 0c0 5 2 6.5 2 6.5H4S6 14 6 9"></path><path d="M10 19.5a2 2 0 0 0 4 0"></path></svg></span><span class="pv-sep"></span><button class="pv pv-e" aria-label="Account menu"><span class="av">V</span><span class="nm">Vimal</span></button></div><div class="cap"><b style="color: #171717">E · Round + online dot</b><br>Round photo with a green dot, name next to it. A divider separates it from the bell.</div></div>
+<div class="pv-opt"><div class="pv-bar"><span class="bell"><svg class="i" viewBox="0 0 24 24"><path d="M6 9a6 6 0 1 1 12 0c0 5 2 6.5 2 6.5H4S6 14 6 9"></path><path d="M10 19.5a2 2 0 0 0 4 0"></path></svg></span><button class="pv pv-f" aria-label="Account menu"><span class="av">V</span><span class="nm">Vimal</span><svg class="i chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg></button></div><div class="cap"><b style="color: #171717">F · Grey chip</b><br>Soft grey fill, radius 8, photo + name + arrow. Stands out without a border.</div></div>
+</div>
+</section>
+
+<!-- Modal -->
+<section style="display: flex; flex-direction: column; gap: 14px">
+<div class="sec-h"><div class="over">Modal</div><div class="cap">Dimmed backdrop, white card radius 16. Header = icon (optional) + title + one line of help + close. Actions on the right: Cancel (outline) then the main action, whose label says exactly what happens. Esc and a click outside close it. Confirm 440 wide, form 560.</div></div>
+<div class="modal-back inline" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start">
+<div class="modal" style="border-radius: 12px">
+<div class="modal-h"><span class="modal-ic"><svg class="i lg" viewBox="0 0 24 24"><path d="M6 10a6 6 0 0 1 12 0c0 5 2 6.5 2 6.5H4S6 15 6 10z"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg></span><div class="grow"><h3>Remind 7 at-risk clients?</h3><p>Each client gets a push and WhatsApp message. Their trainer is copied.</p></div><button class="ibtn sm ghost" aria-label="Close" data-tip="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></div>
+<div class="modal-f"><button class="btn out">Cancel</button><button class="btn pri">Remind 7 clients</button></div>
+</div>
+<div class="modal wide">
+<div class="modal-h"><div class="grow"><h3>Add client</h3><p>They get an invite link to finish onboarding.</p></div><button class="ibtn sm ghost" aria-label="Close" data-tip="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></div>
+<div class="modal-b">
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
+<div class="field"><label>Full name</label><div class="inp">Riya Sharma</div></div>
+<div class="field"><label>Phone</label><div class="inp">+91 98201 11234</div></div>
+</div>
+<div class="field"><label>Trainer</label><div class="select" style="width: 100%">Aman Verma<svg class="i" viewBox="0 0 24 24" style="margin-left: auto"><path d="m6 9 6 6 6-6"></path></svg></div></div>
+</div>
+<div class="modal-f"><button class="btn out">Cancel</button><button class="btn pri">Add and send invite</button></div>
+</div>
+<div class="modal">
+<div class="modal-h"><span class="modal-ic" style="background: #FDECEC; color: #A4231B"><svg class="i lg" viewBox="0 0 24 24"><path d="M5 7h14M10 7V4.5h4V7M7 7l1 13h8l1-13"></path></svg></span><div class="grow"><h3>Delete this exercise?</h3><p>It is removed from 2 programs. This cannot be undone.</p></div><button class="ibtn sm ghost" aria-label="Close" data-tip="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></div>
+<div class="modal-f"><button class="btn out">Cancel</button><button class="btn danger">Delete exercise</button></div>
+</div>
+</div>
+</section>
+
+
+<!-- Toast -->
+<section style="display: flex; flex-direction: column; gap: 14px">
+<div class="sec-h"><div class="over">Toast</div><div class="cap">The one line that says a change went through, so a saved change never needs a modal. It slides up, holds about 4 seconds, and goes on its own; Undo keeps it open while the pointer is on it. Title says what happened in the past tense, the grey second line gives the detail, Undo sits before the close ×, and only one toast shows at a time — a second change replaces the first. A toast never carries the only copy of something the person must read, and an error that needs a decision is a modal, not a toast.</div></div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; align-items: start">
+<div style="display: flex; flex-direction: column; gap: 12px">
+<div class="over">Admin and trainer, web · .pg-toast</div>
+<div class="pg-toast" style="position: static; left: auto; bottom: auto; transform: none"><div><b>Client added</b><span>Riya Sharma · invite sent to Aman Verma</span></div><button class="btn text">Undo</button><button class="ibtn sm ghost" aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></div>
+<div class="pg-toast" style="position: static; left: auto; bottom: auto; transform: none"><div><b>Program saved</b><span>Fat Loss Phase 1 · 12 workouts</span></div><button class="ibtn sm ghost" aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></div>
+<div class="pg-toast" style="position: static; left: auto; bottom: auto; transform: none"><div><b>3 clients moved</b><span>From Arjun Rao to Pooja Gupta</span></div><button class="btn text">Undo</button><button class="ibtn sm ghost" aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></div>
+<div class="cap">Dark #1F1F1F card, 360 wide, radius 14. Title 13.5 white, detail 12 grey, Undo in light blue. It always sits at the bottom and finds its own height: 20 above the bottom edge on a screen with no bottom bar, and 12 above the bar (83) when there is one.</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px">
+<div class="over">Client app · .ca-toast</div>
+<div class="ca-toast ok" style="position: static; left: auto; right: auto; bottom: auto; transform: none"><span class="ca-ti"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"></path></svg></span><div><b>Set 2 saved</b><span>60 kg x 8 · rest 90 s</span></div><button class="ca-tbtn">Undo</button><button class="ca-tx" aria-label="Dismiss"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></div>
+<div class="ca-toast info" style="position: static; left: auto; right: auto; bottom: auto; transform: none"><span class="ca-ti"><svg class="i" viewBox="0 0 24 24"><path d="M12 3.5s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"></path></svg></span><div><b>Water +250 ml</b><span>2.1 L of 3 L today</span></div><button class="ca-tbtn">Undo</button><button class="ca-tx" aria-label="Dismiss"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></div>
+<div class="ca-toast warn" style="position: static; left: auto; right: auto; bottom: auto; transform: none"><span class="ca-ti"><svg class="i" viewBox="0 0 24 24"><path d="M12 4 2.5 20h19zM12 10v4.5M12 17.5h.01"></path></svg></span><div><b>Check your weight</b><span>112 kg looks far from 72 kg</span></div><button class="ca-tx" aria-label="Dismiss"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></div>
+<div class="ca-toast err" style="position: static; left: auto; right: auto; bottom: auto; transform: none"><span class="ca-ti"><svg class="i" viewBox="0 0 24 24"><path d="M12 4 2.5 20h19zM12 10v4.5M12 17.5h.01"></path></svg></span><div><b>Could not save</b><span>You are offline · we will retry</span></div><button class="ca-tx" aria-label="Dismiss"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></div>
+<div class="ca-toast del" style="position: static; left: auto; right: auto; bottom: auto; transform: none"><span class="ca-ti"><svg class="i" viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13"></path></svg></span><div><b>Meal removed</b><span>Lunch · paneer bhurji</span></div><button class="ca-tbtn">Undo</button><button class="ca-tx" aria-label="Dismiss"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></div>
+<div class="ca-toast star" style="position: static; left: auto; right: auto; bottom: auto; transform: none"><span class="ca-ti"><svg class="i" viewBox="0 0 24 24"><path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"></path></svg></span><div><b>7 day streak</b><span>Habits done every day this week</span></div><button class="ca-tx" aria-label="Dismiss"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></div>
+<div class="cap">Same box as the admin toast, 360 wide and radius 14; only the fill changes per kind. Round 32 icon tile, bold 14 title, detail 12 at 78% opacity. Done and milestone are accent blue on white text; info and water #7CC4FF, warning #FFD166, error #FF7A45 and delete #2A2C25. It sits above the five-tab bar, and when a bottom sheet is open it drops back to the screen bottom and floats over the sheet, which reserves room so its buttons stay clear.</div>
+</div>
+</div>
+</section>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":5900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tab: 'muscles', cat: 'muscle', picked: { muscle: ['Chest'], equipment: ['Barbell'], level: [], source: [] } };
+  }
+  renderVals() {
+    const data = {
+      muscle: { label: 'Muscle', opts: [['Chest', 4], ['Back', 4], ['Legs', 6], ['Shoulders', 5], ['Arms', 4], ['Core', 3], ['Cardio', 2]] },
+      equipment: { label: 'Equipment', opts: [['Barbell', 8], ['Dumbbell', 9], ['Cable', 6], ['Machine', 3], ['Bodyweight', 5]] },
+      level: { label: 'Level', opts: [['Beginner', 14], ['Intermediate', 14]] },
+      source: { label: 'Source', opts: [['Built-in', 28], ['Custom', 0]] }
+    };
+    const picked = this.state.picked;
+    const cats = Object.keys(data).map((k) => ({
+      label: data[k].label,
+      cls: k === this.state.cat ? 'on' : '',
+      set: picked[k].length > 0,
+      count: picked[k].length ? String(picked[k].length) : '',
+      pick: () => this.setState({ cat: k })
+    }));
+    const k = this.state.cat;
+    const opts = data[k].opts.map(([label, n]) => {
+      const on = picked[k].includes(label);
+      return {
+        label, n: String(n), on, off: !on, cls: on ? 'sel' : '',
+        pick: () => {
+          const next = on ? picked[k].filter((x) => x !== label) : picked[k].concat(label);
+          this.setState({ picked: Object.assign({}, picked, { [k]: next }) });
+        }
+      };
+    });
+    const tabs = [['howto', 'How to', '4'], ['cues', 'Form cues', '3'], ['muscles', 'Muscles', '3']].map(([id, label, n]) => ({
+      label, n, on: this.state.tab === id, off: this.state.tab !== id, pick: () => this.setState({ tab: id })
+    }));
+    return { cats, opts, catLabel: data[k].label, tabs };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Trainer dashboard</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="twv.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1D4ED8}a:hover{color:#1E3A8A}
+</style>
+</helmet>
+<div class="app {{sideCls}}" style="font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #171717; background: #FFFFFF">
+<aside class="side">
+<button class="edge" aria-label="Collapse or expand sidebar" onClick="{{toggleSide}}"><svg class="i" viewBox="0 0 24 24"><path d="m14.5 6-6 6 6 6"/></svg></button>
+<div class="brand"><img src="/_blob/7f1b8d133ad89eaba73fd8ba3d41bf1e" alt=""><span class="bt"><b>Train With Vimal</b><small>Trainer workspace</small></span><button class="ibtn sm ghost tog" aria-label="Expand sidebar" onClick="{{toggleSide}}"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.5 4.5v15"/></svg></button></div>
+<a data-tip="Dashboard" class="nav on" href="TrainerDashboard.dc.html"><svg class="i lg" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20h-5v-6H9v6H4z"/></svg>Dashboard</a>
+<a data-tip="My clients" class="nav" href="TrainerClients.dc.html"><svg class="i lg" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .7 3.2 2.5 3.5 5.2"/></svg>My clients</a>
+<a data-tip="Check-ins" class="nav" href="TrainerCheckins.dc.html"><svg class="i lg" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2.8h6V4M8.5 10h7M8.5 14h7M8.5 18h4"/></svg>Check-ins<span class="count" style="margin-left: auto">{{ciN}}</span></a>
+<a data-tip="Calendar" class="nav" href="TrainerCalendar.dc.html"><svg class="i lg" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Calendar</a>
+<div class="grp over">Library</div>
+<a data-tip="Programs" class="nav" href="Programs.dc.html"><svg class="i lg" viewBox="0 0 24 24"><path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/></svg>Programs</a>
+<a data-tip="Exercises" class="nav" href="ExerciseLibrary.dc.html"><svg class="i lg" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>Exercises</a>
+<a data-tip="Nutrition &amp; foods" class="nav" href="Nutrition.dc.html"><svg class="i lg" viewBox="0 0 24 24"><path d="M12 7c-1.5-1.2-5-1.5-6.5 1.5S5 16 7.5 19c1.5 1.8 3 1.3 4.5.6 1.5.7 3 1.2 4.5-.6 2.5-3 3.5-7.5 2-10.5S13.5 5.8 12 7z"/><path d="M12 7c0-2 1-3.5 3-4"/></svg>Nutrition &amp; foods</a>
+<a data-tip="Habits &amp; supplements" class="nav" href="Habits.dc.html"><svg class="i lg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/></svg>Habits &amp; supplements</a>
+<a data-tip="Content library" class="nav" href="Content.dc.html"><svg class="i lg" viewBox="0 0 24 24"><path d="M5 4.5h9.5a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h9.5"/></svg>Content library</a>
+<div class="grp over">You</div>
+<a data-tip="My profile" class="nav" href="TrainerMe.dc.html"><svg class="i lg" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20.5c.8-4 4-6 8-6s7.2 2 8 6"/></svg>My profile</a>
+</aside>
+
+<main class="main">
+<div class="wrap"><div class="top"><div style="display: flex; flex-direction: column; gap: 4px"><h1 class="h1">Good evening, Aman</h1><p class="sub">{{subline}}</p></div><div class="acts"><div class="row-dots"><button class="ibtn" aria-label="Notifications" onClick="{{nt.toggle}}"><svg class="i" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg><sc-if value="{{nt.unread}}" hint-placeholder-val="{{true}}"><span class="dot"></span></sc-if></button><sc-if value="{{nt.open}}" hint-placeholder-val="{{false}}"><div class="menu row-menu td-notes" onClick="{{stop}}"><div class="td-nh"><b>Notifications</b><sc-if value="{{nt.unread}}" hint-placeholder-val="{{true}}"><button class="btn text" onClick="{{nt.readAll}}">Mark all read</button></sc-if></div><sc-for list="{{nt.list}}" as="n" hint-placeholder-count="4"><div class="td-n {{n.cls}}"><span class="av sm {{n.c}}">{{n.ini}}</span><div class="grow"><div class="t">{{n.t}}</div><div class="s">{{n.when}}</div></div></div></sc-for></div></sc-if></div><button class="btn pri" onClick="{{openNs}}"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New session</button><a class="profile" href="TrainerMe.dc.html" aria-label="My profile" data-tip="Aman Verma · Trainer"><span class="pav">AV</span></a></div></div><div class="stats"><sc-for list="{{stats}}" as="k" hint-placeholder-count="4"><div class="stat"><div class="lbl"><span class="ic"><sc-if value="{{k.users}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.4 3.2-5.5 6.5-5.5s5.9 2.1 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .7 3.2 2.6 3.5 5.2"/></svg></sc-if><sc-if value="{{k.clip}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M8.5 10h7M8.5 14h7"/></svg></sc-if><sc-if value="{{k.dumb}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/></svg></sc-if><sc-if value="{{k.clock}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></sc-if></span>{{k.l}}</div><div class="val">{{k.v}}</div><div class="delta {{k.dc}}">{{k.d}}</div></div></sc-for></div><div class="dash-cols"><div class="dash-col"><div class="card"><div class="card-h"><div style="display: flex; align-items: center; gap: 8px"><h2 class="h3">Today</h2><span class="cap">{{sesSub}}</span></div><a href="TrainerCalendar.dc.html" style="font-size: 13px; font-weight: 700">Calendar</a></div><div class="card-b"><sc-for list="{{ses}}" as="s" hint-placeholder-count="5"><div class="row td-ses {{s.cls}}"><div class="td-time"><b>{{s.time}}</b><span>{{s.len}}</span></div><span class="av sm {{s.c}}">{{s.ini}}</span><div class="grow"><div class="t">{{s.name}}</div><div class="s"><sc-if value="{{s.vc}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg></sc-if><sc-if value="{{s.gym}}" hint-placeholder-val="{{true}}"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s-6.5-5.5-6.5-11a6.5 6.5 0 0 1 13 0c0 5.5-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg></sc-if>{{s.what}}</div></div><sc-if value="{{s.isDone}}" hint-placeholder-val="{{false}}"><span class="badge b-ok">Done</span></sc-if><sc-if value="{{s.isMiss}}" hint-placeholder-val="{{false}}"><span class="badge b-bad">Missed</span></sc-if><sc-if value="{{s.isNext}}" hint-placeholder-val="{{false}}"><span class="badge b-info">{{s.inT}}</span></sc-if><sc-if value="{{s.up}}" hint-placeholder-val="{{true}}"><button class="btn out sm" onClick="{{s.done}}"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></svg>Done</button></sc-if><div class="row-dots"><button class="ibtn sm ghost" aria-label="More actions" data-tip="More actions" onClick="{{s.menu}}"><svg class="i fill dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.3"/><circle cx="12" cy="12" r="2.3"/><circle cx="19" cy="12" r="2.3"/></svg></button><sc-if value="{{s.mo}}" hint-placeholder-val="{{false}}"><div class="menu row-menu" onClick="{{stop}}"><sc-if value="{{s.up}}" hint-placeholder-val="{{true}}"><div class="mi" onClick="{{s.miss}}"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m9 9 6 6M15 9l-6 6"/></svg>Mark as missed</div></sc-if><sc-if value="{{s.isDone}}" hint-placeholder-val="{{false}}"><div class="mi" onClick="{{s.undo}}"><svg class="i" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>Mark as not done</div></sc-if><a class="mi" href="TrainerClientProfile.dc.html" style="text-decoration: none; color: inherit"><svg class="i" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>Open client profile</a><div class="msep"></div><div class="mi danger" onClick="{{s.cancel}}"><svg class="i" viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13"/></svg>Cancel session</div></div></sc-if></div></div></sc-for><sc-if value="{{sesEmpty}}" hint-placeholder-val="{{false}}"><div class="cap" style="padding: 14px 12px">No sessions left today.</div></sc-if></div></div><div class="card"><div class="card-h"><div style="display: flex; align-items: center; gap: 8px"><h2 class="h3">Clients who need you</h2><span class="count">{{attN}}</span></div><span class="cap">Only your clients</span></div><div class="na-kinds"><sc-for list="{{akinds}}" as="k" hint-placeholder-count="5"><span class="fchip {{k.cls}}" onClick="{{k.pick}}">{{k.t}}<span class="n">{{k.n}}</span></span></sc-for></div><div class="card-b"><sc-for list="{{att}}" as="a" hint-placeholder-count="4"><div class="row td-at"><span class="av sm {{a.c}}">{{a.ini}}</span><div class="grow"><div class="t"><a href="TrainerClientProfile.dc.html">{{a.name}}</a><span class="badge plain {{a.kc}}">{{a.kind}}</span></div><div class="s">{{a.why}}</div></div><sc-if value="{{a.canRem}}" hint-placeholder-val="{{true}}"><button class="btn out sm" onClick="{{a.remind}}"><svg class="i" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>Remind</button></sc-if><sc-if value="{{a.sent}}" hint-placeholder-val="{{false}}"><span class="td-sent"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></svg>Reminded</span></sc-if><sc-if value="{{a.plan}}" hint-placeholder-val="{{false}}"><a class="btn out sm" href="TrainerClientProfile.dc.html"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Plan next</a></sc-if><sc-if value="{{a.open}}" hint-placeholder-val="{{false}}"><a class="btn out sm" href="TrainerClientProfile.dc.html"><svg class="i" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>Open</a></sc-if></div></sc-for><sc-if value="{{attMore}}" hint-placeholder-val="{{true}}"><button class="na-more" onClick="{{attToggle}}">{{attMoreT}}</button></sc-if></div></div></div><div class="dash-col"><div class="card"><div class="card-h"><div style="display: flex; align-items: center; gap: 8px"><h2 class="h3">Check-ins to review</h2><sc-if value="{{ciN}}" hint-placeholder-val="{{true}}"><span class="count">{{ciN}}</span></sc-if></div><a href="TrainerCheckins.dc.html" style="font-size: 13px; font-weight: 700">View all</a></div><div class="card-b"><sc-for list="{{cis}}" as="r" hint-placeholder-count="4"><div class="row td-ci" onClick="{{r.open}}"><span class="av sm {{r.c}}">{{r.ini}}</span><div class="grow"><div class="t">{{r.name}} <span class="td-k">· {{r.kind}}</span></div><div class="s">{{r.line}}</div></div><span class="badge plain {{r.bc}}">{{r.age}}</span><svg class="i td-go" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></div></sc-for><sc-if value="{{ciEmpty}}" hint-placeholder-val="{{false}}"><div class="td-empty"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/></svg><div><b>All check-ins reviewed</b><span>New ones show up here as clients send them.</span></div></div></sc-if></div></div><div class="card"><div class="card-h"><div><h2 class="h3">This week</h2><div class="cap">Mon 5 – Thu 8 Oct</div></div><a href="TrainerMe.dc.html" style="font-size: 13px; font-weight: 700">My profile</a></div><dl class="cp-kv c2"><div><dt>Sessions held</dt><dd>12 of 14</dd></div><div><dt>Check-ins reviewed</dt><dd>18 of 21</dd></div><div><dt>Plans changed</dt><dd>5</dd></div><div><dt>New clients</dt><dd>2 · Priya, Aditya</dd></div></dl></div></div></div></div><sc-if value="{{rvo}}" hint-placeholder-val="{{false}}"><div class="drawer-back" onClick="{{closeRv}}"><aside class="drawer" onClick="{{stop}}" aria-label="{{rv.title}}"><div class="drawer-h"><span class="modal-ic"><svg class="i" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2.8h6V4M8.5 10h7M8.5 14h7M8.5 18h4"/></svg></span><div class="grow"><h3>{{rv.title}}</h3><p>{{rv.sub}}</p></div><button class="ibtn sm ghost" aria-label="Close" data-tip="Close" onClick="{{closeRv}}"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div><div class="drawer-b"><section class="dr-sec"><div class="dr-kpis"><sc-for list="{{rv.kpis}}" as="k" hint-placeholder-count="4"><div><span class="k">{{k.k}}</span><b class="v">{{k.v}}</b></div></sc-for></div><div class="dr-qa"><sc-for list="{{rv.rows}}" as="q" hint-placeholder-count="6"><div><span>{{q.k}}</span><b>{{q.v}}</b><em>{{q.m}}</em></div></sc-for></div></section><sc-if value="{{rv.hasNote}}" hint-placeholder-val="{{true}}"><section class="dr-sec"><div class="dr-quote"><b>{{rv.first}} wrote</b>{{rv.note}}</div></section></sc-if><section class="dr-sec"><div class="dr-st"><div class="grow"><h4>Photos</h4></div><span class="cap">{{rv.phS}}</span></div><div class="td-ph"><sc-for list="{{rv.photos}}" as="p" hint-placeholder-count="3"><span class="td-phi"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="m4 18 5-5 4 4 2.5-2.5L20 19"/></svg><em>{{p}}</em></span></sc-for></div></section><section class="dr-sec"><div class="dr-st"><div class="grow"><h4>Reply</h4></div><span class="cp-info" tabindex="0" aria-label="About this" data-tip="The client gets your reply in the app with their check-in. You can edit their plan from their profile."><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8v.01"/></svg></span></div><div class="dr-reply"><div class="inp area" style="min-height: 72px"><sc-if value="{{rv.sent}}" hint-placeholder-val="{{false}}">{{rv.reply}}</sc-if><sc-if value="{{rv.notSent}}" hint-placeholder-val="{{true}}"><span class="ph">Write a short reply for {{rv.first}}…</span></sc-if></div><div class="dr-reply-f"><div class="td-quick"><sc-for list="{{rv.quick}}" as="q" hint-placeholder-count="3"><span class="fchip" onClick="{{q.pick}}">{{q.t}}</span></sc-for></div></div></div></section></div><div class="drawer-f"><a class="btn out" href="TrainerClientProfile.dc.html"><svg class="i" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>Open profile</a><span style="flex: 1"></span><button class="btn out" onClick="{{closeRv}}">Close</button><button class="btn pri" onClick="{{rv.done}}"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></svg>{{rv.doneT}}</button></div></aside></div></sc-if><sc-if value="{{nso}}" hint-placeholder-val="{{false}}"><div class="modal-back" onClick="{{closeNs}}"><div class="modal" style="max-width: 480px" onClick="{{stop}}"><div class="modal-h"><span class="modal-ic"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></span><div class="grow"><h3>New session</h3><p>Shows in your calendar and the client’s app.</p></div><button class="ibtn sm ghost" aria-label="Close" data-tip="Close" onClick="{{closeNs}}"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div><div class="modal-b"><div class="field"><label>Client</label><div class="select" style="width: 100%; min-width: 0">{{ns.client}}<svg class="i" viewBox="0 0 24 24" style="margin-left: auto"><path d="m6 9 6 6 6-6"/></svg></div></div><div class="cp-g2"><div class="field"><label>Day</label><div class="select" style="width: 100%; min-width: 0">Today, 8 Oct<svg class="i" viewBox="0 0 24 24" style="margin-left: auto"><path d="m6 9 6 6 6-6"/></svg></div></div><div class="field"><label>Time</label><div class="select" style="width: 100%; min-width: 0">17:30<svg class="i" viewBox="0 0 24 24" style="margin-left: auto"><path d="m6 9 6 6 6-6"/></svg></div></div></div><div class="field"><label>Length</label><div class="tabs sm fit"><sc-for list="{{ns.lens}}" as="m" hint-placeholder-count="2"><sc-if value="{{m.on}}" hint-placeholder-val="{{false}}"><span class="tab on">{{m.t}}<sc-if value="{{m.n}}" hint-placeholder-val="{{false}}"><span class="n">{{m.n}}</span></sc-if></span></sc-if><sc-if value="{{m.off}}" hint-placeholder-val="{{true}}"><span class="tab" onClick="{{m.pick}}">{{m.t}}<sc-if value="{{m.n}}" hint-placeholder-val="{{false}}"><span class="n">{{m.n}}</span></sc-if></span></sc-if></sc-for></div></div><div class="field"><label>Where</label><div class="tabs sm fit"><sc-for list="{{ns.wheres}}" as="m" hint-placeholder-count="2"><sc-if value="{{m.on}}" hint-placeholder-val="{{false}}"><span class="tab on">{{m.t}}<sc-if value="{{m.n}}" hint-placeholder-val="{{false}}"><span class="n">{{m.n}}</span></sc-if></span></sc-if><sc-if value="{{m.off}}" hint-placeholder-val="{{true}}"><span class="tab" onClick="{{m.pick}}">{{m.t}}<sc-if value="{{m.n}}" hint-placeholder-val="{{false}}"><span class="n">{{m.n}}</span></sc-if></span></sc-if></sc-for></div></div><div class="field"><label>Note for the client</label><div class="inp"><span class="ph">Bring your lifting belt</span></div></div></div><div class="modal-f"><button class="btn out" onClick="{{closeNs}}">Cancel</button><button class="btn pri" onClick="{{addNs}}">Add session</button></div></div></div></sc-if><sc-if value="{{hasToast}}" hint-placeholder-val="{{false}}"><div class="pg-toast"><div><b>{{toast.t}}</b><span>{{toast.s}}</span></div><sc-if value="{{toast.undo}}" hint-placeholder-val="{{true}}"><button class="btn text" onClick="{{toast.undo}}">Undo</button></sc-if><button class="ibtn sm ghost" aria-label="Close" onClick="{{toast.close}}"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div></sc-if>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { mini: false }; }
+  renderVals() {
+    const st = this.state;
+
+    const am = st.am || 'active';
+    const add = { modes: [['active', 'Active now'], ['appr', 'Send to Approvals']].map(([id, t]) => ({ t, on: am === id, off: am !== id, pick: () => this.setState({ am: id }) })),
+      modeS: am === 'active' ? 'She can log in as soon as she opens the link.' : 'She shows up in Approvals first, like people who sign up with a link.',
+      btn: am === 'active' ? 'Add client' : 'Add and send to Approvals' };
+    const FV = st.fv || {};
+    const mkF = (G) => G.map(([id, label, opts]) => { const cur = FV[id] || opts[0];
+      return { label, val: cur, opts: opts.map((o) => ({ label: o, on: o === cur, cls: o === cur ? 'sel' : '', pick: () => this.setState({ fv: Object.assign({}, FV, { [id]: o }), fo: false }) })) }; });
+    const fOn = (id, first) => FV[id] && FV[id] !== first;
+    const LK0 = [['AMAN-4821', '', 'Aman Verma', 'Made 9 Oct', '30 days · till 8 Nov', 'till 8 Nov', 'No limit', 'Quarterly plan', 6, 1, true, 'on'],
+      ['VIMAL-0007', 'Website', 'Vimal', 'Made 1 Jan', 'No end date', 'no end date', 'No limit', 'Quarterly plan', 41, 1, true, 'on'],
+      ['NEHA-3307', 'Instagram · Sept', 'Neha Joshi', 'Made 20 Sep', '30 days · till 20 Oct', 'till 20 Oct', '20 people · 3 used', 'Monthly plan', 3, 1, true, 'on'],
+      ['SAHIL-1190', '', 'Sahil Kapoor', 'Made 15 Sep', '30 days · till 15 Oct', 'till 15 Oct', 'No limit', 'Monthly plan', 9, 1, true, 'on'],
+      ['MEERA-2210', 'Yoga batch', 'Meera Shah', 'Made 1 Oct', '7 days · till 8 Oct', 'ended 8 Oct', '10 people · 4 used', 'Quarterly plan', 4, 1, true, 'end']];
+    if (st.newLink) LK0.unshift(['AMAN-5530', 'Instagram · October', 'Aman Verma', 'Made today', '30 days · till 8 Nov', 'till 8 Nov', 'No limit', 'Quarterly plan', 0, 0, true, 'on']);
+    const LOFF = st.loff || {}; const LDEL = st.ldel || {};
+    const LK = LK0.filter((l) => !LDEL[l[0]]).map((l) => { const x = l.slice(); if (LOFF[x[0]] && x[11] === 'on') x[11] = 'off'; return x; });
+    const ic0 = st.ic && LK.find((l) => l[0] === st.ic) ? st.ic : LK[0][0];
+    const cl = LK.find((l) => l[0] === ic0);
+    const invAppr = (st.ia || {})[ic0] !== false;
+    const iv = st.iv || 'main';
+    const STT = { on: ['On', 'b-ok'], off: ['Off', 'b-neu'], end: ['Ended', 'b-neu'] };
+    const IVT = [['main', 'Invite link', ''], ['new', 'New link', ''], ['all', 'All links', LK.length]];
+    const inv = { tabs: IVT.map(([id, t, n]) => ({ t, n, on: iv === id, off: iv !== id, pick: () => this.setState({ iv: id, ivFrom: iv, lm: null }) })),
+      sub: { main: 'Share it on WhatsApp or Instagram. People sign up and fill their own details.', new: 'For a new trainer or a campaign. The old links keep working.', all: 'Every link your team made. Open one to share it again or turn it off.' }[iv],
+      sumT: LK.filter((l) => l[11] === 'on').length + ' of ' + LK.length + ' links are on',
+      code: ic0, tr: cl[2], till: cl[4], max: cl[6], pkg: cl[7], appr: invAppr, apprOff: !invAppr,
+      isMain: iv === 'main', isAll: iv === 'all', isNew: iv === 'new',
+      openAll: () => this.setState({ iv: 'all', lm: null }), openNew: () => this.setState({ iv: 'new', ivFrom: iv, lm: null }), back: () => this.setState({ iv: st.ivFrom === 'all' ? 'all' : 'main', lm: null }),
+      create: () => this.setState({ newLink: true, ic: 'AMAN-5530', iv: 'main' }),
+      step3: invAppr ? 'She waits in Approvals. You or ' + cl[2] + ' approve her, then she can log in.' : 'She can log in straight away. ' + cl[2] + ' gets a notice.',
+      meta: (cl[11] === 'on' ? (invAppr ? 'Sign-ups wait in Approvals' : 'Sign-ups join straight away') : 'This link is ' + STT[cl[11]][0].toLowerCase()) + ' · ' + cl[8] + ' joined · ' + cl[9] + ' waiting · ' + cl[5],
+      others: (LK.length - 1) + ' other links: ' + LK.filter((l) => l[0] !== ic0).map((l) => l[2] + (l[11] !== 'on' ? ' (' + STT[l[11]][0].toLowerCase() + ')' : '')).join(', ') + '.',
+      sum: [[LK.length, 'links'], [LK.filter((l) => l[11] === 'on').length, 'on now'], [LK.reduce((a, l) => a + l[8], 0), 'people joined'], [LK.reduce((a, l) => a + l[9], 0), 'waiting now']].map(([v, k]) => ({ v, k })),
+      links: LK.map(([code, name, tr, made, till, tl, max, pkg, n, w, , stt]) => ({ code, name, b: STT[stt][0], bc: STT[stt][1], cls: (code === ic0 ? 'on' : '') + (stt !== 'on' ? ' dis' : ''),
+        s: tr + ' · ' + made + ' · ' + tl, n: n + ' joined', w: w ? w + ' waiting' : 'none waiting', mo: st.lm === code,
+        menu: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setState({ lm: st.lm === code ? null : code }); },
+        open: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setState({ ic: code, iv: 'main', lm: null }); },
+        copy: () => this.setState({ lm: null }), tog: stt === 'off' ? 'Turn on' : 'Turn off',
+        toggle: () => this.setState({ lm: null, loff: Object.assign({}, LOFF, { [code]: stt !== 'off' }) }),
+        del: () => this.setState({ lm: null, ldel: Object.assign({}, LDEL, { [code]: true }) }) })) };
+
+    const NOW = 17 * 60 + 50;
+    // id, time, minutes, client, ini, colour, what, video call
+    const S0 = [['s1', '07:00', 60, 'Rohan Kapoor', 'RK', 'c2', 'Push A · Gym floor', false], ['s2', '08:30', 45, 'Neha Jain', 'NJ', 'c5', 'Lower body · Gym floor', false],
+      ['s3', '18:30', 45, 'Riya Sharma', 'RS', 'c1', 'Upper A · Gym floor', false], ['s4', '19:30', 60, 'Vikram Singh', 'VS', 'c3', 'Strength test · Gym floor', false],
+      ['s5', '20:45', 30, 'Sana Khan', 'SK', 'c6', 'Form check · Video call', true]];
+    const SA = st.sAdd || [];
+    const SX = st.sx || {}, SST = Object.assign({ s1: 'done', s2: 'done' }, st.sst || {});
+    const mins = (t) => +t.slice(0, 2) * 60 + +t.slice(3);
+    const S = S0.concat(SA).filter((s) => !SX[s[0]]).sort((a, b) => mins(a[1]) - mins(b[1]));
+    const nextS = S.find((s) => !SST[s[0]] && mins(s[1]) >= NOW);
+    const setS = (id, v) => this.setState({ sst: Object.assign({}, SST, { [id]: v }), smo: null });
+    const leftN = S.filter((s) => !SST[s[0]]).length;
+
+    // check-ins: id, client, ini, colour, kind, line, age, hours, kpis, rows, note, photos
+    const C0 = [['c1', 'Riya Sharma', 'RS', 'c1', 'Weekly check-in', 'Weight 61.8 kg · energy 3/5 · knees sore', '2 d', 50,
+        [['Weight', '61.8 kg'], ['Change', '−0.6 kg'], ['Workouts', '3 of 4'], ['Meals on plan', '82%']],
+        [['Energy', '3 / 5', 'last 4'], ['Sleep', '6 h a night', 'last 6.5 h'], ['Hunger', '4 / 5', 'last 3'], ['Stress', '3 / 5', 'last 3'], ['Water', '2.5 L a day', 'same'], ['Steps', '7,400 a day', 'last 6,900']],
+        'Knees hurt a bit on walking lunges. Lunch at office is hard on Thursdays.', ['Front', 'Side', 'Back']],
+      ['c2', 'Rohan Kapoor', 'RK', 'c2', 'Weekly check-in', 'Weight 74.2 kg · bench up 2.5 kg', '1 d', 26,
+        [['Weight', '74.2 kg'], ['Change', '+0.3 kg'], ['Workouts', '5 of 5'], ['Meals on plan', '90%']],
+        [['Energy', '4 / 5', 'last 4'], ['Sleep', '7.5 h a night', 'last 7 h'], ['Hunger', '3 / 5', 'same'], ['Stress', '2 / 5', 'last 3'], ['Water', '3 L a day', 'same'], ['Steps', '9,100 a day', 'last 8,800']],
+        'Bench felt strong. Can we add one more arm day?', ['Front', 'Side']],
+      ['c3', 'Sana Khan', 'SK', 'c6', 'Weekly check-in', 'Weight 68.4 kg · sleep 5 h', '6 h', 6,
+        [['Weight', '68.4 kg'], ['Change', '−0.2 kg'], ['Workouts', '2 of 3'], ['Meals on plan', '71%']],
+        [['Energy', '2 / 5', 'last 3'], ['Sleep', '5 h a night', 'last 6 h'], ['Hunger', '3 / 5', 'same'], ['Stress', '4 / 5', 'last 3'], ['Water', '1.5 L a day', 'last 2 L'], ['Steps', '4,800 a day', 'last 5,600']],
+        'Exams this week, very tired.', []],
+      ['c4', 'Aditya Rao', 'AR', 'c4', 'Monthly progress', 'Waist −2 cm · 4 photos', '3 h', 3,
+        [['Weight', '82.0 kg'], ['Change', '−1.8 kg'], ['Workouts', '14 of 16'], ['Meals on plan', '86%']],
+        [['Waist', '88 cm', 'last 90 cm'], ['Chest', '101 cm', 'same'], ['Hips', '99 cm', 'last 100 cm'], ['Energy', '4 / 5', 'last 4'], ['Sleep', '7 h a night', 'same'], ['Steps', '8,200 a day', 'last 7,500']],
+        '', ['Front', 'Side', 'Back', 'Flex']]];
+    const CD = st.cdone || {};
+    const C = C0.filter((c) => !CD[c[0]]);
+    const rvc = C0.find((c) => c[0] === st.rv) || C0[0];
+    const first = rvc[1].split(' ')[0];
+    const QUICK = ['Great week, keep going!', 'Let’s talk at your next session.', 'I’ve updated your plan.'];
+    const RP = st.rp || {};
+
+    // attention: client, ini, colour, kind id, why, action
+    const AK = [['all', 'All'], ['miss', 'Missed workouts'], ['log', 'Not logging'], ['end', 'Plan ending'], ['low', 'Feeling low']];
+    const KL = { miss: ['Missed workouts', 'b-warn'], log: ['Not logging', 'b-bad'], end: ['Plan ending', 'b-info'], low: ['Feeling low', 'b-neu'] };
+    const A0 = [['a1', 'Ananya Iyer', 'AI', 'c3', 'log', 'No workout or meal logged in 7 days', 'remind'], ['a2', 'Priya Nair', 'PN', 'c4', 'miss', 'Missed 3 workouts this week · 1 of 4 done', 'remind'],
+      ['a3', 'Riya Sharma', 'RS', 'c1', 'end', 'Fat Loss Phase 1 ends on Sunday · nothing up next', 'plan'], ['a4', 'Sana Khan', 'SK', 'c6', 'low', 'Energy 2 / 5 two weeks in a row', 'open'],
+      ['a5', 'Vikram Singh', 'VS', 'c3', 'miss', '2 of 4 workouts done · last one Monday', 'remind'], ['a6', 'Aditya Rao', 'AR', 'c4', 'end', 'Meal plan ends in 3 days', 'plan']];
+    const ak = st.ak || 'all';
+    const AF = A0.filter((a) => ak === 'all' || a[4] === ak);
+    const RM = st.rem || {};
+    const attAll = !!st.attAll;
+
+    // tasks: id, text, from, automation, due, due class
+    const T0 = [['t1', 'Call Ananya Iyer', 'From automation · Inactive for 7 days', true, 'Today', 'today'], ['t2', 'Wish Sana Khan a happy birthday', 'From automation · Birthday', true, 'Today', 'today'],
+      ['t3', 'Send Riya her next plan', 'From automation · Plan ends', true, 'Sun', ''], ['t4', 'Check Rohan’s deadlift video', 'Added by you', false, 'Tomorrow', ''],
+      ['t5', 'Ask Priya about her knee before leg day', 'Added by you', false, 'Fri', ''], ['t6', 'Weigh-in reminder for Vikram', 'Added by you', false, 'Yesterday', 'late']];
+    const T = (st.tAdd || []).concat(T0);
+    const TD = Object.assign({ t6: true }, st.tdone || {});
+    const TS = T.filter((t) => !TD[t[0]]).concat(T.filter((t) => TD[t[0]]));
+    const tkAll = !!st.tkAll;
+    const openT = T.filter((t) => !TD[t[0]]).length;
+
+    const NOTE = [['RS', 'c1', 'Riya Sharma sent her weekly check-in', '2 days ago'], ['SK', 'c6', 'It’s Sana Khan’s birthday today', '9:00'],
+      ['V', 'c3', 'Vimal gave you 2 new clients: Priya Nair, Aditya Rao', 'Yesterday'], ['RK', 'c2', 'Rohan Kapoor swapped paneer for tofu at lunch', 'Yesterday']];
+    const LENS = ['30 min', '45 min', '60 min', '90 min'], WH = ['Gym floor', 'Video call'];
+    const nl = st.nl == null ? 2 : st.nl, nw = st.nw || 0;
+    const toast = (t, s, prev) => this.setState(Object.assign({ toast: { t, s, prev } }, {}));
+
+    return {
+      addo: !!st.addo, openAdd: () => this.setState({ addo: true }), closeAdd: () => this.setState({ addo: false }), add,
+      invo: !!st.invo, openInv: () => this.setState({ invo: true }), closeInv: () => this.setState({ invo: false, iv: 'main', lm: null }), inv, toggleInvAppr: () => this.setState({ ia: Object.assign({}, st.ia, { [ic0]: !invAppr }) }),
+      fo: !!st.fo, toggleF: () => this.setState({ fo: !st.fo }), clearF: () => this.setState({ fv: {}, fo: false }),
+      stop: (e) => { if (e && e.stopPropagation) e.stopPropagation(); },
+      sideCls: st.mini ? 'mini' : '', sideTip: st.mini ? 'Expand sidebar' : 'Collapse sidebar', toggleSide: () => this.setState({ mini: !st.mini }),
+      hasToast: !!st.toast, toast: st.toast ? { t: st.toast.t, s: st.toast.s || '', undo: st.toast.prev ? () => this.setState(Object.assign({ toast: null }, st.toast.prev)) : null, close: () => this.setState({ toast: null }) } : {},
+
+      stop: (e) => { if (e && e.stopPropagation) e.stopPropagation(); },
+      subline: 'Thursday, 8 October · 24 clients · ' + S.length + ' sessions today',
+      stats: [['users', 'My clients', '24 / 30', '6 spots free', ''], ['clip', 'Check-ins to review', String(C.length), C.filter((c) => c[7] >= 48).length ? C.filter((c) => c[7] >= 48).length + ' waiting over 48 hours' : 'None waiting long', C.filter((c) => c[7] >= 48).length ? 'down' : 'up'],
+        ['dumb', 'Workouts done', '76%', '+4% vs last week', 'up'], ['clock', 'Avg reply time', '1.4 h', 'Team average 2.1 h', '']].map(([k, l, v, d, dc]) => ({ [k]: true, l, v, d, dc })),
+      nt: { open: !!st.nto, unread: !st.ntr, toggle: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setState({ nto: !st.nto, smo: null }); }, readAll: () => this.setState({ ntr: true }),
+        list: NOTE.map(([ini, c, t, when]) => ({ ini, c, t, when, cls: st.ntr ? '' : 'new' })) },
+      sesSub: leftN ? leftN + ' left' : 'All done', sesEmpty: S.length === 0,
+      ses: S.map(([id, time, len, name, ini, c, what, vc]) => { const s = SST[id];
+        return { time, len: len + ' min', name, ini, c, what, vc, gym: !vc, isDone: s === 'done', isMiss: s === 'miss', up: !s, isNext: nextS && nextS[0] === id, inT: 'In ' + ((mins(time) - NOW) >= 60 ? Math.floor((mins(time) - NOW) / 60) + ' h ' + ((mins(time) - NOW) % 60 ? (mins(time) - NOW) % 60 + ' min' : '') : (mins(time) - NOW) + ' min'),
+          cls: (nextS && nextS[0] === id ? 'now' : '') + (s ? ' past' : ''), mo: st.smo === id,
+          menu: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setState({ smo: st.smo === id ? null : id, nto: false }); },
+          done: () => setS(id, 'done'), miss: () => setS(id, 'miss'), undo: () => setS(id, null),
+          cancel: () => this.setState({ sx: Object.assign({}, SX, { [id]: true }), smo: null, toast: { t: 'Session cancelled', s: name + ' gets a message in the app', prev: { sx: SX } } }) }; }),
+      ciN: C.length, ciEmpty: C.length === 0,
+      cis: C.map(([id, name, ini, c, kind, line, age, h]) => ({ name, ini, c, kind, line, age, bc: h >= 48 ? 'b-bad' : h >= 24 ? 'b-warn' : 'b-neu', open: () => this.setState({ rvo: true, rv: id }) })),
+      rvo: !!st.rvo, closeRv: () => this.setState({ rvo: false }),
+      rv: { title: first + '’s ' + rvc[4].toLowerCase(), sub: 'Sent ' + rvc[6] + ' ago · ' + rvc[5].split(' · ')[0], first, kpis: rvc[8].map(([k, v]) => ({ k, v })),
+        rows: rvc[9].map(([k, v, m]) => ({ k, v, m })), note: rvc[10], hasNote: !!rvc[10], photos: rvc[11], phS: rvc[11].length ? rvc[11].length + ' new' : 'No photos this time',
+        sent: !!RP[rvc[0]], notSent: !RP[rvc[0]], reply: RP[rvc[0]] || '', quick: QUICK.map((t) => ({ t, pick: () => this.setState({ rp: Object.assign({}, RP, { [rvc[0]]: t }) }) })),
+        doneT: RP[rvc[0]] ? 'Send and mark reviewed' : 'Mark reviewed',
+        done: () => this.setState({ rvo: false, cdone: Object.assign({}, CD, { [rvc[0]]: true }), toast: { t: first + '’s check-in reviewed', s: RP[rvc[0]] ? 'Your reply was sent' : 'Moved out of your list', prev: { cdone: CD } } }) },
+      attN: A0.length,
+      akinds: AK.map(([id, t]) => ({ t, n: id === 'all' ? A0.length : A0.filter((a) => a[4] === id).length, cls: ak === id ? 'on' : '', pick: () => this.setState({ ak: id, attAll: false }) })),
+      att: AF.slice(0, attAll ? 99 : 4).map(([id, name, ini, c, k, why, act]) => ({ name, ini, c, why, kind: KL[k][0], kc: KL[k][1],
+        canRem: act === 'remind' && !RM[id], sent: act === 'remind' && !!RM[id], plan: act === 'plan', open: act === 'open',
+        remind: () => this.setState({ rem: Object.assign({}, RM, { [id]: true }), toast: { t: 'Reminder sent to ' + name.split(' ')[0], s: 'Push and WhatsApp', prev: { rem: RM } } }) })),
+      attMore: AF.length > 4, attMoreT: attAll ? 'Show less' : 'Show ' + (AF.length - 4) + ' more', attToggle: () => this.setState({ attAll: !attAll }),
+      taskSub: openT ? openT + ' open' : 'All done',
+      tasks: TS.slice(0, tkAll ? 99 : 5).map(([id, t, from, auto, due, dc]) => { const d = !!TD[id];
+        return { t, d, from, auto, due: d ? 'Done' : due, dc: d ? '' : dc, cls: d ? 'done' : '', bx: d ? 'on' : '', tick: () => this.setState({ tdone: Object.assign({}, TD, { [id]: !d }) }) }; }),
+      tkMore: TS.length > 5, tkMoreT: tkAll ? 'Show less' : 'Show ' + (TS.length - 5) + ' more', tkToggle: () => this.setState({ tkAll: !tkAll }),
+      tko: !!st.tko, openTk: () => this.setState({ tko: true }), closeTk: () => this.setState({ tko: false }),
+      addTk: () => { const id = 'n' + T.length; this.setState({ tko: false, tAdd: [[id, 'Check Neha’s squat video', 'Added by you', false, 'Tomorrow', '']].concat(st.tAdd || []), toast: { t: 'Task added', s: 'Due tomorrow', prev: { tAdd: st.tAdd || [] } } }); },
+      nso: !!st.nso, openNs: () => this.setState({ nso: true }), closeNs: () => this.setState({ nso: false }),
+      ns: { client: 'Neha Jain', lens: LENS.map((t, i) => ({ t, on: nl === i, off: nl !== i, pick: () => this.setState({ nl: i }) })), wheres: WH.map((t, i) => ({ t, on: nw === i, off: nw !== i, pick: () => this.setState({ nw: i }) })) },
+      addNs: () => this.setState({ nso: false, sAdd: SA.concat([['n' + SA.length, '17:30', [30, 45, 60, 90][nl], 'Neha Jain', 'NJ', 'c5', (nw ? 'Video call' : 'Gym floor') + ' · Extra session', nw === 1]]),
+        toast: { t: 'Session added', s: 'Neha Jain · today 17:30', prev: { sAdd: SA } } }),
+
+    };
+  }
+}
+</script>
+</body>
+</html>

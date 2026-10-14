@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Exercise detail (phone)</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="twv.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1D4ED8}a:hover{color:#1E3A8A}
+</style>
+</helmet>
+<div class="app mob mob-ExerciseDetail {{sideCls}}" style="font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #171717; background: #FFFFFF">
+
+
+<div class="ca-sb"><b>5:40</b><span class="ca-sbi"><svg class="i" viewBox="0 0 24 24"><path d="M2.5 9a14 14 0 0 1 19 0M5.5 12.5a9.5 9.5 0 0 1 13 0M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19" r=".8"/></svg><svg class="i" viewBox="0 0 24 24"><rect x="3" y="7.5" width="16" height="9" rx="2.5"/><rect x="5" y="9.5" width="9" height="5" rx="1" fill="currentColor" stroke="none"/><path d="M21 11v2"/></svg></span></div>
+<main class="main">
+<div class="wrap">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="ExerciseLibraryMobile.dc.html">Exercises</a><svg class="i" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg><span class="cur">Barbell Bench Press</span></nav>
+<div class="top">
+<div style="display: flex; gap: 14px; align-items: center; min-width: 0">
+<span class="media lg" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/></svg><span class="play"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>0:42</span></span>
+<div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+<h1 class="h1">Barbell Bench Press</h1>
+<p class="sub">Chest · Barbell · Built-in exercise</p>
+</div>
+</div>
+<div class="acts">
+<button class="btn out"><svg class="i" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/></svg>Duplicate to edit</button>
+<button class="btn pri"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add to program</button>
+<button class="ibtn" aria-label="More actions" data-tip="More actions"><svg class="i fill dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.3"/><circle cx="12" cy="12" r="2.3"/><circle cx="19" cy="12" r="2.3"/></svg></button>
+</div>
+</div>
+<section class="card ex-ds"><div class="ex-ds-h"><h2 class="h3">Default sets and reps</h2><span class="cap">Filled in when added to a program</span></div><div class="ex-ds-g"><div class="ex-ds-t"><span class="k">Client logs</span><b>kg × reps</b></div><div class="ex-ds-t"><span class="k">Sets</span><b>4</b></div><div class="ex-ds-t"><span class="k">Reps</span><b>6–8</b></div><div class="ex-ds-t"><span class="k">Rest</span><b>2<small>min</small></b></div><div class="ex-ds-t"><span class="k">RPE</span><b>8<small>/ 10</small></b></div><div class="ex-ds-t"><span class="k">Tempo</span><b>3-1-1</b></div></div></section>
+
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start">
+<div style="display: flex; flex-direction: column; gap: 20px; min-width: 0">
+<div class="card pad" style="display: flex; flex-direction: column; gap: 16px; min-height: 300px">
+<div class="tabs" style="align-self: flex-start">
+<sc-for list="{{tabs}}" as="t" hint-placeholder-count="3">
+<sc-if value="{{t.on}}" hint-placeholder-val="{{false}}"><span class="tab on">{{t.label}}<span class="n">{{t.n}}</span></span></sc-if>
+<sc-if value="{{t.off}}" hint-placeholder-val="{{true}}"><span class="tab" onClick="{{t.pick}}">{{t.label}}<span class="n">{{t.n}}</span></span></sc-if>
+</sc-for>
+</div>
+
+<sc-if value="{{showHow}}" hint-placeholder-val="{{false}}">
+<ol class="steps">
+<li><span class="sq">1</span><span>Lie with your eyes under the bar, feet flat, shoulder blades pulled back and down.</span></li>
+<li><span class="sq">2</span><span>Grip slightly wider than shoulder width and unrack with straight arms.</span></li>
+<li><span class="sq">3</span><span>Lower the bar to the mid chest in about two seconds, elbows at roughly 45°.</span></li>
+<li><span class="sq">4</span><span>Press up and slightly back until the arms are straight.</span></li>
+</ol>
+</sc-if>
+
+<sc-if value="{{showCues}}" hint-placeholder-val="{{false}}">
+<ul class="steps">
+<li><span class="sq"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></svg></span><span>Squeeze the bar and keep the wrists stacked over the elbows.</span></li>
+<li><span class="sq"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></svg></span><span>Keep the hips on the bench; drive through the feet.</span></li>
+<li><span class="sq"><svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></svg></span><span>Touch the chest, do not bounce.</span></li>
+</ul>
+</sc-if>
+
+<sc-if value="{{showMuscles}}" hint-placeholder-val="{{true}}">
+<div class="ex-mapg" style="grid-template-columns: minmax(0, 1fr) auto; gap: 20px">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div class="mprim">
+<span class="mic"><svg class="i lg" viewBox="0 0 24 24"><path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/></svg></span>
+<div class="grow"><div class="over" style="color: #1D4ED8">Primary muscle</div><div class="mname">Chest</div><div class="cap">Pectorals · decides where this exercise shows in the library filter</div></div>
+<div class="meter big"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+</div>
+<div class="over" style="padding: 4px 2px 0">Also works</div>
+<div class="mrow"><div class="grow"><div class="t">Triceps</div><div class="s">Straighten the arms at the top</div></div><div class="meter"><i class="on"></i><i class="on"></i><i></i></div><span class="mlbl">Strong</span></div>
+<div class="mrow"><div class="grow"><div class="t">Front shoulders</div><div class="s">Help press the bar up</div></div><div class="meter"><i class="on"></i><i></i><i></i></div><span class="mlbl">Light</span></div>
+</div>
+<div class="bm"><div class="bm-figs"><div class="bm-col"><svg class="bm-fig" viewBox="0 0 120 244" aria-label="Front of the body"><circle fill="#EDEDE9" cx="60" cy="17" r="12"/><path fill="#EDEDE9" d="M54 28 L66 28 L67 38 L53 38 Z"/><ellipse fill="#EDEDE9" cx="25" cy="121" rx="4" ry="5" transform="rotate(0 25 121)"/><ellipse fill="#EDEDE9" cx="95" cy="121" rx="4" ry="5" transform="rotate(0 95 121)"/><ellipse fill="#EDEDE9" cx="50" cy="236" rx="7" ry="4" transform="rotate(0 50 236)"/><ellipse fill="#EDEDE9" cx="70" cy="236" rx="7" ry="4" transform="rotate(0 70 236)"/><ellipse class="bm-r l" cx="38.5" cy="49.5" rx="8.5" ry="7.5" transform="rotate(20 38.5 49.5)"/><ellipse class="bm-r l" cx="81.5" cy="49.5" rx="8.5" ry="7.5" transform="rotate(-20 81.5 49.5)"/><path class="bm-r p" d="M59 43 L45 44 Q38 52 42 62 Q50 69 59 66 Z"/><path class="bm-r p" d="M 61 43 L 75 44 Q 82 52 78 62 Q 70 69 61 66 Z"/><path class="bm-r " d="M59 70 L51 70 Q50 90 52 108 L59 110 Z"/><path class="bm-r " d="M 61 70 L 69 70 Q 70 90 68 108 L 61 110 Z"/><path class="bm-r " d="M49 70 L44 68 Q41 88 47 108 L50 108 Q48 90 49 70 Z"/><path class="bm-r " d="M 71 70 L 76 68 Q 79 88 73 108 L 70 108 Q 72 90 71 70 Z"/><ellipse class="bm-r " cx="32" cy="71" rx="5.5" ry="11" transform="rotate(12 32 71)"/><ellipse class="bm-r " cx="88" cy="71" rx="5.5" ry="11" transform="rotate(-12 88 71)"/><ellipse class="bm-r " cx="27" cy="98" rx="4.5" ry="13" transform="rotate(8 27 98)"/><ellipse class="bm-r " cx="93" cy="98" rx="4.5" ry="13" transform="rotate(-8 93 98)"/><path fill="#EDEDE9" d="M47 111 L59 113 L59 124 L45 122 Z"/><path fill="#EDEDE9" d="M 73 111 L 61 113 L 61 124 L 75 122 Z"/><ellipse class="bm-r " cx="50" cy="150" rx="9" ry="25" transform="rotate(4 50 150)"/><ellipse class="bm-r " cx="70" cy="150" rx="9" ry="25" transform="rotate(-4 70 150)"/><ellipse fill="#EDEDE9" cx="51" cy="179" rx="5" ry="4" transform="rotate(0 51 179)"/><ellipse fill="#EDEDE9" cx="69" cy="179" rx="5" ry="4" transform="rotate(0 69 179)"/><ellipse class="bm-r " cx="50" cy="206" rx="5.5" ry="21" transform="rotate(-2 50 206)"/><ellipse class="bm-r " cx="70" cy="206" rx="5.5" ry="21" transform="rotate(2 70 206)"/></svg><span class="bm-cap">Front</span></div><div class="bm-col"><svg class="bm-fig" viewBox="0 0 120 244" aria-label="Back of the body"><circle fill="#EDEDE9" cx="60" cy="17" r="12"/><path fill="#EDEDE9" d="M54 28 L66 28 L67 38 L53 38 Z"/><ellipse fill="#EDEDE9" cx="25" cy="121" rx="4" ry="5" transform="rotate(0 25 121)"/><ellipse fill="#EDEDE9" cx="95" cy="121" rx="4" ry="5" transform="rotate(0 95 121)"/><ellipse fill="#EDEDE9" cx="50" cy="236" rx="7" ry="4" transform="rotate(0 50 236)"/><ellipse fill="#EDEDE9" cx="70" cy="236" rx="7" ry="4" transform="rotate(0 70 236)"/><path class="bm-r " d="M60 33 L47 43 L54 52 L60 62 Z"/><path class="bm-r " d="M 60 33 L 73 43 L 66 52 L 60 62 Z"/><ellipse class="bm-r l" cx="38.5" cy="49.5" rx="8.5" ry="7.5" transform="rotate(20 38.5 49.5)"/><ellipse class="bm-r l" cx="81.5" cy="49.5" rx="8.5" ry="7.5" transform="rotate(-20 81.5 49.5)"/><path class="bm-r " d="M59 64 L53 54 L45 50 Q40 66 46 88 L59 96 Z"/><path class="bm-r " d="M 61 64 L 67 54 L 75 50 Q 80 66 74 88 L 61 96 Z"/><path class="bm-r " d="M59 98 L48 92 L49 110 L59 112 Z"/><path class="bm-r " d="M 61 98 L 72 92 L 71 110 L 61 112 Z"/><ellipse class="bm-r s" cx="32" cy="71" rx="5.5" ry="11" transform="rotate(12 32 71)"/><ellipse class="bm-r s" cx="88" cy="71" rx="5.5" ry="11" transform="rotate(-12 88 71)"/><ellipse class="bm-r " cx="27" cy="98" rx="4.5" ry="13" transform="rotate(8 27 98)"/><ellipse class="bm-r " cx="93" cy="98" rx="4.5" ry="13" transform="rotate(-8 93 98)"/><ellipse class="bm-r " cx="51" cy="125" rx="9.5" ry="11" transform="rotate(0 51 125)"/><ellipse class="bm-r " cx="69" cy="125" rx="9.5" ry="11" transform="rotate(0 69 125)"/><ellipse class="bm-r " cx="50" cy="160" rx="8.5" ry="21" transform="rotate(3 50 160)"/><ellipse class="bm-r " cx="70" cy="160" rx="8.5" ry="21" transform="rotate(-3 70 160)"/><ellipse fill="#EDEDE9" cx="51" cy="184" rx="5" ry="3" transform="rotate(0 51 184)"/><ellipse fill="#EDEDE9" cx="69" cy="184" rx="5" ry="3" transform="rotate(0 69 184)"/><ellipse class="bm-r " cx="50" cy="206" rx="6.5" ry="18" transform="rotate(-2 50 206)"/><ellipse class="bm-r " cx="70" cy="206" rx="6.5" ry="18" transform="rotate(2 70 206)"/></svg><span class="bm-cap">Back</span></div></div><div class="bm-leg"><span><i class="p"></i>Primary</span><span><i class="s"></i>Strong</span><span><i class="l"></i>Light</span></div></div>
+</div>
+</sc-if>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 20px">
+<section class="card pad" style="display: flex; flex-direction: column; gap: 10px"><div class="sec-h"><h2 class="h3">Video</h2><span class="cap">From content library</span></div><div class="media t1 ex-vbig"><svg class="i" viewBox="0 0 24 24"><path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/></svg><span class="ex-vplay"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg></span><span class="play">0:42</span></div><dl class="ex-vdl"><div><dt>Video</dt><dd>Bench press · setup · 0:42</dd></div><div><dt>Cover image</dt><dd>Frame at 0:12</dd></div></dl></section>
+<section class="card pad" style="display: flex; flex-direction: column; gap: 2px; padding-bottom: 8px">
+<h2 class="h3" style="padding-bottom: 4px">Details</h2>
+<dl class="dl" style="margin: 0">
+<div><dt>Muscle group</dt><dd>Chest</dd></div>
+<div><dt>Equipment</dt><dd>Barbell</dd></div>
+<div><dt>Level</dt><dd>Intermediate</dd></div>
+<div><dt>Source</dt><dd>Built-in</dd></div>
+</dl>
+</section>
+
+<div class="card">
+<div class="card-h" style="padding-bottom: 6px"><h2 class="h3">Used in 2 programs</h2></div>
+<div class="card-b">
+<a class="row" href="ProgramBuilderMobile.dc.html" style="color: inherit"><div class="grow"><div class="t">Fat Loss Phase 1</div><div class="s">Upper A · 12 workouts · 4 clients</div></div><svg class="i go" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></a>
+<a class="row" href="ProgramBuilderMobile.dc.html" style="color: inherit"><div class="grow"><div class="t">Hypertrophy · Push / Pull / Legs</div><div class="s">Push A · 8 workouts · 4 clients</div></div><svg class="i go" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></a>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</main>
+<nav class="mb-nav"><a class="mb-tab" href="AdminDashboardMobile.dc.html"><span class="mb-ti"><svg class="i" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20h-5v-6H9v6H4z"/></svg></span><span>Home</span></a><a class="mb-tab" href="ClientsMobile.dc.html"><span class="mb-ti"><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .7 3.2 2.5 3.5 5.2"/></svg></span><span>Clients</span></a><a class="mb-tab" href="ApprovalsMobile.dc.html"><span class="mb-ti"><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5 1.6 0 3 .4 4.1 1.2"/><path d="m15.5 18 2 2 4-4.5"/></svg><i class="mb-badge">5</i></span><span>Approvals</span></a><a class="mb-tab" href="CalendarMobile.dc.html"><span class="mb-ti"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></span><span>Calendar</span></a><a class="mb-tab on" href="AdminMoreMobile.dc.html"><span class="mb-ti"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span><span>More</span></a></nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { tab: 'muscles' }; }
+  renderVals() {
+    const tab = this.state.tab;
+    const tabs = [['how', 'How to', '4'], ['cues', 'Form cues', '3'], ['muscles', 'Muscles', '3']].map(([id, label, n]) => ({
+      label, n, on: tab === id, off: tab !== id, pick: () => this.setState({ tab: id })
+    }));
+    return { sideCls: (this.state && this.state.mini) ? 'mini' : '', sideTip: (this.state && this.state.mini) ? 'Expand sidebar' : 'Collapse sidebar', toggleSide: () => this.setState({ mini: !(this.state && this.state.mini) }), tabs, showHow: tab === 'how', showCues: tab === 'cues', showMuscles: tab === 'muscles' };
+  }
+}
+</script>
+</body>
+</html>
