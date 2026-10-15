@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/material.dart' show DateUtils;
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
@@ -31,6 +32,16 @@ class TrainController extends ChangeNotifier {
   ApiError? error;
   bool _busy = false;
 
+  /// Day picked in the week strip; null = today.
+  DateTime? day;
+
+  void pick(DateTime d) {
+    final now = DateTime.now();
+    day = DateUtils.isSameDay(d, now) ? null : d;
+    _busy = false;
+    load();
+  }
+
   @override
   void dispose() {
     Services.outbox.pending.removeListener(_sent);
@@ -51,8 +62,10 @@ class TrainController extends ChangeNotifier {
     if (_busy) return;
     _busy = true;
     try {
-      final j = await Services.api.get<Map<String, dynamic>>('me/train/');
-      unawaited(Services.cache.write(cacheKey, j));
+      final d = day;
+      final j = await Services.api.get<Map<String, dynamic>>('me/train/', query: {if (d != null) 'date': DateFormat('yyyy-MM-dd').format(d)});
+      if (d != day) return; // another day was picked meanwhile
+      if (d == null) unawaited(Services.cache.write(cacheKey, j));
       data = TrainData(j);
       error = null;
     } on ApiError catch (e) {
@@ -105,6 +118,10 @@ class TrainData {
   int get totalSets => exercises.fold(0, (a, e) => a + e.sets);
   int get exercisesDone => exercises.where((e) => e.done).length;
   bool get finished => completed != null;
+
+  /// The day shown is today (the strip can show another day).
+  bool get isToday => DateUtils.isSameDay(date, DateTime.now());
+  bool get isPast => !isToday && date.isBefore(DateTime.now());
   String get coachFull => '${coach?['full_name'] ?? 'Your coach'}';
   String get coachFirst => coachFull.split(' ').first;
   String get coachInitials => '${coach?['initials'] ?? ''}';
@@ -225,6 +242,9 @@ class TrainEx {
   String get videoTitle => '${full['video_title'] ?? ''}';
   String get youtube => '${full['youtube_url'] ?? ''}';
   bool get hasVideo => full['video'] != null || youtube.isNotEmpty;
+
+  /// Picture for the exercise tile (video cover or YouTube still); null shows the icon.
+  String? get thumb => full['thumb'] is String && (full['thumb'] as String).isNotEmpty ? full['thumb'] as String : null;
   int get coverAt => _n(full['cover_at_seconds']).toInt();
   List<String> get howTo => [for (final s in (full['how_to'] as List? ?? const [])) '$s'];
   List<String> get cues => [for (final s in (full['form_cues'] as List? ?? const [])) '$s'];

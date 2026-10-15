@@ -192,8 +192,13 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
     );
   }
 
-  Widget _weekDay(TrainDay day, {required bool web, required bool narrow}) {
+  Widget _weekDay(TrainDay day, {required bool web, required bool narrow}) =>
+      Hover(onTap: () => c.pick(day.date), builder: (_, h, _) => _weekDayBox(day, web: web, narrow: narrow, hover: h));
+
+  /// [TrainDay.today] is the day shown (picked in the strip); the ring marks the real today.
+  Widget _weekDayBox(TrainDay day, {required bool web, required bool narrow, required bool hover}) {
     final today = day.today, rest = day.rest;
+    final real = DateUtils.isSameDay(day.date, DateTime.now());
     final wd = const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][day.date.weekday - 1];
     final ink = today ? AppColors.sessText : AppColors.text;
     final size = web && !narrow ? 18.0 : 16.0;
@@ -206,7 +211,7 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
         decoration: const BoxDecoration(color: AppColors.okSolid, shape: BoxShape.circle),
         child: AppIcon(AppIcons.check, size: size == 18 ? 11 : 10, color: AppColors.white, stroke: 3),
       );
-    } else if (today) {
+    } else if (real) {
       mark = Container(width: size, height: size, decoration: BoxDecoration(color: AppColors.white, shape: BoxShape.circle, border: Border.all(color: AppColors.accent, width: 2)));
     } else if (rest) {
       mark = DashedCircle(size: size);
@@ -219,11 +224,13 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
         overflow: TextOverflow.ellipsis,
         style: AppText.s(web ? (narrow ? 12 : 12.5) : 10, rest ? W.w6 : W.w7, color: rest && !today ? AppColors.muted : ink));
     return Semantics(
-      label: '$wd ${rest ? 'rest' : day.name}${day.done ? ', done' : ''}${today ? ', today' : ''}',
+      button: true,
+      selected: today,
+      label: '$wd ${rest ? 'rest' : day.name}${day.done ? ', done' : ''}${real ? ', today' : ''}',
       child: Container(
         padding: web ? EdgeInsets.symmetric(horizontal: narrow ? 6 : 10, vertical: 6) : const EdgeInsets.fromLTRB(0, 6, 0, 5),
         decoration: BoxDecoration(
-          color: today ? AppColors.accentSoft : null,
+          color: today ? AppColors.accentSoft : (hover ? AppColors.outlineHover : null),
           borderRadius: BorderRadius.circular(10),
           border: today && web ? Border.all(color: AppColors.accentRing) : null,
         ),
@@ -260,8 +267,8 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
         Row(children: [
           AppIcon(rest ? AppIcons.moon : (d.exercises.any((e) => e.kind == ExKind.cardio) ? AppIcons.run : AppIcons.dumbbell), size: 15, color: AppColors.text2),
           const SizedBox(width: 6),
-          Expanded(child: Text('Today · ${dayUpper(d.date)}'.toUpperCase(), style: AppText.s(11.5, W.w8, color: AppColors.text2, ls: .575))),
-          if (d.finished) const CaPill('Completed today', tone: CaTone.green),
+          Expanded(child: Text('${d.isToday ? 'Today · ' : ''}${dayUpper(d.date)}'.toUpperCase(), style: AppText.s(11.5, W.w8, color: AppColors.text2, ls: .575))),
+          if (d.finished) CaPill(d.isToday ? 'Completed today' : 'Done', tone: CaTone.green),
         ]),
         Text(rest ? 'Rest day' : d.dayName, style: AppText.s(22, W.w8, ls: -0.22)),
         if (!rest)
@@ -283,6 +290,25 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
         fg: AppColors.text2,
         child: Text(d.note.isNotEmpty ? d.note : 'Rest helps your muscles grow. A short walk and some stretching is enough.', style: AppText.s(13, W.w4, color: AppColors.text2)),
       ));
+    } else if (!d.isToday) {
+      // Another day picked in the strip: what was done, or what is planned. Only today starts.
+      final c = d.completed;
+      body.add(Row(spacing: 10, children: [
+        Expanded(child: ChBar(n == 0 ? 0 : doneN / n, color: AppColors.okSolid)),
+        Text('$doneN of $n exercises done', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
+      ]));
+      body.add(ChNote(
+        icon: d.finished ? AppIcons.checkCircle : AppIcons.calendarAlt,
+        bg: d.finished ? AppColors.okBg : (d.isPast ? AppColors.sub : AppColors.accentSoft),
+        fg: d.finished ? AppColors.okText : (d.isPast ? AppColors.text2 : AppColors.sessText),
+        child: Text(
+          d.finished
+              ? 'Done · ${((c!['duration_seconds'] as num? ?? 0) / 60).round()} min · ${c['sets_done'] ?? 0} sets'
+              : (d.isPast ? 'Not done' : 'Planned for ${dayUpper(d.date)}. You can start it on the day.'),
+          style: AppText.s(13, W.w6, color: d.finished ? AppColors.okText : (d.isPast ? AppColors.text2 : AppColors.sessText)),
+        ),
+      ));
+      body.add(CaButton('Back to today', kind: CaBtnKind.out, onPressed: () => this.c.pick(DateTime.now())));
     } else {
       final label = live != null ? 'Continue workout' : (d.finished ? 'Log more sets' : 'Start workout');
       body.addAll([
@@ -362,7 +388,7 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 11),
                   decoration: i == 0 ? null : const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
                   child: Row(spacing: 12, children: [
-                    ExThumb(e.kind),
+                    ExThumb(e.kind, thumb: e.thumb, video: e.hasVideo),
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
                         Text(e.name, style: AppText.s(14.5, W.w7, color: h ? AppColors.accentText : AppColors.text)),

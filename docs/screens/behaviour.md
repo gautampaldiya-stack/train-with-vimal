@@ -1074,6 +1074,9 @@ Macro target — `1,650 kcal · 120 g protein · 170 g carbs · 52 g fat`.
 ### 4.2 Train — `ClientTrain`
 
 Week strip: `Mon Upper A ✓` · `Tue Lower A ✓` · `Wed Rest` · `Thu Upper B ✓` · `Fri Cardio ← today` · `Sat Lower B` · `Sun Rest`.
+Din pe tap → Home ki tarah us din ka workout (blocks + card) dikhta hai: beeta din `Done · 55 min · 12 sets` ya `Not done`, aane wala din *"Planned for … You can start it on the day."*, aur `Back to today` (Gautam, 2026-10-15).
+
+Exercise row pe dumbbell ki jagah video cover / YouTube thumbnail (agar ho), video pe ▶ nishan.
 
 `Today · Fri, 9 Oct` heading. Agar aaj ka workout ho gaya to chip `Completed today`. `History` button → past workouts list; khali pe *"No past workouts yet."*
 
@@ -1090,6 +1093,7 @@ Exercise pe tap → **detail sheet**: `Today's target` (+ *"Last time: 40 kg × 
 Ye app ka sabse interactive screen hai.
 
 **Top bar** — workout timer chalta rehta hai, `1 min` rest chip, ⋯ menu: `Past workouts` · `Restart workout` · `Remove logged work` (laal). `Finish` button.
+Logger ka `Past workouts` sirf **isi exercise** ke pichhle workouts dikhata hai (date, sets), har row pe `Use these sets`. Poore workout / All wala view sirf Train ke `History` me. Sets box me `Use last time` → jo sets tick nahi hue unme last time ki values aa jaati hain (toast + Undo). Train aur logger se bahar jaane par workout timer ruk jaata hai; `Continue workout` pe wahin se chalta hai (D-17).
 
 **Per exercise** — naam, `Target 4 × 6–8 · 42.5 kg`, `PR 45 kg × 6`, `How to do it` button. Unit toggle `kg` / `Bodyweight`.
 

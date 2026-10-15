@@ -132,6 +132,7 @@ class WorkoutController extends ChangeNotifier {
   String note = '';
 
   Timer? _tick, _save;
+  bool _gone = false;
 
   /// Opened with "Log more sets": Discard keeps the finished workout and drops only what was added.
   bool reopened = false;
@@ -146,6 +147,7 @@ class WorkoutController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _gone = true;
     _tick?.cancel();
     if (_save?.isActive ?? false) {
       _save!.cancel();
@@ -189,13 +191,35 @@ class WorkoutController extends ChangeNotifier {
       failed = e.offline ? 'You are offline. Connect to open this workout.' : e.message;
     }
     ready = failed == null;
+    // "Continue workout": the timer stopped when the client left Train, it goes on from there.
+    final resume = ready && paused && !finished;
+    if (resume) {
+      startedAt = startedAt.add(DateTime.now().difference(pausedAt!));
+      pausedAt = null;
+    }
     if (ready) {
       lastActive = math.max(lastActive, _lastTick() ?? 0);
       if (lastActive == 0) lastActive = elapsed;
       _tick = Timer.periodic(const Duration(seconds: 1), (_) => _second());
       _store();
+      if (resume) _push();
     }
     notifyListeners();
+  }
+
+  /// The client left Train and the logger (decision D-17): the workout timer stops. Saved on the
+  /// phone and sent through the outbox with the time it happened, so it works offline too.
+  static Future<void> pauseLive() async {
+    final snap = await Services.cache.read(_cacheKey);
+    if (snap is! Map || snap['finished'] == true || snap['paused_at'] != null) return;
+    final at = DateTime.now().toUtc().toIso8601String();
+    await Services.cache.write(_cacheKey, {...snap.cast<String, dynamic>(), 'paused_at': at});
+    if (snap['local'] == true || snap['id'] == null) return;
+    try {
+      await Services.outbox.enqueue('POST', 'me/workouts/${snap['id']}/pause/', {'at': at}, tag: 'workout:pause');
+    } on ApiError catch (_) {
+      // finished or discarded somewhere else: nothing to stop
+    }
   }
 
   Future<void> _start(int dayId) async {
@@ -318,7 +342,7 @@ class WorkoutController extends ChangeNotifier {
             if (s.id == null && ids[s.key] != null) s.id = ids[s.key] as int?;
           }
         }
-        _store();
+        if (!_gone) _store(); // after the logger closed, the phone copy may already be paused
       }
     } on ApiError catch (e) {
       toast?.call('Could not save the workout', sub: e.message, kind: ToastKind.warn);
@@ -516,6 +540,40 @@ class WorkoutController extends ChangeNotifier {
     }
     xs.add(s);
     toast?.call('Set added', sub: '${x.name} · set ${xs.length}', kind: ToastKind.ok);
+    changed();
+  }
+
+  /// "Use last time" / "Use these sets": the sets not ticked yet take the values of a past workout,
+  /// working sets in order; extra past sets are added. Ticked sets stay as they are.
+  void fillFrom(List<Map<String, dynamic>> past, {String from = 'last time'}) {
+    final work = [for (final p in past) if (p['is_warmup'] != true && p['wu'] != true) p];
+    if (work.isEmpty) return;
+    final before = _snap();
+    final x = e, xs = sets[cur];
+    final open = xs.where((s) => !s.wu).toList();
+    var filled = 0;
+    for (var k = 0; k < math.max(open.length, work.length); k++) {
+      final WSet s;
+      if (k < open.length) {
+        s = open[k];
+      } else {
+        s = WSet(key: const Uuid().v4(), exId: x.exId, peId: x.peId, number: (xs.isEmpty ? 0 : xs.last.number) + 1, bw: x.bodyweight);
+        xs.add(s);
+      }
+      if (s.done) continue;
+      final p = work[math.min(k, work.length - 1)];
+      s.weight = WSet._d(p['weight_kg']);
+      s.reps = WSet._i(p['reps']);
+      s.seconds = WSet._i(p['seconds']);
+      s.km = WSet._d(p['distance_km']);
+      s.bw = p['bw'] == true || p['is_bodyweight'] == true;
+      filled += 1;
+    }
+    if (filled == 0) {
+      toast?.call('All sets are ticked', sub: 'Add a set to log more', kind: ToastKind.info);
+      return;
+    }
+    toast?.call('Sets filled from $from', sub: '${x.name} · $filled ${filled == 1 ? 'set' : 'sets'}. Change any value, then tick', kind: ToastKind.ok, undo: () => _restore(before));
     changed();
   }
 

@@ -10,6 +10,7 @@ import '../../core/widgets/hover.dart';
 import '../../core/widgets/overlays.dart';
 import '../../core/widgets/responsive.dart';
 import '../../core/widgets/tooltip.dart';
+import '../../features/client/train/workout_model.dart' show WorkoutController;
 import '../services.dart';
 import 'nav_items.dart';
 
@@ -41,6 +42,16 @@ class _AppShellState extends State<AppShell> {
     SharedPreferences.getInstance().then((p) {
       if (mounted) setState(() => _mini = p.getBool('twv.sideMini') ?? false);
     });
+  }
+
+  @override
+  void didUpdateWidget(AppShell old) {
+    super.didUpdateWidget(old);
+    // Left Train and the workout logger: stop the workout timer (after the logger has saved).
+    bool train(String p) => p == '/train' || p.startsWith('/train/');
+    if (train(old.location) && !train(widget.location)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => WorkoutController.pauseLive());
+    }
   }
 
   void _toggle() {

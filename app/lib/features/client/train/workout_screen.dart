@@ -461,9 +461,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           const SizedBox(),
         ])),
         ...rows,
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Hover(
+        Row(children: [
+          Hover(
             onTap: () {
               setState(() => act = null);
               c.addSet();
@@ -478,7 +477,25 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               ]),
             ),
           ),
-        ),
+          const Spacer(),
+          // One tap: every set not ticked yet takes last time's values, ready to change and tick.
+          if (e.lastTime.isNotEmpty && xs.any((s) => !s.done && !s.wu))
+            Hover(
+              onTap: () {
+                setState(() => act = null);
+                c.fillFrom(e.lastTime);
+              },
+              builder: (_, h, _) => Container(
+                height: 36,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(color: h ? AppColors.accentSoft : null, borderRadius: BorderRadius.circular(10)),
+                child: Row(mainAxisSize: MainAxisSize.min, spacing: 6, children: [
+                  const AppIcon(AppIcons.restart, size: 15, color: AppColors.accent),
+                  Text('Use last time', style: AppText.s(13.5, W.w7, color: AppColors.accentText)),
+                ]),
+              ),
+            ),
+        ]),
       ]),
     );
   }
@@ -945,7 +962,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   void _menu(BuildContext anchor, WorkoutController c) => _popover(anchor, width: 220, right: true, builder: (ctx, close) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         _mi('Past workouts', icon: AppIcons.clock, onTap: () {
           close();
-          showPastWorkouts(context, thisName: c.name, startThis: true);
+          showExerciseHistory(context, c.e, onUse: (sets, from) {
+            setState(() => act = null);
+            c.fillFrom(sets, from: from);
+          });
         }),
         _mi('Restart workout', icon: AppIcons.restart, onTap: () {
           close();

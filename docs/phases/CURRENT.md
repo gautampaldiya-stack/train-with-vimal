@@ -74,6 +74,9 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
   program (no field yet, D-16).
 
 ## Doing now
+- Train follow-ups from Gautam (D-17) pushed: guide dialog background, Past workouts header fixed while the list
+  scrolls, week-strip day tap, exercise pictures, logger history for one exercise + Use last time, timer stops when
+  the client leaves Train. New API: `POST me/workouts/<id>/pause/` (`at`), `resume/`, `GET me/workouts/exercise-history/?exercise=`, exercise `thumb`.
 - Nothing in progress; Train is pushed. Next: ClientHabits, ClientCheckin, ClientFoodLog.
 
 ## Next

@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../app/services.dart';
+import '../../../core/api/api_error.dart';
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
 import '../../../core/widgets/client.dart';
@@ -17,10 +19,13 @@ import 'train_model.dart';
 /// Pieces shared by the Train tab and the workout logger: exercise tile, exercise guide with the
 /// body map, and the Past workouts sheet.
 
-/// `tn-th`: 42px tile, blue for cardio, green for lifts, amber for timed holds.
+/// `tn-th`: 42px tile, blue for cardio, green for lifts, amber for timed holds. When the exercise has
+/// a video or picture its still is shown instead of the icon, with a small play mark for videos.
 class ExThumb extends StatelessWidget {
-  const ExThumb(this.kind, {super.key});
+  const ExThumb(this.kind, {super.key, this.thumb, this.video = false});
   final ExKind kind;
+  final String? thumb;
+  final bool video;
   @override
   Widget build(BuildContext context) {
     final (bg, fg, icon) = switch (kind) {
@@ -28,12 +33,34 @@ class ExThumb extends StatelessWidget {
       ExKind.weight => (AppColors.okBg, AppColors.okText, AppIcons.dumbbell),
       ExKind.time => (AppColors.amberBg, AppColors.amberText, AppIcons.clock),
     };
-    return Container(
+    final plain = Container(
       width: 42,
       height: 42,
       alignment: Alignment.center,
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(11)),
       child: AppIcon(icon, size: 20, color: fg),
+    );
+    final url = thumb;
+    if (url == null) return plain;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(11),
+      child: SizedBox(
+        width: 42,
+        height: 42,
+        child: Stack(fit: StackFit.expand, children: [
+          Image.network(url, fit: BoxFit.cover, errorBuilder: (_, _, _) => plain),
+          if (video)
+            Center(
+              child: Container(
+                width: 18,
+                height: 18,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: AppColors.text.withValues(alpha: .55), shape: BoxShape.circle),
+                child: const AppIcon(AppIcons.play, size: 10, color: AppColors.white),
+              ),
+            ),
+        ]),
+      ),
     );
   }
 }
@@ -107,13 +134,14 @@ Future<void> showGuide(BuildContext context, TrainEx e, GuideInfo g) {
         padding: const EdgeInsets.all(24),
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: 980, maxHeight: MediaQuery.sizeOf(ctx).height * .88),
-          child: Material(
-            color: AppColors.caWebBg,
-            clipBehavior: Clip.antiAlias,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            elevation: 0,
-            child: DecoratedBox(
-              decoration: const BoxDecoration(boxShadow: AppShadows.guide),
+          // The shadow sits outside the clipped card: inside it painted a dark band over the page.
+          child: DecoratedBox(
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), boxShadow: AppShadows.guide),
+            child: Material(
+              color: AppColors.caWebBg,
+              clipBehavior: Clip.antiAlias,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              elevation: 0,
               child: CaWeb(web: true, child: _GuidePage(e: e, g: g, web: true)),
             ),
           ),
@@ -346,7 +374,7 @@ class _GuidePage extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.line)),
           child: Row(spacing: 10, children: [
-            Expanded(child: Text(m, style: AppText.s(13.5, W.w7))),
+            Expanded(child: Text(m, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
             Row(spacing: 3, children: [
               for (final on in [true, lv == 'Strong', false])
                 Container(width: 14, height: 5, decoration: BoxDecoration(color: on ? AppColors.accent : AppColors.metOff, borderRadius: BorderRadius.circular(3))),
@@ -357,14 +385,17 @@ class _GuidePage extends StatelessWidget {
     ]);
     return _card([
       _h('Muscles'),
-      if (web)
-        IntrinsicHeight(
-          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-            Expanded(child: list),
-            BodyMap(e.map),
-          ]),
-        )
-      else ...[list, BodyMap(e.map)],
+      // Side by side only when the list keeps room for names ("Lower back" broke into letters).
+      LayoutBuilder(
+        builder: (_, box) => web && box.maxWidth >= 520
+            ? IntrinsicHeight(
+                child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+                  Expanded(child: list),
+                  BodyMap(e.map),
+                ]),
+              )
+            : Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [list, BodyMap(e.map)]),
+      ),
     ]);
   }
 }
@@ -372,10 +403,192 @@ class _GuidePage extends StatelessWidget {
 // ─────────────────────────────── Past workouts (`pw-*`)
 
 /// History sheet. [thisName] adds the "this workout only" filter (named like today's workout).
-Future<void> showPastWorkouts(BuildContext context, {String? thisName, bool startThis = false}) => showAppSheet(
-      context,
-      builder: (ctx) => _PastSheet(thisName: thisName, startThis: startThis),
+Future<void> showPastWorkouts(BuildContext context, {String? thisName, bool startThis = false}) =>
+    showFixedSheet(context, (ctx) => _PastSheet(thisName: thisName, startThis: startThis));
+
+/// Logger → Past workouts: only this exercise, newest first, with its sets. "Use these sets"
+/// fills the sets not ticked yet ([onUse]); the whole-workout view stays on the Train screen.
+Future<void> showExerciseHistory(BuildContext context, TrainEx e, {required void Function(List<Map<String, dynamic>> sets, String from) onUse}) =>
+    showFixedSheet(context, (ctx) => _ExHistorySheet(e: e, onUse: onUse));
+
+class _ExHistorySheet extends StatefulWidget {
+  const _ExHistorySheet({required this.e, required this.onUse});
+  final TrainEx e;
+  final void Function(List<Map<String, dynamic>> sets, String from) onUse;
+  @override
+  State<_ExHistorySheet> createState() => _ExHistorySheetState();
+}
+
+class _ExHistorySheetState extends State<_ExHistorySheet> {
+  final _rows = <Map<String, dynamic>>[];
+  int _page = 0, _count = 0;
+  String? _next, _error;
+  bool _loading = false, _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (_loading) return;
+    setState(() => _loading = true);
+    try {
+      final j = await Services.api.get<Map<String, dynamic>>('me/workouts/exercise-history/', query: {'exercise': widget.e.exId, 'page': _page + 1, 'page_size': 20});
+      _page += 1;
+      _count = (j['count'] as num?)?.toInt() ?? 0;
+      _next = j['next'] as String?;
+      _rows.addAll([for (final r in (j['results'] as List? ?? const [])) (r as Map).cast<String, dynamic>()]);
+      _error = null;
+    } on ApiError catch (e) {
+      _error = e.offline ? 'You are offline. Connect to see your past sets.' : 'Could not load your past sets. Try again.';
+    } finally {
+      _loaded = true;
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final e = widget.e;
+    final sub = !_loaded ? 'Loading…' : '$_count ${_count == 1 ? 'workout' : 'workouts'} with this exercise';
+    Widget body;
+    if (!_loaded) {
+      body = const Padding(padding: EdgeInsets.all(24), child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.accent))));
+    } else if (_rows.isEmpty) {
+      body = Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Text(_error ?? 'You have not done ${e.name} yet. Your sets show here after the first time.', textAlign: TextAlign.center, style: AppText.s(13, W.w5, color: AppColors.muted)),
+      );
+    } else {
+      body = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Container(
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.line)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            for (final (i, r) in _rows.indexed) _row(i, r),
+          ]),
+        ),
+        if (_next != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: CaButton('Show more', kind: CaBtnKind.out, small: true, loading: _loading, onPressed: _load),
+          ),
+      ]);
+    }
+    return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+              Text(e.name, style: AppText.s(17, W.w8, ls: -0.2)),
+              Text(sub, style: AppText.s(12.5, W.w5, color: AppColors.muted, h: 1.4)),
+            ]),
+          ),
+          SheetClose(onTap: () => Navigator.of(context).pop()),
+        ]),
+      ),
+      Flexible(child: SingleChildScrollView(child: body)),
+    ]);
+  }
+
+  Widget _row(int i, Map<String, dynamic> r) {
+    final e = widget.e;
+    final date = DateTime.tryParse('${r['date']}') ?? DateTime.now();
+    final sets = [for (final s in (r['sets'] as List? ?? const [])) (s as Map).cast<String, dynamic>()];
+    final from = i == 0 ? 'last time' : DateFormat('d MMM').format(date);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: i == 0 ? null : const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
+        Row(spacing: 12, children: [
+          Container(
+            width: 48,
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(9)),
+            child: Column(children: [
+              Text(DateFormat('d MMM').format(date), maxLines: 1, style: AppText.s(13, W.w7, h: 1.2)),
+              Text(DateFormat('EEE').format(date), style: AppText.s(10.5, W.w6, color: AppColors.muted)),
+            ]),
+          ),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+              Text('${r['name'] ?? 'Workout'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
+              Text('${sets.length} ${sets.length == 1 ? 'set' : 'sets'}${i == 0 ? ' · last time' : ''}', style: AppText.s(12, W.w4, color: AppColors.muted)),
+            ]),
+          ),
+          CaButton('Use these sets', small: true, expand: false, kind: CaBtnKind.out, icon: AppIcons.restart, onPressed: sets.isEmpty
+              ? null
+              : () {
+                  Navigator.of(context).pop();
+                  widget.onUse(sets, from);
+                }),
+        ]),
+        Wrap(spacing: 5, runSpacing: 5, children: [
+          for (final (k, s) in sets.indexed)
+            Container(
+              padding: const EdgeInsets.fromLTRB(4, 3, 8, 3),
+              decoration: BoxDecoration(color: s['is_warmup'] == true ? AppColors.white : AppColors.sub, borderRadius: BorderRadius.circular(8), border: s['is_warmup'] == true ? Border.all(color: AppColors.line) : null),
+              child: Row(mainAxisSize: MainAxisSize.min, spacing: 5, children: [
+                Container(
+                  width: 16,
+                  height: 16,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(color: AppColors.white, shape: BoxShape.circle),
+                  child: Text(s['is_warmup'] == true ? 'W' : '${k + 1}', style: AppText.s(10, W.w7, color: AppColors.muted)),
+                ),
+                Text(e.setText(s), style: AppText.s(12.5, W.w6)),
+                if (s['is_pr'] == true) const AppIcon(AppIcons.star, size: 11, color: AppColors.warnText),
+              ]),
+            ),
+        ]),
+      ]),
     );
+  }
+}
+
+/// A sheet (phone) or centred 520 card (wider) whose header stays put while the body scrolls:
+/// [builder] returns a Column with a `Flexible` scroll area.
+Future<T?> showFixedSheet<T>(BuildContext context, Widget Function(BuildContext) builder) {
+  final h = MediaQuery.sizeOf(context).height;
+  if (context.isPhone) {
+    return showModalBottomSheet<T>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: AppColors.card,
+      barrierColor: AppColors.scrimSheet,
+      constraints: BoxConstraints(maxHeight: h * .86),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.caSheet))),
+      builder: (ctx) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Center(child: Container(width: 38, height: 4, margin: const EdgeInsets.fromLTRB(0, 8, 0, 8), decoration: BoxDecoration(color: AppColors.grab, borderRadius: AppRadius.all(4)))),
+        Flexible(child: Padding(padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + MediaQuery.paddingOf(ctx).bottom), child: builder(ctx))),
+      ]),
+    );
+  }
+  return showGeneralDialog<T>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'sheet',
+    barrierColor: AppColors.scrimSheet,
+    transitionDuration: const Duration(milliseconds: 140),
+    transitionBuilder: (_, a, _, child) => FadeTransition(opacity: a, child: child),
+    pageBuilder: (ctx, _, _) => Center(
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          width: 520,
+          margin: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * .8),
+          decoration: BoxDecoration(color: AppColors.card, borderRadius: AppRadius.all(AppRadius.modal), boxShadow: AppShadows.modal),
+          child: CaWeb(web: true, child: builder(ctx)),
+        ),
+      ),
+    ),
+  );
+}
 
 class _PastSheet extends StatefulWidget {
   const _PastSheet({this.thisName, this.startThis = false});
@@ -449,39 +662,56 @@ class _PastSheetState extends State<_PastSheet> {
           ? 'Loading…'
           : '$n ${n == 1 ? 'workout' : 'workouts'}${_this ? ' · this workout only' : (p.since == null ? '' : ' · since ${DateFormat('d MMM').format(p.since!)}')}';
     }
-    return Padding(
-      padding: const EdgeInsets.only(top: 2),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+    // Title, tabs and the back link stay; only the list or the workout scrolls.
+    return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+              Text(title, style: AppText.s(17, W.w8, ls: -0.2)),
+              Text(sub, style: AppText.s(12.5, W.w5, color: AppColors.muted, h: 1.4)),
+            ]),
+          ),
+          SheetClose(onTap: () => Navigator.of(context).pop()),
+        ]),
+      ),
+      if (sel == null && widget.thisName != null)
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-                Text(title, style: AppText.s(17, W.w8, ls: -0.2)),
-                Text(sub, style: AppText.s(12.5, W.w5, color: AppColors.muted, h: 1.4)),
-              ]),
-            ),
-            SheetClose(onTap: () => Navigator.of(context).pop()),
-          ]),
+          child: TwoTabs(
+            labels: [widget.thisName!, 'All workouts'],
+            index: _this ? 0 : 1,
+            onPick: (i) {
+              setState(() => _this = i == 0);
+              _load();
+            },
+          ),
         ),
-        if (sel == null) ..._list(rows, p) else ..._detail(sel),
-      ]),
-    );
+      if (sel != null) _back(),
+      Flexible(
+        child: SingleChildScrollView(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: sel == null ? _list(rows, p) : _detail(sel)),
+        ),
+      ),
+    ]);
   }
 
-  List<Widget> _list(List<PastRow> rows, PastPage? p) => [
-        if (widget.thisName != null)
-          Padding(
+  Widget _back() => Align(
+        alignment: Alignment.centerLeft,
+        child: Hover(
+          onTap: () => setState(() => _sel = null),
+          builder: (_, h, _) => Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: TwoTabs(
-              labels: [widget.thisName!, 'All workouts'],
-              index: _this ? 0 : 1,
-              onPick: (i) {
-                setState(() => _this = i == 0);
-                _load();
-              },
-            ),
+            child: Row(mainAxisSize: MainAxisSize.min, spacing: 4, children: [
+              const AppIcon(AppIcons.chevronLeft, size: 15, color: AppColors.accent),
+              Text('All past workouts', style: AppText.s(13, W.w6, color: AppColors.accent).copyWith(decoration: h ? TextDecoration.underline : null, decorationColor: AppColors.accent)),
+            ]),
           ),
+        ),
+      );
+
+  List<Widget> _list(List<PastRow> rows, PastPage? p) => [
         if (p == null && _error == null)
           const Padding(padding: EdgeInsets.all(24), child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.accent))))
         else if (_error != null && rows.isEmpty)
@@ -532,22 +762,6 @@ class _PastSheetState extends State<_PastSheet> {
   List<Widget> _detail(PastRow sel) {
     final d = _det;
     return [
-      Align(
-        alignment: Alignment.centerLeft,
-        child: Pull(
-          top: 4,
-          child: Hover(
-            onTap: () => setState(() => _sel = null),
-            builder: (_, h, _) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(mainAxisSize: MainAxisSize.min, spacing: 4, children: [
-                const AppIcon(AppIcons.chevronLeft, size: 15, color: AppColors.accent),
-                Text('All past workouts', style: AppText.s(13, W.w6, color: AppColors.accent).copyWith(decoration: h ? TextDecoration.underline : null, decorationColor: AppColors.accent)),
-              ]),
-            ),
-          ),
-        ),
-      ),
       if (d == null)
         const Padding(padding: EdgeInsets.all(24), child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.accent))))
       else ...[

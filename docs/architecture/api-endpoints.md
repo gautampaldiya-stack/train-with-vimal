@@ -309,13 +309,16 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `me/workouts/<pk>/discard/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/<pk>/feedback/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/<pk>/finish/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
+| `me/workouts/<pk>/pause/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/<pk>/reopen/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/<pk>/restart/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/<pk>/restore-set/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
+| `me/workouts/<pk>/resume/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/<pk>/retick-sets/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/<pk>/sets/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/<pk>/sets/<set_id>\d+)/` | PATCH, DELETE | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/<pk>/state/` | PUT | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
+| `me/workouts/exercise-history/` | GET | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/sync/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `programs/` | GET, POST | ProgramViewSet |  |
 | `programs/<pk>/` | GET, PUT, PATCH, DELETE | ProgramViewSet |  |

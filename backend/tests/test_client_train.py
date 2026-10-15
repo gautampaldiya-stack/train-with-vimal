@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 
 from apps.training.models import Exercise, SetLog, WorkoutLog
 
@@ -111,3 +112,31 @@ def test_discard_after_log_more_keeps_the_workout(client_user):
     d = client_user.get(f"{W}{wid}/").json()
     assert d["status"] == "completed" and d["duration_seconds"] == 1200 and d["effort"] == 6
     assert [s["client_key"] for s in d["sets"]] == ["q1"] and d["reopened_at"] is None
+
+
+def test_pause_resume_and_exercise_history(client_user):
+    wid = _start(client_user)
+    r = client_user.post(f"{W}{wid}/pause/")
+    assert r.status_code == 200 and r.json()["paused_at"]
+    paused = r.json()["paused_at"]
+    assert client_user.post(f"{W}{wid}/pause/").json()["paused_at"] == paused  # safe to send again
+    r = client_user.post(f"{W}{wid}/resume/")
+    assert r.status_code == 200 and r.json()["paused_at"] is None
+    # sent later from the outbox: the time the phone left Train is kept
+    WorkoutLog.objects.filter(id=wid).update(started_at=timezone.now() - timedelta(minutes=10))
+    at = (timezone.now() - timedelta(seconds=30)).isoformat()
+    r = client_user.post(f"{W}{wid}/pause/", {"at": at}, format="json")
+    assert parse_datetime(r.json()["paused_at"]) == parse_datetime(at)
+
+    rdl = Exercise.objects.get(name="Romanian Deadlift", is_builtin=True)
+    d = client_user.get(f"{W}exercise-history/", {"exercise": str(rdl.id)}).json()
+    assert d["count"] > 0 and d["results"][0]["sets"]
+    assert all(s["exercise"] == str(rdl.id) or s["exercise_name"] == "Romanian Deadlift" for s in d["results"][0]["sets"])
+
+
+def test_exercise_thumb_from_youtube():
+    from apps.training.serializers import youtube_thumb
+
+    assert youtube_thumb("https://youtu.be/dQw4w9WgXcQ") == "https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg"
+    assert youtube_thumb("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=3") .endswith("/dQw4w9WgXcQ/mqdefault.jpg")
+    assert youtube_thumb("") is None

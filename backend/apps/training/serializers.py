@@ -27,21 +27,38 @@ def _clean_lines(lines, field, max_items=20):
     return out
 
 
+def youtube_thumb(url):
+    """https://youtu.be/<id>, youtube.com/watch?v=<id> or /shorts/<id> → the video's still image."""
+    import re
+
+    m = re.search(r"(?:youtu\.be/|v=|/shorts/|/embed/)([A-Za-z0-9_-]{11})", url or "")
+    return f"https://img.youtube.com/vi/{m.group(1)}/mqdefault.jpg" if m else None
+
+
 class ExerciseSerializer(serializers.ModelSerializer):
     programs = serializers.IntegerField(read_only=True, source="n_programs", default=0)
     video_title = serializers.CharField(source="video.title", read_only=True, default=None)
     source = serializers.SerializerMethodField()
+    thumb = serializers.SerializerMethodField()
 
     class Meta:
         model = Exercise
         fields = ["id", "name", "muscle_group", "primary_muscle", "also_works", "equipment", "level", "is_builtin",
-                  "source", "video", "video_title", "youtube_url", "cover_at_seconds", "how_to", "form_cues",
+                  "source", "video", "video_title", "youtube_url", "thumb", "cover_at_seconds", "how_to", "form_cues",
                   "log_type", "default_sets", "default_reps", "default_rest_seconds", "default_rpe",
                   "default_tempo", "duplicated_from", "programs", "created_at", "updated_at"]
         read_only_fields = ["is_builtin", "duplicated_from"]
 
     def get_source(self, obj):
         return "builtin" if obj.is_builtin else "custom"
+
+    def get_thumb(self, obj):
+        """Picture for the exercise tile: the video's cover, else the YouTube still, else none (icon)."""
+        v = obj.video
+        if v and v.cover:
+            req = self.context.get("request")
+            return req.build_absolute_uri(v.cover.url) if req else v.cover.url
+        return youtube_thumb(obj.youtube_url or (v.youtube_url if v else ""))
 
     def validate_name(self, v):
         v = " ".join(v.split())

@@ -4,6 +4,7 @@ from django.db import transaction
 from django.db.models import Count, Prefetch, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action
@@ -520,7 +521,7 @@ class MyTrainView(APIView):
             prs = services.personal_bests(u, ids)
             for e in rows:
                 d = ProgramExerciseSerializer(e).data
-                d["exercise_full"] = ExerciseSerializer(e.exercise).data
+                d["exercise_full"] = ExerciseSerializer(e.exercise, context={"request": request}).data
                 if e.override:
                     d["exercise_full"].update({k: v for k, v in e.override.items() if k in d["exercise_full"]})
                 d["last_time"] = last.get(e.exercise_id)
@@ -606,6 +607,43 @@ class MyWorkoutViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewset
         new_best = services.save_state(wl, s.validated_data)
         data = WorkoutLogSerializer(self.get_queryset().get(id=wl.id)).data
         return Response({**data, "new_best": new_best})
+
+    @action(detail=True, methods=["post"])
+    def pause(self, request, pk=None):
+        """The client left Train: the timer stops. Safe to send again."""
+        wl = self._open(pk)
+        if not wl.paused_at:
+            # `at` = when the phone left Train (the request may arrive later from the outbox)
+            at = parse_datetime(str(request.data.get("at") or ""))
+            now = timezone.now()
+            wl.paused_at = min(max(at, wl.started_at), now) if at and timezone.is_aware(at) else now
+            wl.save(update_fields=["paused_at", "updated_at"])
+        return Response(WorkoutLogSerializer(self.get_queryset().get(id=wl.id)).data)
+
+    @action(detail=True, methods=["post"])
+    def resume(self, request, pk=None):
+        """Continue workout: the timer goes on from where it stopped."""
+        wl = self._open(pk)
+        if wl.paused_at:
+            wl.started_at += timezone.now() - wl.paused_at
+            wl.paused_at = None
+            wl.save(update_fields=["started_at", "paused_at", "updated_at"])
+        return Response(WorkoutLogSerializer(self.get_queryset().get(id=wl.id)).data)
+
+    @action(detail=False, url_path="exercise-history")
+    def exercise_history(self, request):
+        """Logger → Past workouts: only this exercise, newest first, its sets in each workout."""
+        ex = get_object_or_404(Exercise, id=request.query_params.get("exercise"))
+        qs = (WorkoutLog.objects.filter(client=request.user, status="completed", sets__exercise=ex, sets__done=True)
+              .distinct().order_by("-date", "-finished_at"))
+        page = self.paginate_queryset(qs)
+        ids = [w.id for w in page]
+        sets = {}
+        for st in (SetLog.objects.filter(workout_id__in=ids, exercise=ex, done=True)
+                   .order_by("set_number")):
+            sets.setdefault(st.workout_id, []).append(SetLogSerializer(st).data)
+        rows = [{"id": str(w.id), "date": w.date, "name": w.name, "sets": sets.get(w.id, [])} for w in page]
+        return self.get_paginated_response(rows)
 
     @action(detail=True, methods=["post"])
     def reopen(self, request, pk=None):

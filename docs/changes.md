@@ -20,6 +20,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 
 ---
 
+### 2026-10-15 · Train — day tap, exercise pictures, logger history, Use last time, timer pause
+- **Pehle:** Web par exercise guide ke peeche dark patti aati thi. Past workouts sheet me title aur tabs bhi list ke saath scroll hote the. Week strip ke din tap nahi hote the. Exercise row par hamesha dumbbell. Logger ke menu me Past workouts poore workouts dikhata tha. Pichhli values bharne ka koi ek-click tarika nahi tha. Train se bahar jaane par bhi workout timer chalta rehta tha.
+- **Ab:** Guide dialog saaf (shadow bahar). Past workouts sheet ka header aur tabs fixed, sirf list scroll. Din pe tap → us din ka workout (Done / Not done / Planned) + Back to today. Video cover / YouTube thumbnail ho to wahi dikhta hai. Logger ka Past workouts sirf us exercise ka, har row par Use these sets; sets box me Use last time (Undo ke saath). Train aur logger se bahar jaate hi timer rukta hai, Continue workout par chalta hai.
+- **Kyun:** Gautam ke screenshots (2026-10-15).
+- **Updated:** app/lib/features/client/train/*, app/lib/app/shell/app_shell.dart, backend/apps/training/views.py + serializers.py, tests, docs/screens/behaviour.md + status.md, docs/phases/CURRENT.md, docs/architecture/api-endpoints.md · Decision D-17
+
 ### 2026-10-15 · Train tab and workout logger built; bottom nav; Android build
 - **Pehle:** `/train` par "This page is on the way" tha, workout log karne ka koi screen nahi tha. API me poore workout ko ek saath save karne, "Log more sets" aur effort / note bhejne ka endpoint nahi tha. Android par `flutter run` "Could not close incremental caches" ke saath fail hota tha. Bottom nav 8 px uncha tha.
 - **Ab:** ClientTrain(Web) aur ClientWorkout(Web) board jaise bane: week, Today card, coach note, blocks, exercise guide (body map ke saath), Past workouts, logger (sets, −/+, BW, warm-up, delete + Undo, hold timer, rest timer, workout timer, restart, remove / discard), Finish aur Workout done page (effort, note, Send). Har change phone par turant save hota hai aur outbox se jaata hai (offline bhi). Finish ke baad "Log more sets" wahi workout dobara kholta hai; uske baad Discard sirf naye sets hatata hai, purana workout waisa hi rehta hai. Dobara Finish par effort / note nahi mitte. Android: `kotlin.incremental=false`. Bottom nav padding Gautam wali (top 4, bottom 12).

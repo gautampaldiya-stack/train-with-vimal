@@ -21,4 +21,5 @@ Things a new person (or a new Claude session) must know. Update when Gautam deci
 - Gautam (2026-10-15): on tablet and web (≥ 600) toasts sit at the bottom right, not centred like the web boards.
   Phone keeps them centred and full width (12 from each edge); tablet / web toast is 400 wide.
   Undo toasts stay 10 s. No profile avatar (RS) on the client Home top, phone or web. Also: write even small changes into the docs (`docs/changes.md` + the doc they touch).
+- Gautam (2026-10-15): Train week strip days tap like Home; logger Past workouts = this exercise only, one tap fills past sets; workout timer stops when leaving Train / logger, goes on with Continue (D-17).
 - Gautam (2026-10-15): bottom nav padding top 4, bottom 12 (his code). Do not gender trainers in app text ("You will usually get a reply").
