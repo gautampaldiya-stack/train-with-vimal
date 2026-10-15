@@ -20,6 +20,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 
 ---
 
+### 2026-10-15 · Train — workout options on the banner; toast above sheets
+- **Pehle:** Train par chal rahe workout ke banner me sirf Continue tha. Past workout detail me "3 sets" beech me aata tha. Phone par sheet khuli ho to toast sheet ke andar neeche aata tha aur sheet khaali jagah ke saath badi ho jaati thi. Timer sheet kehta tha "Leaving this screen does not stop it".
+- **Ab:** Banner / bar par `⋯`: Pause / Resume timer, Finish, Restart, Discard (confirm ke saath). "3 sets" right edge par. Sheet khuli ho to toast upar aata hai, sheet ka size nahi badalta. Timer sheet: "The timer stops when you finish the workout, or when you leave Train. Continue workout starts it again."
+- **Kyun:** Gautam ke screenshots (2026-10-15).
+- **Updated:** app/lib/features/client/train/*, app/lib/core/widgets/overlays.dart, app/lib/app/router.dart, docs/screens/behaviour.md + status.md · Decision D-17
+
 ### 2026-10-15 · Train — day tap, exercise pictures, logger history, Use last time, timer pause
 - **Pehle:** Web par exercise guide ke peeche dark patti aati thi. Past workouts sheet me title aur tabs bhi list ke saath scroll hote the. Week strip ke din tap nahi hote the. Exercise row par hamesha dumbbell. Logger ke menu me Past workouts poore workouts dikhata tha. Pichhli values bharne ka koi ek-click tarika nahi tha. Train se bahar jaane par bhi workout timer chalta rehta tha.
 - **Ab:** Guide dialog saaf (shadow bahar). Past workouts sheet ka header aur tabs fixed, sirf list scroll. Din pe tap → us din ka workout (Done / Not done / Planned) + Back to today. Video cover / YouTube thumbnail ho to wahi dikhta hai. Logger ka Past workouts sirf us exercise ka, har row par Use these sets; sets box me Use last time (Undo ke saath). Train aur logger se bahar jaate hi timer rukta hai, Continue workout par chalta hai.

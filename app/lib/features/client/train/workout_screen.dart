@@ -20,9 +20,12 @@ import 'workout_model.dart';
 /// sets with −/+ values and ticks, rest timer, workout timer, finish and the "Workout done" page.
 /// [start] = program day to start, [reopen] = finished workout to log more sets on.
 class WorkoutScreen extends StatefulWidget {
-  const WorkoutScreen({super.key, this.start, this.reopen});
+  const WorkoutScreen({super.key, this.start, this.reopen, this.then});
   final int? start;
   final String? reopen;
+
+  /// Opened from the Train banner ⋯: `finish` or `restart` opens that question at once.
+  final String? then;
 
   @override
   State<WorkoutScreen> createState() => _WorkoutScreenState();
@@ -63,7 +66,12 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     c.addListener(_onW);
     setState(() => w = c);
     await c.open(start: widget.start, reopen: widget.reopen);
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {});
+    if (c.ready && !c.finished) {
+      if (widget.then == 'finish') _askFinish(c);
+      if (widget.then == 'restart') _askRestart(c);
+    }
   }
 
   void _lift(double? v) {
@@ -1086,7 +1094,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               Navigator.of(ctx).pop();
               _askRestart(c);
             }),
-            Text('The timer stops when you finish the workout. Leaving this screen does not stop it.', textAlign: TextAlign.center, style: AppText.s(12.5, W.w4, color: AppColors.muted)),
+            Text('The timer stops when you finish the workout, or when you leave Train. Continue workout starts it again.', textAlign: TextAlign.center, style: AppText.s(12.5, W.w4, color: AppColors.muted)),
             const SizedBox(height: 4),
             Row(spacing: 8, children: [
               Expanded(

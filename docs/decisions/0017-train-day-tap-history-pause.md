@@ -14,7 +14,12 @@
    saves `paused_at` on the phone and sends `POST me/workouts/<id>/pause/` with `at` through the outbox, so the time is
    right even when it is sent later. Opening the logger again (Continue workout) moves `started_at` on by the
    paused time and saves the state. A manual pause is also resumed by Continue.
-5. **Exercise picture.** `thumb` = the video cover, else the YouTube thumbnail of the exercise's link. No picture →
+5. **⋯ on the Train workout banner / bar:** Pause or Resume timer (in place, through the outbox), Finish workout and
+   Restart workout (open the logger with `?then=finish|restart`, which asks the same question as in the logger),
+   Discard workout (asks first, then `POST discard/`).
+6. **Toasts above a bottom sheet:** while a phone bottom sheet is open the toast shows at the top of the screen; the
+   sheet no longer grows to make room for it.
+7. **Exercise picture.** `thumb` = the video cover, else the YouTube thumbnail of the exercise's link. No picture →
    the icon tile.
 
 ## Why

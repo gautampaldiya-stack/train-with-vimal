@@ -1076,6 +1076,8 @@ Macro target — `1,650 kcal · 120 g protein · 170 g carbs · 52 g fat`.
 Week strip: `Mon Upper A ✓` · `Tue Lower A ✓` · `Wed Rest` · `Thu Upper B ✓` · `Fri Cardio ← today` · `Sat Lower B` · `Sun Rest`.
 Din pe tap → Home ki tarah us din ka workout (blocks + card) dikhta hai: beeta din `Done · 55 min · 12 sets` ya `Not done`, aane wala din *"Planned for … You can start it on the day."*, aur `Back to today` (Gautam, 2026-10-15).
 
+Workout chal raha ho to banner / bar pe `⋯`: `Pause timer` / `Resume timer`, `Finish workout`, `Restart workout`, `Discard workout` (laal, pehle "Discard workout?" poochta hai). Phone par koi bottom sheet khuli ho to toast screen ke upar aata hai (D-17).
+
 Exercise row pe dumbbell ki jagah video cover / YouTube thumbnail (agar ho), video pe ▶ nishan.
 
 `Today · Fri, 9 Oct` heading. Agar aaj ka workout ho gaya to chip `Completed today`. `History` button → past workouts list; khali pe *"No past workouts yet."*

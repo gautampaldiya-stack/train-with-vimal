@@ -553,7 +553,7 @@ class _ExHistorySheetState extends State<_ExHistorySheet> {
 Future<T?> showFixedSheet<T>(BuildContext context, Widget Function(BuildContext) builder) {
   final h = MediaQuery.sizeOf(context).height;
   if (context.isPhone) {
-    return showModalBottomSheet<T>(
+    return trackSheet(showModalBottomSheet<T>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -565,7 +565,7 @@ Future<T?> showFixedSheet<T>(BuildContext context, Widget Function(BuildContext)
         Center(child: Container(width: 38, height: 4, margin: const EdgeInsets.fromLTRB(0, 8, 0, 8), decoration: BoxDecoration(color: AppColors.grab, borderRadius: AppRadius.all(4)))),
         Flexible(child: Padding(padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + MediaQuery.paddingOf(ctx).bottom), child: builder(ctx))),
       ]),
-    );
+    ));
   }
   return showGeneralDialog<T>(
     context: context,
@@ -800,9 +800,13 @@ class _PastSheetState extends State<_PastSheet> {
                 decoration: i == 0 ? null : const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
                   Row(spacing: 6, children: [
-                    Flexible(child: Text(gr.name, style: AppText.s(13.5, W.w7))),
-                    if (gr.pr) const PrFlag('New best'),
-                    const Spacer(),
+                    // name (+ New best) takes the room, the set count sits at the right edge
+                    Expanded(
+                      child: Row(spacing: 6, children: [
+                        Flexible(child: Text(gr.name, style: AppText.s(13.5, W.w7))),
+                        if (gr.pr) const PrFlag('New best'),
+                      ]),
+                    ),
                     Text('${gr.sets.length} ${gr.sets.length == 1 ? 'set' : 'sets'}', style: AppText.s(12, W.w4, color: AppColors.muted)),
                   ]),
                   Wrap(spacing: 5, runSpacing: 5, children: [

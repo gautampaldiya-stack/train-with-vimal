@@ -13,6 +13,7 @@ import '../home/home_model.dart' show clock;
 import '../home/home_parts.dart';
 import 'train_model.dart';
 import 'train_parts.dart';
+import 'workout_model.dart' show WorkoutController;
 
 /// Train tab (boards `ClientTrain` phone and `ClientTrainWeb`): the week, today's workout, the
 /// coach's note and the exercise blocks. A running workout shows as a bar (phone) or banner (web).
@@ -426,7 +427,7 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
               ]),
             ),
             Text('${live.setsDone} of ${live.setsTotal} sets', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
-            const AppIcon(AppIcons.chevronRight, size: 16, color: AppColors.muted),
+            _more(live, size: 34),
           ]),
         ),
       );
@@ -456,6 +457,90 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
             Text('${live.setsDone} of ${live.setsTotal} sets', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
           ]),
           CaButton('Continue workout', icon: AppIcons.play, expand: false, onPressed: () => context.go('/train/workout')),
+          _more(live, size: 40, outline: true),
+        ]),
+      );
+
+  /// ⋯ on the running workout: Pause / Resume timer, Finish, Restart, Discard.
+  Widget _more(LiveWorkout live, {required double size, bool outline = false}) => Builder(
+        builder: (bc) => Semantics(
+          button: true,
+          label: 'Workout options',
+          child: Hover(
+            onTap: () => _liveMenu(bc, live),
+            builder: (_, h, _) => Container(
+              width: size,
+              height: size,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: h ? AppColors.sub : AppColors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: outline ? Border.all(color: AppColors.line) : null,
+              ),
+              child: const AppIcon(AppIcons.dots, size: 18, color: AppColors.text2),
+            ),
+          ),
+        ),
+      );
+
+  void _liveMenu(BuildContext anchor, LiveWorkout live) {
+    final paused = live.pausedAt != null;
+    final entries = [
+      MenuEntry(paused ? 'Resume timer' : 'Pause timer', icon: paused ? AppIcons.play : AppIcons.pause, onTap: () => _pause(live, !paused)),
+      MenuEntry('Finish workout', icon: AppIcons.check, onTap: () => context.go('/train/workout?then=finish')),
+      MenuEntry('Restart workout', icon: AppIcons.restart, onTap: () => context.go('/train/workout?then=restart')),
+      const MenuEntry('', separator: true),
+      MenuEntry('Discard workout', icon: AppIcons.trash, danger: true, onTap: () => _askDiscard(live)),
+    ];
+    if (context.isPhone) {
+      showActionSheet(context, entries, title: live.name);
+    } else {
+      showAppMenu(anchor, entries, width: 210);
+    }
+  }
+
+  Future<void> _pause(LiveWorkout live, bool pause) async {
+    await WorkoutController.setPaused(live.id, pause: pause);
+    await WorkoutController.drain();
+    await c.load();
+    final now = c.data?.live;
+    if (mounted) showToast(context, pause ? 'Timer paused' : 'Timer running', sub: '${live.name} · ${clockText((now ?? live).elapsed)}', kind: ToastKind.info);
+  }
+
+  void _askDiscard(LiveWorkout live) => showAppSheet(
+        context,
+        title: 'Discard workout?',
+        sub: '${live.name} · ${clockText(live.elapsed)} so far',
+        webWidth: 440,
+        builder: (ctx) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 18, children: [
+          Text(
+            live.setsDone == 0
+                ? 'Nothing is saved and the timer stops.'
+                : 'Your ${live.setsDone} ticked ${live.setsDone == 1 ? 'set is' : 'sets are'} removed. Nothing is saved and the timer stops.',
+            style: AppText.s(14, W.w4, color: AppColors.text2, h: 1.5),
+          ),
+          Row(spacing: 8, children: [
+            Expanded(child: CaButton('Keep it', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop())),
+            Expanded(
+              child: Hover(
+                onTap: () async {
+                  Navigator.of(ctx).pop();
+                  await WorkoutController.discardLive(live.id);
+                  await c.load();
+                  if (mounted) showToast(context, 'Workout discarded', sub: 'Nothing was saved', kind: ToastKind.del);
+                },
+                builder: (bc, h, _) {
+                  final web = CaWeb.of(bc);
+                  return Container(
+                    height: web ? 40 : 44,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(color: h ? AppColors.badText : AppColors.red, borderRadius: BorderRadius.circular(web ? 10 : 12)),
+                    child: Text('Discard workout', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(web ? 14 : 14.5, W.w7, color: AppColors.white)),
+                  );
+                },
+              ),
+            ),
+          ]),
         ]),
       );
 }

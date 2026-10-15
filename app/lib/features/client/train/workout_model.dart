@@ -207,6 +207,34 @@ class WorkoutController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Train banner ⋯ → Pause / Resume timer, without opening the logger.
+  static Future<void> setPaused(String id, {required bool pause}) async {
+    final now = DateTime.now().toUtc();
+    final snap = await Services.cache.read(_cacheKey);
+    if (snap is Map && '${snap['id']}' == id) {
+      final m = Map<String, dynamic>.from(snap);
+      final p = DateTime.tryParse('${m['paused_at']}'), st = DateTime.tryParse('${m['started_at']}');
+      if (pause && p == null) m['paused_at'] = now.toIso8601String();
+      if (!pause && p != null) {
+        if (st != null) m['started_at'] = st.add(now.difference(p)).toUtc().toIso8601String();
+        m['paused_at'] = null;
+      }
+      await Services.cache.write(_cacheKey, m);
+    }
+    try {
+      await Services.outbox.enqueue('POST', 'me/workouts/$id/${pause ? 'pause' : 'resume'}/', pause ? {'at': now.toIso8601String()} : {}, tag: 'workout:pause');
+    } on ApiError catch (_) {}
+  }
+
+  /// Train banner ⋯ → Discard workout.
+  static Future<void> discardLive(String id) async {
+    try {
+      await Services.outbox.enqueue('POST', 'me/workouts/$id/discard/', {}, tag: 'workout:discard');
+    } on ApiError catch (_) {}
+    await drain();
+    await Services.cache.write(_cacheKey, null);
+  }
+
   /// The client left Train and the logger (decision D-17): the workout timer stops. Saved on the
   /// phone and sent through the outbox with the time it happened, so it works offline too.
   static Future<void> pauseLive() async {
