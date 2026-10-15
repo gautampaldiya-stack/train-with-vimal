@@ -182,6 +182,8 @@ class WorkoutLog(TimeStampedModel):
     sets_done = models.PositiveSmallIntegerField(default=0)
     sets_planned = models.PositiveSmallIntegerField(default=0)
     auto_saved = models.BooleanField(default=False)  # saved at the last set after 3 hours
+    paused_at = models.DateTimeField(null=True, blank=True)  # timer paused; resume moves started_at forward
+    reopened_at = models.DateTimeField(null=True, blank=True)  # "Log more sets": Discard goes back to this point
 
     class Meta:
         ordering = ["-date", "-started_at"]
@@ -198,6 +200,10 @@ class SetLog(models.Model):
                                     validators=[MinValueValidator(0), MaxValueValidator(1000)])
     reps = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MaxValueValidator(1000)])
     seconds = models.PositiveIntegerField(null=True, blank=True)
+    distance_km = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True,
+                                      validators=[MinValueValidator(0), MaxValueValidator(500)])
+    # set added in the app (maybe offline): the app's own id, so a repeated save does not add it twice
+    client_key = models.CharField(max_length=40, blank=True, default="")
     is_bodyweight = models.BooleanField(default=False)
     is_warmup = models.BooleanField(default=False)
     done = models.BooleanField(default=False)

@@ -18,6 +18,11 @@ abstract final class AppShadows {
     BoxShadow(color: Color(0x0A171717), offset: Offset(0, 1), blurRadius: 2),
     BoxShadow(color: Color(0x0A171717), offset: Offset(0, 4), blurRadius: 16),
   ];
+  // Client logger: rest bar on web, bottom bars on phone, rest timer dialog / exercise guide on web.
+  static const restBar = [BoxShadow(color: Color(0x2E000000), offset: Offset(0, 8), blurRadius: 24)];
+  static const barUp = [BoxShadow(color: Color(0x0F000000), offset: Offset(0, -6), blurRadius: 18)];
+  static const dialogBig = [BoxShadow(color: Color(0x33000000), offset: Offset(0, 20), blurRadius: 60)];
+  static const guide = [BoxShadow(color: Color(0x40000000), offset: Offset(0, 20), blurRadius: 60)];
   static const modal = [
     BoxShadow(color: Color(0x14171717), offset: Offset(0, 2), blurRadius: 6),
     BoxShadow(color: Color(0x38171717), offset: Offset(0, 24), blurRadius: 60),

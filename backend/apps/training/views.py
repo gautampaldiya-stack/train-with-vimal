@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
 from django.shortcuts import get_object_or_404
@@ -30,12 +32,14 @@ from .serializers import (
     AssignSerializer,
     ExerciseMiniSerializer,
     ExerciseSerializer,
+    FeedbackSerializer,
     FinishSerializer,
     ProgramCardSerializer,
     ProgramCreateSerializer,
     ProgramDetailSerializer,
     ProgramExerciseSerializer,
     SetLogSerializer,
+    StateSerializer,
     StructureSerializer,
     WorkoutLogSerializer,
     WorkoutRowSerializer,
@@ -490,21 +494,30 @@ class ClientWorkoutLogViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, 
 
 # ---------------------------------------------------------------- client app
 class MyTrainView(APIView):
-    """Train tab: week strip, today's workout with targets, last time and PRs."""
+    """Train tab: week strip, today's workout with targets, last time and PRs, the running workout."""
 
     permission_classes = [IsClient]
 
     def get(self, request):
         from django.utils.dateparse import parse_date
 
+        from apps.activity.dashboard import _day_minutes, _person
+        from apps.checkins.models import WeightLog
+        from apps.scheduling.models import Session
+
+        u = request.user
         day = parse_date(request.query_params.get("date") or "") or timezone.localdate()
-        pa, pd, strip, week = services.today_plan(request.user, day)
-        exercises = []
+        pa, pd, strip, week = services.today_plan(u, day)
+        exercises, rows = [], []
+        done_today = (WorkoutLog.objects.filter(client=u, date=day, status="completed")
+                      .prefetch_related("sets").first())
+        in_progress = (WorkoutLog.objects.filter(client=u, status="in_progress").prefetch_related("sets").first())
+        here = in_progress if in_progress and in_progress.date == day else done_today
         if pd and not pd.is_rest:
             rows = list(pd.exercises.select_related("exercise", "exercise__video"))
             ids = [e.exercise_id for e in rows]
-            last = services.last_performance(request.user, ids)
-            prs = services.personal_bests(request.user, ids)
+            last = services.last_performance(u, ids)
+            prs = services.personal_bests(u, ids)
             for e in rows:
                 d = ProgramExerciseSerializer(e).data
                 d["exercise_full"] = ExerciseSerializer(e.exercise).data
@@ -512,19 +525,36 @@ class MyTrainView(APIView):
                     d["exercise_full"].update({k: v for k, v in e.override.items() if k in d["exercise_full"]})
                 d["last_time"] = last.get(e.exercise_id)
                 d["pr"] = prs.get(e.exercise_id)
+                mine = [s for s in here.sets.all() if s.exercise_id == e.exercise_id] if here else []
+                d["sets_done"] = sum(1 for s in mine if s.done and not s.is_warmup)
                 exercises.append(d)
-        done_today = WorkoutLog.objects.filter(client=request.user, date=day, status="completed").first()
-        in_progress = WorkoutLog.objects.filter(client=request.user, status="in_progress").first()
+        start = timezone.make_aware(timezone.datetime.combine(day, timezone.datetime.min.time()))
+        session = (Session.objects.filter(client=u, start__gte=start, start__lt=start + timedelta(days=1),
+                                          status="booked").select_related("trainer").order_by("start").first())
+        trainer = u.client_profile.trainer
+        weigh = WeightLog.objects.filter(client=u).order_by("-date").first()
+        live = None
+        if in_progress:
+            sets = [s for s in in_progress.sets.all() if not s.is_warmup]
+            live = {"id": str(in_progress.id), "name": in_progress.name, "date": in_progress.date,
+                    "started_at": in_progress.started_at, "paused_at": in_progress.paused_at,
+                    "sets_done": sum(1 for s in sets if s.done), "sets_total": len(sets)}
         return Response({
             "date": day,
             "week": week,
             "weeks": pa.effective_program.weeks if pa else None,
             "program": pa.effective_program.name if pa else None,
             "strip": strip,
-            "day": {"id": pd.id, "name": pd.name, "is_rest": pd.is_rest, "rest_note": pd.rest_note} if pd else None,
+            "day": {"id": pd.id, "name": pd.name, "is_rest": pd.is_rest, "note": pd.rest_note,
+                    "minutes": _day_minutes(rows)} if pd else None,
             "exercises": exercises,
             "completed_today": WorkoutRowSerializer(done_today).data if done_today else None,
-            "in_progress": str(in_progress.id) if in_progress else None,
+            "in_progress": live,
+            "trainer": _person(trainer) if trainer else None,
+            "session": {"id": str(session.id), "start": session.start, "end": session.end,
+                        "trainer": _person(session.trainer), "place": session.place, "is_call": session.is_call}
+            if session else None,
+            "bodyweight_kg": float(weigh.weight_kg) if weigh else None,
         })
 
 
@@ -536,8 +566,18 @@ class MyWorkoutViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewset
     def get_queryset(self):
         qs = WorkoutLog.objects.filter(client=self.request.user)
         if self.action == "list":
-            return qs.filter(status="completed")
+            qs = qs.filter(status="completed").prefetch_related("sets")
+            name = (self.request.query_params.get("name") or "").strip()
+            return qs.filter(name=name) if name else qs
         return qs.prefetch_related("sets__exercise")
+
+    def list(self, request, *args, **kwargs):
+        """Past workouts, newest first. `name` keeps one workout ("this workout only")."""
+        res = super().list(request, *args, **kwargs)
+        first = self.get_queryset().order_by("date").values_list("date", flat=True).first()
+        if isinstance(res.data, dict):
+            res.data["since"] = first
+        return res
 
     def get_serializer_class(self):
         return WorkoutRowSerializer if self.action == "list" else WorkoutLogSerializer
@@ -555,6 +595,49 @@ class MyWorkoutViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewset
 
     def _open(self, pk):
         return get_object_or_404(WorkoutLog, id=pk, client=self.request.user, status="in_progress")
+
+    @extend_schema(request=StateSerializer)
+    @action(detail=True, methods=["put"], url_path="state")
+    def state(self, request, pk=None):
+        """Save the running workout as it is now (timer and every set). Safe to send again."""
+        wl = self._open(pk)
+        s = StateSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+        new_best = services.save_state(wl, s.validated_data)
+        data = WorkoutLogSerializer(self.get_queryset().get(id=wl.id)).data
+        return Response({**data, "new_best": new_best})
+
+    @action(detail=True, methods=["post"])
+    def reopen(self, request, pk=None):
+        """'Log more sets' after finishing: the same workout runs again, the timer goes on from its time."""
+        wl = get_object_or_404(WorkoutLog, id=pk, client=request.user, status="completed")
+        if WorkoutLog.objects.filter(client=request.user, status="in_progress").exclude(id=wl.id).exists():
+            raise serializers.ValidationError({"workout": ["Finish the workout you are doing first."]})
+        wl.status = WorkoutLog.Status.IN_PROGRESS
+        wl.started_at = timezone.now() - timedelta(seconds=wl.duration_seconds)
+        wl.finished_at = None
+        wl.paused_at = None
+        wl.reopened_at = timezone.now()
+        wl.save(update_fields=["status", "started_at", "finished_at", "paused_at", "reopened_at", "updated_at"])
+        return Response(WorkoutLogSerializer(self.get_queryset().get(id=wl.id)).data)
+
+    @extend_schema(request=FeedbackSerializer)
+    @action(detail=True, methods=["post"])
+    def feedback(self, request, pk=None):
+        """'Save and send to Aman': effort and the note, after the workout is saved."""
+        wl = get_object_or_404(WorkoutLog, id=pk, client=request.user, status="completed")
+        s = FeedbackSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+        wl.effort = s.validated_data["effort"]
+        wl.note = s.validated_data.get("note", "")
+        wl.save(update_fields=["effort", "note", "updated_at"])
+        trainer = request.user.client_profile.trainer
+        if trainer:
+            from apps.notifications.realtime import send_to_user
+
+            transaction.on_commit(lambda: send_to_user(trainer.id, "client_activity", {
+                "client": str(request.user.id), "kind": "workout_feedback", "workout": str(wl.id)}))
+        return Response(WorkoutRowSerializer(wl).data)
 
     @action(detail=True, methods=["post"], url_path="sets")
     def add_set(self, request, pk=None):
@@ -606,7 +689,20 @@ class MyWorkoutViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewset
 
     @action(detail=True, methods=["post"])
     def discard(self, request, pk=None):
+        """Nothing is saved. After "Log more sets" only the sets ticked since then go: the finished
+        workout is kept as it was (same time, effort and note)."""
         wl = self._open(pk)
+        if wl.reopened_at:
+            at = wl.reopened_at
+            wl.sets.exclude(done=True, done_at__lt=at).delete()
+            wl.status = WorkoutLog.Status.COMPLETED
+            wl.finished_at = at
+            wl.started_at = at - timedelta(seconds=wl.duration_seconds)
+            wl.paused_at = None
+            wl.reopened_at = None
+            wl.sets_done = wl.sets.filter(done=True, is_warmup=False).count()
+            wl.save()
+            return Response(status=204)
         wl.status = WorkoutLog.Status.DISCARDED
         wl.save(update_fields=["status"])
         wl.sets.all().delete()

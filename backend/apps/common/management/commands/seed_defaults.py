@@ -25,9 +25,13 @@ class Command(BaseCommand):
 
         made = 0
         for (name, muscle, primary, equip, level, log_type, sets, reps, rest, rpe, tempo, also) in D.EXERCISES:
-            if Exercise.all_objects.filter(name=name, is_builtin=True).exists():
-                continue
             how, cues = D.HOW_TO.get(name, ([], []))
+            have = Exercise.all_objects.filter(name=name, is_builtin=True).first()
+            if have:
+                if how and not have.how_to:  # steps added to the library later
+                    have.how_to, have.form_cues = how, cues
+                    have.save(update_fields=["how_to", "form_cues"])
+                continue
             Exercise.objects.create(
                 name=name, muscle_group=muscle, primary_muscle=primary, equipment=equip, level=level,
                 log_type=log_type, default_sets=sets, default_reps=reps, default_rest_seconds=rest, default_rpe=rpe,

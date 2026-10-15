@@ -68,6 +68,17 @@ abstract final class AppColors {
   static const strike = Color(0xFFB5B5AF);
   static const avGreenBg = Color(0xFFDCFCE7), avGreenText = Color(0xFF166534);
 
+  // Client Train / Workout logger (tn-*, cg-*, bm-*, cl-*, cr-*, cd-*)
+  static const tnBlueBg = Color(0xFFEAF1FE);
+  static const noteBg = Color(0xFFE7EEFC), noteLine = Color(0xFFCFDDFA); // coach note in the guide
+  static const videoDark = [Color(0xFF1F2937), Color(0xFF3F4A5A)];
+  static const bmOff = Color(0xFFDCDCD5), bmStrong = Color(0xFF7FA3F0), bmLight = Color(0xFFC9D8FA);
+  static const metOff = Color(0xFFE5E5E0);
+  static const valPh = Color(0xFFA3A39C), tickOff = Color(0xFFC9C9C3), pressed = Color(0xFFE6E6E0);
+  static const doneValBg = Color(0xFFEEF9F2), doneValLine = Color(0xFFBFE8CF);
+  static const restAmber = Color(0xFFF5B544);
+  static const goneGray = Color(0xFF6B6B66), goneRing = Color(0xFFEDEDEA);
+
   // Toasts
   static const toastStaff = Color(0xFF1F1F1F), toastStaffSub = Color(0xFFB5B5B0), toastStaffAction = Color(0xFF93B4FF);
   static const toastInk = Color(0xFF0E0F0C);

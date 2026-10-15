@@ -19,3 +19,4 @@ One file per decision. Add a new file for every new decision (next number), and 
 | [D-13](0013-branches-working-develop-main-commits-by-gautam-on.md) | Branches `working` → `develop` → `main`; commits by Gautam only | 2026-10-14 |
 | [D-14](0014-client-setup-steps-vs-staff-checklist.md) | Client setup steps vs the staff checklist | 2026-10-14 |
 | [D-15](0015-account-links-pages-and-lifetimes.md) | Account links: full pages, lifetimes from the boards, invite end reasons | 2026-10-15 |
+| [D-16](0016-train-tab-and-workout-logger.md) | Train tab and workout logger: blocks, saving, Log more sets, discard | 2026-10-15 |

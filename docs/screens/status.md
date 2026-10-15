@@ -23,7 +23,7 @@ Status: **Done** (built and checked in a browser against the board, phone and de
 | ClientHabitsWeb | Not started |  |
 | ClientHealth | Done | Step 4 of setup with health conditions, heart hint and doctor’s OK rule. Checked 390 + 1440. |
 | ClientHealthWeb | Done | Same code as ClientHealth, desktop steps panel. Checked 1440. |
-| ClientHome | Done | Top line, bell (Notifications sheet, Mark all as read); no RS avatar (Gautam removed it, 2026-10-15), week strip (tap a day), workout card (today / past / coming / rest, `+ N more` and See all exercises sheet, session line, progress), Water card (all 5 toasts), Food card (ring, macros, Up next Ate it + Undo, Log food sheet), Habits (Add steps sheet, water from the water card, Sleep sheet, tick habits get Done + Undo), Supplements (Take + Undo), coach reply card, Coming up (session toast, check-in, plan end toast). Start workout, See all, Weekly check-in and the food search open Train / Habits / Check-ins / Food, which are not built yet. Checked 390 on 2026-10-15. |
+| ClientHome | Done | Top line, bell (Notifications sheet, Mark all as read); no RS avatar (Gautam removed it, 2026-10-15), week strip (tap a day), workout card (today / past / coming / rest, `+ N more` and See all exercises sheet, session line, progress), Water card (all 5 toasts), Food card (ring, macros, Up next Ate it + Undo, Log food sheet), Habits (Add steps sheet, water from the water card, Sleep sheet, tick habits get Done + Undo), Supplements (Take + Undo), coach reply card, Coming up (session toast, check-in, plan end toast). Start workout opens the logger. See all, Weekly check-in and the food search open Habits / Check-ins / Food, which are not built yet. Checked 390 on 2026-10-15. |
 | ClientHomeHero | Not started | Option board: same Home with a blue hero at the top (picture, “Cardio and core today · 3 of 5 workouts done this week”). Waiting for Gautam to pick plain Home or this one. |
 | ClientHomeWeb | Done | Client sidebar, two columns (left: week, workout, water, Coming up; right: food, habits, supplements, coach), one-line week days, Notifications dropdown under the bell with Mark all read, sheets as centred cards. Under 680 px of panel the cards stack in one column and the week days stack like the phone. Checked 600, 768, 900, 1024, 1280, 1440 on 2026-10-15. |
 | ClientIntro | Done | First-open slides on phone (`twv.introSeen`), then Welcome. Checked 390. |
@@ -47,13 +47,13 @@ Status: **Done** (built and checked in a browser against the board, phone and de
 | ClientProgressWeb | Not started |  |
 | ClientResetPassword | Done | `/forgot` (forgot, email sent, resend in 30 s) and `/reset-password?token=` (set, updated, link not valid). Checked 390. |
 | ClientResetPasswordWeb | Done | Same, desktop panel "Back in a minute". Checked 1440. |
-| ClientTrain | Not started |  |
-| ClientTrainWeb | Not started |  |
+| ClientTrain | Done | `/train`: top line + History (Past workouts sheet with "this workout" / All filter, Show more, workout detail), week strip, Today card (Start / Continue / Log more sets, session line, rest day), Note from coach, exercise blocks (tap → Exercise guide page with target tiles, details, how-to, form cues, body map), live workout bar, "Workout discarded" toast. Block names are worked out by the app (D-16). The guide's video plays only when the exercise has one (none in the seed). Checked 390 on 2026-10-15. |
+| ClientTrainWeb | Done | Same code: live banner, row-style week, blocks left and Today + note right from 680 px, guide as a 980 wide dialog. Checked 600, 768, 900, 1024, 1280, 1440. |
 | ClientVerifyEmail | Done | `/verify` (inbox, resend, Change email sheet, log out) and `/verify-email?token=` (checking, verified, link not valid). Checked 390. |
 | ClientVerifyEmailWeb | Done | Same, desktop panel "Confirm your email". Checked 1440. |
 | ClientWelcome | Done | Same code as ClientLogin, opens on Welcome; Need help logging in? sheet. Checked 390 on 2026-10-15. |
-| ClientWorkout | Not started |  |
-| ClientWorkoutWeb | Not started |  |
+| ClientWorkout | Done | `/train/workout` (`?start=<day>` or `?reopen=<id>`): top bar (time chip → Workout timer sheet, ≡ menu: Past workouts / Restart / Remove logged work, Finish), exercise chips, panel (block, PR, target, Rest, How to do it, info tip), Load kg / Bodyweight, set rows (set menu: warm-up / delete with Undo, BW chip, values with −/+ strip, hold timer ▶ for timed sets, tick), Add set, Previous / Next / Finish workout, rest bar + Rest timer dialog (−15 / Pause / +15 / Skip, Next up), sheets Finish workout?, Remove what you logged? (clear exercise / all sets / discard), Restart workout?, Still working out? (after 30 min idle; saved at the last set after 3 h), Workout done page (time, sets, volume, where the time went, effort 1–10, note + quick notes, Save and send, Back to home) and every toast. Works offline (D-16). Checked 390 on 2026-10-15. |
+| ClientWorkoutWeb | Done | Same code: 280 wide exercise list (chips under 760 px), Prev column, inline −/+ in the value, timer popover, dark rest bar under the panel, done page 620 wide. Checked 600, 768, 900, 1024, 1280, 1440. |
 
 ## Trainer
 

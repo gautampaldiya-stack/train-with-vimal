@@ -1236,6 +1236,8 @@ One workout the client did (or is doing) — the logger screen.
 | `sets_done` | PositiveSmallIntegerField |  |
 | `sets_planned` | PositiveSmallIntegerField |  |
 | `auto_saved` | BooleanField |  |
+| `paused_at` | DateTimeField | optional |
+| `reopened_at` | DateTimeField | optional |
 
 ### SetLog
 
@@ -1250,6 +1252,8 @@ One workout the client did (or is doing) — the logger screen.
 | `weight_kg` | DecimalField | optional |
 | `reps` | PositiveSmallIntegerField | optional |
 | `seconds` | PositiveIntegerField | optional |
+| `distance_km` | DecimalField | optional |
+| `client_key` | CharField |  |
 | `is_bodyweight` | BooleanField |  |
 | `is_warmup` | BooleanField |  |
 | `done` | BooleanField |  |

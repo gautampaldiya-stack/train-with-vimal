@@ -18,7 +18,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `auth/logout/` | POST | LogoutView |  |
 | `auth/me/` | GET, PUT, PATCH | MeView |  |
 | `auth/password/change/` | POST | PasswordChangeView |  |
-| `auth/password/forgot/` | POST | ForgotPasswordView | Always answers the same, so nobody can find out which emails have accounts. |
+| `auth/password/forgot/` | POST | ForgotPasswordView | Board `ClientResetPassword`: an unknown email gets "No account uses this email. Check for a typo." |
 | `auth/password/reset/` | POST | ResetPasswordView |  |
 | `auth/password/reset/check/` | POST | CheckLinkView | GET-like check used by Reset password / Login link / Verify email screens to show the |
 | `auth/refresh/` | POST | RefreshView | Rotates the refresh token. Fails if that device was logged out. |
@@ -302,17 +302,20 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `exercises/<pk>/restore/` | POST | ExerciseViewSet |  |
 | `exercises/<pk>/used-in/` | GET | ExerciseViewSet |  |
 | `exercises/facets/` | GET | ExerciseViewSet |  |
-| `me/train/` | GET | MyTrainView | Train tab: week strip, today's workout with targets, last time and PRs. |
+| `me/train/` | GET | MyTrainView | Train tab: week strip, today's workout with targets, last time and PRs, the running workout. |
 | `me/workouts/` | GET, POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/<pk>/` | GET | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/<pk>/clear-sets/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/<pk>/discard/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
+| `me/workouts/<pk>/feedback/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/<pk>/finish/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
+| `me/workouts/<pk>/reopen/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/<pk>/restart/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/<pk>/restore-set/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/<pk>/retick-sets/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/<pk>/sets/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/<pk>/sets/<set_id>\d+)/` | PATCH, DELETE | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
+| `me/workouts/<pk>/state/` | PUT | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/sync/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `programs/` | GET, POST | ProgramViewSet |  |
 | `programs/<pk>/` | GET, PUT, PATCH, DELETE | ProgramViewSet |  |

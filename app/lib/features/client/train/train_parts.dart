@@ -1,0 +1,666 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../../core/icons/app_icons.dart';
+import '../../../core/theme/theme.dart';
+import '../../../core/widgets/client.dart';
+import '../../../core/widgets/hover.dart';
+import '../../../core/widgets/overlays.dart';
+import '../../../core/widgets/responsive.dart';
+import '../home/home_parts.dart';
+import 'body_map_svg.dart';
+import 'train_model.dart';
+
+/// Pieces shared by the Train tab and the workout logger: exercise tile, exercise guide with the
+/// body map, and the Past workouts sheet.
+
+/// `tn-th`: 42px tile, blue for cardio, green for lifts, amber for timed holds.
+class ExThumb extends StatelessWidget {
+  const ExThumb(this.kind, {super.key});
+  final ExKind kind;
+  @override
+  Widget build(BuildContext context) {
+    final (bg, fg, icon) = switch (kind) {
+      ExKind.cardio => (AppColors.tnBlueBg, AppColors.accentText, AppIcons.run),
+      ExKind.weight => (AppColors.okBg, AppColors.okText, AppIcons.dumbbell),
+      ExKind.time => (AppColors.amberBg, AppColors.amberText, AppIcons.clock),
+    };
+    return Container(
+      width: 42,
+      height: 42,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(11)),
+      child: AppIcon(icon, size: 20, color: fg),
+    );
+  }
+}
+
+String _hex(Color c) => '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
+
+/// `bm`: front and back figure with the worked muscles filled, and the legend.
+class BodyMap extends StatelessWidget {
+  const BodyMap(this.regions, {super.key});
+  final Map<String, String> regions;
+
+  String _svg(String body) {
+    var s = body.replaceAll('{base}', _hex(AppColors.barTrack)).replaceAll('{edge}', _hex(AppColors.caWebBg));
+    for (final r in const ['chest', 'shoulders', 'biceps', 'triceps', 'forearms', 'abs', 'obliques', 'traps', 'back', 'lowback', 'glutes', 'quads', 'hamstrings', 'calves']) {
+      final c = switch (regions[r]) { 'p' => AppColors.accent, 's' => AppColors.bmStrong, 'l' => AppColors.bmLight, _ => AppColors.bmOff };
+      s = s.replaceAll('{$r}', _hex(c));
+    }
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 244">$s</svg>';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Widget fig(String body, String cap) => Column(mainAxisSize: MainAxisSize.min, spacing: 2, children: [
+          SizedBox(width: 102, height: 208, child: SvgPicture.string(_svg(body))),
+          Text(cap, style: AppText.s(11.5, W.w6, color: AppColors.muted)),
+        ]);
+    Widget key(Color c, String t) => Row(mainAxisSize: MainAxisSize.min, spacing: 5, children: [
+          Container(width: 10, height: 10, decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(3))),
+          Text(t, style: AppText.s(11.5, W.w6, color: AppColors.text2)),
+        ]);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(color: AppColors.caWebBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.line)),
+      child: Column(mainAxisSize: MainAxisSize.min, spacing: 10, children: [
+        Row(mainAxisSize: MainAxisSize.min, spacing: 14, children: [fig(bodyFront, 'Front'), fig(bodyBack, 'Back')]),
+        Row(mainAxisSize: MainAxisSize.min, spacing: 10, children: [key(AppColors.accent, 'Primary'), key(AppColors.bmStrong, 'Strong'), key(AppColors.bmLight, 'Light')]),
+      ]),
+    );
+  }
+}
+
+// ─────────────────────────────── Exercise guide (`cg`)
+
+class GuideInfo {
+  const GuideInfo({required this.context, required this.program, required this.coachFirst, required this.coachInitials});
+  final String context, program, coachFirst, coachInitials;
+}
+
+/// Phone: a full page over the app with a back button. Wider: a 980 wide two-column dialog.
+Future<void> showGuide(BuildContext context, TrainEx e, GuideInfo g) {
+  if (context.isPhone) {
+    return Navigator.of(context, rootNavigator: true).push(PageRouteBuilder(
+      transitionDuration: const Duration(milliseconds: 220),
+      reverseTransitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (ctx, _, _) => _GuidePage(e: e, g: g, web: false),
+      transitionsBuilder: (_, a, _, child) => SlideTransition(
+        position: Tween(begin: const Offset(0, .04), end: Offset.zero).animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
+        child: FadeTransition(opacity: a, child: child),
+      ),
+    ));
+  }
+  return showGeneralDialog(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'Exercise guide',
+    barrierColor: AppColors.scrimSheet,
+    transitionDuration: const Duration(milliseconds: 140),
+    transitionBuilder: (_, a, _, child) => FadeTransition(opacity: a, child: child),
+    pageBuilder: (ctx, _, _) => Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: 980, maxHeight: MediaQuery.sizeOf(ctx).height * .88),
+          child: Material(
+            color: AppColors.caWebBg,
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            elevation: 0,
+            child: DecoratedBox(
+              decoration: const BoxDecoration(boxShadow: AppShadows.guide),
+              child: CaWeb(web: true, child: _GuidePage(e: e, g: g, web: true)),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+class _GuidePage extends StatelessWidget {
+  const _GuidePage({required this.e, required this.g, required this.web});
+  final TrainEx e;
+  final GuideInfo g;
+  final bool web;
+
+  @override
+  Widget build(BuildContext context) {
+    void close() => Navigator.of(context).pop();
+    final top = Container(
+      padding: web ? const EdgeInsets.symmetric(horizontal: 20, vertical: 14) : const EdgeInsets.fromLTRB(16, 8, 16, 10),
+      decoration: web ? const BoxDecoration(color: AppColors.white, border: Border(bottom: BorderSide(color: AppColors.line))) : null,
+      child: Row(spacing: 10, children: [
+        if (!web) CaIconBtn(AppIcons.chevronLeft, onTap: close, tooltip: 'Back'),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Exercise guide', style: AppText.s(14, W.w8)),
+            Text(g.context, style: AppText.s(12, W.w4, color: AppColors.muted)),
+          ]),
+        ),
+        if (web) CaIconBtn(AppIcons.close, onTap: close, tooltip: 'Close'),
+      ]),
+    );
+    final head = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(e.name, style: AppText.s(23, W.w8, ls: -0.23)),
+      const SizedBox(height: 8),
+      Wrap(spacing: 6, runSpacing: 6, children: [
+        for (final t in [e.muscleLabel, e.equipmentLabel, e.levelLabel].where((t) => t.isNotEmpty))
+          Container(
+            height: 26,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(7), border: Border.all(color: AppColors.line)),
+            child: Center(widthFactor: 1, child: Text(t, style: AppText.s(12.5, W.w6))),
+          ),
+      ]),
+    ]);
+    final video = e.hasVideo ? _video(context) : null;
+    final note = e.note.isEmpty ? null : _note();
+    final target = _target();
+    final details = _details();
+    final how = e.howTo.isEmpty ? null : _how();
+    final cues = e.cues.isEmpty ? null : _cues();
+    final muscles = _muscles();
+    final gap = web ? 14.0 : 12.0;
+    final body = web
+        ? Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 14, children: [
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [?video, ?note, target, details])),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [?how, ?cues, muscles])),
+          ])
+        : Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [?video, ?note, target, ?how, ?cues, muscles, details]);
+    final scroll = SingleChildScrollView(
+      padding: web ? const EdgeInsets.fromLTRB(20, 18, 20, 22) : const EdgeInsets.fromLTRB(16, 4, 16, 24),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: gap, children: [head, body]),
+    );
+    if (web) return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [top, Flexible(child: scroll)]);
+    return Scaffold(
+      backgroundColor: AppColors.caBg,
+      body: SafeArea(bottom: false, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [top, Expanded(child: scroll)])),
+    );
+  }
+
+  Widget _card(List<Widget> kids) => Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: kids),
+      );
+
+  Widget _h(String t, [String? count]) => Row(spacing: 6, children: [
+        Text(t, style: AppText.s(15, W.w8)),
+        if (count != null) Text(count, style: AppText.s(12, W.w7, color: AppColors.muted)),
+      ]);
+
+  Widget _video(BuildContext context) => Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Hover(
+            onTap: () {
+              if (e.youtube.isNotEmpty) {
+                launchUrl(Uri.parse(e.youtube), mode: LaunchMode.externalApplication);
+              } else {
+                Navigator.of(context).pop();
+                GoRouter.of(context).go('/library');
+              }
+            },
+            builder: (_, h, _) => Container(
+              height: 180,
+              decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: AppColors.videoDark)),
+              child: Stack(children: [
+                Center(
+                  child: Container(
+                    width: 54,
+                    height: 54,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(color: AppColors.white.withValues(alpha: h ? .3 : .2), shape: BoxShape.circle),
+                    child: const AppIcon(AppIcons.play, size: 24, color: AppColors.white),
+                  ),
+                ),
+                if (e.coverAt > 0)
+                  Positioned(left: 12, bottom: 10, child: Text(clockText(e.coverAt), style: AppText.s(12, W.w6, color: AppColors.white.withValues(alpha: .9)))),
+              ]),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(spacing: 8, children: [
+              const AppIcon(AppIcons.video, size: 15, color: AppColors.muted),
+              Expanded(child: Text(e.videoTitle.isNotEmpty ? e.videoTitle : e.name, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w7))),
+              Text(e.youtube.isNotEmpty && e.full['video'] == null ? 'YouTube' : 'From content library', style: AppText.s(12.5, W.w4, color: AppColors.muted)),
+            ]),
+          ),
+        ]),
+      );
+
+  Widget _note() => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(color: AppColors.noteBg, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.noteLine)),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
+          ChAvatar(g.coachInitials, green: true),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Note from ${g.coachFirst}', style: AppText.s(12, W.w7, color: AppColors.sessText)),
+              Padding(padding: const EdgeInsets.only(top: 2, bottom: 4), child: Text(e.note, style: AppText.s(14, W.w4, h: 1.5))),
+              Text('On this exercise in ${g.program}', style: AppText.s(11.5, W.w4, color: AppColors.muted)),
+            ]),
+          ),
+        ]),
+      );
+
+  Widget _target() => _card([
+        _h('Today’s target'),
+        Row(spacing: 8, children: [
+          for (final (v, l) in e.tiles)
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+                decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(10)),
+                child: Column(spacing: 1, children: [
+                  Text(v, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(18, W.w8)),
+                  Text(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w6, color: AppColors.muted)),
+                ]),
+              ),
+            ),
+        ]),
+        if (e.extra.isNotEmpty) Text(e.extra, style: AppText.s(13, W.w4, color: AppColors.text2)),
+        Pull(top: 4, child: Text('Last time: ${e.lastText}${e.prText.isEmpty ? '' : ' · PR ${e.prText}'}', style: AppText.s(12, W.w4, color: AppColors.muted))),
+      ]);
+
+  Widget _details() {
+    final rows = [
+      ('Muscle group', e.muscleLabel),
+      ('Equipment', e.equipmentLabel),
+      ('Level', e.levelLabel),
+      ('You log', e.logsLabel),
+      ('Cover image', e.hasVideo ? 'Frame at ${clockText(e.coverAt)}' : 'No video yet'),
+    ];
+    return _card([
+      _h('Details'),
+      Column(children: [
+        for (final (i, (k, v)) in rows.indexed)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            decoration: i == 0 ? null : const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
+            child: Row(spacing: 10, children: [
+              Expanded(child: Text(k, style: AppText.s(13, W.w4, color: AppColors.muted))),
+              Text(v, textAlign: TextAlign.right, style: AppText.s(13, W.w7)),
+            ]),
+          ),
+      ]),
+    ]);
+  }
+
+  Widget _how() => _card([
+        _h('How to', '${e.howTo.length}'),
+        for (final (i, t) in e.howTo.indexed)
+          Padding(
+            padding: EdgeInsets.only(top: i == 0 ? 0 : 2),
+            child: Row(spacing: 10, children: [
+              Container(
+                width: 26,
+                height: 26,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(color: AppColors.sub, shape: BoxShape.circle),
+                child: Text('${i + 1}', style: AppText.s(12, W.w8, color: AppColors.text2)),
+              ),
+              Expanded(child: Text(t, style: AppText.s(13.5, W.w4, h: 1.45))),
+            ]),
+          ),
+      ]);
+
+  Widget _cues() => _card([
+        _h('Form cues', '${e.cues.length}'),
+        for (final t in e.cues)
+          Row(spacing: 10, children: [
+            Container(
+              width: 26,
+              height: 26,
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(color: AppColors.accentSoft, shape: BoxShape.circle),
+              child: const AppIcon(AppIcons.check, size: 13, color: AppColors.accent, stroke: 2.6),
+            ),
+            Expanded(child: Text(t, style: AppText.s(13.5, W.w4, h: 1.45))),
+          ]),
+      ]);
+
+  Widget _muscles() {
+    Widget over(String t, {Color color = AppColors.muted}) => Text(t.toUpperCase(), style: AppText.s(11, W.w8, color: color, ls: .55));
+    final list = Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.noteLine)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+          over('Primary muscle', color: AppColors.accentText),
+          Text(e.primary.isEmpty ? e.muscleLabel : e.primary, style: AppText.s(16, W.w8)),
+          Text(e.muscleLabel, style: AppText.s(12, W.w4, color: AppColors.text2)),
+        ]),
+      ),
+      if (e.also.isNotEmpty) over('Also works'),
+      for (final (m, lv) in e.also)
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.line)),
+          child: Row(spacing: 10, children: [
+            Expanded(child: Text(m, style: AppText.s(13.5, W.w7))),
+            Row(spacing: 3, children: [
+              for (final on in [true, lv == 'Strong', false])
+                Container(width: 14, height: 5, decoration: BoxDecoration(color: on ? AppColors.accent : AppColors.metOff, borderRadius: BorderRadius.circular(3))),
+            ]),
+            SizedBox(width: 44, child: Text(lv, style: AppText.s(12, W.w7, color: AppColors.text2))),
+          ]),
+        ),
+    ]);
+    return _card([
+      _h('Muscles'),
+      if (web)
+        IntrinsicHeight(
+          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+            Expanded(child: list),
+            BodyMap(e.map),
+          ]),
+        )
+      else ...[list, BodyMap(e.map)],
+    ]);
+  }
+}
+
+// ─────────────────────────────── Past workouts (`pw-*`)
+
+/// History sheet. [thisName] adds the "this workout only" filter (named like today's workout).
+Future<void> showPastWorkouts(BuildContext context, {String? thisName, bool startThis = false}) => showAppSheet(
+      context,
+      builder: (ctx) => _PastSheet(thisName: thisName, startThis: startThis),
+    );
+
+class _PastSheet extends StatefulWidget {
+  const _PastSheet({this.thisName, this.startThis = false});
+  final String? thisName;
+  final bool startThis;
+  @override
+  State<_PastSheet> createState() => _PastSheetState();
+}
+
+class _PastSheetState extends State<_PastSheet> {
+  late bool _this = widget.startThis && widget.thisName != null;
+  final _pages = <bool, PastPage>{};
+  final _rows = <bool, List<PastRow>>{};
+  bool _loading = false;
+  String? _error;
+  PastRow? _sel;
+  PastDetail? _det;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load({bool more = false}) async {
+    final key = _this;
+    if (_loading || (!more && _pages.containsKey(key))) return;
+    setState(() => _loading = true);
+    try {
+      final page = more ? (_pageNo[key] ?? 1) + 1 : 1;
+      final p = await loadPast(name: key ? widget.thisName : null, page: page);
+      _pageNo[key] = page;
+      _pages[key] = p;
+      _rows[key] = [...?(more ? _rows[key] : null), ...p.rows];
+      _error = null;
+    } catch (e) {
+      _error = 'Could not load your past workouts. Check the connection and try again.';
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  final _pageNo = <bool, int>{};
+
+  Future<void> _open(PastRow r) async {
+    setState(() {
+      _sel = r;
+      _det = null;
+    });
+    try {
+      final d = await loadPastDetail(r.id);
+      if (mounted && _sel == r) setState(() => _det = d);
+    } catch (_) {
+      if (mounted) showToast(context, 'Could not open this workout', sub: 'Check the connection and try again', kind: ToastKind.warn);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = _pages[_this];
+    final rows = _rows[_this] ?? const <PastRow>[];
+    final sel = _sel;
+    final String title, sub;
+    if (sel != null) {
+      title = sel.name;
+      sub = '${DateFormat('EEE, d MMM').format(sel.date)} · ${sel.minutes} min';
+    } else {
+      title = 'Past workouts';
+      final n = p?.count ?? 0;
+      sub = p == null
+          ? 'Loading…'
+          : '$n ${n == 1 ? 'workout' : 'workouts'}${_this ? ' · this workout only' : (p.since == null ? '' : ' · since ${DateFormat('d MMM').format(p.since!)}')}';
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+                Text(title, style: AppText.s(17, W.w8, ls: -0.2)),
+                Text(sub, style: AppText.s(12.5, W.w5, color: AppColors.muted, h: 1.4)),
+              ]),
+            ),
+            SheetClose(onTap: () => Navigator.of(context).pop()),
+          ]),
+        ),
+        if (sel == null) ..._list(rows, p) else ..._detail(sel),
+      ]),
+    );
+  }
+
+  List<Widget> _list(List<PastRow> rows, PastPage? p) => [
+        if (widget.thisName != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: TwoTabs(
+              labels: [widget.thisName!, 'All workouts'],
+              index: _this ? 0 : 1,
+              onPick: (i) {
+                setState(() => _this = i == 0);
+                _load();
+              },
+            ),
+          ),
+        if (p == null && _error == null)
+          const Padding(padding: EdgeInsets.all(24), child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.accent))))
+        else if (_error != null && rows.isEmpty)
+          Padding(padding: const EdgeInsets.symmetric(vertical: 16), child: Text(_error!, textAlign: TextAlign.center, style: AppText.s(13, W.w5, color: AppColors.muted)))
+        else if (rows.isEmpty)
+          Padding(padding: const EdgeInsets.symmetric(vertical: 16), child: Text('No past workouts yet.', textAlign: TextAlign.center, style: AppText.s(13, W.w5, color: AppColors.muted)))
+        else
+          Container(
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.line)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              for (final (i, r) in rows.indexed)
+                Hover(
+                  onTap: () => _open(r),
+                  builder: (_, h, _) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(color: h ? AppColors.sub : AppColors.white, border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line))),
+                    child: Row(spacing: 12, children: [
+                      Container(
+                        width: 48,
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(9)),
+                        child: Column(children: [
+                          Text(DateFormat('d MMM').format(r.date), maxLines: 1, style: AppText.s(13, W.w7, h: 1.2)),
+                          Text(DateFormat('EEE').format(r.date), style: AppText.s(10.5, W.w6, color: AppColors.muted)),
+                        ]),
+                      ),
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+                          Text(r.name, style: AppText.s(13.5, W.w7)),
+                          Text('${r.minutes} min · ${r.exercises} exercises · ${r.sets} sets', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
+                        ]),
+                      ),
+                      if (r.pr) const PrFlag('PR'),
+                      const AppIcon(AppIcons.chevronRight, size: 16, color: AppColors.muted),
+                    ]),
+                  ),
+                ),
+            ]),
+          ),
+        if (p?.next != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: CaButton('Show more', kind: CaBtnKind.out, small: true, loading: _loading, onPressed: () => _load(more: true)),
+          ),
+      ];
+
+  List<Widget> _detail(PastRow sel) {
+    final d = _det;
+    return [
+      Align(
+        alignment: Alignment.centerLeft,
+        child: Pull(
+          top: 4,
+          child: Hover(
+            onTap: () => setState(() => _sel = null),
+            builder: (_, h, _) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(mainAxisSize: MainAxisSize.min, spacing: 4, children: [
+                const AppIcon(AppIcons.chevronLeft, size: 15, color: AppColors.accent),
+                Text('All past workouts', style: AppText.s(13, W.w6, color: AppColors.accent).copyWith(decoration: h ? TextDecoration.underline : null, decorationColor: AppColors.accent)),
+              ]),
+            ),
+          ),
+        ),
+      ),
+      if (d == null)
+        const Padding(padding: EdgeInsets.all(24), child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.accent))))
+      else ...[
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Row(spacing: 6, children: [
+            for (final (l, v) in [('Time', '${sel.minutes} min'), ('Exercises', '${d.groups.length} of ${d.groups.length}'), ('Effort', sel.effort == null ? '—' : '${sel.effort} / 10')])
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(10)),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+                    Text(l, style: AppText.s(11, W.w4, color: AppColors.muted)),
+                    Text(v, style: AppText.s(14, W.w7)),
+                  ]),
+                ),
+              ),
+          ]),
+        ),
+        if (sel.note.isNotEmpty)
+          Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(color: AppColors.infoBg, borderRadius: BorderRadius.circular(10)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+              Text('Your note', style: AppText.s(11, W.w7, color: AppColors.infoText)),
+              Text(sel.note, style: AppText.s(12.5, W.w4, color: AppColors.text2)),
+            ]),
+          ),
+        Container(
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.line)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            for (final (i, gr) in d.groups.indexed)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                decoration: i == 0 ? null : const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
+                  Row(spacing: 6, children: [
+                    Flexible(child: Text(gr.name, style: AppText.s(13.5, W.w7))),
+                    if (gr.pr) const PrFlag('New best'),
+                    const Spacer(),
+                    Text('${gr.sets.length} ${gr.sets.length == 1 ? 'set' : 'sets'}', style: AppText.s(12, W.w4, color: AppColors.muted)),
+                  ]),
+                  Wrap(spacing: 5, runSpacing: 5, children: [
+                    for (final (k, s) in gr.sets.indexed)
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(4, 3, 8, 3),
+                        decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(8)),
+                        child: Row(mainAxisSize: MainAxisSize.min, spacing: 5, children: [
+                          Container(
+                            width: 16,
+                            height: 16,
+                            alignment: Alignment.center,
+                            decoration: const BoxDecoration(color: AppColors.white, shape: BoxShape.circle),
+                            child: Text('${k + 1}', style: AppText.s(10, W.w7, color: AppColors.muted)),
+                          ),
+                          Text(PastDetail.setText(gr.logType, s), style: AppText.s(12.5, W.w6)),
+                        ]),
+                      ),
+                  ]),
+                ]),
+              ),
+            if (d.groups.isEmpty) Padding(padding: const EdgeInsets.all(14), child: Text('No sets were ticked in this workout.', style: AppText.s(13, W.w4, color: AppColors.muted))),
+          ]),
+        ),
+      ],
+    ];
+  }
+}
+
+/// `pw-pr`: amber star pill ("PR", "New best").
+class PrFlag extends StatelessWidget {
+  const PrFlag(this.text, {super.key});
+  final String text;
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+        decoration: BoxDecoration(color: AppColors.warnBg, borderRadius: BorderRadius.circular(999)),
+        child: Row(mainAxisSize: MainAxisSize.min, spacing: 3, children: [
+          const AppIcon(AppIcons.star, size: 11, color: AppColors.warnText),
+          Text(text, style: AppText.s(11, W.w7, color: AppColors.warnText)),
+        ]),
+      );
+}
+
+/// `tabs` (pw-f): grey track, the picked tab white with a hairline ring.
+class TwoTabs extends StatelessWidget {
+  const TwoTabs({super.key, required this.labels, required this.index, required this.onPick});
+  final List<String> labels;
+  final int index;
+  final ValueChanged<int> onPick;
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(8)),
+        child: Row(children: [
+          for (final (i, l) in labels.indexed)
+            Expanded(
+              child: Hover(
+                onTap: () => onPick(i),
+                builder: (_, h, _) => Container(
+                  height: 32,
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: i == index ? AppColors.white : null,
+                    borderRadius: BorderRadius.circular(6),
+                    boxShadow: i == index ? const [BoxShadow(color: AppColors.shadowSoft, blurRadius: 2, offset: Offset(0, 1)), BoxShadow(color: AppColors.line, spreadRadius: 1)] : null,
+                  ),
+                  child: Text(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6, color: i == index || h ? AppColors.text : AppColors.text2)),
+                ),
+              ),
+            ),
+        ]),
+      );
+}

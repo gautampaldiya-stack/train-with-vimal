@@ -56,8 +56,25 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
   the habits Walk / Water / Sleep 7 hours, and "No sugary drinks" starting next Monday.
 - `ClientHomeHero` (blue hero option) not built: waiting for Gautam to choose.
 
+## Train tab and workout logger (2026-10-15)
+- `ClientTrain`, `ClientTrainWeb`, `ClientWorkout`, `ClientWorkoutWeb` Done: `app/lib/features/client/train/`
+  (`train_model.dart` data + past workouts, `train_screen.dart` the tab, `train_parts.dart` guide / history / body map,
+  `workout_model.dart` the running workout, `workout_screen.dart` the logger, sheets and the done page).
+- Routes: `/train`, `/train/workout?start=<day id>` (new), `?reopen=<workout id>` ("Log more sets"), plain
+  `/train/workout` continues the running one. `/train?discarded=1|2` shows the discard toast.
+- API: `me/train/` sends the day note, minutes, `sets_done` per exercise, `in_progress`, `completed_today`, trainer,
+  today's session, bodyweight. New `PUT me/workouts/<id>/state/` (whole workout, safe to repeat), `POST reopen/`,
+  `POST feedback/`, list filter `?name=` and `since`. New fields `WorkoutLog.paused_at`, `reopened_at`,
+  `SetLog.distance_km`, `client_key` (migration `training/0002`). Rules in decision D-16.
+- Seed: how-to and form cues for 11 more built-in exercises, Riya's day and exercise notes (`riya_train`).
+- Android: `kotlin.incremental=false` in `app/android/gradle.properties` fixes "Could not close incremental caches"
+  when plugins (url_launcher, shared_preferences) and the app are on different drives on Windows.
+- Bottom nav (phone) is 8 px shorter (Gautam's padding: top 4, bottom 12); toasts sit 75 above the bottom.
+- Not built: the guide video player (no video in the seed; YouTube links open outside), block names from the
+  program (no field yet, D-16).
+
 ## Doing now
-- Nothing in progress; Home is pushed.
+- Nothing in progress; Train is pushed. Next: ClientHabits, ClientCheckin, ClientFoodLog.
 
 ## Next
 1. Pages Home links to: Train + Workout logger (`ClientTrain`, `ClientWorkout`), Habits, Check-in, Food log.

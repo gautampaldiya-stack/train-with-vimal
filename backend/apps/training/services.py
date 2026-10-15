@@ -307,26 +307,31 @@ def last_performance(client, exercise_ids):
     rows = (SetLog.objects.filter(workout__client=client, workout__status=WorkoutLog.Status.COMPLETED,
                                   exercise_id__in=exercise_ids, done=True, is_warmup=False)
             .order_by("exercise_id", "-workout__date", "set_number")
-            .values("exercise_id", "workout_id", "set_number", "weight_kg", "reps", "seconds", "is_bodyweight"))
+            .values("exercise_id", "workout_id", "set_number", "weight_kg", "reps", "seconds", "distance_km",
+                    "is_bodyweight"))
     for r in rows:
         ex = r["exercise_id"]
         bucket = out.setdefault(ex, {"workout": r["workout_id"], "sets": []})
         if bucket["workout"] == r["workout_id"]:
             bucket["sets"].append({"set": r["set_number"], "weight_kg": r["weight_kg"], "reps": r["reps"],
-                                   "seconds": r["seconds"], "bw": r["is_bodyweight"]})
+                                   "seconds": r["seconds"], "distance_km": r["distance_km"], "bw": r["is_bodyweight"]})
     return {k: v["sets"] for k, v in out.items()}
 
 
 def personal_bests(client, exercise_ids):
-    rows = (SetLog.objects.filter(workout__client=client, exercise_id__in=exercise_ids, done=True, is_warmup=False,
-                                  weight_kg__isnull=False)
+    """Heaviest working set per exercise ('PR 45 kg × 6'); for timed holds the longest one ('PR 40 s')."""
+    base = SetLog.objects.filter(workout__client=client, exercise_id__in=exercise_ids, done=True, is_warmup=False,
+                                 workout__status=WorkoutLog.Status.COMPLETED)
+    rows = (base.filter(weight_kg__isnull=False, is_bodyweight=False)
             .values("exercise_id").annotate(best=Max("weight_kg")))
     best = {r["exercise_id"]: r["best"] for r in rows}
     out = {}
     for ex, w in best.items():
-        s = (SetLog.objects.filter(workout__client=client, exercise_id=ex, done=True, is_warmup=False, weight_kg=w)
-             .order_by("-reps").first())
+        s = base.filter(exercise_id=ex, weight_kg=w, is_bodyweight=False).order_by("-reps").first()
         out[ex] = {"weight_kg": w, "reps": s.reps if s else None}
+    for r in (base.filter(exercise__log_type="time", seconds__isnull=False).exclude(exercise_id__in=list(out))
+              .values("exercise_id").annotate(best=Max("seconds"))):
+        out[r["exercise_id"]] = {"seconds": r["best"]}
     return out
 
 
@@ -355,6 +360,53 @@ def start_workout(client, *, program_day=None, name=""):
     return wl, True
 
 
+@transaction.atomic
+def save_state(wl, data):
+    """The logger saves the whole workout as it is now: timer start / pause and every set.
+
+    Sets match by id, else by the app's key (a set added offline), so sending the same state twice changes
+    nothing. Sets not in the list are deleted. Returns the ids of sets that are a new best."""
+    if "started_at" in data:
+        wl.started_at = data["started_at"]
+    if "paused_at" in data:
+        wl.paused_at = data["paused_at"]
+    wl.save(update_fields=["started_at", "paused_at", "updated_at"])
+    have = {s.id: s for s in wl.sets.all()}
+    by_key = {s.client_key: s for s in have.values() if s.client_key}
+    pe_ids = set(ProgramExercise.objects.filter(day=wl.program_day).values_list("id", flat=True)) \
+        if wl.program_day_id else set()
+    keep, new_best = set(), []
+    now = timezone.now()
+    for row in data["sets"]:
+        s = have.get(row.get("id")) or by_key.get(row.get("key") or "")
+        if s is None:
+            s = SetLog(workout=wl, client_key=(row.get("key") or "")[:40])
+        was_done = s.done
+        s.exercise = row["exercise"]
+        pe = row.get("program_exercise")
+        s.program_exercise_id = pe if pe in pe_ids else None
+        s.set_number = row["set_number"]
+        for f in ("weight_kg", "reps", "seconds", "distance_km"):
+            setattr(s, f, row.get(f))
+        s.is_bodyweight, s.is_warmup, s.done = row["is_bodyweight"], row["is_warmup"], row["done"]
+        if s.done and not was_done:
+            s.done_at = row.get("done_at") or now
+        elif not s.done:
+            s.done_at = None
+        s.is_pr = False
+        if s.done and not s.is_warmup and s.weight_kg is not None and not s.is_bodyweight:
+            prev = (SetLog.objects.filter(workout__client=wl.client, exercise=s.exercise, done=True, is_warmup=False,
+                                          weight_kg__isnull=False, is_bodyweight=False)
+                    .exclude(workout=wl).aggregate(m=Max("weight_kg"))["m"])
+            s.is_pr = prev is not None and s.weight_kg > prev
+        s.save()
+        keep.add(s.id)
+        if s.is_pr and not was_done:
+            new_best.append(s.id)
+    wl.sets.exclude(id__in=keep).delete()
+    return new_best
+
+
 def mark_set(set_log, *, done):
     """Tick a set. Returns True when it's a new best (weight) for this exercise."""
     set_log.done = done
@@ -380,11 +432,13 @@ def finish_workout(wl, *, effort=None, note="", duration_seconds=None, time_brea
     wl.duration_seconds = duration_seconds if duration_seconds is not None else int(
         (wl.finished_at - wl.started_at).total_seconds())
     wl.time_breakdown = time_breakdown or wl.time_breakdown
-    wl.effort = effort
-    wl.note = note or ""
+    # finishing again after "Log more sets" keeps the effort and note already sent
+    wl.effort = effort if effort is not None else wl.effort
+    wl.note = note or wl.note or ""
     wl.sets_done = wl.sets.filter(done=True, is_warmup=False).count()
     wl.sets_planned = max(wl.sets_planned, wl.sets.filter(is_warmup=False).count())
     wl.auto_saved = auto
+    wl.reopened_at = None
     wl.save()
     wl.sets.filter(done=False).delete()
     client = wl.client

@@ -229,11 +229,14 @@ class AssignmentSerializer(serializers.ModelSerializer):
 # ---------------------------------------------------------------- logging
 class SetLogSerializer(serializers.ModelSerializer):
     volume = serializers.FloatField(read_only=True)
+    exercise_name = serializers.CharField(source="exercise.name", read_only=True)
+    log_type = serializers.CharField(source="exercise.log_type", read_only=True)
 
     class Meta:
         model = SetLog
-        fields = ["id", "program_exercise", "exercise", "set_number", "weight_kg", "reps", "seconds",
-                  "is_bodyweight", "is_warmup", "done", "done_at", "is_pr", "volume"]
+        fields = ["id", "program_exercise", "exercise", "exercise_name", "log_type", "set_number", "weight_kg",
+                  "reps", "seconds", "distance_km", "is_bodyweight", "is_warmup", "done", "done_at", "is_pr",
+                  "volume", "client_key"]
         read_only_fields = ["is_pr", "done_at"]
 
 
@@ -244,16 +247,31 @@ class WorkoutLogSerializer(serializers.ModelSerializer):
         model = WorkoutLog
         fields = ["id", "assignment", "program_day", "name", "date", "status", "started_at", "finished_at",
                   "duration_seconds", "time_breakdown", "effort", "note", "sets_done", "sets_planned", "auto_saved",
-                  "sets"]
+                  "paused_at", "reopened_at", "sets"]
         read_only_fields = ["status", "finished_at", "sets_done", "sets_planned", "auto_saved", "assignment",
-                            "started_at"]
+                            "started_at", "paused_at", "reopened_at"]
 
 
 class WorkoutRowSerializer(serializers.ModelSerializer):
+    """Past workouts row: "45 min · 6 exercises · 19 sets" and a PR flag."""
+
+    exercises = serializers.SerializerMethodField()
+    has_pr = serializers.SerializerMethodField()
+
     class Meta:
         model = WorkoutLog
         fields = ["id", "name", "date", "status", "duration_seconds", "effort", "sets_done", "sets_planned",
-                  "finished_at", "note"]
+                  "finished_at", "note", "program_day", "exercises", "has_pr"]
+
+    def _sets(self, obj):
+        cache = getattr(obj, "_prefetched_objects_cache", {})
+        return cache["sets"] if "sets" in cache else list(obj.sets.all())
+
+    def get_exercises(self, obj):
+        return len({s.exercise_id for s in self._sets(obj) if s.done})
+
+    def get_has_pr(self, obj):
+        return any(s.is_pr for s in self._sets(obj))
 
 
 class FinishSerializer(serializers.Serializer):
@@ -261,6 +279,42 @@ class FinishSerializer(serializers.Serializer):
     note = serializers.CharField(max_length=2000, required=False, allow_blank=True)
     duration_seconds = serializers.IntegerField(min_value=0, max_value=24 * 3600, required=False)
     time_breakdown = serializers.DictField(child=serializers.IntegerField(min_value=0), required=False)
+
+
+class StateSetSerializer(serializers.Serializer):
+    """One set in 'save the workout as it is now' (`PUT me/workouts/<id>/state/`)."""
+
+    id = serializers.IntegerField(required=False, allow_null=True)
+    key = serializers.CharField(max_length=40, required=False, allow_blank=True)
+    exercise = serializers.PrimaryKeyRelatedField(queryset=Exercise.objects.all())
+    program_exercise = serializers.IntegerField(required=False, allow_null=True)
+    set_number = serializers.IntegerField(min_value=1, max_value=50)
+    weight_kg = serializers.DecimalField(max_digits=6, decimal_places=2, required=False, allow_null=True,
+                                         min_value=-200, max_value=1000)
+    reps = serializers.IntegerField(min_value=0, max_value=1000, required=False, allow_null=True)
+    seconds = serializers.IntegerField(min_value=0, max_value=24 * 3600, required=False, allow_null=True)
+    distance_km = serializers.DecimalField(max_digits=6, decimal_places=2, required=False, allow_null=True,
+                                           min_value=0, max_value=500)
+    is_bodyweight = serializers.BooleanField(default=False)
+    is_warmup = serializers.BooleanField(default=False)
+    done = serializers.BooleanField(default=False)
+    done_at = serializers.DateTimeField(required=False, allow_null=True)
+
+
+class StateSerializer(serializers.Serializer):
+    started_at = serializers.DateTimeField(required=False)
+    paused_at = serializers.DateTimeField(required=False, allow_null=True)
+    sets = StateSetSerializer(many=True)
+
+    def validate_sets(self, v):
+        if len(v) > 200:
+            raise serializers.ValidationError("Send up to 200 sets.")
+        return v
+
+
+class FeedbackSerializer(serializers.Serializer):
+    effort = serializers.IntegerField(min_value=1, max_value=10)
+    note = serializers.CharField(max_length=2000, required=False, allow_blank=True)
 
 
 CHOICES = {

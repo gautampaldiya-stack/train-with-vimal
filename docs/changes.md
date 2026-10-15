@@ -20,6 +20,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 
 ---
 
+### 2026-10-15 · Train tab and workout logger built; bottom nav; Android build
+- **Pehle:** `/train` par "This page is on the way" tha, workout log karne ka koi screen nahi tha. API me poore workout ko ek saath save karne, "Log more sets" aur effort / note bhejne ka endpoint nahi tha. Android par `flutter run` "Could not close incremental caches" ke saath fail hota tha. Bottom nav 8 px uncha tha.
+- **Ab:** ClientTrain(Web) aur ClientWorkout(Web) board jaise bane: week, Today card, coach note, blocks, exercise guide (body map ke saath), Past workouts, logger (sets, −/+, BW, warm-up, delete + Undo, hold timer, rest timer, workout timer, restart, remove / discard), Finish aur Workout done page (effort, note, Send). Har change phone par turant save hota hai aur outbox se jaata hai (offline bhi). Finish ke baad "Log more sets" wahi workout dobara kholta hai; uske baad Discard sirf naye sets hatata hai, purana workout waisa hi rehta hai. Dobara Finish par effort / note nahi mitte. Android: `kotlin.incremental=false`. Bottom nav padding Gautam wali (top 4, bottom 12).
+- **Kyun:** Gautam: Home ke baad agla screen. Board ka "He usually replies" ki jagah "You will usually get a reply" (har trainer ke liye sahi).
+- **Updated:** backend/apps/training/{models,serializers,services,views}.py, migrations/0002_logger_fields.py, apps/common/seed_data.py, seed_defaults.py, seed_demo.py, tests/test_client_train.py, app/lib/features/client/train/*, app/lib/app/router.dart, app/lib/app/shell/app_shell.dart, core/icons, core/theme, app/android/gradle.properties, docs/screens/status.md, docs/architecture/*, docs/phases/CURRENT.md · Decision D-16
+
 ### 2026-10-15 · Home sheets crash on web; toast on the right for tablet / web
 - **Pehle:** Web / tablet par Habits ke "Add steps" aur sleep ke "Change" dabane par sheet nahi khulti thi, layout error aata tha ("RenderFlex children have non-zero flex but incoming width constraints are unbounded"). Sheet ka button web par Row me tha, jo poori width wale button ko jagah nahi deta. Toast har screen par neeche beech me aata tha (board jaisa).
 - **Ab:** Home ki saari sheets (Add steps, Sleep, Notifications) ka button poori width ka (`footerStretch`), web par bhi crash nahi. Tablet aur web (≥ 600) par toast neeche **right** me, phone par beech me hi. Hot restart par aane wala `sembast_web` `JdbNotificationRevision` error sirf debug ka hai, docs me note kiya.

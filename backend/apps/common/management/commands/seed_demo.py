@@ -63,6 +63,7 @@ class Command(BaseCommand):
             program, plan = self.plans(vimal)
             self.history(program, plan)
             self.riya_home()
+            self.riya_train()
         self.stdout.write(self.style.SUCCESS(f"Demo ready. Log in with any demo email and {PASSWORD}"))
         self.stdout.write("Demo links (the reset link works for 15 minutes; run seed_demo again for new ones):")
         for line in self.demo_links():
@@ -266,6 +267,25 @@ class Command(BaseCommand):
                 if day.weekday() < program.days_per_week and assignment:
                     self.workout(c, assignment, program, day)
             refresh_client_stats(cp)
+
+    def riya_train(self):
+        """Train tab: the coach's note on each workout day and on a few exercises (guide sheet)."""
+        from apps.training.models import Program, ProgramDay, ProgramExercise
+
+        program = Program.objects.filter(name="Fat loss · 8 weeks", is_master=True).first()
+        if program is None:
+            return
+        days = ProgramDay.objects.filter(week__program=program, is_rest=False)
+        days.filter(name="Lower A", rest_note="").update(
+            rest_note="Keep the deadlifts slow on the way down. If the knee hurts on the lunges, make the steps shorter.")
+        days.filter(name="Upper A", rest_note="").update(
+            rest_note="Two warm-up sets on the bench first. Stop each set with one or two reps left in the tank.")
+        notes = {"Romanian Deadlift": "Stay on the same weight until all 3 sets of 10 feel clean, then add 2.5 kg.",
+                 "Walking Lunge": "Short steps are fine. Hold the dumbbells by your sides, not on the shoulders.",
+                 "Dead Bug": "Lower back flat on the mat the whole time. If it lifts, do not lower the leg so far.",
+                 "Barbell Bench Press": "Two warm-up sets first. Next step 47.5 kg."}
+        for name, note in notes.items():
+            ProgramExercise.objects.filter(day__week__program=program, exercise__name=name, note="").update(note=note)
 
     def riya_home(self):
         """Fills every card of Riya's Home board: supplements, today's session, a coach reply, the bell,

@@ -107,4 +107,8 @@ abstract final class AppIcons {
   static const steps = Ic.i28b540;
   static const pill = Ic.i5007dd;
   static const flag = Ic.if60d32;
+  static const pin = Ic.i292230;
+  static const pause = Ic.i07c5c5;
+  static const restart = Ic.id3785d;
+  static const video = Ic.i379873;
 }

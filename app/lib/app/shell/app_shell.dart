@@ -54,7 +54,7 @@ class _AppShellState extends State<AppShell> {
     final isClient = me.role == Role.client;
     if (context.isPhone) {
       return ToastOffset(
-        offset: 83,
+        offset: 75,
         child: Scaffold(
           backgroundColor: isClient ? AppColors.caBg : AppColors.panel,
           body: SafeArea(bottom: false, child: widget.child),
@@ -240,7 +240,7 @@ class _BottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         decoration: const BoxDecoration(color: AppColors.white, border: Border(top: BorderSide(color: AppColors.line))),
-        padding: EdgeInsets.fromLTRB(4, 6, 4, 18 + MediaQuery.paddingOf(context).bottom * .5),
+        padding: EdgeInsets.fromLTRB(4, 4, 4, 12 + MediaQuery.paddingOf(context).bottom * .5),
         child: ValueListenableBuilder(
           valueListenable: NavCounts.values,
           builder: (context, counts, _) => Row(children: [
