@@ -305,7 +305,12 @@ Andar: round 32px icon circle (`currentColor` ka 14%), title 14/800, sub 12/600 
 | Bottom sheet khuli hai | **20**, aur toast sheet ke **upar** float karta hai |
 
 Sheet khulte hi uska `padding-bottom` **78** ho jata hai taaki toast uske buttons na dhake.
-Duration: normal **5s**, Undo wala **7s**.
+Duration: normal **5s**, Undo wala **10s** (Gautam, 2026-10-15; pehle 7s). Aate waqt 320 ms me fade + slide
+(phone par neeche se, tablet/web par right se), jaate waqt 200 ms.
+
+**Side (Gautam, 2026-10-15 — board se alag):** phone (< 600) par toast **beech me** (center). Tablet aur web (≥ 600)
+par toast **neeche right** me, right se **24** door, width **400**. Phone par toast **poori width** ka (dono taraf 12) — boards me web toast center me hai, par app me right-bottom.
+Login pages ka `dx: 60` shift sirf phone par lagta hai. Code: `ToastHost` in `app/lib/core/widgets/overlays.dart`.
 
 ### 4.6 Tooltip
 

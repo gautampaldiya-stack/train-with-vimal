@@ -421,7 +421,8 @@ class _ToastHostState extends State<ToastHost> {
     _timer?.cancel();
     setState(() => _t = t);
     ToastHost.showing.value = true;
-    _timer = Timer(Duration(seconds: t.action != null ? 7 : 5), hide);
+    // Undo toasts stay 10 s so there is time to tap Undo (Gautam, 2026-10-15); others 5 s.
+    _timer = Timer(Duration(seconds: t.action != null ? 10 : 5), hide);
   }
 
   void hide() {
@@ -437,34 +438,47 @@ class _ToastHostState extends State<ToastHost> {
   }
 
   @override
-  Widget build(BuildContext context) => Stack(children: [
+  Widget build(BuildContext context) {
+    // Tablet and web: toasts sit at the bottom right (Gautam, 2026-10-15). Phone: centred above the tabs.
+    final wide = MediaQuery.sizeOf(context).width >= Breakpoints.tablet;
+    return Stack(children: [
         Positioned.fill(child: widget.child),
         ValueListenableBuilder(
           valueListenable: ToastHost.bottomOffset,
           builder: (context, off, child) => AnimatedPositioned(
             duration: const Duration(milliseconds: 150),
-            left: 12,
-            right: 12,
+            left: wide ? 24 : 12,
+            right: wide ? 24 : 12,
             bottom: off + MediaQuery.paddingOf(context).bottom,
             child: child!,
           ),
           child: IgnorePointer(
             ignoring: _t == null,
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 180),
-              transitionBuilder: (c, a) => FadeTransition(opacity: a, child: SlideTransition(position: Tween(begin: const Offset(0, .3), end: Offset.zero).animate(a), child: c)),
+              duration: const Duration(milliseconds: 320),
+              reverseDuration: const Duration(milliseconds: 200),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (c, a) => FadeTransition(
+                opacity: a,
+                child: SlideTransition(
+                  position: Tween(begin: wide ? const Offset(.12, 0) : const Offset(0, .6), end: Offset.zero).animate(a),
+                  child: ScaleTransition(scale: Tween(begin: .96, end: 1.0).animate(a), child: c),
+                ),
+              ),
               child: _t == null
                   ? const SizedBox.shrink()
                   : ValueListenableBuilder(
                       key: ValueKey(_t),
                       valueListenable: ToastHost.shiftX,
-                      builder: (context, dx, child) => Transform.translate(offset: Offset(dx, 0), child: child),
-                      child: Center(child: _ToastBox(t: _t!, close: hide)),
+                      builder: (context, dx, child) => Transform.translate(offset: Offset(wide ? 0 : dx, 0), child: child),
+                      child: Align(alignment: wide ? Alignment.centerRight : Alignment.center, child: _ToastBox(t: _t!, close: hide, wide: wide)),
                     ),
             ),
           ),
         ),
       ]);
+  }
 }
 
 /// Placed by a shell that has a bottom bar: moves toasts above it while the shell is on screen.
@@ -520,9 +534,10 @@ class _ToastOffsetState extends State<ToastOffset> {
 }
 
 class _ToastBox extends StatelessWidget {
-  const _ToastBox({required this.t, required this.close});
+  const _ToastBox({required this.t, required this.close, required this.wide});
   final _ToastData t;
   final VoidCallback close;
+  final bool wide;
 
   @override
   Widget build(BuildContext context) {
@@ -546,7 +561,8 @@ class _ToastBox extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: Container(
-        width: 360,
+        // Phone: full width (12 from each edge). Tablet / web: 400 wide, bottom right.
+        width: wide ? 400 : double.infinity,
         constraints: const BoxConstraints(minHeight: 49),
         padding: const EdgeInsets.fromLTRB(16, 8, 10, 8),
         decoration: BoxDecoration(color: bg, borderRadius: AppRadius.all(AppRadius.toast), boxShadow: AppShadows.toast),

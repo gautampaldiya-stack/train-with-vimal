@@ -25,3 +25,10 @@
   heading, badge, password strength and rules, timeline, Get the app card, resend countdown) and the desktop side
   panels in `auth_frame.dart` (`BrandPlain`, `BrandList`). Illustrations are `assets/ill/<name>.svg`.
 - Every "set a password" field pair sends `password` and `confirm_password`.
+- Sheet buttons that should fill the width (the boards' `.ca-sf`) pass `footerStretch: true` to `showAppSheet`.
+  Without it the web footer is a `Row`, and a full-width `CaButton` inside it crashes ("RenderFlex children have
+  non-zero flex but incoming width constraints are unbounded").
+- Toast side: phone centred, tablet / web bottom right (see `docs/design.md` §4.5).
+- Hot restart on web may print `LegacyJavaScriptObject is not a subtype of JdbNotificationRevision` from
+  `sembast_web`: the old page's IndexedDB listener fires into the new Dart code. Debug-only, harmless; a full
+  page reload (or `R` then F5) clears it. Release builds never hot restart.

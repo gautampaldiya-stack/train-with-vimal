@@ -66,6 +66,7 @@ Future<void> showNoticesSheet(BuildContext context, HomeController c) => showApp
             }),
         ]);
       },
+      footerStretch: true,
       footer: (ctx) => [
         CaButton('Mark all as read', kind: CaBtnKind.out, icon: AppIcons.check, onPressed: () {
           Navigator.of(ctx).pop();
@@ -150,6 +151,7 @@ Future<void> showCounterSheet(BuildContext context, HomeController c, HomeHabit 
         Text(n >= h.target ? 'Goal reached' : '${inNum(h.target - n)}$unit to go', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
       ]),
     ),
+    footerStretch: true,
     footer: (ctx) => [
       CaButton(steps ? 'Save steps' : 'Save', icon: AppIcons.check, onPressed: () {
         Navigator.of(ctx).pop();
@@ -193,6 +195,7 @@ Future<void> showSleepSheet(BuildContext context, HomeController c, HomeHabit h)
         ChQuick(items: [for (final hr in [5, 6, 7, 8, 9, 10]) ('$hr h', hr * 60)], onPick: (m) => v.value = m, isOn: (m) => m == n),
       ]),
     ),
+    footerStretch: true,
     footer: (ctx) => [
       CaButton('Save sleep', icon: AppIcons.check, onPressed: () {
         Navigator.of(ctx).pop();

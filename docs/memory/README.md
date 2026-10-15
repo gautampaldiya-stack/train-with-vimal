@@ -18,3 +18,6 @@ Things a new person (or a new Claude session) must know. Update when Gautam deci
 - Gautam (2026-10-15): never leave part of a flow unbuilt without saying so. Build every page a flow's buttons,
   links and emails open; keep `docs/screens/status.md` current; name unbuilt boards in notes and replies.
   Rules: `docs/rulebooks/definition-of-done.md`.
+- Gautam (2026-10-15): on tablet and web (≥ 600) toasts sit at the bottom right, not centred like the web boards.
+  Phone keeps them centred and full width (12 from each edge); tablet / web toast is 400 wide.
+  Undo toasts stay 10 s. No profile avatar (RS) on the client Home top, phone or web. Also: write even small changes into the docs (`docs/changes.md` + the doc they touch).

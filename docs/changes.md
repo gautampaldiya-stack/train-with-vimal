@@ -20,6 +20,13 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 
 ---
 
+### 2026-10-15 · Home sheets crash on web; toast on the right for tablet / web
+- **Pehle:** Web / tablet par Habits ke "Add steps" aur sleep ke "Change" dabane par sheet nahi khulti thi, layout error aata tha ("RenderFlex children have non-zero flex but incoming width constraints are unbounded"). Sheet ka button web par Row me tha, jo poori width wale button ko jagah nahi deta. Toast har screen par neeche beech me aata tha (board jaisa).
+- **Ab:** Home ki saari sheets (Add steps, Sleep, Notifications) ka button poori width ka (`footerStretch`), web par bhi crash nahi. Tablet aur web (≥ 600) par toast neeche **right** me, phone par beech me hi. Hot restart par aane wala `sembast_web` `JdbNotificationRevision` error sirf debug ka hai, docs me note kiya.
+- **Aur:** Undo wale toast ab 10s rehte hain (pehle 7s), aate waqt smooth fade + slide. Phone par toast poori width ka, tablet/web par 400 wide. Client Home ke upar se RS profile avatar hata diya (phone aur web dono, board me tha).
+- **Kyun:** Gautam ne crash bheja, aur kaha web/tablet me toast right bottom me ho; toast zyada der rahe, phone par full width, avatar kahin nahi.
+- **Updated:** app/lib/core/widgets/overlays.dart, app/lib/features/client/home/home_sheets.dart, home_screen.dart, docs/screens/status.md, docs/design.md §4.5, docs/rulebooks/flutter.md, docs/memory/README.md
+
 ### 2026-10-15 · Client Home built (phone + web)
 - **Pehle:** Client login ke baad `/home` par "This page is on the way" aata tha. Home API me week strip, meals list, aane wali habits, check-in ke sawal, coach ka reply aur unread count nahi the. Paani log karne se water habit nahi badhti thi.
 - **Ab:** ClientHome aur ClientHomeWeb board jaise bane: week strip, workout card, water, food, habits, supplements, coach card, Coming up, saari sheets (Notifications, Log food, workout preview, Add steps, Sleep) aur toasts Undo ke saath. Web par bell ka dropdown. Har log outbox se jaata hai (offline bhi). `me/home/` me naye fields; water log ab water habit bhi update karta hai. `seed_demo` Riya ke liye supplements, session, coach reply, notifications aur "Sleep 7 hours" habit banata hai. Naya habit "Sleep 7 hours" defaults me.

@@ -140,7 +140,6 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
             ]),
           ),
           Builder(builder: (bell) => ChBell(dot: d.unread > 0, onTap: () => web ? _notesMenu(bell) : showNoticesSheet(context, c))),
-          Semantics(label: 'My account', button: true, child: Hover(onTap: () => context.go('/more'), builder: (_, _, _) => ChAvatar(d.initials))),
         ]),
       );
 
