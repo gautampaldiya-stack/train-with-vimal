@@ -19,6 +19,11 @@
 5. Photos go **with the check-in** as data URLs (`photos: {question id: {front, side, back}}`), so a check-in with
    photos also waits in the outbox when offline. The server saves them as answers and as that week's photo set
    (Progress page), by pose.
+5a. A photo question asks for named photos: its `options` are the names (`Meal`, `Label`…, up to 6, 20 letters
+   each); with none it asks for Front, Side and Back. The app sends `photos: {question id: {name: dataURL}}`; each
+   photo is saved as an answer with its name as value, and only front / side / back also go to the Progress page.
+   Today's daily and this week's weekly in `me/checkins/` carry every answer (`answers`) and the photos (`photos`),
+   so Edit answers and the "sent" card never guess from the numbers.
 6. The weekly draft lives on the phone (read cache, per week) until it is sent; "Draft · N of 5 answered" shows on
    the card.
 7. Undo on the "sent" toast deletes the check-in (`DELETE me/submissions/<id>/`), only while the coach has not

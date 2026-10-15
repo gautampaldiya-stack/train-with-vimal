@@ -6,6 +6,7 @@ import '../../../core/theme/theme.dart';
 import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/overlays.dart';
+import '../../../core/widgets/photo_viewer.dart';
 import '../../../core/widgets/responsive.dart';
 import '../habits/habits_sheets.dart' show HkCells, hkNote, hkPill, hkSec;
 import '../home/home_model.dart' show clock, dayShort;
@@ -27,14 +28,15 @@ class ClientCheckinsScreen extends StatefulWidget {
 class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
   final c = CheckinsController();
   final _scroll = ScrollController();
+  final _list = ScrollController(); // past check-ins scroll inside their card
   bool _opened = false;
 
   @override
   void initState() {
     super.initState();
     c.start().then((_) => _openFromLink());
-    _scroll.addListener(() {
-      if (_scroll.position.extentAfter < 300) c.loadMore();
+    _list.addListener(() {
+      if (_list.position.extentAfter < 200) c.loadMore();
     });
   }
 
@@ -42,6 +44,7 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
   void dispose() {
     c.dispose();
     _scroll.dispose();
+    _list.dispose();
     super.dispose();
   }
 
@@ -85,20 +88,9 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
                   ),
           );
         }
-        if (d.weekly.draft == null && d.weekly.form != null) _loadDraft(d);
         return context.isPhone ? _phone(d) : _web(d);
       },
     );
-  }
-
-  bool _draftAsked = false;
-  void _loadDraft(CheckinsData d) {
-    if (_draftAsked) return;
-    _draftAsked = true;
-    c.readDraft(d.weekly.week).then((dr) {
-      if (dr != null && mounted) c.data?.weekly.draft = dr;
-      if (mounted) setState(() {});
-    });
   }
 
   // ─────────────────────────────── Layouts
@@ -197,7 +189,7 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
   Widget? _daily(CheckinsData d) {
     final f = d.daily.form;
     if (f == null) return null;
-    final s = d.daily.sent ?? c.queuedDaily;
+    final s = d.daily.sent ?? CheckinsController.queuedDaily;
     final today = d.daily.date;
     String line() {
       final m = s!.metrics;
@@ -257,7 +249,7 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
   Widget? _weekly(CheckinsData d) {
     final w = d.weekly, f = w.form;
     if (f == null) return null;
-    final s = w.sent ?? c.queuedWeekly;
+    final s = w.sent ?? CheckinsController.queuedWeekly;
     final now = DateTime.now();
     final dueToday = DateUtils.isSameDay(now, w.dueAt);
     final draft = w.draft;
@@ -373,6 +365,7 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
       },
     );
     final rows = c.rows;
+    final maxH = context.isPhone ? (MediaQuery.sizeOf(context).height * .6).clamp(320.0, 520.0) : 560.0;
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 4, 14, 6),
       decoration: BoxDecoration(
@@ -397,7 +390,24 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
               ],
             ),
           ),
-          for (final (i, r) in rows.indexed) _row(d, i, r),
+          if (rows.isNotEmpty)
+            ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: maxH),
+              child: ListView.builder(
+                controller: _list,
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                itemCount: rows.length + (c.hasMore ? 1 : 0),
+                itemBuilder: (_, i) => i < rows.length
+                    ? _row(d, i, rows[i])
+                    : const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 10),
+                        child: Center(
+                          child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent)),
+                        ),
+                      ),
+              ),
+            ),
           if (rows.isEmpty)
             Container(
               padding: const EdgeInsets.symmetric(vertical: 12),
@@ -408,13 +418,6 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
                 'No check-ins here yet.',
                 textAlign: TextAlign.center,
                 style: AppText.s(13, W.w4, color: AppColors.muted),
-              ),
-            ),
-          if (c.hasMore)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 10),
-              child: Center(
-                child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent)),
               ),
             ),
         ],
@@ -592,7 +595,7 @@ class _PastBodyState extends State<_PastBody> {
   void initState() {
     super.initState();
     final id = widget.row.id;
-    if (widget.weekly && id != null) {
+    if ((widget.weekly || widget.row.photos > 0) && id != null) {
       _detail = widget.c.cachedDetail(id);
       if (_detail == null) {
         widget.c.detail(id).then((j) {
@@ -683,14 +686,15 @@ class _PastBodyState extends State<_PastBody> {
       final seen = <int>{};
       for (final a in ans) {
         final qid = (a['question'] as num?)?.toInt();
-        if (qid == null || a['photo'] != null && '${a['photo']}'.isNotEmpty) continue;
+        final q0 = f?.questions.where((x) => x.id == qid).firstOrNull;
+        if (qid == null || a['photo'] != null && '${a['photo']}'.isNotEmpty || q0?.type == 'photo' || a['question_type'] == 'photo') continue;
         seen.add(qid);
         final q =
             f?.questions.where((x) => x.id == qid).firstOrNull ??
             CkQ({'id': qid, 'text': a['question_text'], 'type': a['question_type'], 'metric': a['metric']});
         qa.add((q.text, q.show(a['value']) ?? '—'));
       }
-      if (_detail != null && r.photos > 0) qa.add(('Progress photos', '${r.photos} photos'));
+
       if (_detail == null) {
         kids.add(
           const Padding(
@@ -736,58 +740,87 @@ class _PastBodyState extends State<_PastBody> {
         ),
       );
     }
-    final photos = (_detail?['photos'] as List? ?? []).cast<Map<String, dynamic>>();
-    if (widget.weekly && photos.isNotEmpty) {
-      const order = ['front', 'side', 'back'];
-      photos.sort((a, b) => order.indexOf('${a['pose']}').compareTo(order.indexOf('${b['pose']}')));
-      final has = {for (final p in photos) '${p['pose']}': '${p['image']}'};
-      final pose = order[_pose];
+    final photos = [
+      for (final p in (_detail?['photos'] as List? ?? []).cast<Map<String, dynamic>>()) ('${p['label'] ?? p['pose'] ?? 'Photo'}', '${p['image'] ?? ''}'),
+    ];
+    if (photos.isNotEmpty) {
+      final at = _pose.clamp(0, photos.length - 1);
+      final img = photoImage(photos[at].$2);
       kids.addAll([
-        hkSec('Photos'),
+        hkSec(photos.length == 1 ? 'Photo' : 'Photos'),
         Column(
           spacing: 8,
           children: [
-            Container(
-              height: 150,
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: AppColors.figBg),
-              ),
-              child: has[pose] != null
-                  ? Image.network(has[pose]!, fit: BoxFit.cover, width: double.infinity, errorBuilder: (_, _, _) => _fig(pose, r))
-                  : _fig(pose, r, none: true),
-            ),
-            Container(
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(8)),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                spacing: 2,
-                children: [
-                  for (final (i, n) in poseNames.indexed)
-                    Hover(
-                      onTap: () => setState(() => _pose = i),
-                      builder: (_, h, _) => Container(
-                        height: 28,
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: i == _pose ? AppColors.white : null,
-                          borderRadius: BorderRadius.circular(6),
-                          boxShadow: i == _pose
-                              ? const [
-                                  BoxShadow(color: AppColors.shadowSoft, blurRadius: 2, offset: Offset(0, 1)),
-                                  BoxShadow(color: AppColors.line, spreadRadius: 1),
-                                ]
-                              : null,
+            Semantics(
+              button: true,
+              label: 'Open ${photos[at].$1} photo full size',
+              child: Hover(
+                onTap: () => showPhotoViewer(context, photos, at),
+                builder: (_, h, _) => Container(
+                  height: 220,
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: h ? AppColors.accent : AppColors.line),
+                    gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: AppColors.figBg),
+                  ),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if (img != null) Image(image: img, fit: BoxFit.contain, errorBuilder: (_, _, _) => _fig(photos[at].$1, r)),
+                      if (img == null) _fig(photos[at].$1, r),
+                      Positioned(
+                        right: 8,
+                        bottom: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(color: AppColors.viewerBtnDark, borderRadius: BorderRadius.circular(6)),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            spacing: 4,
+                            children: [
+                              const AppIcon(AppIcons.eye, size: 12, color: AppColors.white),
+                              Text('Tap to open', style: AppText.s(11, W.w7, color: AppColors.white)),
+                            ],
+                          ),
                         ),
-                        child: Text(n, style: AppText.s(13, W.w6, color: i == _pose || h ? AppColors.text : AppColors.text2)),
                       ),
-                    ),
-                ],
+                    ],
+                  ),
+                ),
               ),
             ),
+            if (photos.length > 1)
+              Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(8)),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  spacing: 2,
+                  children: [
+                    for (final (i, (n, _)) in photos.indexed)
+                      Hover(
+                        onTap: () => setState(() => _pose = i),
+                        builder: (_, h, _) => Container(
+                          height: 28,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: i == at ? AppColors.white : null,
+                            borderRadius: BorderRadius.circular(6),
+                            boxShadow: i == at
+                                ? const [
+                                    BoxShadow(color: AppColors.shadowSoft, blurRadius: 2, offset: Offset(0, 1)),
+                                    BoxShadow(color: AppColors.line, spreadRadius: 1),
+                                  ]
+                                : null,
+                          ),
+                          child: Text(n, style: AppText.s(13, W.w6, color: i == at || h ? AppColors.text : AppColors.text2)),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
           ],
         ),
       ]);
@@ -795,15 +828,13 @@ class _PastBodyState extends State<_PastBody> {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: kids);
   }
 
-  Widget _fig(String pose, CkRow r, {bool none = false}) => Column(
+  Widget _fig(String pose, CkRow r) => Column(
     mainAxisAlignment: MainAxisAlignment.center,
     spacing: 4,
     children: [
       const AppIcon(AppIcons.user, size: 84, color: AppColors.figText, stroke: 1.2),
       Text(
-        none
-            ? 'No ${pose.toLowerCase()} photo'
-            : '${pose[0].toUpperCase()}${pose.substring(1)} · ${r.date.day} ${const ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][r.date.month - 1]}',
+        '$pose · ${r.date.day} ${const ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][r.date.month - 1]}',
         style: AppText.s(11.5, W.w7, color: AppColors.figText),
       ),
     ],

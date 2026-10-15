@@ -238,6 +238,7 @@ class _ChangeEmailState extends State<_ChangeEmail> {
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
         CaField(
           label: 'New email',
+          autofocus: true,
           hint: 'you@email.com',
           controller: _c,
           error: _err,

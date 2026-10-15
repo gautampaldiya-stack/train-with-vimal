@@ -30,12 +30,15 @@ def _start(client):
 
 
 def _chip(q):
+    from .services import photo_slots
+
+    if q.type == QuestionType.PHOTO:
+        n = len(photo_slots(q))
+        return "1 photo" if n == 1 else f"{n} photos"
     if q.text in CHIPS:
         return CHIPS[q.text]
     if q.metric == "weight":
         return "Weight"
-    if q.type == QuestionType.PHOTO:
-        return "Photos"
     t = q.text.rstrip("?").strip()
     return t if len(t) <= 18 else t[:17].rstrip() + "…"
 
@@ -90,6 +93,34 @@ def _row(sub):
             "week_number": sub.week_number, "metrics": m, "reviewed": sub.reviewed_at is not None,
             "reviewed_at": sub.reviewed_at, "reply": sub.reply, "edited_at": sub.edited_at,
             "photo_count": getattr(sub, "n_photos", 0)}
+
+
+def answer_photos(sub, request=None):
+    """[{question, slot, label, image}] in the order the question asks for them."""
+    from .services import photo_slots, slot_key
+
+    out, n = [], {}
+    for a in sorted((a for a in sub.answers.select_related("question") if a.photo), key=lambda a: a.id):
+        slots = photo_slots(a.question)
+        i = n[a.question_id] = n.get(a.question_id, -1) + 1  # photos sent before slots had names: in order
+        label = a.value if isinstance(a.value, str) and a.value else slots[min(i, len(slots) - 1)]
+        url = a.photo.url
+        out.append({"question": a.question_id, "slot": slot_key(label), "pose": slot_key(label), "label": label,
+                    "image": request.build_absolute_uri(url) if request else url,
+                    "_i": slots.index(label) if label in slots else 99})
+    out.sort(key=lambda p: (p["question"], p.pop("_i")))
+    return out
+
+
+def full_row(sub, request=None):
+    """Today's daily or this week's weekly: the row plus every answer (for Edit answers and the summary)."""
+    if sub is None:
+        return None
+    r = _row(sub)
+    r["answers"] = {str(a.question_id): a.value for a in sub.answers.all() if not a.photo}
+    r["photos"] = answer_photos(sub, request)
+    r["photo_count"] = len(r["photos"])
+    return r
 
 
 def _photo_counts(subs):
@@ -161,7 +192,7 @@ def page(rows, before=None, size=PAGE):
     return rows[:size], len(rows) > size
 
 
-def checkins_page(client, tab="weekly", before=None):
+def checkins_page(client, tab="weekly", before=None, request=None):
     from apps.clients.metrics import active_program
 
     from .services import streak, week_number
@@ -205,11 +236,13 @@ def checkins_page(client, tab="weekly", before=None):
         "stats": {"streak": streak(client, "daily"), "weekly_on_time": on_time, "weekly_due": due_total,
                   "last_change_kg": last_change},
         "daily": {"date": today, "form": form_payload(daily, coach_first),
-                  "sent": _row(d_today) if d_today else None, **_habit_day(client, today),
+                  "sent": full_row(d_today, request), **_habit_day(client, today),
                   "last_weight": {"date": last_w.date, "kg": float(last_w.weight_kg)} if last_w else None,
                   "today_weight": float(today_w.weight_kg) if today_w else None},
         "weekly": {"week": week_number(client, today), "due_at": _due_at(sunday),
-                   "form": form_payload(weekly, coach_first), "sent": this_week,
+                   "form": form_payload(weekly, coach_first),
+                   "sent": {**this_week, **full_row(Submission.objects.get(id=this_week["id"]), request)}
+                   if this_week else None,
                    "last_weight": float(prev_weekly_w) if prev_weekly_w is not None else None},
         "tab": tab, "history": rows, "has_more": more,
         "next_before": rows[-1]["date"] if rows and more else None,

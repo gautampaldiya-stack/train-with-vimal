@@ -40,6 +40,12 @@ class QuestionSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({"options": ["Two options are the same."]})
             if len(opts) > 30:
                 raise serializers.ValidationError({"options": ["Up to 30 options."]})
+        elif t == QuestionType.PHOTO:  # options = the photos it asks for ("Front", "Side", "Back"; "Meal"…)
+            if len({o.lower() for o in opts}) != len(opts):
+                raise serializers.ValidationError({"options": ["Two photos have the same name."]})
+            if len(opts) > 6 or any(len(o) > 20 for o in opts):
+                raise serializers.ValidationError({"options": ["Up to 6 photos, each name up to 20 letters."]})
+            attrs["allow_other"] = False
         else:
             opts = []
             attrs["allow_other"] = False
@@ -164,9 +170,10 @@ class SubmissionDetailSerializer(SubmissionRowSerializer):
         fields = SubmissionRowSerializer.Meta.fields + ["answers", "reviewed_by_name", "photos"]
 
     def get_photos(self, obj):
-        """Progress photos sent with this check-in, by pose (the Front / Side / Back tabs)."""
-        ps = PhotoSet.objects.filter(submission=obj).prefetch_related("photos").first()
-        return ProgressPhotoSerializer(ps.photos.all(), many=True, context=self.context).data if ps else []
+        """Photos sent with this check-in, one for each slot the question asks for (Front, Side, Back…)."""
+        from .client_page import answer_photos
+
+        return answer_photos(obj, self.context.get("request"))
 
 
 class ReviewSerializer(serializers.Serializer):

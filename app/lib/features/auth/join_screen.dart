@@ -333,6 +333,7 @@ class _JoinScreenState extends State<JoinScreen> {
         ),
         CaField(
           label: 'Full name',
+          autofocus: true,
           hint: 'Your full name',
           controller: _name,
           error: _err['name'],
@@ -643,6 +644,7 @@ class _LoginLinkScreenState extends State<LoginLinkScreen> {
       ),
       CaField(
         label: 'New password',
+        autofocus: true,
         hint: 'At least 8 characters',
         controller: _p1,
         obscure: !_show,

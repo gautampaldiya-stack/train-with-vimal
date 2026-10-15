@@ -11,11 +11,13 @@ import '../../../core/api/api_error.dart';
 class HomeController extends ChangeNotifier {
   HomeController() {
     _sub = Services.realtime.events.where((e) => _reloadOn.contains(e.event)).listen((_) => load());
+    // A check-in, workout or meal sent from another page: refresh the cards.
+    _synced = Services.outbox.results.where((r) => r.error == null && !r.tag.startsWith('home:')).listen((_) => load());
   }
 
   static const _cacheKey = 'me/home';
   static const _reloadOn = {'notification', 'checkin_reviewed', 'session_booked', 'plan_updated'};
-  StreamSubscription? _sub;
+  StreamSubscription? _sub, _synced;
 
   HomeData? data;
   ApiError? error;
@@ -24,6 +26,7 @@ class HomeController extends ChangeNotifier {
   @override
   void dispose() {
     _sub?.cancel();
+    _synced?.cancel();
     super.dispose();
   }
 

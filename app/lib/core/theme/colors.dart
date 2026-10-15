@@ -106,6 +106,7 @@ abstract final class AppColors {
   static const scrimModal = Color(0x5C171717); // rgba(23,23,23,.36)
   static const scrimDrawer = Color(0x4D171717); // .30
   static const scrimSheet = Color(0x61111111); // rgba(17,17,17,.38)
+  static const viewerBg = Color(0xF0111111), viewerBtn = Color(0x29FFFFFF), viewerBtnHover = Color(0x47FFFFFF), viewerBtnDark = Color(0x8C111111); // full-size photo viewer
 
   /// Avatar pairs (bg, text), picked from the name so a person keeps their colour.
   static const avatars = [

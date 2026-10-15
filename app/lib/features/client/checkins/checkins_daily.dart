@@ -44,7 +44,7 @@ class _DailyCheckinState extends State<DailyCheckin> {
 
   CkDaily get d => c.data!.daily;
   CkForm get f => d.form!;
-  CkRow? get today => _sent ?? d.sent ?? c.queuedDaily;
+  CkRow? get today => _sent ?? d.sent ?? CheckinsController.queuedDaily;
   String get coach => c.data!.coachFirst;
 
   /// Fills the answers once: today's check-in when editing, else the weight to start from.
@@ -52,17 +52,35 @@ class _DailyCheckinState extends State<DailyCheckin> {
     if (_filled || c.data == null || d.form == null) return;
     _filled = true;
     final m = today?.metrics ?? const {};
+    final a = today?.answers ?? const {};
     for (final q in f.questions) {
-      final v = m[q.metric];
+      // The answer as sent; older rows only have the numbers (metrics), so fit those to the question.
+      final sent = a['${q.id}'];
+      final v = sent ?? m[q.metric];
       if (q.metric == 'weight') {
         _v[q.id] = (v is num ? v.toDouble() : null) ?? d.todayWeight ?? d.lastWeight ?? 70.0;
-      } else if (v != null && q.metric == 'sleep_hours' && q.isChoice) {
-        _v[q.id] = q.options.firstWhere((o) => o == hrs(v as num), orElse: () => q.options.first);
-      } else if (v != null && (_editing || today != null)) {
-        _v[q.id] = v;
+      } else if (v == null) {
+        continue;
+      } else if (q.type == 'scale') {
+        _v[q.id] = q.scaleOf(sent) ?? (q.metric == 'sleep_hours' && v is num ? _hoursToScale(q, v) : q.scaleOf(v));
+      } else if (q.isChoice) {
+        final o = v is bool ? (v ? 'Yes' : 'No') : (v is num && q.metric == 'sleep_hours' ? hrs(v) : '$v');
+        if (q.options.contains(o)) _v[q.id] = q.type == 'yes_no' ? o == 'Yes' : o;
+      } else if (q.type == 'number') {
+        if (v is num) _v[q.id] = v.toDouble();
+      } else {
+        _v[q.id] = '$v';
       }
     }
     _note.text = '${m['note'] ?? ''}';
+  }
+
+  /// Sleep hours on a 5-point scale whose labels are hours ("5h" … "9h").
+  int? _hoursToScale(CkQ q, num h) {
+    for (final (i, l) in q.labels.indexed) {
+      if (double.tryParse(l.replaceAll(RegExp(r'[^0-9.]'), '')) == h.toDouble()) return i + 1;
+    }
+    return q.scaleOf(h - 4);
   }
 
   bool _has(CkQ q) => _v[q.id] != null && _v[q.id] != '';
@@ -143,30 +161,17 @@ class _DailyCheckinState extends State<DailyCheckin> {
       final answered = f.questions.where(_has).length;
       final total = f.questions.length;
       final showForm = today == null || _editing;
-      final body = Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: 12,
-        children: [
+      return CkPage(
+        web: web,
+        header: [
           CkTop(
             title: 'Daily check-in',
             sub: '${dayShortNoYear(d.date)} · $answered of $total answered',
             onBack: () => _editing && today != null ? setState(() => _editing = false) : context.go('/checkins'),
           ),
           CkBar(total == 0 ? 0 : answered / total),
-          if (showForm) ..._form() else _done(),
         ],
-      );
-      return CaWeb(
-        web: web,
-        child: SingleChildScrollView(
-          padding: web ? const EdgeInsets.fromLTRB(32, 32, 32, 72) : const EdgeInsets.fromLTRB(16, 8, 16, 24),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: web ? 640 : double.infinity),
-              child: body,
-            ),
-          ),
-        ),
+        children: showForm ? _form() : [_done()],
       );
     },
   );
@@ -221,7 +226,7 @@ class _DailyCheckinState extends State<DailyCheckin> {
         ],
       );
     }
-    final label = v == null ? 'Pick one' : (q.type == 'scale' ? q.labels[(v as num).toInt() - 1] : '$v');
+    final label = v == null ? 'Pick one' : (q.type == 'scale' ? (q.show(v, short: true) ?? 'Pick one') : (q.show(v) ?? '$v'));
     if (q.isChoice) {
       return CkQCard(
         title: title,
@@ -237,7 +242,7 @@ class _DailyCheckinState extends State<DailyCheckin> {
         title: title,
         label: label,
         got: v != null,
-        children: [CkScale(labels: q.labels, value: (v as num?)?.toInt(), onPick: (n) => _set(q, n))],
+        children: [CkScale(labels: q.labels, value: q.scaleOf(v), onPick: (n) => _set(q, n))],
       );
     }
     return CkQCard(
@@ -252,18 +257,20 @@ class _DailyCheckinState extends State<DailyCheckin> {
     final at = row.sentAt ?? DateTime.now();
     final rows = <(String, String)>[
       for (final q in f.questions)
-        (
-          _short[q.metric] ?? q.text,
-          q.metric == 'sleep_hours' && row.metrics['sleep_hours'] is num
-              ? hrs(row.metrics['sleep_hours'] as num)
-              : q.show(row.metrics[q.metric] ?? _v[q.id], short: true) ?? '—',
-        ),
+        if (q.type != 'photo')
+          (
+            _short[q.metric] ?? q.text,
+            q.metric == 'sleep_hours' && row.metrics['sleep_hours'] is num
+                ? hrs(row.metrics['sleep_hours'] as num)
+                : q.show(row.answers['${q.id}'] ?? _v[q.id] ?? row.metrics[q.metric], short: true) ?? '—',
+          ),
       ('Note', '${row.metrics['note'] ?? ''}'.isEmpty ? '—' : '${row.metrics['note']}'),
     ];
     return CkDone(
       title: 'Sent to $coach',
       sub: row.id == null ? 'Saved on this phone · it goes to $coach when you are online' : 'Today at ${clock(at)} · $coach will see it today',
       rows: rows,
+      photos: row.thumbs,
       buttons: Row(
         spacing: 8,
         children: [
@@ -272,7 +279,7 @@ class _DailyCheckinState extends State<DailyCheckin> {
             child: CaButton(
               'Edit answers',
               kind: CaBtnKind.out,
-              icon: AppIcons.edit,
+              icon: MediaQuery.sizeOf(context).width < 420 ? null : AppIcons.edit,
               onPressed: () {
                 if (row.id == null) {
                   showToast(context, 'Still sending', sub: 'You can edit it once it reaches $coach', kind: ToastKind.info);

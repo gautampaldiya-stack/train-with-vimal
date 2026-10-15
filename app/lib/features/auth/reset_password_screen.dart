@@ -190,6 +190,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         const AuthHeading('Forgot your password?', sub: 'Enter the email you joined with. We will send you a link to set a new one.'),
         CaField(
           label: 'Email',
+          autofocus: true,
           hint: 'you@email.com',
           controller: _email,
           error: _emailErr,
@@ -219,6 +220,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         AuthHeading('Set a new password', sub: 'For ${_for.isEmpty ? 'your account' : _for}. Pick one you do not use anywhere else.'),
         CaField(
           label: 'New password',
+          autofocus: true,
           hint: 'At least 8 characters',
           controller: _p1,
           obscure: !_show,

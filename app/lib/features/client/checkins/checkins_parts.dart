@@ -7,6 +7,7 @@ import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
 import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
+import '../../../core/widgets/photo_viewer.dart';
 
 /// Pieces of the Check-ins boards (`ck-*`), shared by the list, the two forms and the sheet.
 
@@ -364,11 +365,45 @@ class CkTop extends StatelessWidget {
   }
 }
 
-/// `ck-done`: the green tick card after sending.
+/// A form page: the top bar and progress stay put, the questions scroll under them.
+class CkPage extends StatelessWidget {
+  const CkPage({super.key, required this.web, required this.header, required this.children});
+  final bool web;
+  final List<Widget> header, children;
+  @override
+  Widget build(BuildContext context) {
+    final x = web ? 32.0 : 16.0;
+    Widget center(Widget w) => Center(
+      child: ConstrainedBox(constraints: BoxConstraints(maxWidth: web ? 640 : double.infinity), child: w),
+    );
+    return CaWeb(
+      web: web,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(x, web ? 32 : 8, x, 12),
+            child: center(Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: header)),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(x, 0, x, web ? 72 : 24),
+              child: center(Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: children)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// `ck-done`: the green tick card after sending. A long question goes above its answer; [photos] show as
+/// small pictures that open full size.
 class CkDone extends StatelessWidget {
-  const CkDone({super.key, required this.title, required this.sub, required this.rows, required this.buttons});
+  const CkDone({super.key, required this.title, required this.sub, required this.rows, required this.buttons, this.photos = const []});
   final String title, sub;
   final List<(String, String)> rows;
+  final List<(String, String)> photos;
   final Widget buttons;
   @override
   Widget build(BuildContext context) => Container(
@@ -398,6 +433,7 @@ class CkDone extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(top: 6, bottom: 8),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               for (final (i, (k, v)) in rows.indexed)
                 Container(
@@ -405,16 +441,34 @@ class CkDone extends StatelessWidget {
                   decoration: BoxDecoration(
                     border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line)),
                   ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    spacing: 12,
-                    children: [
-                      Text(k, style: AppText.s(13, W.w6, color: AppColors.muted)),
-                      Expanded(
-                        child: Text(v, textAlign: TextAlign.right, style: AppText.s(13, W.w7)),
-                      ),
-                    ],
+                  child: k.length > 16
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          spacing: 2,
+                          children: [
+                            Text(k, style: AppText.s(12, W.w6, color: AppColors.muted)),
+                            Text(v, style: AppText.s(13, W.w7)),
+                          ],
+                        )
+                      : Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          spacing: 12,
+                          children: [
+                            Text(k, style: AppText.s(13, W.w6, color: AppColors.muted)),
+                            Expanded(
+                              child: Text(v, textAlign: TextAlign.right, style: AppText.s(13, W.w7)),
+                            ),
+                          ],
+                        ),
+                ),
+              if (photos.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.only(top: 10),
+                  alignment: Alignment.centerLeft,
+                  decoration: const BoxDecoration(
+                    border: Border(top: BorderSide(color: AppColors.line)),
                   ),
+                  child: photoThumbs(photos),
                 ),
             ],
           ),

@@ -84,7 +84,11 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
   and paged history with Missed rows. `POST me/submissions/` takes `photos` as data URLs; `DELETE me/submissions/<id>/`
   is the Undo. Migration `checkins 0002` gives the built-in forms the board's questions. Seed: Riya's 6 weekly and
   10 days of daily check-ins. New Flutter package `image_picker` (photo slots).
-- Next: ClientFoodLog.
+- Check-ins fixes (Gautam, 2026-10-15): Edit answers no longer crashes on old forms (today's rows carry `answers`
+  and `photos`), cards refresh after a form (screens reload on outbox sync), fixed form header, Past check-ins scroll
+  inside a fixed-height card, full "sent" summary with thumbnails, full-size photo viewer
+  (`core/widgets/photo_viewer.dart`), photo question slots named by its options. Autofocus on login / forgot / join.
+- Next: Food tab (`ClientMealNutrition` + Web) and Log food (`ClientFoodLog` + Web).
 
 ## Next
 1. Pages Home links to: Train + Workout logger (`ClientTrain`, `ClientWorkout`), Habits, Check-in, Food log.

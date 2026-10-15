@@ -470,11 +470,15 @@ class CaField extends StatefulWidget {
     this.focusNode,
     this.maxLength,
     this.enabled = true,
+    this.autofocus = false,
   });
   final String label;
   final TextEditingController? controller;
   final String? hint, error;
   final bool obscure, enabled;
+
+  /// The main field of a page: the cursor is in it when the page opens.
+  final bool autofocus;
   final Widget? trailing;
   final TextInputType? keyboard;
   final TextInputAction? action;
@@ -535,6 +539,7 @@ class _CaFieldState extends State<CaField> {
                 controller: widget.controller,
                 focusNode: _focus,
                 enabled: widget.enabled,
+                autofocus: widget.autofocus,
                 obscureText: widget.obscure,
                 obscuringCharacter: '•',
                 keyboardType: widget.keyboard,

@@ -20,6 +20,16 @@ from .models import (
 )
 
 SCALE_HOURS = {"5 h": 5, "6 h": 6, "7 h": 7, "8 h": 8, "9 h": 9}
+DEFAULT_SLOTS = ["Front", "Side", "Back"]
+
+
+def photo_slots(q):
+    """The photos a photo question asks for, by name: its options ("Meal", "Label"…), else Front, Side, Back."""
+    return list(q.options or DEFAULT_SLOTS)
+
+
+def slot_key(label):
+    return " ".join(str(label).split()).lower()
 
 
 def _clean_value(q, v):
@@ -133,19 +143,26 @@ def submit(client, form, answers, files=None, *, request_obj=None, submission=No
                                 for qid, v in cleaned.items() if v is not None])
     photo_set = None
     for q in questions:
-        for n, f in enumerate(files.get(str(q.id), [])[:3]):
+        slots = photo_slots(q)
+        keys = [slot_key(x) for x in slots]
+        for n, f in enumerate(files.get(str(q.id), [])[:len(slots)]):
             if f.size > 10 * 1024 * 1024:
                 raise ValidationError({str(q.id): ["Photos can be up to 10 MB."]})
-            Answer.objects.create(submission=submission, question=q, photo=f)
+            key = slot_key(getattr(f, "pose", None) or keys[n])
+            if key not in keys:
+                raise ValidationError({str(q.id): [f"This question asks for: {', '.join(slots)}."]})
+            label = slots[keys.index(key)]
+            submission.answers.filter(question=q, value=label).exclude(photo="").delete()  # a new photo for that slot
+            Answer.objects.create(submission=submission, question=q, photo=f, value=label)
             if photo_set is None:
                 label = f"Week {submission.week_number} check-in" if submission.week_number else form.name
                 photo_set, _ = PhotoSet.objects.get_or_create(
                     client=client, submission=submission,
                     defaults={"label": label, "date": submission.date, "weight_kg": metrics.get("weight")})
-            # The same photo on the Progress page, by pose (Front, Side, Back).
-            pose = getattr(f, "pose", None) or ProgressPhoto.Pose.values[n]
-            ProgressPhoto.objects.filter(photo_set=photo_set, pose=pose).delete()
-            ProgressPhoto.objects.create(photo_set=photo_set, pose=pose, image=f)
+            # Front, side and back also go on the Progress page, by pose.
+            if key in ProgressPhoto.Pose.values:
+                ProgressPhoto.objects.filter(photo_set=photo_set, pose=key).delete()
+                ProgressPhoto.objects.create(photo_set=photo_set, pose=key, image=f)
     if "weight" in metrics:
         WeightLog.objects.update_or_create(client=client, date=submission.date,
                                            defaults={"weight_kg": Decimal(str(metrics["weight"])),

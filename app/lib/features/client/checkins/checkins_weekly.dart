@@ -9,6 +9,7 @@ import '../../../core/theme/theme.dart';
 import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/overlays.dart';
+import '../../../core/widgets/photo_viewer.dart';
 import '../../../core/widgets/responsive.dart';
 import '../home/home_model.dart' show clock, dayShort;
 import 'checkins_model.dart';
@@ -23,13 +24,10 @@ class WeeklyCheckin extends StatefulWidget {
   State<WeeklyCheckin> createState() => _WeeklyCheckinState();
 }
 
-const poses = ['front', 'side', 'back'];
-const poseNames = ['Front', 'Side', 'Back'];
-
 class _WeeklyCheckinState extends State<WeeklyCheckin> {
   CheckinsController get c => widget.c;
   final _v = <String, Object?>{};
-  final _photos = <String, String>{}; // pose → data URL
+  final _photos = <String, String>{}; // slot ("front", "meal"…) → data URL
   final _texts = <int, TextEditingController>{};
   bool _noPhotos = false, _filled = false, _busy = false;
   int _step = 0;
@@ -49,7 +47,15 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
   CkForm get f => w.form!;
   List<CkQ> get qs => f.questions;
   String get coach => c.data!.coachFirst;
-  CkRow? get sent => _sent ?? w.sent ?? c.queuedWeekly;
+  CkRow? get sent => _sent ?? w.sent ?? CheckinsController.queuedWeekly;
+
+  /// The photos the photo question asks for: names and keys ("Front" → "front").
+  List<String> get _slotNames => qs.where((q) => q.type == 'photo').firstOrNull?.slots ?? const [];
+  List<String> get _slotKeys => [for (final n in _slotNames) n.toLowerCase()];
+  List<(String, String)> get _thumbs => [
+    for (final (i, k) in _slotKeys.indexed)
+      if (_photos[k] != null) (_slotNames[i], _photos[k]!),
+  ];
 
   Future<void> _fill() async {
     if (_filled || c.data == null || w.form == null) return;
@@ -76,13 +82,14 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
   String? _ans(CkQ q) {
     if (q.type == 'photo') {
       if (_noPhotos) return 'No photos this week';
-      final n = _photos.length;
+      final n = _thumbs.length, all = _slotKeys.length;
       if (n == 0) return null;
+      if (all == 1) return '1 photo';
       final miss = [
-        for (final (i, p) in poses.indexed)
-          if (!_photos.containsKey(p)) poseNames[i].toLowerCase(),
+        for (final (i, k) in _slotKeys.indexed)
+          if (!_photos.containsKey(k)) _slotNames[i].toLowerCase(),
       ];
-      return '$n of 3 photos${miss.isEmpty ? '' : ' (${miss.join(', ')} missing)'}';
+      return '$n of $all photos${miss.isEmpty ? '' : ' (${miss.join(', ')} missing)'}';
     }
     final v = _v['${q.id}'];
     if (q.metric == 'weight' && v is num) {
@@ -195,14 +202,11 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
       }
       _fill();
       final web = !context.isPhone;
-      final body = Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: 12,
-        children: [
+      return CkPage(
+        web: web,
+        header: [
           CkTop(title: 'Weekly check-in', sub: 'Week ${w.week} · due ${w.due}', onBack: _exit, backLabel: 'Save and exit'),
-          if (sent != null)
-            _done()
-          else ...[
+          if (sent == null)
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               spacing: 6,
@@ -214,22 +218,8 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
                 CkBar((_step + 1).clamp(1, qs.length) / qs.length),
               ],
             ),
-            _card(),
-            _nav(),
-          ],
         ],
-      );
-      return CaWeb(
-        web: web,
-        child: SingleChildScrollView(
-          padding: web ? const EdgeInsets.fromLTRB(32, 32, 32, 72) : const EdgeInsets.fromLTRB(16, 8, 16, 24),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: web ? 640 : double.infinity),
-              child: body,
-            ),
-          ),
-        ),
+        children: sent != null ? [_done()] : [_card(), _nav()],
       );
     },
   );
@@ -288,7 +278,7 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
       ];
     }
     if (q.type == 'scale') {
-      return [CkScale(labels: q.labels, value: (v as num?)?.toInt(), onPick: (n) => _set(q, n), lg: true)];
+      return [CkScale(labels: q.labels, value: q.scaleOf(v), onPick: (n) => _set(q, n), lg: true)];
     }
     if (q.isChoice || q.type == 'multiple') {
       final multi = q.type == 'multiple';
@@ -341,16 +331,20 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
 
   List<Widget> _photosQ() {
     final web = CaWeb.of(context);
+    final keys = _slotKeys;
+    // Up to 3 a row; one photo gets a wider slot.
+    final per = keys.length == 1 ? 2 : (keys.length == 4 ? 2 : 3);
     return [
-      Row(
-        spacing: 8,
-        children: [
-          for (final (i, p) in poses.indexed)
-            Expanded(
-              child: AspectRatio(aspectRatio: web ? 4 / 3 : 3 / 4, child: _slot(i, p)),
-            ),
-        ],
-      ),
+      for (var r = 0; r < keys.length; r += per)
+        Row(
+          spacing: 8,
+          children: [
+            for (var i = r; i < r + per; i++)
+              Expanded(
+                child: i < keys.length ? AspectRatio(aspectRatio: web ? 4 / 3 : 3 / 4, child: _slot(i, keys[i])) : const SizedBox(),
+              ),
+          ],
+        ),
       Hover(
         onTap: () {
           setState(() {
@@ -401,6 +395,7 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
 
   Widget _slot(int i, String pose) {
     final url = _photos[pose];
+    final name = _slotNames[i];
     final has = url != null;
     final bytes = dataBytes(url);
     final inner = Column(
@@ -419,7 +414,13 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
           ),
           child: AppIcon(has ? AppIcons.check : AppIcons.camera, size: 17, color: has ? AppColors.white : AppColors.text2, stroke: has ? 2.6 : 1.8),
         ),
-        Text(poseNames[i], style: AppText.s(13, W.w8, color: has && bytes != null ? AppColors.white : AppColors.text)),
+        Text(
+          name,
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppText.s(13, W.w8, color: has && bytes != null ? AppColors.white : AppColors.text),
+        ),
         Text(
           has ? 'Added · tap to remove' : 'Tap to add',
           textAlign: TextAlign.center,
@@ -429,7 +430,7 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
     );
     return Semantics(
       button: true,
-      label: '${poseNames[i]} photo',
+      label: '$name photo',
       child: Hover(
         onTap: () => has ? _removePhoto(i, pose) : _addPhoto(i, pose),
         builder: (_, h, _) => has
@@ -467,7 +468,7 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
     ImageSource? src = ImageSource.gallery;
     if (context.isPhone) {
       src = null;
-      await showActionSheet(context, title: '${poseNames[i]} photo', [
+      await showActionSheet(context, title: '${_slotNames[i]} photo', [
         MenuEntry('Take a photo', icon: AppIcons.camera, onTap: () => src = ImageSource.camera),
         MenuEntry('Choose from gallery', icon: AppIcons.photo, onTap: () => src = ImageSource.gallery),
       ]);
@@ -487,7 +488,7 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
         _noPhotos = false;
       });
       _save();
-      if (mounted) showToast(context, '${poseNames[i]} photo added', sub: '${_photos.length} of 3 photos', kind: ToastKind.ok);
+      if (mounted) showToast(context, '${_slotNames[i]} photo added', sub: _slotKeys.length == 1 ? null : '${_thumbs.length} of ${_slotKeys.length} photos', kind: ToastKind.ok);
     } catch (_) {
       if (mounted) showToast(context, 'Could not open the photos', sub: 'Allow photo access for the app in your phone settings', kind: ToastKind.warn);
     }
@@ -499,7 +500,7 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
     _save();
     showToast(
       context,
-      '${poseNames[i]} photo removed',
+      '${_slotNames[i]} photo removed',
       kind: ToastKind.del,
       action: 'Undo',
       onAction: () {
@@ -532,13 +533,19 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
                     Builder(
                       builder: (_) {
                         final a = _ans(q);
-                        return Text(
+                        final t = Text(
                           a ?? (q.required ? 'Not answered · required' : 'Skipped'),
                           style: AppText.s(
                             13.5,
                             a == null && !q.required ? W.w6 : W.w7,
                             color: a != null ? AppColors.text : (q.required ? AppColors.badText : AppColors.muted),
                           ),
+                        );
+                        if (q.type != 'photo' || _thumbs.isEmpty) return t;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          spacing: 6,
+                          children: [t, photoThumbs(_thumbs, size: 44)],
                         );
                       },
                     ),
@@ -588,11 +595,17 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
     final at = row.sentAt ?? DateTime.now();
     final wt = row.weight ?? (_v['${qs.where((q) => q.metric == 'weight').firstOrNull?.id}'] as num?)?.toDouble();
     final last = w.lastWeight;
+    final thumbs = row.thumbs.isNotEmpty ? row.thumbs : _thumbs;
+    // Every question with its full text, like the past check-in sheet.
     final rows = <(String, String)>[
-      if (wt != null) ('Weight', kg(wt)),
-      if (wt != null && last != null) ('Change', kgChange(wt - last)),
-      for (final q in qs.where((q) => q.type == 'scale')) (q.chip, _ans(q) ?? '—'),
-      for (final q in qs.where((q) => q.type == 'photo')) ('Photos', _ans(q) ?? (row.photos > 0 ? '${row.photos} photos' : 'Skipped')),
+      for (final q in qs)
+        if (q.metric == 'weight' && wt != null) ...[
+          ('Weight', kg(wt)),
+          if (last != null) ('Change', kgChange(wt - last)),
+        ] else if (q.type == 'photo')
+          ('Photos', thumbs.isNotEmpty ? (thumbs.length == 1 ? '1 photo' : '${thumbs.length} photos') : (row.photos > 0 ? '${row.photos} photos' : 'Skipped'))
+        else
+          (q.text, q.show(row.answers['${q.id}'] ?? _v['${q.id}']) ?? 'Skipped'),
     ];
     return CkDone(
       title: 'Week ${row.week ?? w.week} check-in sent',
@@ -600,6 +613,7 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
           ? 'Saved on this phone · it goes to $coach when you are online'
           : '${dayShort(at)}, ${clock(at)} · $coach usually replies within a day',
       rows: rows,
+      photos: thumbs,
       buttons: CaButton('Back to check-ins', onPressed: () => context.go('/checkins')),
     );
   }

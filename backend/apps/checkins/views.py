@@ -339,7 +339,7 @@ class MyCheckinsView(APIView):
         if tab not in ("weekly", "daily"):
             raise serializers.ValidationError({"tab": ["Use weekly or daily."]})
         before = parse_date(request.query_params.get("before") or "") if request.query_params.get("before") else None
-        data = checkins_page(request.user, tab, before)
+        data = checkins_page(request.user, tab, before, request=request)
         data["pending_forms"] = FormRequestSerializer(
             FormRequest.objects.filter(client=request.user, filled_at__isnull=True).select_related("form"),
             many=True).data
@@ -373,13 +373,13 @@ class MySubmissionViewSet(mixins.RetrieveModelMixin, mixins.CreateModelMixin, mi
         photos = request.data.get("photos") or {}
         if isinstance(photos, dict):
             for qid, items in photos.items():
-                if isinstance(items, dict):  # {"front": …, "side": …, "back": …}
-                    items = [(pose, items.get(pose)) for pose in ("front", "side", "back") if items.get(pose)]
-                else:
-                    items = list(zip(("front", "side", "back"), items or []))
-                for pose, item in items:
-                    f = _data_url_file(item, pose)
-                    f.pose = pose
+                if isinstance(items, dict):  # {"front": …, "side": …} — one photo for each named slot
+                    items = [(k, v) for k, v in items.items() if v][:6]
+                else:  # a list fills the slots in order
+                    items = [(None, v) for v in (items or [])[:6]]
+                for n, (slot, item) in enumerate(items):
+                    f = _data_url_file(item, "photo" if slot is None else str(slot)[:20].replace("/", "-"))
+                    f.pose = slot
                     files.setdefault(str(qid), []).append(f)
         return answers, files
 

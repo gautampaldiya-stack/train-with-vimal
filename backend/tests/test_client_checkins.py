@@ -97,6 +97,9 @@ def test_send_weekly_with_photos(client_user):
     assert PhotoSet.objects.filter(submission_id=sub["id"]).exists()
     d = _page(client_user)
     assert d["weekly"]["sent"]["id"] == sub["id"] and d["history"][0]["photo_count"] == 2
+    sent = d["weekly"]["sent"]  # every answer and photo, for the "sent" summary
+    assert sent["answers"][_qid(f, "How was your week?")] == 4
+    assert [p["label"] for p in sent["photos"]] == ["Front", "Back"] and sent["photos"][0]["image"].startswith("http")
     bad = {_qid(f, "Progress photos this week?"): ["not a photo"]}
     r = client_user.post("/api/v1/me/submissions/", {"form": f["id"], "answers": answers, "photos": bad},
                          format="json")
@@ -112,3 +115,44 @@ def test_board_questions_replace_the_first_template(db):
 
 def test_checkins_page_is_client_only(trainer):
     assert trainer.get("/api/v1/me/checkins/").status_code == 403
+
+
+def test_photo_question_asks_for_named_photos(client_user):
+    from apps.checkins.models import Question
+
+    d = _page(client_user)
+    f = d["weekly"]["form"]
+    q = Question.objects.get(id=_qid(f, "Progress photos this week?"))
+    q.options = ["Meal", "Label"]
+    q.save()
+    f = _page(client_user)["weekly"]["form"]
+    assert next(x for x in f["questions"] if x["id"] == q.id)["chip"] == "2 photos"
+    answers = {_qid(f, "Body weight (kg)"): 68.2, _qid(f, "How was your week?"): 4,
+               _qid(f, "Did you follow the meal plan?"): "Yes, all week"}
+    r = client_user.post("/api/v1/me/submissions/", {"form": f["id"], "answers": answers,
+                                                     "photos": {str(q.id): {"front": PNG}}}, format="json")
+    assert r.status_code == 400  # not a photo this question asks for
+    r = client_user.post("/api/v1/me/submissions/", {"form": f["id"], "answers": answers,
+                                                     "photos": {str(q.id): {"label": PNG, "meal": PNG}}}, format="json")
+    assert r.status_code == 201, r.content
+    assert [p["label"] for p in r.json()["photos"]] == ["Meal", "Label"]
+    assert not PhotoSet.objects.get(submission_id=r.json()["id"]).photos.exists()  # not front / side / back
+
+
+def test_daily_sent_has_its_answers_for_edit(client_user):
+    d = _page(client_user, tab="daily")
+    f = d["daily"]["form"]
+    if d["daily"]["sent"]:
+        client_user.delete(f"/api/v1/me/submissions/{d['daily']['sent']['id']}/")
+    answers = {}
+    for q in f["questions"]:
+        if q["metric"] == "weight":
+            answers[str(q["id"])] = 68.0
+        elif q["type"] == "scale":
+            answers[str(q["id"])] = 3
+        elif q["options"]:
+            answers[str(q["id"])] = q["options"][0]
+    r = client_user.post("/api/v1/me/submissions/", {"form": f["id"], "answers": answers}, format="json")
+    assert r.status_code == 201, r.content
+    sent = _page(client_user, tab="daily")["daily"]["sent"]
+    assert sent["answers"] == {k: v for k, v in answers.items()}

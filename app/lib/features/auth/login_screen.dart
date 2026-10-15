@@ -156,6 +156,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             CaField(
               label: 'Email',
+              autofocus: true,
               hint: 'Email or mobile number',
               controller: _id,
               error: _idError,

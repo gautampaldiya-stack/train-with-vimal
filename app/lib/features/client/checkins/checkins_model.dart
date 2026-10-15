@@ -18,10 +18,16 @@ class CheckinsController extends ChangeNotifier {
       }
     };
     Services.outbox.pending.addListener(_sent);
+    _draftBus.addListener(_draftChanged);
+    // Something sent from another page (a check-in, a workout, a meal): show it here too.
+    _results = Services.outbox.results.listen((r) {
+      if (r.error == null && data != null) load();
+    });
   }
 
   static const _cacheKey = 'me/checkins';
   late final VoidCallback _sent;
+  late final StreamSubscription _results;
   bool _dirty = false;
 
   String tab = 'weekly';
@@ -31,13 +37,26 @@ class CheckinsController extends ChangeNotifier {
   bool hasMore = false, _more = false;
   String? _before;
 
-  /// Saved in the outbox, waiting for the network (shown as sent).
-  CkRow? queuedDaily, queuedWeekly;
+  /// Saved in the outbox, waiting for the network (shown as sent). Shared by every check-ins page.
+  static CkRow? queuedDaily, queuedWeekly;
+
+  /// This week's draft, shared by every check-ins page (a reload or another page never drops it).
+  static Map<String, dynamic>? _draft;
+  static int? _draftWeek;
+  static final _draftBus = ValueNotifier<int>(0);
+  void _draftChanged() {
+    if (data != null && data!.weekly.week == _draftWeek) {
+      data!.weekly.draft = _draft;
+      notifyListeners();
+    }
+  }
   final _details = <String, Map<String, dynamic>>{};
 
   @override
   void dispose() {
     Services.outbox.pending.removeListener(_sent);
+    _results.cancel();
+    _draftBus.removeListener(_draftChanged);
     super.dispose();
   }
 
@@ -45,6 +64,7 @@ class CheckinsController extends ChangeNotifier {
     final c = await Services.cache.read(_cacheKey);
     if (c is Map && data == null) {
       _take(c.cast<String, dynamic>());
+      await _readDraft();
       notifyListeners();
     }
     await load();
@@ -61,6 +81,7 @@ class CheckinsController extends ChangeNotifier {
 
   void _take(Map<String, dynamic> j) {
     data = CheckinsData(j);
+    if (_draftWeek == data!.weekly.week) data!.weekly.draft = _draft;
     rows
       ..clear()
       ..addAll([for (final r in (j['history'] as List? ?? [])) CkRow(r as Map<String, dynamic>)]);
@@ -75,6 +96,7 @@ class CheckinsController extends ChangeNotifier {
       if (t != tab) return;
       if (t == 'weekly') unawaited(Services.cache.write(_cacheKey, j));
       _take(j);
+      await _readDraft();
       if (data!.daily.sent != null) queuedDaily = null;
       if (data!.weekly.sent != null) queuedWeekly = null;
       error = null;
@@ -137,6 +159,11 @@ class CheckinsController extends ChangeNotifier {
       'sent_at': now.toIso8601String(),
       'week_number': data?.weekly.week,
       'metrics': r is Map ? r['metrics'] : metrics,
+      'answers': answers,
+      'photos': [
+        for (final e in (photos ?? const <String, Map<String, String>>{}).entries)
+          for (final p in e.value.entries) {'question': int.tryParse(e.key), 'slot': p.key, 'label': p.key, 'image': p.value},
+      ],
       'photo_count': r is Map ? r['photo_count'] : photos?.values.fold<int>(0, (n, m) => n + m.length) ?? 0,
       'reply': '',
       'reviewed': false,
@@ -157,7 +184,10 @@ class CheckinsController extends ChangeNotifier {
   Future<void> edit(CkForm f, String id, Map<String, dynamic> answers, {String note = ''}) async {
     final r = await Services.outbox.enqueue('PATCH', 'me/submissions/$id/', {'answers': answers, 'note': note}, tag: 'checkin:edit');
     final d = data?.daily;
-    if (d?.sent != null && d!.sent!.id == id) d.sent!.metrics = _metrics(f, answers, note);
+    if (d?.sent != null && d!.sent!.id == id) {
+      d.sent!.metrics = _metrics(f, answers, note);
+      d.sent!.j['answers'] = answers;
+    }
     _details.remove(id);
     if (r == null) {
       _dirty = true;
@@ -201,9 +231,19 @@ class CheckinsController extends ChangeNotifier {
   }
 
   Future<void> saveDraft(int week, Map<String, dynamic>? d) async {
+    _draft = d;
+    _draftWeek = week;
+    _draftBus.value++;
     await Services.cache.write(_draftKey(week), d);
-    data?.weekly.draft = d;
-    notifyListeners();
+  }
+
+  /// Reads this week's draft once, before the card is drawn (so it never blinks "Start").
+  Future<void> _readDraft() async {
+    final w = data?.weekly.week;
+    if (w == null || _draftWeek == w) return;
+    _draft = await readDraft(w);
+    _draftWeek = w;
+    if (data?.weekly.week == w) data!.weekly.draft = _draft;
   }
 }
 
@@ -315,14 +355,20 @@ class CkQ {
     return l.length == 5 ? l : const ['', '', '', '', ''];
   }
 
+  /// A photo question: the photos it asks for ("Front", "Side", "Back" unless the coach named them).
+  List<String> get slots => options.isEmpty ? const ['Front', 'Side', 'Back'] : options;
+
+  /// A scale answer (1 to 5), or null when the stored value is not one.
+  int? scaleOf(Object? v) => v is num && v >= 1 && v <= 5 && v == v.roundToDouble() ? v.toInt() : null;
+
   bool get isChoice => type == 'single' || type == 'dropdown' || type == 'yes_no';
 
   /// An answer as text: "4 / 5 · Good", "71.6 kg", "Yes, all week".
   String? show(Object? v, {bool short = false}) {
     if (v == null || v == '' || (v is List && v.isEmpty)) return null;
-    if (type == 'scale' && v is num) {
-      final l = labels[v.toInt() - 1];
-      return short ? l : '${v.toInt()} / 5${l.isEmpty ? '' : ' · $l'}';
+    if (type == 'scale' && scaleOf(v) != null) {
+      final l = labels[scaleOf(v)! - 1];
+      return short && l.isNotEmpty ? l : '${scaleOf(v)} / 5${l.isEmpty ? '' : ' · $l'}';
     }
     if (metric == 'weight' && v is num) return kg(v.toDouble());
     if (type == 'yes_no' && v is bool) return v ? 'Yes' : 'No';
@@ -343,7 +389,16 @@ class CkRow {
   bool get reviewed => j['reviewed'] == true;
   String get reply => '${j['reply'] ?? ''}';
   DateTime? get reviewedAt => DateTime.tryParse('${j['reviewed_at']}')?.toLocal();
-  int get photos => (j['photo_count'] as num?)?.toInt() ?? 0;
+  int get photos => (j['photo_count'] as num?)?.toInt() ?? photoList.length;
+
+  /// Every answer by question id (today's daily, this week's weekly).
+  Map<String, dynamic> get answers => (j['answers'] as Map?)?.cast<String, dynamic>() ?? const {};
+
+  /// [{question, slot, label, image}]: image is a link, or a data URL while it waits offline.
+  List<Map<String, dynamic>> get photoList => [for (final p in (j['photos'] as List? ?? [])) (p as Map).cast<String, dynamic>()];
+
+  /// (label, link or data URL) for the photo thumbnails.
+  List<(String, String)> get thumbs => [for (final p in photoList) ('${p['label'] ?? p['slot'] ?? 'Photo'}', '${p['image'] ?? ''}')];
   double? get weight => _num(metrics['weight']);
   double? get change => _num(j['change_kg']);
   int get changeWeeks => (j['change_weeks'] as num?)?.toInt() ?? 1;
