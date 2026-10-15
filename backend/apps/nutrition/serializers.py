@@ -264,7 +264,7 @@ class FoodLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = FoodLogEntry
         fields = ["id", "date", "logged_at", "meal_name", "meal", "food", "name", "quantity", "unit_name", "grams",
-                  "kcal", "protein", "carbs", "fat", "source", "swapped_from"]
+                  "kcal", "protein", "carbs", "fat", "source", "swapped_from", "reason"]
         read_only_fields = ["date", "logged_at", "name", "kcal", "protein", "carbs", "fat", "grams", "source",
                             "swapped_from"]
 
@@ -282,6 +282,9 @@ class LogFoodSerializer(serializers.Serializer):
     protein = serializers.DecimalField(max_digits=6, decimal_places=1, min_value=0, required=False)
     carbs = serializers.DecimalField(max_digits=6, decimal_places=1, min_value=0, required=False)
     fat = serializers.DecimalField(max_digits=6, decimal_places=1, min_value=0, required=False)
+    unit_name = serializers.CharField(max_length=40, required=False, allow_blank=True)
+    off_plan = serializers.BooleanField(required=False, default=False)
+    reason = serializers.ChoiceField(choices=["", "Ate out", "Party", "Travelling"], required=False, default="")
 
     def validate(self, attrs):
         if not attrs.get("food") and not attrs.get("kcal"):
@@ -291,6 +294,29 @@ class LogFoodSerializer(serializers.Serializer):
         if unit and attrs.get("food") and unit.food_id != attrs["food"].id:
             raise serializers.ValidationError({"unit": ["That unit belongs to another food."]})
         return attrs
+
+
+class CustomFoodSerializer(serializers.Serializer):
+    """Log food → Create custom food: values for one serving."""
+
+    name = serializers.CharField(max_length=120)
+    serving = serializers.CharField(max_length=40)
+    kcal = serializers.DecimalField(max_digits=7, decimal_places=1, min_value=1, max_value=5000)
+    protein = serializers.DecimalField(max_digits=6, decimal_places=1, min_value=0, max_value=500, default=0)
+    carbs = serializers.DecimalField(max_digits=6, decimal_places=1, min_value=0, max_value=500, default=0)
+    fat = serializers.DecimalField(max_digits=6, decimal_places=1, min_value=0, max_value=500, default=0)
+
+    def validate_name(self, v):
+        v = " ".join(v.split())
+        if len(v) < 2:
+            raise serializers.ValidationError("Enter the food name.")
+        return v
+
+    def validate_serving(self, v):
+        v = " ".join(v.split())
+        if not v:
+            raise serializers.ValidationError("Enter the serving, e.g. 1 katori.")
+        return v
 
 
 DIETS = Diet

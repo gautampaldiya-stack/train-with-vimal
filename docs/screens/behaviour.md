@@ -1148,19 +1148,23 @@ Pichhle dinon ka compare bhi dikhta hai (`1,610 / 1,702 / 1,580 / 1,655 kcal`).
 
 ---
 
-### 4.5 Log food — `ClientFoodLog`
+### 4.5 Log food — `ClientFoodLog` / `ClientFoodLogWeb` (built, route `/food/log?meal=`)
 
-`Add to` — kis meal me daalna hai. Search + groups (`All` · `Protein` · `Carbs` · `Fats` · `Veg` · `Fruits` · `Dairy` · `Indian dishes` · `My foods`). Recent list: Oats, Whey protein, Greek yogurt, Paneer, Brown rice (cooked), Sprouts chaat, Tofu (firm), Whole wheat roti.
+Header: back (→ `/food`), chhota `Log food`, aur `Add to Snack ▾` — tap pe meal picker (phone sheet, web menu "ADD TO"): har meal `Breakfast · 8:00 am`, niche `Plan: Oats, Whey…` ya `260 kcal added now`, tick on the picked one. Default = URL ka `meal`, warna aaj ka pehla khula meal.
 
-Food pe `+` se add. Tags — `Mine` (custom food) aur `Off-plan` (amber, plan me nahi tha). `Show all N foods`. Khali pe *"Nothing added yet. Tap + on a food."*
+Search (44 high, *"Search food, e.g. paneer, dal, roti"*, clear ×), `Try` chips paneer / dal / roti / rajma, tabs `All` · `Recent` · `My foods`. Count line: *"41 foods in Aman's library and yours"* / *"N results for "q""* / *"Foods you logged lately"* / *"Foods you created"*. Pehle 8 rows, phir `Show all N foods` (API 25 ka page, `Show more foods`).
 
-**`Can't find the exact food?`** — cap *"Quick add the numbers, or save a custom food for next time."*
-- `Quick add` — sirf kcal (+ optional P/C/F). kcal khali ho to toast *"Enter the calories first — Protein, carbs and fat are optional"* (`warn`).
-- `Create custom food` — naam, per-100 g values, serving units. `Save food` → toast *"Paneer bhurji saved to My foods — Tap + to log it"*.
+| Control | Click pe |
+|---|---|
+| Food row ka `+` | Turant us meal me log (outbox, offline bhi). Button green tick, toast *"Apple added to Lunch — 1 piece · 94 kcal"* + Undo. Dobara tap = remove |
+| Food ka naam | Portion sheet — bada stepper (number tap karke type bhi), `= 150 g`, unit chips (grams + food ke units, grams same rehte hai), kcal/P/C/F cells, `Add to Lunch` |
+| Added card ka × | Entry delete, toast *"Apple removed — Taken out of Lunch"* (`del`) + Undo |
+| `Done · back to meal plan` | `/food` |
 
-`Done · back to meal plan`.
-
----
+**`Can't find the exact food?`** — Calories (step 25), Protein / Carbs / Fat (step 1). Har box me − / + rehte hai, **aur number tap karo to text field khulta hai, type karke Enter ya bahar tap** (Gautam). Same steppers Create custom food aur Edit portions me.
+- `Quick add` — kcal zaroori; khali pe toast *"Enter the calories first — Protein, carbs and fat are optional"* (`warn`). Toast *"Quick add · 150 kcal to Lunch"*.
+- `Create custom food` — sheet: Name, Serving (`1 katori`), 4 steppers (ek serving ke), `Save food` → toast *"X saved to My foods — Tap + to log it"*, tab My foods.
+- `Off-plan meal` tick + chips `Ate out` / `Party` / `Travelling` — jo add hoga woh `Off-plan` (amber tag) + reason, coach ko dikhta hai.
 
 ### 4.6 Nutrition (log view) — `ClientNutrition`
 
@@ -1304,8 +1308,14 @@ Swaps aur portions sirf **aaj** ke liye lagte hai (purane/aage ke din pe plan ka
 
 Web (1440) pe same cheezein: left column me ring + week + water, right column me tabs aur meal cards, sheets beech me centred modal (520 px).
 
-Faisla baaki hai — ye screen rakhna hai to purana `ClientNutrition` hat jayega aur Food/Nutrition nav links yahan point karenge.
+Faisla ho gaya (Gautam, 2026-10-15): yahi combined page rahega.
 
+
+**Built (2026-10-15, route `/food`, D-20).** Gautam ke changes:
+- `Mark as eaten` ab dropdown hai (Edit portions ke right): `Upload photo and mark as eaten` (camera / gallery, photo optional) ya `Mark as eaten without a photo`. Photo meal card par chhota thumbnail, Food log row par thumbnail, details sheet me badi; tap pe full-size viewer.
+- Web (700 px se upar): header, week strip aur tabs fixed; sirf meal cards (aur left column) scroll hote hai. Usse chhota = ek column, poora page scroll.
+- Food log me har plan meal ek row, aur har extra food (search / quick add / off-plan) alag row.
+- Purane `ClientFood` aur `ClientNutrition` boards ki jagah yahi page hai; nav ka Food / Nutrition `/food` kholta hai.
 ---
 
 ## 5. Login, join link aur onboarding

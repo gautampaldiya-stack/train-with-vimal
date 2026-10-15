@@ -1,3 +1,4 @@
+import uuid
 from decimal import Decimal
 
 from django.conf import settings
@@ -177,6 +178,11 @@ class MealPlanAssignment(TimeStampedModel):
         indexes = [models.Index(fields=["client", "status"])]
 
 
+def meal_photo_path(instance, filename):
+    ext = (filename.rsplit(".", 1)[-1] if "." in filename else "jpg").lower()[:5]
+    return f"meals/{instance.client_id}/{uuid.uuid4().hex}.{ext}"
+
+
 class MealDayState(TimeStampedModel):
     """A client's day for one planned meal: logged / skipped, today's portions and swaps.
     Swaps and portions only ever apply to that one day (design rule)."""
@@ -193,6 +199,7 @@ class MealDayState(TimeStampedModel):
     portions = models.JSONField(default=dict, blank=True)  # {meal_item_id: quantity}
     swaps = models.JSONField(default=dict, blank=True)  # {meal_item_id: {"food": id, "quantity": q}}
     logged_at = models.DateTimeField(null=True, blank=True)
+    photo = models.ImageField(upload_to=meal_photo_path, null=True, blank=True)  # optional, sent with "Mark as eaten"
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["client", "date", "meal"], name="uniq_meal_day")]
@@ -222,6 +229,7 @@ class FoodLogEntry(TimeStampedModel):
     fat = models.DecimalField(max_digits=6, decimal_places=1, default=Decimal("0"))
     source = models.CharField(max_length=10, choices=Source.choices, default=Source.PLAN)
     swapped_from = models.CharField(max_length=120, blank=True, default="")
+    reason = models.CharField(max_length=20, blank=True, default="")  # off-plan: "Ate out", "Party", "Travelling"
 
     class Meta:
         ordering = ["logged_at"]

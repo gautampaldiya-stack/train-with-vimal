@@ -23,3 +23,4 @@ One file per decision. Add a new file for every new decision (next number), and 
 | [D-18](0018-habits-page-week-grid.md) | Habits & supplements page: week grid from the server, water through the water log | 2026-10-15 |
 | [D-19](0019-checkins-page.md) | Check-ins page: due Sunday 6 pm, missed rows from the server, photos through the outbox | 2026-10-15 |
 | [D-17](0017-train-day-tap-history-pause.md) | Train: day tap, one-exercise history, Use last time, timer stops when leaving | 2026-10-15 |
+| [D-20](0020-food-page-photo-offplan-custom.md) | Food page: meal photo with Mark as eaten, off-plan reason, custom food per serving | 2026-10-15 |

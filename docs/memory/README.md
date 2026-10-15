@@ -9,7 +9,7 @@ Things a new person (or a new Claude session) must know. Update when Gautam deci
 - Login = email or mobile, with password.
 - Messages now: email + in-app + push + realtime. WhatsApp/SMS later via `.env`.
 - No SaaS / independent coaches.
-- Client Food tab = combined `ClientMealNutrition` page.
+- Client Food tab = combined `ClientMealNutrition` page (`/food`); `ClientFood` / `ClientNutrition` boards are replaced. Mark as eaten is a dropdown with an optional photo; web keeps tabs fixed and scrolls only the meal cards; every stepper number can be typed (Gautam, 2026-10-15).
 - Store data in full detail as the screens show.
 - Client logs (food, workouts, habits, water, check-ins) must work offline and sync later without duplicates.
 - Git: `working` → `develop` → `main`. Commits by Gautam only, no Claude names. Claude pushes, Gautam pulls and tests.

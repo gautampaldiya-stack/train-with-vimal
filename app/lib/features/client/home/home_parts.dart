@@ -233,23 +233,26 @@ class ChAvatar extends StatelessWidget {
 
 /// `ch-ring`: kcal ring, black arc on a grey track.
 class ChRing extends StatelessWidget {
-  const ChRing({super.key, required this.ratio, required this.value, required this.label});
+  const ChRing({super.key, required this.ratio, required this.value, required this.label, this.color = AppColors.text, this.valueColor, this.size = 92, this.valueSize = 18});
   final double ratio;
   final String value, label;
+  final Color color;
+  final Color? valueColor;
+  final double size, valueSize;
   @override
   Widget build(BuildContext context) => SizedBox(
-        width: 92,
-        height: 92,
+        width: size,
+        height: size,
         child: Stack(alignment: Alignment.center, children: [
           Positioned.fill(
             child: TweenAnimationBuilder<double>(
               tween: Tween(end: ratio.clamp(0.0, 1.0)),
               duration: const Duration(milliseconds: 300),
-              builder: (_, v, _) => CustomPaint(painter: _RingPainter(v)),
+              builder: (_, v, _) => CustomPaint(painter: _RingPainter(v, color)),
             ),
           ),
           Column(mainAxisSize: MainAxisSize.min, children: [
-            Text(value, style: AppText.s(18, W.w8)),
+            Text(value, style: AppText.s(valueSize, W.w8, color: valueColor ?? AppColors.text)),
             Text(label, style: AppText.s(11, W.w4, color: AppColors.muted)),
           ]),
         ]),
@@ -257,8 +260,9 @@ class ChRing extends StatelessWidget {
 }
 
 class _RingPainter extends CustomPainter {
-  _RingPainter(this.ratio);
+  _RingPainter(this.ratio, this.color);
   final double ratio;
+  final Color color;
   @override
   void paint(Canvas canvas, Size size) {
     final k = size.width / 80;
@@ -269,11 +273,11 @@ class _RingPainter extends CustomPainter {
       ..strokeWidth = 8 * k
       ..strokeCap = StrokeCap.round;
     canvas.drawCircle(c, r, p..color = AppColors.barTrack);
-    if (ratio > 0) canvas.drawArc(Rect.fromCircle(center: c, radius: r), -math.pi / 2, 2 * math.pi * ratio, false, p..color = AppColors.text);
+    if (ratio > 0) canvas.drawArc(Rect.fromCircle(center: c, radius: r), -math.pi / 2, 2 * math.pi * ratio, false, p..color = color);
   }
 
   @override
-  bool shouldRepaint(_RingPainter old) => old.ratio != ratio;
+  bool shouldRepaint(_RingPainter old) => old.ratio != ratio || old.color != color;
 }
 
 /// Dashed 16px circle (`.ch-d.rest .ch-dm`).

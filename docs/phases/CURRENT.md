@@ -103,3 +103,11 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
 ## How to continue
 - Read `CLAUDE.md`, then this file, then the phase file for the current phase.
 - For a screen: open `design/screens/<Board>.dc.html` (+ Web/Mobile variant), read its section in `docs/screens/behaviour.md`, build it, tick it in the phase file, update this note, commit as Gautam, push `working`.
+
+## Food (built 2026-10-15, D-20)
+- `/food` = combined Food page (ClientMealNutrition + Web), `/food/log?meal=` = Log food (ClientFoodLog + Web).
+  Code in `app/lib/features/client/food/` (model, parts incl. typeable `NumStepper`, sheets, screens).
+- Mark as eaten ▾ with optional photo (data URL with the eat op, outbox); photo on card, log row, details.
+- Web ≥ 700 px content: header, strip, tabs fixed; lists scroll. Checked 390, 600, 768, 900, 1024, 1280, 1440.
+- Old boards ClientFood / ClientNutrition are replaced by this page (not built on purpose).
+- Next: remaining client tabs (Progress, More), then trainer / admin boards.

@@ -87,7 +87,7 @@ Future<void> showLogFoodSheet(BuildContext context, HomeController c, void Funct
           Hover(
             onTap: () {
               Navigator.of(ctx).pop();
-              context.go('/food');
+              context.go('/food/log');
             },
             builder: (_, h, _) => Container(
               height: 42,

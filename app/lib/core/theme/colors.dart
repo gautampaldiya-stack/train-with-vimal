@@ -41,6 +41,7 @@ abstract final class AppColors {
 
   // Login / setup boards (wl-*)
   static const amberBg = Color(0xFFFFF4DB), amberText = Color(0xFFA15C00), amberSolid = Color(0xFFF59E0B);
+  static const amberLine = Color(0xFFF6D99B), amberDeep = Color(0xFF8A5300); // off-plan chip on
   static const sky = Color(0xFF4FB8EE), skyMid = Color(0xFF2F8FE6), skySoft = Color(0xFFE3F3FD), skyFade = Color(0xFFF7FBFE);
   static const brandSoft = Color(0xFFEEF3FD); // web login side panel
   static const purpleBg = Color(0xFFF1ECFE), purpleText = Color(0xFF6D28D9); // ch-ic purple
@@ -98,6 +99,10 @@ abstract final class AppColors {
   static const offA = Color(0xFFF3F3F0), offB = Color(0xFFFAFAF8); // not started stripes
   static const futCell = Color(0xFFF5F5F2), futLine = Color(0xFFD6D6D0), futLegend = Color(0xFFC9C9C3);
   static const lowText = Color(0xFF8A4B00); // running low
+
+  // Food board (`nv-*`)
+  static const nvCarbs = Color(0xFF38BDF8), nvFat = Color(0xFFF97316); // macro bars on the Food page
+  static const wkBar = Color(0xFFD7DEEA), wkToday = Color(0xFF93B4F5), wkHi = Color(0xFFFCD38A); // This week bars; wkToday is also the target line
 
   // Check-ins board (`ck-*`)
   static const replyBg = Color(0xFFF2F7F3); // coach reply under a row / in the sheet

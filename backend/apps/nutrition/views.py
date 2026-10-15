@@ -1,4 +1,5 @@
 from datetime import timedelta
+from decimal import Decimal
 
 from django.db import transaction
 from django.db.models import Count, Q
@@ -18,14 +19,16 @@ from apps.activity.services import log as activity_log
 from apps.clients.services import get_visible_client, visible_clients
 from apps.common.mixins import SoftDeleteViewMixin
 from apps.common.permissions import HasTrainerPermission, IsClient, IsStaff
-from apps.common.utils import sync_day, sync_time
+from apps.common.utils import data_url_file, sync_day, sync_time
 
 from . import importer, services
 from .models import (
     FOOD_GROUPS,
+    Diet,
     Food,
     FoodImportJob,
     FoodLogEntry,
+    FoodUnit,
     Meal,
     MealDayState,
     MealItem,
@@ -34,6 +37,7 @@ from .models import (
 )
 from .serializers import (
     UNIT_SUGGESTIONS,
+    CustomFoodSerializer,
     FoodLogSerializer,
     FoodPickSerializer,
     FoodSerializer,
@@ -382,7 +386,7 @@ class MyFoodView(APIView):
 
     def get(self, request):
         day = parse_date(request.query_params.get("date") or "") or timezone.localdate()
-        return Response(services.day_view(request.user, day))
+        return Response(services.day_view(request.user, day, request))
 
 
 class MyMealActionView(APIView):
@@ -401,7 +405,9 @@ class MyMealActionView(APIView):
             raise serializers.ValidationError("Swaps and portions only apply to today.")
         plan = mp.plan
         if op == "eat":
-            services.mark_eaten(request.user, meal, day)
+            photo = request.data.get("photo")  # optional: a picture of the meal, as a data URL (works offline)
+            services.mark_eaten(request.user, meal, day,
+                                photo=data_url_file(photo, f"meal-{meal.id}") if photo else None)
         elif op in ("unlog", "unskip"):
             services.unmark(request.user, meal, day)
         elif op == "skip":
@@ -451,7 +457,7 @@ class MyMealActionView(APIView):
             st.save()
         else:
             raise serializers.ValidationError("Unknown action.")
-        return Response(services.day_view(request.user, day))
+        return Response(services.day_view(request.user, day, request))
 
 
 class MySwapOptionsView(APIView):
@@ -486,6 +492,9 @@ class MyFoodLogViewSet(mixins.CreateModelMixin, mixins.DestroyModelMixin, viewse
         food = d.get("food")
         if food and food.owner_client_id and food.owner_client_id != request.user.id:
             raise PermissionDenied("That food is not yours.")
+        name = d.pop("unit_name", "")
+        if food and not d.get("unit") and name and name != "g":  # Undo of a deleted entry sends the unit by name
+            d["unit"] = food.units.filter(name=name).first()
         day = sync_day(request.data.get("date"))
         e = services.log_food(request.user, day=day, **{k: v for k, v in d.items()})
         if request.data.get("logged_at"):
@@ -547,6 +556,24 @@ class MyFoodSearchViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, viewse
                 break
         foods = {f.id: f for f in self.get_queryset().filter(id__in=ids)}
         return Response(FoodPickSerializer([foods[i] for i in ids if i in foods], many=True).data)
+
+    def create(self, request, *args, **kwargs):
+        if "serving" not in request.data:
+            return super().create(request, *args, **kwargs)
+        # "Create custom food" on Log food: name, a serving ("1 katori") and its calories and macros.
+        s = CustomFoodSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+        d = s.validated_data
+        grams = max(Decimal(100), d["protein"] + d["carbs"] + d["fat"])  # one serving, sized so per-100 g stays valid
+        f = Decimal(100) / grams
+        food = Food.objects.create(name=d["name"], group="other", diet=Diet.VEG, source=Food.Source.CLIENT,
+                                   owner_client=request.user, created_by=request.user, kcal=d["kcal"] * f,
+                                   protein=d["protein"] * f, carbs=d["carbs"] * f, fat=d["fat"] * f,
+                                   default_quantity=1)
+        unit = FoodUnit.objects.create(food=food, name=d["serving"], grams=grams)
+        food.default_unit = unit
+        food.save(update_fields=["default_unit"])
+        return Response(FoodPickSerializer(food).data, status=201)
 
     def perform_create(self, serializer):
         serializer.save(source=Food.Source.CLIENT, owner_client=self.request.user, created_by=self.request.user)

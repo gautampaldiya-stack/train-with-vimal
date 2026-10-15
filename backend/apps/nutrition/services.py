@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 
 from django.db import transaction
-from django.db.models import Sum
+from django.db.models import Count, Sum
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
@@ -185,8 +185,14 @@ def _option_for(meal, state):
 
 
 @transaction.atomic
-def mark_eaten(client, meal, day):
+def mark_eaten(client, meal, day, photo=None):
+    """Logs a planned meal. [photo] (optional) is a picture of what was eaten."""
     state, _ = MealDayState.objects.get_or_create(client=client, date=day, meal=meal)
+    if photo is not None:
+        if state.photo:
+            state.photo.delete(save=False)
+        state.photo = photo
+        state.save(update_fields=["photo", "updated_at"])
     if state.status == MealDayState.Status.LOGGED:
         return state
     opt = _option_for(meal, state)
@@ -208,7 +214,10 @@ def unmark(client, meal, day):
         FoodLogEntry.objects.filter(client=client, date=day, meal=meal, source=FoodLogEntry.Source.PLAN).delete()
         state.status = ""
         state.logged_at = None
-        state.save(update_fields=["status", "logged_at", "updated_at"])
+        if state.photo:
+            state.photo.delete(save=False)
+        state.photo = None
+        state.save(update_fields=["status", "logged_at", "photo", "updated_at"])
     return state
 
 
@@ -221,7 +230,8 @@ def skip(client, meal, day):
 
 
 def log_food(client, *, meal_name, food=None, quantity=1, unit=None, name="", kcal=None, protein=0, carbs=0,
-             fat=0, day=None):
+             fat=0, day=None, off_plan=False, reason=""):
+    """[off_plan]: the client ticked "Off-plan meal" (party, eating out), so the entry is marked for the coach."""
     day = day or timezone.localdate()
     mp = _active_plan(client, day)
     if food is not None:
@@ -234,11 +244,14 @@ def log_food(client, *, meal_name, food=None, quantity=1, unit=None, name="", kc
         return FoodLogEntry.objects.create(
             client=client, date=day, meal_name=meal_name, food=food, name=food.name, quantity=quantity,
             unit_name=unit.name if unit else "g", grams=grams, kcal=m["kcal"], protein=m["protein"],
-            carbs=m["carbs"], fat=m["fat"],
-            source=FoodLogEntry.Source.PLAN if food.id in planned_ids else FoodLogEntry.Source.OFF_PLAN)
+            carbs=m["carbs"], fat=m["fat"], reason=reason if off_plan else "",
+            source=FoodLogEntry.Source.PLAN if food.id in planned_ids and not off_plan
+            else FoodLogEntry.Source.OFF_PLAN)
     return FoodLogEntry.objects.create(client=client, date=day, meal_name=meal_name, name=name or "Quick add",
                                        quantity=1, unit_name="serving", kcal=kcal, protein=protein or 0,
-                                       carbs=carbs or 0, fat=fat or 0, source=FoodLogEntry.Source.QUICK_ADD)
+                                       carbs=carbs or 0, fat=fat or 0, reason=reason if off_plan else "",
+                                       source=FoodLogEntry.Source.OFF_PLAN if off_plan
+                                       else FoodLogEntry.Source.QUICK_ADD)
 
 
 def copy_yesterday(client, day=None):
@@ -307,8 +320,11 @@ def pill_for(meal, state, day, now):
     return "next"
 
 
-def day_view(client, day):
+def day_view(client, day, request=None):
     """Food tab: ring, plan meals with pills, food log, water, week bars."""
+    def url(f):
+        return (request.build_absolute_uri(f.url) if request else f.url) if f else None
+
     today = timezone.localdate()
     now = timezone.localtime()
     mp = _active_plan(client, day)
@@ -339,7 +355,9 @@ def day_view(client, day):
                 "option": opt.id if opt else None,
                 "options": [{"id": o.id, "name": o.name, "is_default": o.is_default} for o in meal.options.all()],
                 "items": items, "kcal": sum(i["kcal"] for i in items),
-                "logged_at": st.logged_at if st else None,
+                "protein": round(sum(i["protein"] for i in items), 1), "carbs": round(sum(i["carbs"] for i in items), 1),
+                "fat": round(sum(i["fat"] for i in items), 1),
+                "logged_at": st.logged_at if st else None, "photo": url(st.photo) if st else None,
             })
     entries = list(FoodLogEntry.objects.filter(client=client, date=day).order_by("logged_at"))
     eaten = totals(client, day)
@@ -349,11 +367,21 @@ def day_view(client, day):
     water = WaterLog.objects.filter(client=client, date=today).first()
     monday = day - timedelta(days=day.weekday())
     week = []
+    n_meals = plan.meals.count() if plan else 0
+    logged = {}
+    for d, n in (MealDayState.objects.filter(client=client, date__range=(monday, monday + timedelta(days=6)),
+                                             status=MealDayState.Status.LOGGED)
+                 .values_list("date").annotate(n=Count("id"))):
+        logged[d] = n
     for i in range(7):
         d = monday + timedelta(days=i)
-        week.append({"date": d, **totals(client, d)})
+        week.append({"date": d, **totals(client, d), "meals_logged": logged.get(d, 0), "meals": n_meals,
+                     "done": n_meals > 0 and logged.get(d, 0) >= n_meals})
+    photos = {m["id"]: m["photo"] for m in meals if m.get("photo")}
+    coach = getattr(getattr(client, "client_profile", None), "trainer", None)
     return {
         "date": day, "today": day == today, "can_log": day == today,
+        "coach": coach.first_name if coach else "",
         "plan": {"id": plan.id, "name": plan.name, "kcal": plan.kcal_target, "protein": plan.protein_g,
                  "carbs": plan.carbs_g, "fat": plan.fat_g, "fibre": plan.fibre_g, "water_ml": plan.water_ml,
                  "version_note": mp.version_note, "allow_swaps": plan.allow_swaps,
@@ -365,7 +393,9 @@ def day_view(client, day):
         "meals": meals,
         "log": [{"id": e.id, "time": e.logged_at, "meal_name": e.meal_name, "meal": e.meal_id, "name": e.name,
                  "quantity": float(e.quantity), "unit": e.unit_name, "kcal": e.kcal, "protein": float(e.protein),
-                 "carbs": float(e.carbs), "fat": float(e.fat), "source": e.source,
+                 "carbs": float(e.carbs), "fat": float(e.fat), "source": e.source, "food": e.food_id,
+                 "grams": float(e.grams) if e.grams is not None else None, "reason": e.reason,
+                 "photo": photos.get(e.meal_id) if e.source == "plan" else None,
                  "swapped_from": e.swapped_from} for e in entries],
         "water": {"ml": water.ml if water else 0, "goal_ml": plan.water_ml if plan else 3000},
         "week": week,

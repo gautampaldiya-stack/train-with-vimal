@@ -944,6 +944,7 @@ A client's day for one planned meal: logged / skipped, today's portions and swap
 | `portions` | JSONField |  |
 | `swaps` | JSONField |  |
 | `logged_at` | DateTimeField | optional |
+| `photo` | FileField | optional |
 
 Constraints: uniq_meal_day
 
@@ -971,6 +972,7 @@ Everything eaten, one row per food. Big table: always read by (client, date).
 | `fat` | DecimalField |  |
 | `source` | CharField | choices: plan, off_plan, quick_add |
 | `swapped_from` | CharField |  |
+| `reason` | CharField |  |
 
 ### WaterLog
 

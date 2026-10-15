@@ -58,3 +58,24 @@ def sync_time(value):
     if timezone.is_naive(t):
         t = timezone.make_aware(t)
     return min(t, now)
+
+
+def data_url_file(item, name, field="photo"):
+    """A photo the app sent as a data URL ("data:image/jpeg;base64,…"), so it can wait in the offline outbox."""
+    import base64
+    import binascii
+
+    from django.core.files.base import ContentFile
+    from rest_framework.exceptions import ValidationError
+
+    head, _, body = str(item).partition(",")
+    ext = {"image/png": "png", "image/webp": "webp"}.get(head[5:].split(";")[0], "jpg")
+    if not head.startswith("data:image/") or not body:
+        raise ValidationError({field: ["Send the photo as an image."]})
+    try:
+        raw = base64.b64decode(body, validate=True)
+    except (binascii.Error, ValueError):
+        raise ValidationError({field: ["Send the photo as an image."]})
+    if len(raw) > 10 * 1024 * 1024:
+        raise ValidationError({field: ["Photos can be up to 10 MB."]})
+    return ContentFile(raw, name=f"{name}.{ext}")
