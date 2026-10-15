@@ -12,7 +12,7 @@ STEPS = {
     "goal": {"goal": "fat_loss", "level": "beginner"},
     "about": {"age": 29, "height_cm": 162, "weight_kg": 78, "target_weight_kg": 68, "place": "gym"},
     "schedule": {"days": ["mon", "tue", "thu"], "session_min": 45, "wake_time": "06:30"},
-    "health": {"injuries": ["knee"], "activity": "desk", "notes": "Right knee hurts on deep squats"},
+    "health": {"injuries": ["knee"], "conditions": ["none"], "activity": "desk", "notes": "Right knee hurts on deep squats"},
     "food": {"diet": "veg", "meals_per_day": 5, "avoid": ["eggs"]},
 }
 
@@ -57,3 +57,13 @@ def test_save_and_leave_reminder():
     assert r.status_code == 200 and r.json()["remind"]["at"]
     r = c.delete("/api/v1/me/onboarding/", {"remind": "never"}, format="json")
     assert r.status_code == 400
+
+
+def test_heart_condition_needs_doctor_ok():
+    new_client()
+    c = login("new.onb@example.com")
+    body = {"injuries": ["none"], "conditions": ["heart"], "activity": "desk", "doctor_ok": False}
+    r = c.post("/api/v1/me/onboarding/", {"step": "health", "data": body}, format="json")
+    assert r.status_code == 400 and "doctor_ok" in str(r.json()["error"]["fields"])
+    r = c.post("/api/v1/me/onboarding/", {"step": "health", "data": {**body, "doctor_ok": True}}, format="json")
+    assert r.status_code == 200

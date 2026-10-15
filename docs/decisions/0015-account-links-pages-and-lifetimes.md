@@ -22,13 +22,21 @@
 4. **"This is not me"** on the login link page calls `POST auth/login-link/not-me/`: the link is used up and the coach
    gets a `login_link_not_me` notification.
 
+5. **Forgot password says when no account matches** ("No account uses this email. Check for a typo.", code
+   `no_account`), as the board shows. The `otp` rate limit stops anyone testing many emails.
+6. **A used or expired login link still names the coach** (`fields.coach_first_name`, `coach_phone`), so the page can
+   offer "Message Aman". The invite link page gets the coach's phone for "Ask Aman for a new link" (WhatsApp).
+7. **Health step:** `conditions` is required; with `heart` the doctor's OK box must be ticked (board `ClientHealth`).
+8. **Permissions** are asked after the email is confirmed (notifications). Camera and photos use the same page when
+   first needed (`/permissions?kind=camera&next=…`). The answer is kept on the device.
+
 ## Pages and routes (Flutter)
 | Route | Board | Who |
 |---|---|---|
 | `/forgot` | ClientResetPassword (forgot, sent) | signed out |
 | `/reset-password?token=` | ClientResetPassword (set, done, bad) | anyone (from email) |
 | `/join/:code` | ClientJoinLink (inv, form, made, bad) | signed out |
-| `/login-link?token=` | ClientJoinLink (log, ready, bad) | anyone (from email / SMS) |
+| `/start?token=` | ClientJoinLink (log, ready, bad) | anyone (from email / SMS); the board shows `trainwithvimal.app/start/…` |
 | `/verify` | ClientVerifyEmail (inbox, ok) | signed in, email not verified |
 | `/verify-email?token=` | ClientVerifyEmail (checking, ok, bad) | anyone (from email) |
 | `/permissions` | ClientPermissions | signed-in client, after verify |

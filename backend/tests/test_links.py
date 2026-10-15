@@ -15,7 +15,7 @@ def test_link_lifetimes_follow_the_boards(db):
     u = User.objects.get(email="riya@example.com")
     for purpose, minutes in [(OneTimeToken.Purpose.PASSWORD_RESET, 15), (OneTimeToken.Purpose.EMAIL_VERIFY, 24 * 60)]:
         issue_one_time_token(u, purpose)
-        row = OneTimeToken.objects.filter(user=u, purpose=purpose).latest("id")
+        row = OneTimeToken.objects.get(user=u, purpose=purpose, used_at__isnull=True)
         left = (row.expires_at - timezone.now()).total_seconds() / 60
         assert minutes - 1 < left <= minutes
 
@@ -52,3 +52,21 @@ def test_login_link_not_me_turns_the_link_off(db):
     assert r.status_code == 200
     r = _anon().post("/api/v1/auth/login-link/check/", {"token": raw}, format="json")
     assert r.status_code == 400 and r.json()["error"]["code"] == "link_used"
+
+
+def test_forgot_password_says_when_no_account_matches(db):
+    r = _anon().post("/api/v1/auth/password/forgot/", {"identifier": "nobody@example.com"}, format="json")
+    assert r.status_code == 400 and r.json()["error"]["code"] == "no_account"
+    r = _anon().post("/api/v1/auth/password/forgot/", {"identifier": "riya@example.com"}, format="json")
+    assert r.status_code == 200
+
+
+def test_used_login_link_still_names_the_coach(db):
+    from apps.accounts.models import OneTimeToken, User
+    from apps.accounts.tokens import issue_one_time_token
+
+    u = User.objects.get(email="sana@example.com")
+    raw = issue_one_time_token(u, OneTimeToken.Purpose.LOGIN_LINK)
+    _anon().post("/api/v1/auth/login-link/not-me/", {"token": raw}, format="json")
+    r = _anon().post("/api/v1/auth/login-link/check/", {"token": raw}, format="json")
+    assert r.json()["error"]["fields"]["coach_first_name"] == ["Aman"]

@@ -16,3 +16,12 @@
   side the board shows (`above`, `below`, `left`, `right`). Not Flutter's dark `Tooltip`.
 - Anything that sticks out over the page panel (like the sidebar edge button) goes in the shell's top `Stack`,
   not inside the sidebar, or the panel paints over it and eats its clicks.
+- The web app uses path URLs (`usePathUrlStrategy()` in `main.dart`), because emails link to `/reset-password?token=…`,
+  `/verify-email?token=…`, `/start?token=…` and invites to `/join/<code>`. The web server must fall back to `index.html`.
+- Link pages (`/reset-password`, `/join`, `/start`, `/verify-email`) open signed in or out and stay open after they sign
+  the person in. `/login` and `/forgot` send a signed-in person to `landingFor(me)`. A client whose email is not confirmed
+  lands on `/verify` (see `lib/app/router.dart`).
+- Account pages share pieces in `lib/features/auth/account_widgets.dart` (top row with Help, illustration box,
+  heading, badge, password strength and rules, timeline, Get the app card, resend countdown) and the desktop side
+  panels in `auth_frame.dart` (`BrandPlain`, `BrandList`). Illustrations are `assets/ill/<name>.svg`.
+- Every "set a password" field pair sends `password` and `confirm_password`.

@@ -21,36 +21,36 @@ Status: **Done** (built and checked in a browser against the board, phone and de
 | ClientFoodWeb | Not started |  |
 | ClientHabits | Not started |  |
 | ClientHabitsWeb | Not started |  |
-| ClientHealth | Not started |  |
-| ClientHealthWeb | Not started |  |
+| ClientHealth | Done | Step 4 of setup with health conditions, heart hint and doctor’s OK rule. Checked 390 + 1440. |
+| ClientHealthWeb | Done | Same code as ClientHealth, desktop steps panel. Checked 1440. |
 | ClientHome | Not started |  |
 | ClientHomeHero | Not started |  |
 | ClientHomeWeb | Not started |  |
-| ClientIntro | Not started |  |
-| ClientJoinLink | Not started | Opened from the invite link. `/join/:code` shows "This page is on the way" until built. |
-| ClientJoinLinkWeb | Not started | Opened from the invite link. `/join/:code` shows "This page is on the way" until built. |
+| ClientIntro | Done | First-open slides on phone (`twv.introSeen`), then Welcome. Checked 390. |
+| ClientJoinLink | Done | `/join/:code`: invite, create account, account created, broken link (expired / off / full / bad code). Terms sheet, Help sheet. Checked 390. |
+| ClientJoinLinkWeb | Done | Same pages with the steps side panel; also the login link `/start?token=` (set password, you’re in, used link, Details not right? sheet). Checked 1440. |
 | ClientLibrary | Not started |  |
 | ClientLibraryWeb | Not started |  |
-| ClientLogin | Partial | Welcome, Log in, Approval wait, 5 setup steps, Checklist, All set: built and browser-checked (390). Need help / Forgot password / Terms sheets and Finish later sheet: built, not browser-checked yet. |
-| ClientLoginWeb | Partial | Same screens on desktop: Log in, Approval wait, Checklist, setup step 2 browser-checked (1440). Other steps, sheets and All set on desktop: built, not browser-checked yet. |
+| ClientLogin | Partial | Welcome, Log in, Approval wait, 5 setup steps, Checklist, All set, Need help sheet: built and browser-checked (390). "Forgot password?" now opens the ClientResetPassword page (the old modal is gone). Not browser-checked yet: Terms sheet from the login board, Finish later sheet. |
+| ClientLoginWeb | Partial | Log in, Approval wait, Checklist, setup steps 2 and 4 browser-checked (1440). Not browser-checked yet: steps 1, 3, 5, All set and the sheets on desktop. |
 | ClientMealNutrition | Not started |  |
 | ClientMealNutritionWeb | Not started |  |
 | ClientMore | Not started |  |
 | ClientMoreWeb | Not started |  |
 | ClientNutrition | Not started |  |
 | ClientNutritionWeb | Not started |  |
-| ClientPermissions | Not started |  |
-| ClientPermissionsWeb | Not started |  |
+| ClientPermissions | Done | `/permissions`: ask, allowed, blocked, after email is confirmed. Camera / photos use `?kind=` when first needed. Checked 390. |
+| ClientPermissionsWeb | Done | Side panel with To ask / Allowed / Blocked / Not now pills. Checked 1440. |
 | ClientProfile | Not started |  |
 | ClientProfileMobile | Not started |  |
 | ClientProgress | Not started |  |
 | ClientProgressWeb | Not started |  |
-| ClientResetPassword | Not started | Opened from the forgot-password email link. `/reset/:token` shows "This page is on the way" until built. |
-| ClientResetPasswordWeb | Not started | Opened from the forgot-password email link. `/reset/:token` shows "This page is on the way" until built. |
+| ClientResetPassword | Done | `/forgot` (forgot, email sent, resend in 30 s) and `/reset-password?token=` (set, updated, link not valid). Checked 390. |
+| ClientResetPasswordWeb | Done | Same, desktop panel "Back in a minute". Checked 1440. |
 | ClientTrain | Not started |  |
 | ClientTrainWeb | Not started |  |
-| ClientVerifyEmail | Not started | `/verify` shows "This page is on the way" until built. |
-| ClientVerifyEmailWeb | Not started | `/verify` shows "This page is on the way" until built. |
+| ClientVerifyEmail | Done | `/verify` (inbox, resend, Change email sheet, log out) and `/verify-email?token=` (checking, verified, link not valid). Checked 390. |
+| ClientVerifyEmailWeb | Done | Same, desktop panel "Confirm your email". Checked 1440. |
 | ClientWelcome | Partial | Shares the welcome / login / setup screens with ClientLogin (same code). Check this board separately before marking Done. |
 | ClientWorkout | Not started |  |
 | ClientWorkoutWeb | Not started |  |

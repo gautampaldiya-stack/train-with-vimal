@@ -21,6 +21,10 @@ class Me {
   String? get phone => json['phone'] as String?;
   String? get avatar => json['avatar'] as String?;
   bool get emailVerified => json['email_verified'] == true;
+  String get pendingEmail => '${json['pending_email'] ?? ''}';
+
+  /// A client who signed up from an invite confirms the email first (board `ClientVerifyEmail`).
+  bool get needsVerify => role == Role.client && (email ?? '').isNotEmpty && !emailVerified;
   Role get role => switch (json['role']) { 'admin' => Role.admin, 'trainer' => Role.trainer, _ => Role.client };
   bool get isStaff => role != Role.client;
   String get status => '${json['status'] ?? 'active'}';
@@ -80,7 +84,7 @@ class Session extends ChangeNotifier {
   }
 
   /// The API knows android / ios / web. Desktop builds count as web.
-  static String get _platform => kIsWeb
+  static String get platform => kIsWeb
       ? 'web'
       : switch (defaultTargetPlatform) { TargetPlatform.android => 'android', TargetPlatform.iOS => 'ios', _ => 'web' };
 
@@ -88,7 +92,7 @@ class Session extends ChangeNotifier {
     Services.tokens.remember = keep;
     final r = await Services.api.post<Map<String, dynamic>>(
       'auth/login/',
-      {'identifier': identifier.trim(), 'password': password, 'platform': _platform, 'device_name': kIsWeb ? 'Web browser' : defaultTargetPlatform.name},
+      {'identifier': identifier.trim(), 'password': password, 'platform': platform, 'device_name': kIsWeb ? 'Web browser' : defaultTargetPlatform.name},
       null,
       false,
     );

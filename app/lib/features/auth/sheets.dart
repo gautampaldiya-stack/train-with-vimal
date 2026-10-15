@@ -2,18 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../app/services.dart';
-import '../../core/api/api_error.dart';
 import '../../core/icons/app_icons.dart';
 import '../../core/theme/theme.dart';
 import '../../core/widgets/client.dart';
 import '../../core/widgets/overlays.dart';
 
+/// Public gym contact (`gym/`), loaded once.
+Future<Map<String, dynamic>>? _gym;
+Future<Map<String, dynamic>> gymInfo() => _gym ??= Services.api.get<Map<String, dynamic>>('gym/').catchError((Object _) {
+      _gym = null;
+      return const <String, dynamic>{};
+    });
+
+/// "+917087403476" → "+91 70874 03476".
+String prettyPhone(String raw) {
+  final d = raw.replaceAll(RegExp(r'[^0-9]'), '');
+  if (d.length == 12 && d.startsWith('91')) return '+91 ${d.substring(2, 7)} ${d.substring(7)}';
+  if (d.length == 10) return '+91 ${d.substring(0, 5)} ${d.substring(5)}';
+  return raw;
+}
+
 /// "Need help?" — call, WhatsApp or email the gym (ClientLogin board, `helpO`).
 Future<void> showHelpSheet(BuildContext context) async {
-  Map<String, dynamic> gym = const {};
-  try {
-    gym = await Services.api.get<Map<String, dynamic>>('gym/');
-  } catch (_) {}
+  final gym = await gymInfo();
   if (!context.mounted) return;
   final phone = '${gym['phone'] ?? ''}'.replaceAll(RegExp(r'[^0-9+]'), '');
   final email = '${gym['email'] ?? ''}';
@@ -64,87 +75,12 @@ Future<void> showHelpSheet(BuildContext context) async {
   );
 }
 
-/// "Reset password" — email or mobile, send link, then Send again / Back to log in.
-Future<void> showForgotSheet(BuildContext context, {String initial = ''}) => showAppSheet<void>(
-      context,
-      title: 'Reset password',
-      sub: 'We will email you a link to set a new password.',
-      footerStretch: true,
-      builder: (ctx) => _Forgot(initial: initial),
-    );
-
-class _Forgot extends StatefulWidget {
-  const _Forgot({required this.initial});
-  final String initial;
-  @override
-  State<_Forgot> createState() => _ForgotState();
-}
-
-class _ForgotState extends State<_Forgot> {
-  late final _c = TextEditingController(text: widget.initial);
-  bool _sent = false, _busy = false;
-  String? _error;
-
-  Future<void> _send() async {
-    final v = _c.text.trim();
-    if (v.isEmpty) {
-      setState(() => _error = 'Type the email or mobile number you log in with.');
-      return;
-    }
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    try {
-      await Services.api.post('auth/password/forgot/', {'identifier': v}, null, false);
-      if (!mounted) return;
-      setState(() => _sent = true);
-      showToast(context, 'Reset link sent', sub: 'Check $v · valid for 15 minutes', kind: ToastKind.ok);
-    } on ApiError catch (e) {
-      if (mounted) setState(() => _error = e.field('identifier') ?? e.message);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 2),
-          child: CaField(
-            label: 'Email or mobile number',
-            hint: 'name@example.com or 98100 00000',
-            controller: _c,
-            error: _error,
-            keyboard: TextInputType.emailAddress,
-            action: TextInputAction.send,
-            autofill: const [AutofillHints.email, AutofillHints.telephoneNumber],
-            onSubmitted: (_) => _send(),
-          ),
-        ),
-        if (_sent) CaHint('Link sent to ${_c.text.trim()}. It stays valid for 15 minutes.', icon: AppIcons.check, tone: CaTone.green),
-        const SizedBox(height: 2),
-        if (_sent)
-          Row(spacing: 8, children: [
-            Expanded(child: CaButton('Send again', kind: CaBtnKind.out, loading: _busy, onPressed: _send)),
-            Expanded(child: CaButton('Back to log in', onPressed: () => Navigator.of(context).pop())),
-          ])
-        else
-          CaButton('Send reset link', loading: _busy, onPressed: _send),
-      ]);
-}
-
-/// "Terms and privacy" — the four points, then I agree.
-Future<bool?> showTermsSheet(BuildContext context) => showAppSheet<bool>(
+/// "Terms and privacy" — the four points, then I agree. [join] = the short version on the
+/// join / login link pages (board `ClientJoinLink`).
+Future<bool?> showTermsSheet(BuildContext context, {bool join = false}) => showAppSheet<bool>(
       context,
       title: 'Terms and privacy',
-      sub: 'Last updated · 1 Sep 2026',
+      sub: join ? 'The short version · last updated 1 Sep 2026' : 'Last updated · 1 Sep 2026',
       footerStretch: true,
       footer: (ctx) => [
         Row(spacing: 8, children: [
@@ -153,12 +89,7 @@ Future<bool?> showTermsSheet(BuildContext context) => showAppSheet<bool>(
         ]),
       ],
       builder: (ctx) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
-        for (final (t, s) in const [
-          ('Your data, your control', 'We keep only the data coaching needs: workouts, meals, check-ins and progress.'),
-          ('Progress photos stay private', 'Only you and your coach see them.'),
-          ('Health waiver', 'You confirm that you are fit to exercise and will tell your coach about any injury or pain.'),
-          ('Leaving', 'You can delete your account and data any time from My account.'),
-        ])
+        for (final (t, s) in join ? _joinTerms : _loginTerms)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(10)),
@@ -169,3 +100,57 @@ Future<bool?> showTermsSheet(BuildContext context) => showAppSheet<bool>(
           ),
       ]),
     );
+
+const _loginTerms = [
+  ('Your data, your control', 'We keep only the data coaching needs: workouts, meals, check-ins and progress.'),
+  ('Progress photos stay private', 'Only you and your coach see them.'),
+  ('Health waiver', 'You confirm that you are fit to exercise and will tell your coach about any injury or pain.'),
+  ('Leaving', 'You can delete your account and data any time from My account.'),
+];
+
+const _joinTerms = [
+  ('Coaching, not medical care', 'Your coach gives training and food advice. See a doctor for medical problems.'),
+  ('Your account', 'Keep your password safe. One account per person.'),
+  ('Health waiver', 'You confirm you are fit to exercise and will tell your coach about any injury or pain.'),
+  ('Your data', 'Only you and your coach see your photos and logs. We never sell your data.'),
+];
+
+/// "Need help?" on the account link pages (reset, verify, join, permissions): WhatsApp,
+/// call or email support.
+Future<void> showSupportSheet(BuildContext context) async {
+  final gym = await gymInfo();
+  if (!context.mounted) return;
+  final phone = '${gym['phone'] ?? ''}'.replaceAll(RegExp(r'[^0-9+]'), '');
+  final email = '${gym['email'] ?? ''}';
+  Future<void> open(BuildContext ctx, Uri? uri, String toast) async {
+    Navigator.of(ctx).pop();
+    if (uri == null) {
+      showToast(context, 'Not set up yet', sub: 'Ask at the front desk', kind: ToastKind.info);
+      return;
+    }
+    showToast(context, toast, sub: 'Train With Vimal support', kind: ToastKind.info);
+    await launchUrl(uri, mode: LaunchMode.externalApplication).catchError((_) => false);
+  }
+
+  Widget row(BuildContext ctx, AppIconData icon, String t, String s, Uri? uri, String toast, {bool first = false}) => CaMenuRow(
+        divider: !first,
+        lead: CaIconTile(icon: icon),
+        title: t,
+        sub: s,
+        trailing: const AppIcon(AppIcons.chevronRight, size: 16, color: AppColors.muted),
+        onTap: () => open(ctx, uri, toast),
+      );
+
+  await showAppSheet<void>(
+    context,
+    title: 'Need help?',
+    sub: 'Support is available Mon–Sat, 9 am – 9 pm.',
+    builder: (ctx) => Column(children: [
+      row(ctx, AppIcons.whatsapp, 'WhatsApp support', '${phone.isEmpty ? 'WhatsApp' : prettyPhone(phone)} · usually replies in 10 minutes',
+          phone.isEmpty ? null : Uri.parse('https://wa.me/${phone.replaceAll('+', '')}'), 'Opening WhatsApp',
+          first: true),
+      row(ctx, AppIcons.phone, 'Call support', 'Mon–Sat, 9 am – 9 pm', phone.isEmpty ? null : Uri(scheme: 'tel', path: phone), 'Calling Train With Vimal…'),
+      row(ctx, AppIcons.mail, 'Email support', email.isEmpty ? 'Email' : email, email.isEmpty ? null : Uri(scheme: 'mailto', path: email), 'Email draft opened'),
+    ]),
+  );
+}

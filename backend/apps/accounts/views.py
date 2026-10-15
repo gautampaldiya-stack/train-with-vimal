@@ -37,9 +37,14 @@ LINK_PROBLEMS = {
 }
 
 
-def _link_error(problem):
-    return Response({"error": {"code": f"link_{problem}", "message": LINK_PROBLEMS[problem]}},
-                    status=status.HTTP_400_BAD_REQUEST)
+def _link_error(problem, row=None):
+    """A used or expired login link still says whose it was, so the page can offer "Message Aman"."""
+    err = {"code": f"link_{problem}", "message": LINK_PROBLEMS[problem]}
+    cp = getattr(row.user, "client_profile", None) if row is not None else None
+    if cp and cp.trainer and row.purpose == OneTimeToken.Purpose.LOGIN_LINK:
+        err["fields"] = {"coach_first_name": [cp.trainer.first_name], "coach_full_name": [cp.trainer.full_name],
+                         "coach_phone": [cp.trainer.phone or ""]}
+    return Response({"error": err}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class AuthThrottleMixin:
@@ -156,7 +161,8 @@ class PasswordChangeView(APIView):
 
 
 class ForgotPasswordView(APIView):
-    """Always answers the same, so nobody can find out which emails have accounts."""
+    """Board `ClientResetPassword`: an unknown email gets "No account uses this email. Check for a typo."
+    (the board shows this error). The `otp` throttle keeps anyone from testing many emails."""
 
     permission_classes = [AllowAny]
     authentication_classes = []
@@ -169,10 +175,13 @@ class ForgotPasswordView(APIView):
         ident = s.validated_data["identifier"].strip()
         q = Q(email__iexact=ident) if "@" in ident else Q(phone=normalize_phone(ident))
         user = User.objects.filter(q, is_active=True).first()
-        if user and user.email:
-            token = issue_one_time_token(user, OneTimeToken.Purpose.PASSWORD_RESET)
-            emails.send_password_reset(user, token)
-        return Response({"detail": "If an account matches, we sent a reset link to its email."})
+        if user is None or not user.email:
+            return Response({"error": {"code": "no_account", "message": "No account uses this email. Check for a typo.",
+                                       "fields": {"identifier": ["No account uses this email. Check for a typo."]}}},
+                            status=status.HTTP_400_BAD_REQUEST)
+        token = issue_one_time_token(user, OneTimeToken.Purpose.PASSWORD_RESET)
+        emails.send_password_reset(user, token)
+        return Response({"detail": "We sent a reset link to your email."})
 
 
 class CheckLinkView(APIView):
@@ -188,7 +197,7 @@ class CheckLinkView(APIView):
         s.is_valid(raise_exception=True)
         row, problem = consume_one_time_token(s.validated_data["token"], self.purpose)
         if problem:
-            return _link_error(problem)
+            return _link_error(problem, row)
         u = row.user
         cp = getattr(u, "client_profile", None)
         coach = cp.trainer if cp else None

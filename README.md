@@ -74,3 +74,9 @@ flutter pub get
 flutter run -d chrome --web-port 5173 --dart-define=API_URL=http://localhost:8000
 ```
 `--web-port 5173` matches `CORS_ALLOWED_ORIGINS` in `backend/.env`. Demo logins: see `docs/phases/CURRENT.md`.
+
+`seed_demo` prints fresh demo links at the end (invite link, coach-added login link, verify email, reset password).
+Open them in the browser to try those pages. The reset link works for 15 minutes; run `seed_demo` again for new ones.
+
+The web app uses real paths (`/join/AMAN-4821`, `/reset-password?token=…`), so whatever serves `app/build/web`
+must send every unknown path to `index.html` (nginx: `try_files $uri /index.html;`). `flutter run -d chrome` does this already.

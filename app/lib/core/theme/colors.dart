@@ -40,9 +40,12 @@ abstract final class AppColors {
   static const grab = Color(0xFFD9D9D4);
 
   // Login / setup boards (wl-*)
-  static const amberBg = Color(0xFFFFF4DB), amberText = Color(0xFFA15C00);
+  static const amberBg = Color(0xFFFFF4DB), amberText = Color(0xFFA15C00), amberSolid = Color(0xFFF59E0B);
   static const sky = Color(0xFF4FB8EE), skyMid = Color(0xFF2F8FE6), skySoft = Color(0xFFE3F3FD), skyFade = Color(0xFFF7FBFE);
   static const brandSoft = Color(0xFFEEF3FD); // web login side panel
+  static const purpleBg = Color(0xFFF1ECFE), purpleText = Color(0xFF6D28D9); // ch-ic purple
+  static const dotOff = Color(0xFFCBD5E1); // intro slide dots
+  static const shadowSoft = Color(0x0A171717), shadowBlue = Color(0x142563EB); // intro picture card
   static const pickBg = Color(0xFFF7FAFF); // selected goal / diet / option card
   static const segTrack = Color(0xFFE4E4DF); // setup progress segments
   static const dayOff = Color(0xFFE8E8E4);

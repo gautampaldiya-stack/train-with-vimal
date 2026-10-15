@@ -390,8 +390,11 @@ class OnboardingStepSerializer(serializers.Serializer):
                 errors["wake_time"] = ["Use HH:MM."]
         elif step == "health":
             self._pick(d, "injuries", self.INJURIES, errors, many=True)
-            self._pick(d, "conditions", self.CONDITIONS, errors, required=False, many=True)
+            self._pick(d, "conditions", self.CONDITIONS, errors, many=True)
             self._pick(d, "activity", self.ACTIVITY, errors)
+            # board: "With a heart condition, get your doctor's OK before you start"
+            if "heart" in (d.get("conditions") or []) and not d.get("doctor_ok"):
+                errors["doctor_ok"] = ["Tick the box once your doctor clears you."]
             if len(str(d.get("notes") or "")) > 2000:
                 errors["notes"] = ["Keep it under 2000 characters."]
         elif step == "food":

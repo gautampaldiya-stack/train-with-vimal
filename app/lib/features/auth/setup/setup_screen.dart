@@ -323,6 +323,22 @@ class _SetupScreenState extends State<SetupScreen> {
             ),
           ),
       ],
+      CaQuestion('Any health conditions?', sub: '$coach plans food and training around them.'),
+      CaChips<(String, String)>(
+        options: SetupState.conditionOptions,
+        label: (x) => x.$2,
+        checkWhenOn: true,
+        isOn: (x) => st.conditions.contains(x.$1),
+        onTap: (x) {
+          final n = x.$1;
+          st.conditions = n == 'none'
+              ? (st.conditions.contains('none') ? [] : ['none'])
+              : (st.conditions.contains(n) ? (List.of(st.conditions)..remove(n)) : [...st.conditions.where((e) => e != 'none'), n]);
+          st.changed();
+        },
+      ),
+      if (st.conditions.contains('heart'))
+        CaHint('With a heart condition, get your doctor’s OK before you start. $coach checks this before your first session.', icon: AppIcons.heart, tone: CaTone.amber),
       const CaQuestion('Daily activity', sub: 'Outside your workouts.'),
       CaRadioCards(
         options: [for (final a in SetupState.activities) (a.$2, a.$3)],
@@ -339,8 +355,9 @@ class _SetupScreenState extends State<SetupScreen> {
           st.changed();
         },
         title: 'A doctor has cleared me for exercise',
-        sub: 'Tick this if you have a heart, bone or joint condition',
+        sub: st.conditions.contains('heart') ? 'Needed with a heart condition' : 'Tick this if you have a heart, bone or joint condition',
       ),
+      const CaCaption('Only you and your coach can see this.', icon: AppIcons.lock),
     ];
   }
 

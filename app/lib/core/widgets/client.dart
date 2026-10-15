@@ -55,7 +55,7 @@ class CaButton extends StatelessWidget {
                 SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: fg))
               else if (icon != null)
                 AppIcon(icon!, size: 17, color: fg),
-              Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(fs, W.w7, color: fg, h: 1))),
+              if (label.isNotEmpty) Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(fs, W.w7, color: fg, h: 1))),
               if (trailingIcon != null) AppIcon(trailingIcon!, size: 17, color: fg),
             ]),
           );
@@ -165,13 +165,14 @@ class CaCheckRow extends StatelessWidget {
   }
 }
 
-enum CaTone { blue, green, amber, gray }
+enum CaTone { blue, green, amber, gray, purple }
 
 (Color, Color) caTone(CaTone t) => switch (t) {
       CaTone.blue => (AppColors.accentSoft, AppColors.infoText),
       CaTone.green => (AppColors.okBg, AppColors.okText),
       CaTone.amber => (AppColors.amberBg, AppColors.amberText),
       CaTone.gray => (AppColors.sub, AppColors.text2),
+      CaTone.purple => (AppColors.purpleBg, AppColors.purpleText),
     };
 
 /// `wl-hint`: tinted note with an icon and an optional link at the end.

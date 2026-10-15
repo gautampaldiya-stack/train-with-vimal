@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 460">
+  <!-- ground -->
+  <ellipse cx="330" cy="430" rx="280" ry="14" fill="#e6e6ef"/>
+  <!-- paper plane + dotted trail -->
+  <path d="M40 150 C 90 110, 150 170, 200 120 S 290 70, 330 92" fill="none" stroke="#d6d6e3" stroke-width="4" stroke-dasharray="2 12" stroke-linecap="round"/>
+  <path d="M330 70 L395 92 L340 112 Z" fill="#8DBF1F"/>
+  <path d="M340 112 L350 92 L395 92 Z" fill="#6f9a12"/>
+  <path d="M340 112 L346 128 L352 100 Z" fill="#3f3d56"/>
+  <!-- back envelope -->
+  <g transform="translate(330 205)">
+    <rect x="0" y="40" width="230" height="160" rx="10" fill="#f2f2f7" stroke="#3f3d56" stroke-width="3"/>
+    <!-- letter rising -->
+    <rect x="30" y="-30" width="170" height="150" rx="8" fill="#fff" stroke="#3f3d56" stroke-width="3"/>
+    <rect x="52" y="0" width="90" height="10" rx="5" fill="#d6d6e3"/>
+    <rect x="52" y="22" width="126" height="8" rx="4" fill="#e6e6ef"/>
+    <rect x="52" y="38" width="110" height="8" rx="4" fill="#e6e6ef"/>
+    <rect x="52" y="62" width="80" height="22" rx="11" fill="#8DBF1F"/>
+    <!-- front flaps -->
+    <path d="M0 50 L115 135 L230 50 L230 190 a10 10 0 0 1 -10 10 L10 200 a10 10 0 0 1 -10 -10 Z" fill="#fff" stroke="#3f3d56" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M0 200 L95 120 M230 200 L135 120" stroke="#d6d6e3" stroke-width="3"/>
+    <!-- check badge -->
+    <circle cx="205" cy="20" r="34" fill="#8DBF1F"/>
+    <path d="M189 21 L201 33 L223 8" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <!-- phone -->
+  <g transform="translate(150 150)">
+    <rect x="0" y="0" width="150" height="270" rx="22" fill="#3f3d56"/>
+    <rect x="9" y="12" width="132" height="246" rx="15" fill="#fff"/>
+    <rect x="55" y="18" width="40" height="7" rx="3.5" fill="#3f3d56"/>
+    <rect x="22" y="44" width="106" height="14" rx="7" fill="#e6e6ef"/>
+    <!-- mail icon on screen -->
+    <rect x="47" y="76" width="56" height="40" rx="6" fill="#fff" stroke="#8DBF1F" stroke-width="4"/>
+    <path d="M49 80 L75 100 L101 80" fill="none" stroke="#8DBF1F" stroke-width="4" stroke-linejoin="round"/>
+    <rect x="30" y="134" width="90" height="9" rx="4.5" fill="#3f3d56"/>
+    <rect x="22" y="152" width="106" height="7" rx="3.5" fill="#d6d6e3"/>
+    <rect x="34" y="166" width="82" height="7" rx="3.5" fill="#d6d6e3"/>
+    <rect x="22" y="192" width="106" height="28" rx="14" fill="#8DBF1F"/>
+    <rect x="50" y="203" width="50" height="6" rx="3" fill="#fff"/>
+  </g>
+  <!-- person -->
+  <g transform="translate(70 170)">
+    <!-- legs -->
+    <path d="M28 160 L22 252 L36 252 L48 175 Z" fill="#2f2e41"/>
+    <path d="M52 160 L66 252 L80 252 L72 165 Z" fill="#2f2e41"/>
+    <path d="M14 250 h26 a6 6 0 0 1 6 6 v2 h-34 z" fill="#090814"/>
+    <path d="M62 250 h26 a6 6 0 0 1 6 6 v2 h-34 z" fill="#090814"/>
+    <!-- body -->
+    <path d="M22 70 Q48 56 76 70 L82 166 L18 166 Z" fill="#8DBF1F"/>
+    <!-- arm pointing to phone -->
+    <path d="M70 76 Q96 96 110 78 L118 84 Q100 118 64 100 Z" fill="#8DBF1F"/>
+    <circle cx="118" cy="80" r="7" fill="#9f616a"/>
+    <!-- other arm -->
+    <path d="M26 78 Q10 120 22 150 L32 148 Q26 120 38 92 Z" fill="#7aa81a"/>
+    <circle cx="27" cy="152" r="6.5" fill="#9f616a"/>
+    <!-- neck + head -->
+    <rect x="42" y="50" width="14" height="16" rx="4" fill="#9f616a"/>
+    <circle cx="50" cy="34" r="22" fill="#9f616a"/>
+    <path d="M28 32 Q30 6 54 10 Q74 12 72 34 Q64 22 48 24 Q36 26 30 38 Z" fill="#090814"/>
+  </g>
+  <!-- sparkles -->
+  <g fill="#8DBF1F">
+    <circle cx="590" cy="150" r="6"/>
+    <circle cx="300" cy="120" r="4" fill="#d6d6e3"/>
+    <circle cx="120" cy="120" r="5" fill="#d6d6e3"/>
+    <path d="M560 105 l4 10 l10 4 l-10 4 l-4 10 l-4 -10 l-10 -4 l10 -4 z"/>
+  </g>
+</svg>

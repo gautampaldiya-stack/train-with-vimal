@@ -48,7 +48,7 @@ def send_password_reset(user, token):
 
 
 def send_login_link(user, token, template_key="client-invite"):
-    url = link("login-link", token)
+    url = link("start", token)
     tpl = MessageTemplate.objects.filter(key=template_key).first()
     ctx = context_for(user)
     if tpl and tpl.channels.get("email", {}).get("on"):

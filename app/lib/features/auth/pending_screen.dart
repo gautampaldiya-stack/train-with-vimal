@@ -10,6 +10,7 @@ import '../../core/icons/app_icons.dart';
 import '../../core/theme/theme.dart';
 import '../../core/widgets/client.dart';
 import '../../core/widgets/overlays.dart';
+import 'account_widgets.dart';
 import 'auth_frame.dart';
 import 'setup/setup_state.dart';
 import 'sheets.dart';
@@ -164,9 +165,7 @@ class _PendingScreenState extends State<PendingScreen> with WidgetsBindingObserv
               Expanded(child: Text('What happens next', style: AppText.s(15, W.w8))),
               CaPill(ok ? 'Approved' : 'In review', tone: ok ? CaTone.green : CaTone.amber),
             ]),
-            Column(children: [
-              for (final (i, t) in tl.indexed) _TimelineItem(title: t.$1, sub: t.$2, done: t.$3, current: t.$4, last: i == tl.length - 1),
-            ]),
+            CaTimeline(tl),
             if (!ok) CaButton(_checked ? 'Check again' : 'Check status', kind: CaBtnKind.out, small: true, expand: false, loading: _busy, onPressed: _check),
           ]),
         ),
@@ -181,43 +180,4 @@ class _PendingScreenState extends State<PendingScreen> with WidgetsBindingObserv
       ],
     );
   }
-}
-
-class _TimelineItem extends StatelessWidget {
-  const _TimelineItem({required this.title, required this.sub, required this.done, required this.current, required this.last});
-  final String title, sub;
-  final bool done, current, last;
-
-  @override
-  Widget build(BuildContext context) => IntrinsicHeight(
-        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-          SizedBox(
-            width: 22,
-            child: Column(children: [
-              Container(
-                width: 22,
-                height: 22,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: done ? AppColors.okSolid : AppColors.white,
-                  border: Border.all(color: done ? AppColors.okSolid : (current ? AppColors.accent : AppColors.line2), width: 2),
-                  boxShadow: current ? const [BoxShadow(color: AppColors.accentSoft, spreadRadius: 3)] : null,
-                ),
-                child: done ? const AppIcon(AppIcons.check, size: 12, color: AppColors.white, stroke: 3) : null,
-              ),
-              if (!last) Expanded(child: Container(width: 2, color: done ? AppColors.okSolid : AppColors.line)),
-            ]),
-          ),
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(bottom: last ? 0 : 14),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                Text(title, style: AppText.s(14, W.w7, color: done || current ? AppColors.text : AppColors.muted)),
-                Text(sub, style: AppText.s(12.5, W.w4, color: AppColors.muted)),
-              ]),
-            ),
-          ),
-        ]),
-      );
 }

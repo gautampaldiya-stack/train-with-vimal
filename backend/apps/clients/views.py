@@ -325,7 +325,9 @@ class JoinLinkView(APIView):
             "max_uses": link.max_uses,
             "needs_approval": link.needs_approval,
             "gym": settings.APP_NAME,
+            # "Ask Aman for a new link" opens WhatsApp to the coach who shared the link
             "trainer": {"full_name": t.full_name, "first_name": t.first_name, "initials": t.initials, "avatar_color": t.avatar_color,
+                        "phone": t.phone or "",
                         "speciality": getattr(getattr(t, "trainer_profile", None), "speciality", [])},
         })
 

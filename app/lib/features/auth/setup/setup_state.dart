@@ -15,7 +15,7 @@ class SetupState extends ChangeNotifier {
     'Main goal and training experience',
     'Age, height, weight, where you train',
     'Days, session length, wake-up time',
-    'Injuries, daily activity, doctor clearance',
+    'Injuries, conditions, activity, doctor’s OK',
     'Diet, meals per day, foods you avoid',
   ];
 
@@ -33,6 +33,7 @@ class SetupState extends ChangeNotifier {
   static const days = [('mon', 'Mon'), ('tue', 'Tue'), ('wed', 'Wed'), ('thu', 'Thu'), ('fri', 'Fri'), ('sat', 'Sat'), ('sun', 'Sun')];
   static const lengths = [30, 45, 60, 75];
   static const wakes = [('05:30', '5:30 am'), ('06:30', '6:30 am'), ('07:30', '7:30 am'), ('08:30', '8:30 am')];
+  static const conditionOptions = [('none', 'None'), ('diabetes', 'Diabetes'), ('thyroid', 'Thyroid'), ('high_bp', 'High BP'), ('pcos', 'PCOS'), ('asthma', 'Asthma'), ('heart', 'Heart condition')];
   static const injuries = [('none', 'None'), ('knee', 'Knee'), ('lower_back', 'Lower back'), ('shoulder', 'Shoulder'), ('neck', 'Neck'), ('wrist', 'Wrist'), ('ankle', 'Ankle')];
   static const injuryNotes = {
     'knee': ['Right knee hurts on deep squats', 'Left knee hurts on stairs'],
@@ -70,9 +71,10 @@ class SetupState extends ChangeNotifier {
   String wake = '06:30';
   // Step 4
   List<String> injury = [];
+  List<String> conditions = [];
   String note = '';
   String activity = 'desk';
-  bool doctorOk = true;
+  bool doctorOk = false;
   // Step 5
   String? diet;
   int meals = 5;
@@ -111,6 +113,7 @@ class SetupState extends ChangeNotifier {
     sessionMin = (s['session_min'] as num?)?.toInt() ?? sessionMin;
     wake = s['wake_time'] as String? ?? wake;
     if (h['injuries'] is List) injury = [for (final d in h['injuries'] as List) '$d'];
+    if (h['conditions'] is List) conditions = [for (final d in h['conditions'] as List) '$d'];
     note = h['notes'] as String? ?? note;
     activity = h['activity'] as String? ?? activity;
     doctorOk = h['doctor_ok'] as bool? ?? doctorOk;
@@ -127,6 +130,8 @@ class SetupState extends ChangeNotifier {
         0 when goal == null => ('Pick your main goal', '${Services.session.me?.coachFirst ?? 'Your coach'} builds your plan around it'),
         2 when trainDays.length < 2 => ('Pick at least 2 days', 'Tap the days you can train'),
         3 when injury.isEmpty => ('Tell us about injuries', 'Pick None if nothing hurts'),
+        3 when conditions.isEmpty => ('Tell us about health conditions', 'Pick None if you have none'),
+        3 when conditions.contains('heart') && !doctorOk => ('Doctor’s OK needed', 'Tick the box once your doctor clears you'),
         4 when diet == null => ('Pick your food preference', 'Your meal plan only uses foods you eat'),
         _ => null,
       };
@@ -135,7 +140,7 @@ class SetupState extends ChangeNotifier {
         0 => {'goal': goal, 'level': level},
         1 => {'age': body[0].round(), 'height_cm': body[1], 'weight_kg': body[2], 'target_weight_kg': body[3], 'place': place},
         2 => {'days': trainDays, 'session_min': sessionMin, 'wake_time': wake},
-        3 => {'injuries': injury, 'activity': activity, 'doctor_ok': doctorOk, if (note.trim().isNotEmpty) 'notes': note.trim()},
+        3 => {'injuries': injury, 'conditions': conditions, 'activity': activity, 'doctor_ok': doctorOk, if (note.trim().isNotEmpty) 'notes': note.trim()},
         _ => {'diet': diet, 'meals_per_day': meals, 'avoid': avoid, 'home_cooked': homeCooked},
       };
 

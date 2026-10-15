@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app/services.dart';
 import '../../core/api/api_error.dart';
@@ -10,6 +12,7 @@ import '../../core/widgets/client.dart';
 import '../../core/widgets/hover.dart';
 import '../../core/widgets/overlays.dart';
 import 'auth_frame.dart';
+import 'intro_screen.dart';
 import 'sheets.dart';
 
 /// Welcome + Log in (boards `ClientWelcome`, `ClientLogin`, `ClientLoginWeb`).
@@ -21,12 +24,27 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  static const _introKey = 'twv.introSeen';
+  bool? _intro; // null while the saved flag loads
   bool _welcome = true;
   bool _show = false, _keep = true, _busy = false;
   String? _idError, _pwError;
   final _id = TextEditingController();
   final _pw = TextEditingController();
   final _pwFocus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((p) {
+      if (mounted) setState(() => _intro = !(p.getBool(_introKey) ?? false));
+    });
+  }
+
+  Future<void> _introDone() async {
+    setState(() => _intro = false);
+    (await SharedPreferences.getInstance()).setBool(_introKey, true);
+  }
 
   @override
   void dispose() {
@@ -79,6 +97,8 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final split = authSplit(context);
+    if (!split && _intro == null) return const ColoredBox(color: AppColors.caBg);
+    if (!split && _intro == true) return IntroView(onDone: _introDone);
     if (_welcome && !split) return _welcomeView();
     return _loginView(split);
   }
@@ -160,7 +180,10 @@ class _LoginScreenState extends State<LoginScreen> {
             Row(children: [
               CaCheckRow(on: _keep, onTap: () => setState(() => _keep = !_keep), title: 'Keep me logged in'),
               const Spacer(),
-              CaLink('Forgot password?', size: 13, onTap: () => showForgotSheet(context, initial: _id.text.trim())),
+              CaLink('Forgot password?', size: 13, onTap: () {
+                final id = _id.text.trim();
+                context.go(id.contains('@') ? Uri(path: '/forgot', queryParameters: {'email': id}).toString() : '/forgot');
+              }),
             ]),
             Padding(
               padding: EdgeInsets.only(top: split ? 0 : 6),

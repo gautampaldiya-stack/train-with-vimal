@@ -169,7 +169,7 @@ class Command(BaseCommand):
 
         base = settings.FRONTEND_URL.rstrip("/")
         out = [f"Invite link:     {base}/join/AMAN-4821"]
-        for email, purpose, path in [("sana@example.com", OneTimeToken.Purpose.LOGIN_LINK, "login-link"),
+        for email, purpose, path in [("sana@example.com", OneTimeToken.Purpose.LOGIN_LINK, "start"),
                                      ("tara@example.com", OneTimeToken.Purpose.EMAIL_VERIFY, "verify-email"),
                                      ("riya@example.com", OneTimeToken.Purpose.PASSWORD_RESET, "reset-password")]:
             u = User.objects.filter(email__iexact=email).first()

@@ -14,6 +14,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 
 ---
 
+### 2026-10-15 · Auth — whole login flow (reset, invite, login link, verify, permissions)
+- **Pehle:** "Forgot password?" ek chhota modal tha; email links (`/reset/…`, `/join/…`, `/verify`) "This page is on the way" dikhate the. Reset link 1 ghanta, verify 48 ghante chalta tha. Forgot page har email ke liye same jawab deta tha.
+- **Ab:** Har link ka apna page board jaisa: `/forgot` + `/reset-password?token=` (ClientResetPassword), `/join/<code>` (ClientJoinLink), `/start?token=` login link, `/verify` + `/verify-email?token=` (ClientVerifyEmail), `/permissions` (ClientPermissions). Intro slides (ClientIntro) pehli baar phone par. Health step me health conditions + heart condition par doctor’s OK zaroori. Reset link 15 minute, verify 24 ghante (board ke hisaab se). Forgot page board ki tarah "No account uses this email" dikhata hai. Invite link batata hai kyun band hua (expired / off / full). Login link par "This is not me". Web app ab real paths use karta hai.
+- **Kyun:** Gautam: login ka poora flow complete karo; har button / link / email ka page bana ho.
+- **Updated:** app/lib/features/auth/*, app/lib/app/router.dart, backend accounts + clients, docs/screens/status.md, docs/rulebooks/flutter.md, docs/rulebooks/local-setup.md, README.md · Decision D-15
+
 ### 2026-10-15 · Process — whole flow and board status list
 - **Pehle:** Screens flow ke first pages tak bante the; reset password page (email link wala) chhut gaya aur CURRENT.md me "Reset password" likha tha, jo done jaisa lagta tha.
 - **Ab:** Flow tabhi done jab uske har button / link / email se khulne wala page bhi bana ho. Har board ka status `docs/screens/status.md` me; Done sirf browser check (phone + desktop) ke baad. Jo nahi bana, uska board naam likhna zaroori.

@@ -95,4 +95,10 @@ abstract final class AppIcons {
   static const logout = Ic.ic0d03f;
   static const phone = Ic.ie0d0d2;
   static const arrowRight = Ic.i2f724c;
+
+  // Account links (ClientJoinLink, ClientHealth boards)
+  static const whatsapp = Ic.i872094;
+  static const link = Ic.i7b24ef;
+  static const user = Ic.ib023cf;
+  static const heart = Ic.i7782ae;
 }

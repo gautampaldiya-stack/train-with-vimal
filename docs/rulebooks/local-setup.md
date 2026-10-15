@@ -8,3 +8,13 @@ Full steps: `../../README.md`.
 - Demo data: `python manage.py seed_demo` (password `Demo@1234`).
 - Tests: `cd backend && pytest`.
 - Flutter: `cd app && flutter run -d chrome --dart-define=API_URL=http://localhost:8000`.
+
+## Permissions (camera, photos, notifications)
+- The app uses `permission_handler`. Android permissions are in `android/app/src/main/AndroidManifest.xml`,
+  iOS usage texts in `ios/Runner/Info.plist`.
+- iOS: after the first `pod install`, add the permission macros to `ios/Podfile` `post_install` so iOS asks
+  (`PERMISSION_CAMERA=1`, `PERMISSION_PHOTOS=1`, `PERMISSION_NOTIFICATIONS=1`), as the `permission_handler` readme shows.
+
+## Demo links
+`python manage.py seed_demo` prints an invite link, a login link (Sana, coach-added), a verify email link (Tara)
+and a reset password link (Riya). Set `FRONTEND_URL` to where the app runs so the links point there.

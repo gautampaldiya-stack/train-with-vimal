@@ -14,7 +14,33 @@ import 'sheets.dart';
 /// Phone / tablet: one column on `caBg` with an optional white foot (`wl-foot`).
 /// Desktop (≥ 1000): a 520 side panel (`wl-brand`) and the page in a centred column (`wl-main`).
 
-enum BrandKind { soft, steps }
+enum BrandKind { soft, steps, plain, list }
+
+/// Desktop side panel with a picture, title and line (`brandPlain`: reset, verify, broken link).
+class BrandPlain {
+  const BrandPlain({required this.ill, required this.title, required this.sub});
+  final String ill, title, sub;
+}
+
+/// One row in the side panel list (join steps or permissions).
+class BrandRow {
+  const BrandRow(this.title, this.sub, {this.done = false, this.current = false, this.pill, this.pillTone = CaTone.gray, this.onTap});
+  final String title, sub;
+  final bool done, current;
+  final String? pill;
+  final CaTone pillTone;
+  final VoidCallback? onTap;
+}
+
+/// Desktop side panel with a kicker, title, line and a list: numbered steps (join, login link)
+/// or rows with a pill (permissions). [card] = the white card at the bottom.
+class BrandList {
+  const BrandList({required this.kicker, required this.title, required this.sub, required this.rows, this.numbered = true, this.card});
+  final String kicker, title, sub;
+  final List<BrandRow> rows;
+  final bool numbered;
+  final (String, String)? card;
+}
 
 /// Step list for the blue web side panel while setting up the profile.
 class BrandSteps {
@@ -41,7 +67,13 @@ class AuthFrame extends StatelessWidget {
     this.wide = false,
     this.loginBackground = false,
     this.phoneTop,
+    this.plain,
+    this.list,
   });
+
+  /// Panels for the account pages; they also use the short legal line (© only) and no foot line.
+  final BrandPlain? plain;
+  final BrandList? list;
 
   /// Full-width block above the page on phone (the blue log in hero).
   final Widget? phoneTop;
@@ -128,6 +160,9 @@ class AuthFrame extends StatelessWidget {
     );
   }
 
+  bool get _account => plain != null || list != null;
+  bool get _webFootLine => footBorder && !_account;
+
   Widget _web(BuildContext context) => CaWeb(
         web: true,
         child: ToastOffset(
@@ -136,7 +171,16 @@ class AuthFrame extends StatelessWidget {
           child: Scaffold(
           backgroundColor: AppColors.caWebBg,
           body: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            SizedBox(width: 520, child: brand == BrandKind.steps && steps != null ? _StepsPanel(steps!) : const _SoftPanel()),
+            SizedBox(
+              width: 520,
+              child: plain != null
+                  ? _PlainPanel(plain!)
+                  : list != null
+                      ? _ListPanel(list!)
+                      : brand == BrandKind.steps && steps != null
+                          ? _StepsPanel(steps!)
+                          : const _SoftPanel(),
+            ),
             Expanded(
               child: LayoutBuilder(
                 builder: (context, c) => SingleChildScrollView(
@@ -152,14 +196,14 @@ class AuthFrame extends StatelessWidget {
                             Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: children),
                             if (foot.isNotEmpty)
                               Container(
-                                padding: EdgeInsets.only(top: footBorder ? 16 : 0),
-                                decoration: BoxDecoration(border: footBorder ? const Border(top: BorderSide(color: AppColors.line)) : null),
+                                padding: EdgeInsets.only(top: _webFootLine ? 16 : 0),
+                                decoration: BoxDecoration(border: _webFootLine ? const Border(top: BorderSide(color: AppColors.line)) : null),
                                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: foot),
                               ),
                           ]),
                         ),
                       ),
-                      const _Legal(),
+                      _Legal(short: _account),
                     ]),
                   ),
                 ),
@@ -172,10 +216,12 @@ class AuthFrame extends StatelessWidget {
 }
 
 class _Legal extends StatelessWidget {
-  const _Legal();
+  const _Legal({this.short = false});
+  final bool short;
   @override
   Widget build(BuildContext context) {
     final s = AppText.s(12.5, W.w4, color: AppColors.muted);
+    if (short) return Text('© ${DateTime.now().year} Train With Vimal', style: s);
     return Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 6, children: [
       Text('© ${DateTime.now().year} Train With Vimal ·', style: s),
       CaLink('Terms', onTap: () => showTermsSheet(context), size: 12.5, color: AppColors.muted, weight: W.w6),
@@ -192,7 +238,8 @@ class _BrandHead extends StatelessWidget {
   final bool onBlue;
   @override
   Widget build(BuildContext context) => Row(spacing: 12, children: [
-        const AppLogo(size: 44, ring: true),
+        // The soft panels show the logo without the white ring (`wl-brand.soft img.wl-logo`).
+        AppLogo(size: 44, ring: onBlue),
         Text('Train With Vimal', style: AppText.s(17, W.w8, color: onBlue ? AppColors.white : AppColors.text)),
       ]);
 }
@@ -346,6 +393,141 @@ class _StepButton extends StatelessWidget {
             ),
           ]),
         ),
+      );
+}
+
+/// `wl-brand soft` + `brandPlain`: picture, title, line, and the Need help card at the bottom.
+class _PlainPanel extends StatelessWidget {
+  const _PlainPanel(this.p);
+  final BrandPlain p;
+  @override
+  Widget build(BuildContext context) => _AccountPanel(
+        card: null,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 18),
+            child: SvgPicture.asset('assets/ill/${p.ill}.svg', width: 400, height: 260, alignment: Alignment.center),
+          ),
+          BalancedText(p.title, style: AppText.s(32, W.w8, ls: -0.64, h: 1.12)),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Text(p.sub, style: AppText.s(15, W.w4, color: AppColors.muted, h: 1.5)),
+          ),
+        ]),
+      );
+}
+
+/// `wl-brand soft ac-brand` + a list: join steps (numbered circles) or permissions (pills).
+class _ListPanel extends StatelessWidget {
+  const _ListPanel(this.l);
+  final BrandList l;
+  @override
+  Widget build(BuildContext context) => _AccountPanel(
+        card: l.card,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
+          Opacity(opacity: .75, child: Text(l.kicker, style: AppText.s(11.5, W.w8, ls: 1.38))),
+          BalancedText(l.title, style: AppText.s(32, W.w8, ls: -0.64, h: 1.12)),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Text(l.sub, style: AppText.s(15, W.w4, color: AppColors.muted, h: 1.5)),
+          ),
+          const SizedBox(height: 4),
+          Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 4, children: [
+            for (final (i, r) in l.rows.indexed) _ListRow(n: i + 1, r: r, numbered: l.numbered),
+          ]),
+        ]),
+      );
+}
+
+class _ListRow extends StatelessWidget {
+  const _ListRow({required this.n, required this.r, required this.numbered});
+  final int n;
+  final BrandRow r;
+  final bool numbered;
+  @override
+  Widget build(BuildContext context) => Hover(
+        onTap: r.onTap,
+        builder: (_, h, _) => Container(
+          padding: numbered ? const EdgeInsets.symmetric(horizontal: 12, vertical: 9) : const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: r.current ? AppColors.white : (h && r.onTap != null ? AppColors.white.withValues(alpha: .5) : null),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: r.current ? AppColors.line : Colors.transparent),
+          ),
+          child: Row(spacing: 12, children: [
+            if (numbered)
+              Container(
+                width: 28,
+                height: 28,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: r.done ? AppColors.accent : null,
+                  border: Border.all(color: r.done || r.current ? AppColors.accent : AppColors.line2, width: 2),
+                ),
+                child: r.done
+                    ? const AppIcon(AppIcons.check, size: 14, color: AppColors.white, stroke: 3)
+                    : Text('$n', style: AppText.s(12.5, W.w8, color: r.current ? AppColors.accent : AppColors.muted)),
+              ),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+                Text(r.title, style: AppText.s(14, W.w8)),
+                Text(r.sub, style: AppText.s(12.5, W.w4, color: AppColors.muted)),
+              ]),
+            ),
+            if (r.pill != null) CaPill(r.pill!, tone: r.pillTone),
+          ]),
+        ),
+      );
+}
+
+/// Soft panel frame for the account pages: logo, the middle part, and a white card at the bottom
+/// (`wl-bq ac-bq`). With no [card] it shows the gym's support contact ("Need help?").
+class _AccountPanel extends StatelessWidget {
+  const _AccountPanel({required this.child, required this.card});
+  final Widget child;
+  final (String, String)? card;
+  @override
+  Widget build(BuildContext context) => Container(
+        color: AppColors.brandSoft,
+        padding: const EdgeInsets.symmetric(horizontal: 44, vertical: 36),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 28, children: [
+          const Align(alignment: Alignment.centerLeft, child: _BrandHead()),
+          Expanded(child: _Centered(child: child)),
+          card != null ? _HelpCard(card!.$1, card!.$2) : const _SupportCard(),
+        ]),
+      );
+}
+
+class _HelpCard extends StatelessWidget {
+  const _HelpCard(this.title, this.sub);
+  final String title, sub;
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 6, children: [
+          Text(title, style: AppText.s(14, W.w8, h: 1.5)),
+          Text(sub, style: AppText.s(12.5, W.w4, color: AppColors.muted, h: 1.5)),
+        ]),
+      );
+}
+
+class _SupportCard extends StatelessWidget {
+  const _SupportCard();
+  @override
+  Widget build(BuildContext context) => FutureBuilder<Map<String, dynamic>>(
+        future: gymInfo(),
+        builder: (_, snap) {
+          final g = snap.data ?? const {};
+          final phone = '${g['phone'] ?? ''}';
+          final email = '${g['email'] ?? ''}';
+          return _HelpCard('Need help?', [
+            if (phone.isNotEmpty) 'WhatsApp ${prettyPhone(phone)}',
+            if (email.isNotEmpty) email,
+            'Mon–Sat, 9 am – 9 pm',
+          ].join(' · '));
+        },
       );
 }
 

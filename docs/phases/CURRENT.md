@@ -13,38 +13,40 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
   router with role redirect (`lib/app/router.dart`). `flutter analyze` clean, `flutter build web` OK.
 
 ## Doing now
-- 2026-10-15: completing the login flow (decision D-15). Backend part pushed: link lifetimes from the boards
-  (reset 15 min, verify 24 h), invite end reasons, login link "not me", `seed_demo` prints demo links. Next: the
-  Flutter pages listed under "Not built yet".
-- Phase 5: login + onboarding, code in `app/lib/features/auth/`. Checked in a browser against the boards on phone
-  (390) and desktop (1440): welcome, log in, approval wait, all 5 setup steps, checklist, all set. Still to check:
-  Need help / Forgot / Terms sheets and the Finish later sheet. Screens: Welcome, Log in (phone hero / desktop split with side panel), Need help sheet,
-  Forgot password modal, Terms sheet, Approval wait (`/pending`), Setup steps (`/setup?step=0..4`, `&edit=1` from summary),
-  Finish later sheet, Checklist (`/setup/checklist`), All set (`/setup/done`).
-- Client-app components live in `app/lib/core/widgets/client.dart` (CaButton, CaField, CaChips, CaSeg, ...).
+- 2026-10-15: login flow complete (decision D-15). Code in `app/lib/features/auth/`. Browser-checked on phone (390)
+  and desktop (1440) against the boards:
+  - Intro slides (phone, first open only), Welcome, Log in, Need help sheet.
+  - Forgot password page `/forgot` (no-account error, "Check your email", resend after 30 s).
+  - Reset link page `/reset-password?token=` (strength bars, rules, Password updated, Link not valid).
+  - Invite page `/join/:code` (invite, form errors, account created, broken link: expired / off / full / invalid).
+  - Login link page `/start?token=` (Change email, Need help, "Details not right?" sheets).
+  - Verify email `/verify` and `/verify-email?token=` (inbox, resend, change email, verified, link not valid).
+  - Permissions `/permissions?kind=notifications|camera|photos&next=` (ask, allowed, blocked).
+  - Approval wait, setup steps incl. the new health conditions + doctor's OK, checklist.
+- Web uses path URLs (`usePathUrlStrategy`): the web server must fall back to `index.html` for unknown paths.
+- Client-app components: `app/lib/core/widgets/client.dart`; auth-only pieces: `features/auth/account_widgets.dart`.
 - Demo logins (password Demo@1234): riya@example.com (all set), isha@example.com (setup not done),
-  neha@example.com and karan@example.com (waiting for approval).
-- Router: `landingFor(me)` picks /pending, /setup or /home; pending clients can only open /pending and /setup.
-  `/setup/checklist` and `/setup/done` are top-level routes (not children of `/setup`).
-- Known: realtime socket returns 404 under `manage.py runserver` (needs an ASGI server); approval still shows on
-  Check status and when the app comes back to the front.
+  neha@example.com and karan@example.com (waiting for approval), tara@example.com (email not verified).
+  Sana has a login link and `AMAN-4821` is an invite code; `seed_demo` prints the demo links.
+- Router: `landingFor(me)` picks /verify, /pending, /setup or /home. Link pages (`/reset-password`, `/join`,
+  `/start`, `/verify-email`) open signed in or out; `/login` and `/forgot` send a signed-in person on.
+- Known: realtime socket returns 404 under `manage.py runserver` (needs an ASGI server); the gym phone is empty
+  in the seed so the support card shows email only.
 
-## Not built yet in this flow (see `docs/screens/status.md`)
-- `ClientResetPassword` / `ClientResetPasswordWeb`: page from the forgot-password email link (`/reset/:token`).
-- `ClientJoinLink` / `ClientJoinLinkWeb`: page from the invite link (`/join/:code`).
-- `ClientVerifyEmail` / `ClientVerifyEmailWeb`: verify email page (`/verify`).
-- `ClientPermissions` / `ClientPermissionsWeb`.
-- Not browser-checked yet: Need help / Forgot password / Terms / Finish later sheets; desktop setup steps 1, 3–5 and All set.
+## Not finished in this flow (see `docs/screens/status.md`)
+- `ClientLogin` / `ClientLoginWeb` (Partial): Terms sheet and Finish later sheet not browser-checked.
+- `ClientWelcome` (Partial): not checked on its own.
+- Desktop setup steps 1, 3, 5 and All set not browser-checked.
 
 ## Next
-0. Finish the boards above first (whole flow rule), then mark them in `docs/screens/status.md`.
+0. Check the three Partial boards above, then mark them Done in `docs/screens/status.md`.
 1. Client screens, then trainer, then admin (order in `phase-5-screens.md`).
 2. Notification centre panel, data table component when first needed.
 
 ## How screens plug in
 - Signed-in screens: add to `screens` map in `lib/app/router.dart` (`'/clients'`, `'/clients/:id'`).
   Missing ones show a "This page is on the way" holder, so nav never breaks.
-- Signed-out screens: `publicScreens` (`'/login'`, `'/reset'`, `'/join'`, ...).
+- Signed-out and link pages are their own `GoRoute`s in `router.dart`; add new ones to `_public` or `_links`.
 - Run: `cd app && flutter run -d chrome --dart-define=API_URL=http://localhost:8000`.
 
 ## How to continue
