@@ -80,6 +80,11 @@ def _metric_value(q, v):
     if q.metric == "sleep_hours" and q.type == QuestionType.SCALE:
         labels = q.scale_labels or ["5 h", "6 h", "7 h", "8 h", "9 h"]
         return SCALE_HOURS.get(labels[v - 1], v + 4)
+    if q.metric == "sleep_hours" and q.type in CHOICE_TYPES:  # "6.5 h" → 6.5
+        try:
+            return float(str(v).split()[0])
+        except ValueError:
+            return None
     return v
 
 
@@ -128,7 +133,7 @@ def submit(client, form, answers, files=None, *, request_obj=None, submission=No
                                 for qid, v in cleaned.items() if v is not None])
     photo_set = None
     for q in questions:
-        for f in files.get(str(q.id), [])[:3]:
+        for n, f in enumerate(files.get(str(q.id), [])[:3]):
             if f.size > 10 * 1024 * 1024:
                 raise ValidationError({str(q.id): ["Photos can be up to 10 MB."]})
             Answer.objects.create(submission=submission, question=q, photo=f)
@@ -137,6 +142,10 @@ def submit(client, form, answers, files=None, *, request_obj=None, submission=No
                 photo_set, _ = PhotoSet.objects.get_or_create(
                     client=client, submission=submission,
                     defaults={"label": label, "date": submission.date, "weight_kg": metrics.get("weight")})
+            # The same photo on the Progress page, by pose (Front, Side, Back).
+            pose = getattr(f, "pose", None) or ProgressPhoto.Pose.values[n]
+            ProgressPhoto.objects.filter(photo_set=photo_set, pose=pose).delete()
+            ProgressPhoto.objects.create(photo_set=photo_set, pose=pose, image=f)
     if "weight" in metrics:
         WeightLog.objects.update_or_create(client=client, date=submission.date,
                                            defaults={"weight_kg": Decimal(str(metrics["weight"])),

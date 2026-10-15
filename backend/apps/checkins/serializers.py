@@ -158,9 +158,15 @@ class SubmissionRowSerializer(serializers.ModelSerializer):
 class SubmissionDetailSerializer(SubmissionRowSerializer):
     answers = AnswerSerializer(many=True, read_only=True)
     reviewed_by_name = serializers.CharField(source="reviewed_by.full_name", read_only=True, default=None)
+    photos = serializers.SerializerMethodField()
 
     class Meta(SubmissionRowSerializer.Meta):
-        fields = SubmissionRowSerializer.Meta.fields + ["answers", "reviewed_by_name"]
+        fields = SubmissionRowSerializer.Meta.fields + ["answers", "reviewed_by_name", "photos"]
+
+    def get_photos(self, obj):
+        """Progress photos sent with this check-in, by pose (the Front / Side / Back tabs)."""
+        ps = PhotoSet.objects.filter(submission=obj).prefetch_related("photos").first()
+        return ProgressPhotoSerializer(ps.photos.all(), many=True, context=self.context).data if ps else []
 
 
 class ReviewSerializer(serializers.Serializer):

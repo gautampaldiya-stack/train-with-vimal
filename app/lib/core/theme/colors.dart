@@ -98,6 +98,11 @@ abstract final class AppColors {
   static const offA = Color(0xFFF3F3F0), offB = Color(0xFFFAFAF8); // not started stripes
   static const futCell = Color(0xFFF5F5F2), futLine = Color(0xFFD6D6D0), futLegend = Color(0xFFC9C9C3);
   static const lowText = Color(0xFF8A4B00); // running low
+
+  // Check-ins board (`ck-*`)
+  static const replyBg = Color(0xFFF2F7F3); // coach reply under a row / in the sheet
+  static const slotOn = [Color(0xFFE9F1EA), Color(0xFFD7E6DA)], slotOnLine = Color(0xFF9AD8AE); // photo slot filled
+  static const figBg = [Color(0xFFE9EEF0), Color(0xFFD5DEE2)], figText = Color(0xFF6B7B83); // photo placeholder
   static const scrimModal = Color(0x5C171717); // rgba(23,23,23,.36)
   static const scrimDrawer = Color(0x4D171717); // .30
   static const scrimSheet = Color(0x61111111); // rgba(17,17,17,.38)

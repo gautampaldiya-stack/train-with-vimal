@@ -15,6 +15,7 @@ import '../features/auth/verify_email_screen.dart';
 import '../features/auth/setup/checklist_screen.dart';
 import '../features/auth/setup/done_screen.dart';
 import '../features/auth/setup/setup_screen.dart';
+import '../features/client/checkins/checkins_screen.dart';
 import '../features/client/habits/habits_screen.dart';
 import '../features/client/home/home_screen.dart';
 import '../features/client/train/train_screen.dart';
@@ -54,6 +55,12 @@ bool _under(String path, List<String> roots) => roots.any((p) => path == p || pa
 final Map<String, Widget Function(GoRouterState)> screens = {
   '/home': (_) => const ClientHomeScreen(),
   '/habits': (_) => const ClientHabitsScreen(),
+  '/checkins': (_) => const ClientCheckinsScreen(),
+  '/checkins/:id': (st) => ClientCheckinsScreen(
+        key: ValueKey(st.uri.toString()),
+        id: st.pathParameters['id'],
+        edit: st.uri.queryParameters['edit'] == '1',
+      ),
   '/train': (st) => ClientTrainScreen(discarded: int.tryParse(st.uri.queryParameters['discarded'] ?? '') ?? 0),
   '/train/:id': (st) => WorkoutScreen(
         key: ValueKey(st.uri.toString()),

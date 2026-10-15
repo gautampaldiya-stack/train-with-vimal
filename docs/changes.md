@@ -20,6 +20,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 
 ---
 
+### 2026-10-15 · Check-ins page built
+- **Pehle:** `/checkins` par "This page is on the way" tha. `me/checkins/` me missed weeks / days, on-time count, weight change, steps / water nahi the; photos sirf multipart se jaate the (offline nahi); Undo nahi tha. Built-in weekly / daily forms ke sawal board se alag the (sleep 5 option, soreness "A bit / Barely").
+- **Ab:** ClientCheckin (phone) aur ClientCheckinWeb board jaise: upar 3 numbers, Daily aur Weekly cards, Past check-ins (Weekly / Daily, Missed rows, coach reply), daily form ek page par, weekly form ek sawal ek page + review, photo slots (camera / gallery), draft phone par, Undo, past check-in sheet Newer / Older ke saath. Weekly check-in har Sunday 6:00 pm due. Forms board ke sawal poochte hain (migration). Seed me Riya ke 6 weekly + 10 din ke daily check-ins.
+- **Kyun:** Gautam: Habits ke baad agla screen (coordinator ne bola ek ke baad ek screens banate raho).
+- **Updated:** app/lib/features/client/checkins/*, router, overlays (sheet title can change), app shell (More lit on More pages), colors, pubspec (image_picker), backend/apps/checkins/* (client_page.py, migration 0002), seed_demo, tests/test_client_checkins.py, docs/screens/status.md + behaviour.md, CURRENT.md, api-endpoints · Decision D-19
+
 ### 2026-10-15 · Habits & supplements page built
 - **Pehle:** `/habits` par "This page is on the way" tha. `me/habits/` sirf ek din ka data deta tha, week grid ya start date nahi.
 - **Ab:** ClientHabits (phone) aur ClientHabitsWeb board jaise: Day / Week tabs, week strip, habits (water, steps, sleep, tick), Details sheets, supplements (Take / Undo / Took it, stock, running low), Week grids. API me `week`, `starts_on`, `set_by`, supplement `group`, `taken_at`, `last_7`. Seed me supplement stock.

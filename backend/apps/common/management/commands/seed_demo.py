@@ -64,6 +64,7 @@ class Command(BaseCommand):
             self.history(program, plan)
             self.riya_home()
             self.riya_train()
+            self.riya_checkins()
         self.stdout.write(self.style.SUCCESS(f"Demo ready. Log in with any demo email and {PASSWORD}"))
         self.stdout.write("Demo links (the reset link works for 15 minutes; run seed_demo again for new ones):")
         for line in self.demo_links():
@@ -360,6 +361,79 @@ class Command(BaseCommand):
                 n = Notification.objects.create(recipient=riya, actor=aman, event=event, title=title, body=body,
                                                 read_at=now if read else None)
                 Notification.objects.filter(pk=n.pk).update(created_at=now - timedelta(hours=ago))
+
+    def riya_checkins(self):
+        """Check-ins board: six weekly check-ins (one missed, one waiting for Aman, two with a reply) and the
+        last 10 days of daily check-ins (two missed, one with a reply). Today's daily one is still due."""
+        from apps.accounts.models import User
+        from apps.checkins.models import Answer, Form, Submission, WeightLog
+        from apps.checkins.services import submit
+
+        riya = User.objects.filter(email__iexact="riya@example.com").select_related("client_profile").first()
+        weekly = Form.objects.filter(type="weekly", status="published").prefetch_related("questions").first()
+        daily = Form.objects.filter(type="daily", status="published").prefetch_related("questions").first()
+        if riya is None or weekly is None or daily is None or riya.client_profile.trainer is None:
+            return
+        if Answer.objects.filter(submission__client=riya, submission__form_type="weekly").exists():
+            return
+        Submission.objects.filter(client=riya, form_type__in=["weekly", "daily"]).delete()
+        aman, today = riya.client_profile.trainer, timezone.localdate()
+        cp = riya.client_profile
+        current = cp.current_weight_kg
+
+        def at(day, hh, mm):
+            return timezone.make_aware(timezone.datetime.combine(day, timezone.datetime.min.time())) \
+                + timedelta(hours=hh, minutes=mm)
+
+        def answers(form, by_metric, by_text):
+            out = {}
+            for q in form.questions.all():
+                if q.is_removed:
+                    continue
+                v = by_metric.get(q.metric) if q.metric else by_text.get(q.text)
+                if v is not None:
+                    out[str(q.id)] = v
+            return out
+
+        last_sunday = today - timedelta(days=today.weekday() + 1)
+        # (weeks back, weight, week 1-5, meal plan, note, sent hh:mm, review)
+        weeks = [(5, 71.8, 3, "Mostly, ate out once or twice", "", (17, 5), ("reviewed", "")),
+                 (4, 71.2, 3, "Mostly, ate out once or twice", "", (17, 40), ("reviewed", "")),
+                 (3, 70.6, 4, "Yes, all week", "Can I swap lunges for something easier on the knee?", (17, 40),
+                  ("reply", "Great progress on the waist. Keep the steps up.")),
+                 (1, 69.5, 4, "Yes, all week", "", (18, 0),
+                  ("reply", "Great week, Riya. Your squat looks much better. Keep the protein up on rest days too.")),
+                 (0, 68.9, 4, "Mostly, ate out once or twice", "Office travel next week, Tue to Thu", (17, 15),
+                  None)]
+        for back, kg, wk, meal, note, (hh, mm), rev in weeks:
+            day = last_sunday - timedelta(days=7 * back)
+            sub = submit(riya, weekly, answers(weekly, {"weight": kg}, {
+                "How was your week?": wk, "Did you follow the meal plan?": meal,
+                "Anything your coach should know?": note or None}), day=day)
+            fields = {"created_at": at(day, hh, mm)}
+            if rev:
+                fields.update(reviewed_at=at(day + timedelta(days=1), 10, 15), reviewed_by=aman, reply=rev[1])
+            Submission.objects.filter(id=sub.id).update(**fields)
+        # Daily: (days back, sleep, energy, mood, hunger, soreness, note, reply)
+        days = [(10, "7 h", 4, 4, 3, 4, "", ""), (9, "6.5 h", 3, 3, 3, 2, "Right knee sore",
+                                                  "Rest the knee today, walk 30 min."),
+                (8, "8 h", 5, 5, 2, 5, "", ""), (6, "7 h", 4, 4, 3, 4, "", ""),
+                (5, "7.5 h", 4, 4, 3, 4, "Felt strong today", ""), (4, "6 h", 2, 3, 4, 3, "Late office, ate out", ""),
+                (2, "7 h", 4, 4, 3, 4, "", ""), (1, "7.5 h", 4, 4, 3, 4, "Felt strong today", "")]
+        for back, sleep, e, m, h, so, note, reply in days:
+            day = today - timedelta(days=back)
+            w = WeightLog.objects.filter(client=riya, date__lte=day).order_by("-date").first()
+            kg = float(w.weight_kg) - 0.1 * (back % 3) if w else 70
+            sub = submit(riya, daily, answers(daily, {"weight": round(kg, 1), "sleep_hours": sleep, "energy": e,
+                                                       "mood": m, "hunger": h, "soreness": so}, {}),
+                         note=note, day=day)
+            fields = {"created_at": at(day, 8, 5 + back)}
+            if reply:
+                fields.update(reviewed_at=at(day, 10, 15), reviewed_by=aman, reply=reply)
+            Submission.objects.filter(id=sub.id).update(**fields)
+        latest = WeightLog.objects.filter(client=riya).order_by("-date").first()
+        cp.current_weight_kg = latest.weight_kg if latest else current
+        cp.save(update_fields=["current_weight_kg"])
 
     def workout(self, client, assignment, program, day):
         from apps.training.models import SetLog, WorkoutLog

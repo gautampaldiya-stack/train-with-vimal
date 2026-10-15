@@ -79,13 +79,13 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `forms/<pk>/restore/` | POST | FormViewSet |  |
 | `forms/<pk>/unarchive/` | POST | FormViewSet |  |
 | `forms/counts/` | GET | FormViewSet |  |
-| `me/checkins/` | GET | MyCheckinsView | Check-ins tab: what is due, the forms to fill, history (weekly / daily). |
+| `me/checkins/` | GET | MyCheckinsView | Check-ins page: the daily and weekly cards, the numbers on top, and past check-ins (weekly or daily, |
 | `me/measurements/` | GET, POST | MyMeasurementViewSet |  |
 | `me/measurements/<pk>/` | DELETE | MyMeasurementViewSet |  |
 | `me/photos/` | POST, DELETE | MyPhotoView | Add photos sheet: one pose into today's set. |
 | `me/progress/` | GET | MyProgressView | Progress tab: weight series + range, measurements, photo timeline, lifts, adherence by week. |
 | `me/submissions/` | POST | MySubmissionViewSet | Send a check-in or a requested form; Edit answers; View what you sent. |
-| `me/submissions/<pk>/` | GET, PATCH | MySubmissionViewSet | Send a check-in or a requested form; Edit answers; View what you sent. |
+| `me/submissions/<pk>/` | GET, PATCH, DELETE | MySubmissionViewSet | Send a check-in or a requested form; Edit answers; View what you sent. |
 | `me/weights/` | GET, POST | MyWeightViewSet |  |
 | `me/weights/<pk>/` | DELETE | MyWeightViewSet |  |
 

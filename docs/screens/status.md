@@ -13,8 +13,8 @@ Status: **Done** (built and checked in a browser against the board, phone and de
 |---|---|---|
 | ClientAbout | Not started |  |
 | ClientAboutWeb | Not started |  |
-| ClientCheckin | Not started |  |
-| ClientCheckinWeb | Not started |  |
+| ClientCheckin | Done | `/checkins` (More → Check-ins, Home check-in card, reply notification `/checkins/<id>`): header with coach and program week, streak / weekly on time / last weekly change, Daily card (Start, or Sent with View + Edit answers), Weekly card (question chips, draft bar + Continue, or Sent + View what you sent), Past check-ins Weekly / Daily with Sent / Replied / Reviewed / Missed rows, coach reply under the row, paged as you scroll. Daily form `/checkins/daily` (weight stepper, sleep grid, 5-point scales, note + suggestions, steps and water from Habits, Send with the "Answer … first" toast, Sent card, Edit answers, Undo). Weekly form `/checkins/weekly` (one question a page, Back / Next / Skip, weight quick picks, photo slots Front / Side / Back with camera or gallery and Undo remove, No photos this week, review page with Edit, Send, Sent card, Undo, Draft saved on exit). Past check-in sheet with cells, coach reply or waiting note, answers, photos by pose, Newer / Older. No per-client question ("Added for you by Aman"), see D-19. Checked 390 on 2026-10-15. |
+| ClientCheckinWeb | Done | Same code: cards left and Past check-ins right from 720 px, forms in a 640 px column (sleep in one row of 7, photo slots 4:3), sheet as a centred card. Checked 600, 768, 900, 1024, 1280, 1440. |
 | ClientFood | Not started |  |
 | ClientFoodLog | Not started |  |
 | ClientFoodLogWeb | Not started |  |

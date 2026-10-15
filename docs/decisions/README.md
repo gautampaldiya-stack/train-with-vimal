@@ -21,4 +21,5 @@ One file per decision. Add a new file for every new decision (next number), and 
 | [D-15](0015-account-links-pages-and-lifetimes.md) | Account links: full pages, lifetimes from the boards, invite end reasons | 2026-10-15 |
 | [D-16](0016-train-tab-and-workout-logger.md) | Train tab and workout logger: blocks, saving, Log more sets, discard | 2026-10-15 |
 | [D-18](0018-habits-page-week-grid.md) | Habits & supplements page: week grid from the server, water through the water log | 2026-10-15 |
+| [D-19](0019-checkins-page.md) | Check-ins page: due Sunday 6 pm, missed rows from the server, photos through the outbox | 2026-10-15 |
 | [D-17](0017-train-day-tap-history-pause.md) | Train: day tap, one-exercise history, Use last time, timer stops when leaving | 2026-10-15 |

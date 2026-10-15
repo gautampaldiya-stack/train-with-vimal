@@ -260,7 +260,8 @@ class _BottomBar extends StatelessWidget {
                 child: Hover(
                   onTap: () => context.go(it.path),
                   builder: (_, h, _) {
-                    final on = _active(location, it.path);
+                    // Pages opened from More (Habits, Check-ins…) keep More lit, like the boards.
+                    final on = _active(location, it.path) || (it.path == '/more' && !items.any((x) => _active(location, x.path)));
                     final c = on ? AppColors.accent : (h ? AppColors.text : AppColors.muted);
                     final n = it.badgeKey == null ? 0 : (counts[it.badgeKey] ?? 0);
                     return Padding(

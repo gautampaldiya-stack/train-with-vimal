@@ -79,7 +79,12 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
   the client leaves Train. New API: `POST me/workouts/<id>/pause/` (`at`), `resume/`, `GET me/workouts/exercise-history/?exercise=`, exercise `thumb`.
 - Habits & supplements built (`ClientHabits`, `ClientHabitsWeb`, D-18): `GET me/habits/` now carries the Mon–Sun
   `week` grid, `starts_on`, `set_by`, supplement `group` / `taken_at` / `last_7`; demo seed adds supplement stock.
-- Next: ClientCheckin, ClientFoodLog.
+- Check-ins built (`ClientCheckin`, `ClientCheckinWeb`, D-19): `GET me/checkins/?tab=weekly|daily&before=` now
+  sends coach, program week, stats, daily / weekly cards (form with chips, today's sent row, steps, water, weights)
+  and paged history with Missed rows. `POST me/submissions/` takes `photos` as data URLs; `DELETE me/submissions/<id>/`
+  is the Undo. Migration `checkins 0002` gives the built-in forms the board's questions. Seed: Riya's 6 weekly and
+  10 days of daily check-ins. New Flutter package `image_picker` (photo slots).
+- Next: ClientFoodLog.
 
 ## Next
 1. Pages Home links to: Train + Workout logger (`ClientTrain`, `ClientWorkout`), Habits, Check-in, Food log.

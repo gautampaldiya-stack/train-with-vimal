@@ -2,7 +2,12 @@
 
 SCALE_ENERGY = ["Very low", "Low", "Okay", "Good", "Great"]
 SCALE_HUNGER = ["Very low", "Low", "Normal", "High", "Very high"]
-SCALE_SORE = ["Very sore", "Sore", "A bit", "Barely", "None"]
+SCALE_SORE = ["Very sore", "Sore", "Some", "Light", "None"]
+SLEEP_OPTIONS = ["5 h", "6 h", "6.5 h", "7 h", "7.5 h", "8 h", "9 h"]
+
+# Check-ins page: the short name of a weekly question on the "what it asks" chips.
+CHIPS = {"Body weight (kg)": "Weight", "How was your week?": "Your week", "Did you follow the meal plan?": "Meal plan",
+         "Progress photos this week?": "3 photos", "Anything your coach should know?": "Notes"}
 
 
 def q(text, type, *, options=None, scale=None, help="", required=False, metric="", other=False):
@@ -27,20 +32,21 @@ TEMPLATES = {
     ],
     "weekly": [
         q("Body weight (kg)", "number", help="Weigh in the morning, before you eat.", required=True, metric="weight"),
-        q("How was your energy this week?", "scale", scale=SCALE_ENERGY, metric="energy"),
-        q("How many of your planned meals did you follow?", "single",
-          options=["All of them", "Most", "About half", "Less than half"]),
-        q("How did your workouts feel?", "long"),
-        q("Progress photos", "photo", help="Same spot, same light, in the morning."),
-        q("Anything you want changed in your plan?", "long"),
+        q("How was your week?", "scale", scale=["Very hard", "Hard", "Okay", "Good", "Great"],
+          help="1 is very hard, 5 is great.", required=True),
+        q("Did you follow the meal plan?", "single",
+          options=["Yes, all week", "Mostly, ate out once or twice", "No, it was a hard week"],
+          help="Be honest, it helps {coach} plan your food.", required=True),
+        q("Progress photos this week?", "photo", help="Front, side and back. Tap a slot to add a photo."),
+        q("Anything your coach should know?", "long", help="Optional. Travel, injuries, stress, questions."),
     ],
     "daily": [
-        q("Weight (kg)", "number", help="Empty stomach, same scale", metric="weight"),
-        q("Sleep last night", "scale", scale=["5 h", "6 h", "7 h", "8 h", "9 h"], metric="sleep_hours"),
-        q("Energy", "scale", scale=SCALE_ENERGY, metric="energy"),
-        q("Mood", "scale", scale=SCALE_ENERGY, metric="mood"),
-        q("Hunger", "scale", scale=SCALE_HUNGER, metric="hunger"),
-        q("Soreness", "scale", scale=SCALE_SORE, metric="soreness"),
+        q("Morning weight", "number", help="Empty stomach, same scale", required=True, metric="weight"),
+        q("Sleep last night", "single", options=SLEEP_OPTIONS, required=True, metric="sleep_hours"),
+        q("Energy", "scale", scale=SCALE_ENERGY, required=True, metric="energy"),
+        q("Mood", "scale", scale=SCALE_ENERGY, required=True, metric="mood"),
+        q("Hunger", "scale", scale=SCALE_HUNGER, required=True, metric="hunger"),
+        q("Soreness", "scale", scale=SCALE_SORE, required=True, metric="soreness"),
     ],
     "survey": [
         q("How happy are you with your coaching?", "scale", scale=["Not at all", "A little", "Okay", "Happy",

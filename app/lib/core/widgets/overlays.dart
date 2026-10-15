@@ -287,23 +287,31 @@ Future<T?> showAppSheet<T>(
   double webWidth = 520,
   Widget? headerAction,
   bool footerStretch = false,
+  Listenable? listen,
+  String Function()? titleOf,
+  String Function()? subOf,
 }) {
-  Widget header(BuildContext ctx) => title == null
+  // A sheet whose content moves (Newer / Older) passes [listen] and reads its title from [titleOf] / [subOf].
+  Widget header(BuildContext ctx) {
+    final t = titleOf?.call() ?? title, s = subOf?.call() ?? sub;
+    return t == null
       ? const SizedBox(height: 6)
       : Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-                Text(title, style: AppText.s(17, W.w8, ls: -0.2)),
-                if (sub != null) Text(sub, style: AppText.s(12.5, W.w5, color: AppColors.muted, h: 1.4)),
+                Text(t, style: AppText.s(17, W.w8, ls: -0.2)),
+                if (s != null) Text(s, style: AppText.s(12.5, W.w5, color: AppColors.muted, h: 1.4)),
               ]),
             ),
             ?headerAction,
             SheetClose(onTap: () => Navigator.of(ctx).pop()),
           ]),
         );
-  Widget body(BuildContext ctx, {required bool phone}) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+  }
+
+  Widget content(BuildContext ctx, {required bool phone}) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         if (phone) Center(child: Container(width: 38, height: 4, margin: const EdgeInsets.fromLTRB(0, 8, 0, 2), decoration: BoxDecoration(color: AppColors.grab, borderRadius: AppRadius.all(4)))),
         header(ctx),
         Flexible(child: SingleChildScrollView(padding: const EdgeInsets.symmetric(horizontal: 16), child: builder(ctx))),
@@ -317,6 +325,8 @@ Future<T?> showAppSheet<T>(
         // A toast no longer pushes the sheet up: while a sheet is open it shows at the top (phone).
         SizedBox(height: 18 + (phone ? MediaQuery.paddingOf(ctx).bottom : 0)),
       ]);
+
+  Widget body(BuildContext ctx, {required bool phone}) => listen == null ? content(ctx, phone: phone) : ListenableBuilder(listenable: listen, builder: (ctx, _) => content(ctx, phone: phone));
 
   if (context.isPhone) {
     return trackSheet(showModalBottomSheet<T>(

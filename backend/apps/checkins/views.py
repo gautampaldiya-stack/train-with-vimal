@@ -307,33 +307,47 @@ class ClientProgressView(APIView):
 
 
 # ---------------------------------------------------------------- client app
+def _data_url_file(item, name):
+    import base64
+    import binascii
+
+    from django.core.files.base import ContentFile
+
+    head, _, body = str(item).partition(",")
+    ext = {"image/png": "png", "image/webp": "webp"}.get(head[5:].split(";")[0], "jpg")
+    if not head.startswith("data:image/") or not body:
+        raise serializers.ValidationError({"photos": ["Send each photo as an image."]})
+    try:
+        raw = base64.b64decode(body, validate=True)
+    except (binascii.Error, ValueError):
+        raise serializers.ValidationError({"photos": ["Send each photo as an image."]})
+    return ContentFile(raw, name=f"{name}.{ext}")
+
+
 class MyCheckinsView(APIView):
-    """Check-ins tab: what is due, the forms to fill, history (weekly / daily)."""
+    """Check-ins page: the daily and weekly cards, the numbers on top, and past check-ins (weekly or daily,
+    missed ones included), paged with `before=YYYY-MM-DD`."""
 
     permission_classes = [IsClient]
 
     def get(self, request):
-        u = request.user
+        from django.utils.dateparse import parse_date
+
+        from .client_page import checkins_page
+
         tab = request.query_params.get("tab", "weekly")
-        weekly = Form.objects.filter(type="weekly", status="published").prefetch_related("questions").first()
-        daily = Form.objects.filter(type="daily", status="published").prefetch_related("questions").first()
-        today = timezone.localdate()
-        hist = Submission.objects.filter(client=u, form_type=tab).select_related("form").order_by("-created_at")
-        pending = FormRequest.objects.filter(client=u, filled_at__isnull=True).select_related("form")
-        return Response({
-            "weekly_form": FormDetailSerializer(weekly).data if weekly else None,
-            "daily_form": FormDetailSerializer(daily).data if daily else None,
-            "daily_done_today": Submission.objects.filter(client=u, form_type="daily", date=today).first() is not None,
-            "daily_today_id": Submission.objects.filter(client=u, form_type="daily", date=today)
-            .values_list("id", flat=True).first(),
-            "streak": services.streak(u, "daily"),
-            "week_number": services.week_number(u, today),
-            "pending_forms": FormRequestSerializer(pending, many=True).data,
-            "history": SubmissionRowSerializer(hist[:30], many=True).data,
-        })
+        if tab not in ("weekly", "daily"):
+            raise serializers.ValidationError({"tab": ["Use weekly or daily."]})
+        before = parse_date(request.query_params.get("before") or "") if request.query_params.get("before") else None
+        data = checkins_page(request.user, tab, before)
+        data["pending_forms"] = FormRequestSerializer(
+            FormRequest.objects.filter(client=request.user, filled_at__isnull=True).select_related("form"),
+            many=True).data
+        return Response(data)
 
 
-class MySubmissionViewSet(mixins.RetrieveModelMixin, mixins.CreateModelMixin, viewsets.GenericViewSet):
+class MySubmissionViewSet(mixins.RetrieveModelMixin, mixins.CreateModelMixin, mixins.DestroyModelMixin,
+                          viewsets.GenericViewSet):
     """Send a check-in or a requested form; Edit answers; View what you sent."""
 
     permission_classes = [IsClient]
@@ -355,6 +369,18 @@ class MySubmissionViewSet(mixins.RetrieveModelMixin, mixins.CreateModelMixin, vi
         for key in request.FILES:
             if key.startswith("photo_"):
                 files[key[6:]] = request.FILES.getlist(key)
+        # The app's offline outbox sends photos as data URLs: {"<question id>": ["data:image/jpeg;base64,…"]}.
+        photos = request.data.get("photos") or {}
+        if isinstance(photos, dict):
+            for qid, items in photos.items():
+                if isinstance(items, dict):  # {"front": …, "side": …, "back": …}
+                    items = [(pose, items.get(pose)) for pose in ("front", "side", "back") if items.get(pose)]
+                else:
+                    items = list(zip(("front", "side", "back"), items or []))
+                for pose, item in items:
+                    f = _data_url_file(item, pose)
+                    f.pose = pose
+                    files.setdefault(str(qid), []).append(f)
         return answers, files
 
     def create(self, request):
@@ -375,6 +401,10 @@ class MySubmissionViewSet(mixins.RetrieveModelMixin, mixins.CreateModelMixin, vi
         day = sync_day(request.data.get("date"), back_days=2)
         sub = services.submit(u, form, answers, files, request_obj=req, note=request.data.get("note", "") or "",
                               day=day)
+        if request.data.get("logged_at"):  # sent from the outbox later: keep the time it was filled in
+            from apps.common.utils import sync_time
+
+            Submission.objects.filter(id=sub.id).update(created_at=sync_time(request.data["logged_at"]))
         data = SubmissionDetailSerializer(self.get_queryset().get(id=sub.id), context={"request": request}).data
         data["streak"] = services.streak(u, "daily") if form.type == "daily" else None
         return Response(data, status=201)
@@ -384,9 +414,20 @@ class MySubmissionViewSet(mixins.RetrieveModelMixin, mixins.CreateModelMixin, vi
         if sub.date < timezone.localdate() - timedelta(days=6):
             raise serializers.ValidationError("This check-in is too old to change.")
         answers, files = self._payload(request)
-        services.submit(request.user, sub.form, answers, files, submission=sub)
+        note = request.data.get("note", (sub.metrics or {}).get("note", "")) or ""
+        services.submit(request.user, sub.form, answers, files, submission=sub, note=note)
         return Response(SubmissionDetailSerializer(self.get_queryset().get(id=sub.id),
                                                    context={"request": request}).data)
+
+
+    def destroy(self, request, pk=None):
+        """Undo on the "check-in sent" toast: only a check-in your coach has not opened yet, sent today."""
+        sub = get_object_or_404(self.get_queryset(), pk=pk)
+        if sub.reviewed_at or sub.created_at < timezone.now() - timedelta(hours=24):
+            raise serializers.ValidationError("Your coach already has this check-in. Use Edit answers instead.")
+        PhotoSet.objects.filter(submission=sub).delete()
+        sub.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class MyProgressView(APIView):
