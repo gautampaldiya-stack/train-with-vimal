@@ -1197,7 +1197,7 @@ Info modal: *"Workout calories are not added back. Your plan already accounts fo
 
 ### 4.8 Habits & supplements — `ClientHabits`
 
-9-din strip (`Sat 3` … `Sun 11`), aaj highlighted. Har din `Done` / `Missed`.
+Tabs `Day` / `Week`. Day: Mon–Sun strip (board jaisa), din pe tap → us din ke habits aur supplements; beeta din (7 din tak) log ho sakta hai, aane wale din pe toast *"You can log this on …"*. Week: `Habits done` %, `Supplements taken` %, sabse lambi streak, phir habits aur supplements ka grid (cell pe tap → wo din). Water ka −/+ 250 ml wahi water log hai jo Home ke water card me hai. Jo habit baad me shuru hogi uska `Remind me on Monday evening` habit reminders on karta hai (More → Reminders) (D-18).
 
 **Habits** — `Walk 8,000 steps` (green, best streak 19), water (`250 ml` quick button), sleep. Har habit pe `Details` → sheet: `Last 7 days`, `Target set by Aman`, cap *"Want a different target? Tell Aman in your weekly check-in"* (link). Steps → `Save steps`; sleep → `Save sleep` + goal toast.
 

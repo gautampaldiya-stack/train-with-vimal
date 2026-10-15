@@ -58,3 +58,25 @@ def test_water_moves_the_water_habit(client_user):
 def test_mark_all_read_clears_the_bell(client_user):
     assert client_user.post("/api/v1/notifications/read_all/").status_code == 200
     assert _home(client_user)["unread"] == 0
+
+
+def test_habits_page_week_grid(client_user):
+    r = client_user.get("/api/v1/me/habits/")
+    assert r.status_code == 200, r.content
+    d = r.json()
+    wk = d["week"]
+    days = [date.fromisoformat(x["date"]) for x in wk["days"]]
+    assert len(days) == 7 and days[0].weekday() == 0 and sum(x["today"] for x in wk["days"]) == 1
+    assert wk["habits_due"] >= wk["habits_done"] and wk["supps_due"] >= wk["supps_taken"]
+    for h in d["habits"]:
+        assert len(h["week"]) == 7 and set(h["week"]) <= {"done", "missed", "today", "coming", "off"}
+        assert h["week_done"] == h["week"].count("done") and len(h["last_7"]) == 7
+    sugar = next(h for h in d["habits"] if h["name"] == "No sugary drinks")
+    assert sugar["starts_on"] and set(sugar["week"]) == {"off"}  # starts next Monday
+    whey = next(s for s in d["supplements"] if s["name"] == "Whey protein")
+    assert whey["group"] == "training" and whey["taken_at"] and whey["stock"]["unit"] == "scoops"
+    assert len(whey["week"]) == 7 and len(whey["last_7"]) == 7
+    # an earlier week opens with ?date=
+    past = date.fromisoformat(wk["start"]).toordinal() - 7
+    r = client_user.get("/api/v1/me/habits/", {"date": date.fromordinal(past).isoformat()})
+    assert date.fromisoformat(r.json()["week"]["start"]).toordinal() == past

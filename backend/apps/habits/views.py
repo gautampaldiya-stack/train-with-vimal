@@ -176,47 +176,98 @@ def _streaks(client, habit, today):
     return cur, best
 
 
+# Supplement groups on the Habits page: name, line, default reminder time ("Morning · With breakfast · 8:00 am").
+SUPP_GROUPS = {
+    "breakfast": ("morning", "Morning", "With breakfast · 8:00 am"),
+    "morning": ("morning", "Morning", "With breakfast · 8:00 am"),
+    "post_workout": ("training", "After training", "After your workout"),
+    "any": ("any", "Any time", "When it suits you"),
+    "night": ("night", "Night", "Before bed · 10:30 pm"),
+    "before_bed": ("night", "Night", "Before bed · 10:30 pm"),
+}
+SHORT = {"steps": "Steps", "water": "Water", "sleep": "Sleep"}
+
+
+def _cell(ok, d, today, active):
+    """One day of the week grid: done / missed / today (not yet) / coming / off (not due, not started)."""
+    if not active:
+        return "off"
+    if ok:
+        return "done"
+    if d > today:
+        return "coming"
+    return "today" if d == today else "missed"
+
+
 def habits_day(client, day):
     today = timezone.localdate()
     start = day - timedelta(days=6)
     strip_start = today - timedelta(days=6)
-    assigns = list(HabitAssignment.objects.filter(client=client, active=True).select_related("habit"))
-    logs = {(l.habit_id, l.date): l for l in HabitLog.objects.filter(
-        client=client, date__range=(min(start, strip_start), max(day, today + timedelta(days=2))))}
+    ws = day - timedelta(days=day.weekday())  # Monday of the picked day's week
+    week = [ws + timedelta(days=i) for i in range(7)]
+    assigns = list(HabitAssignment.objects.filter(client=client, active=True).select_related("habit", "assigned_by"))
+    lo, hi = min(start, strip_start, ws), max(day, today + timedelta(days=2), week[-1])
+    logs = {(l.habit_id, l.date): l for l in HabitLog.objects.filter(client=client, date__range=(lo, hi))}
+    done_on = lambda h, d: bool((lg := logs.get((h.id, d))) and lg.done)  # noqa: E731
     habits = []
+    h_done = h_due = 0
+    best = (None, 0)
     for a in assigns:
         h = a.habit
         log = logs.get((h.id, day))
-        cur, best = _streaks(client, h, today)
+        cur, top = _streaks(client, h, today)
+        due_on = lambda d: d >= a.start_date and h.is_due_on(d)  # noqa: E731
+        cells = [_cell(done_on(h, d), d, today, due_on(d)) for d in week]
+        for d in week:
+            if d < today and due_on(d):
+                h_due += 1
+                h_done += done_on(h, d)
+            elif d == today and done_on(h, d):
+                h_due += 1
+                h_done += 1
+        if cur > best[1]:
+            best = (SHORT.get(h.icon, h.name), cur)
         habits.append({
             **HabitSerializer(h).data, "assignment": a.id,
-            "value": log.value if log else 0, "done": bool(log and log.done), "due": h.is_due_on(day),
-            "streak": cur, "best_streak": best,
-            "last_7": [{"date": start + timedelta(days=i),
-                        "done": bool(logs.get((h.id, start + timedelta(days=i))) and
-                                     logs[(h.id, start + timedelta(days=i))].done)} for i in range(7)],
-            "week_done": sum(1 for i in range(day.weekday() + 1)
-                             if (lg := logs.get((h.id, day - timedelta(days=i)))) and lg.done),
+            "value": log.value if log else 0, "logged": log is not None, "done": bool(log and log.done),
+            "due": h.is_due_on(day), "starts_on": a.start_date if a.start_date > today else None,
+            "since": a.start_date, "set_by": a.assigned_by.full_name if a.assigned_by else None,
+            "streak": cur, "best_streak": top,
+            "last_7": [{"date": start + timedelta(days=i), "done": done_on(h, start + timedelta(days=i)),
+                        "value": (lg.value if (lg := logs.get((h.id, start + timedelta(days=i)))) else None)}
+                       for i in range(7)],
+            "week": cells, "week_done": cells.count("done"),
+            "week_due": sum(1 for d in week if d <= today and due_on(d)),
         })
     strip = []
     for i in range(9):
         d = strip_start + timedelta(days=i)
-        due = [a.habit for a in assigns if a.habit.is_due_on(d)]
-        done = sum(1 for h in due if (lg := logs.get((h.id, d))) and lg.done)
+        due = [a.habit for a in assigns if a.habit.is_due_on(d) and d >= a.start_date]
+        done = sum(1 for h in due if done_on(h, d))
         strip.append({"date": d, "today": d == today, "future": d > today,
                       "state": "none" if d > today or not due else ("done" if done == len(due) else
                                                                     ("today" if d == today else "missed"))})
+    days = []
+    for d in week:
+        due = [a.habit for a in assigns if a.habit.is_due_on(d) and d >= a.start_date]
+        n = sum(1 for h in due if done_on(h, d))
+        days.append({"date": d, "today": d == today, "future": d > today,
+                     "state": "coming" if d > today else "none" if not due else "done" if n == len(due)
+                     else "today" if d == today else "part" if n else "missed"})
     supps = []
+    s_done = s_due = 0
     for sa in SupplementAssignment.objects.filter(client=client, active=True).select_related("plan",
                                                                                               "assigned_by"):
-        taken = set(SupplementLog.objects.filter(client=client, date=day, item__plan=sa.plan)
-                    .values_list("item_id", flat=True))
+        took = {(lg.item_id, lg.date): lg for lg in SupplementLog.objects.filter(
+            client=client, item__plan=sa.plan, date__range=(min(start, ws), max(day, week[-1])))}
         stocks = {s.item_id: s for s in SupplementStock.objects.filter(client=client, item__plan=sa.plan)}
         for it in sa.plan.items.all():
+            is_due = lambda d: d >= sa.start_date and (not it.days or d.weekday() in it.days)  # noqa: E731
             due = not it.days or day.weekday() in it.days
+            lg = took.get((it.id, day))
             if day < sa.start_date:
                 pill = f"Starts {sa.start_date:%a, %-d %b}"
-            elif it.id in taken:
+            elif lg:
                 pill = "taken"
             elif not due:
                 pill = "not_today"
@@ -224,13 +275,24 @@ def habits_day(client, day):
                 pill = "missed"
             else:
                 pill = "upcoming"
+            for d in week:
+                if (d < today and is_due(d)) or (d == today and (it.id, d) in took):
+                    s_due += 1
+                    s_done += (it.id, d) in took
             st = stocks.get(it.id)
+            g = SUPP_GROUPS.get(it.timing, SUPP_GROUPS["any"])
             supps.append({"id": it.id, "plan": sa.plan.name, "plan_since": sa.start_date,
                           "by": sa.assigned_by.full_name if sa.assigned_by else None, "name": it.name,
                           "dose": it.dose, "how": it.how, "timing": it.timing, "with_food": it.with_food,
-                          "due": due, "taken": it.id in taken, "pill": pill,
-                          "stock": {"quantity": st.quantity, "unit": st.unit} if st else None})
-    return {"date": day, "strip": strip, "habits": habits, "supplements": supps}
+                          "group": g[0], "group_name": g[1], "group_line": g[2],
+                          "due": due, "taken": bool(lg), "taken_at": lg.taken_at if lg else None, "pill": pill,
+                          "stock": {"quantity": st.quantity, "unit": st.unit} if st else None,
+                          "last_7": [(it.id, start + timedelta(days=i)) in took for i in range(7)],
+                          "week": [_cell((it.id, d) in took, d, today, is_due(d)) for d in week]})
+    return {"date": day, "strip": strip, "habits": habits, "supplements": supps,
+            "week": {"start": ws, "end": week[-1], "days": days,
+                     "habits_done": h_done, "habits_due": h_due, "supps_taken": s_done, "supps_due": s_due,
+                     "best_streak": {"name": best[0], "days": best[1]} if best[0] else None}}
 
 
 class ClientHabitsView(APIView):
@@ -251,6 +313,8 @@ class ClientHabitsView(APIView):
 
 # ---------------------------------------------------------------- client app
 class MyHabitsView(APIView):
+    """Habits & supplements page (?date=): the day, its Mon–Sun week grid (`week`), start dates, supplement groups."""
+
     permission_classes = [IsClient]
 
     def get(self, request):

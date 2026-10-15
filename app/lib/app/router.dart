@@ -15,6 +15,7 @@ import '../features/auth/verify_email_screen.dart';
 import '../features/auth/setup/checklist_screen.dart';
 import '../features/auth/setup/done_screen.dart';
 import '../features/auth/setup/setup_screen.dart';
+import '../features/client/habits/habits_screen.dart';
 import '../features/client/home/home_screen.dart';
 import '../features/client/train/train_screen.dart';
 import '../features/client/train/workout_screen.dart';
@@ -52,6 +53,7 @@ bool _under(String path, List<String> roots) => roots.any((p) => path == p || pa
 /// shows a holding page so every nav item still opens something.
 final Map<String, Widget Function(GoRouterState)> screens = {
   '/home': (_) => const ClientHomeScreen(),
+  '/habits': (_) => const ClientHabitsScreen(),
   '/train': (st) => ClientTrainScreen(discarded: int.tryParse(st.uri.queryParameters['discarded'] ?? '') ?? 0),
   '/train/:id': (st) => WorkoutScreen(
         key: ValueKey(st.uri.toString()),

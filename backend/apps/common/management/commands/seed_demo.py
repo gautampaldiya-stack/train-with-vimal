@@ -333,6 +333,12 @@ class Command(BaseCommand):
         if sp and not SupplementLog.objects.filter(client=riya, date=today).exists():
             for it in sp.items.filter(name__in=["Whey protein", "Vitamin D3"]):
                 SupplementLog.objects.create(item=it, client=riya, date=today)
+        # Stock at home, like the board's supplement sheet (Habits page): 12 scoops, 20 and 30 tablets.
+        from apps.habits.models import SupplementStock
+
+        for it in (sp.items.all() if sp else []):
+            q, u = {"Whey protein": (12, "scoops"), "Vitamin D3": (20, "tablets")}.get(it.name, (30, "tablets"))
+            SupplementStock.objects.get_or_create(item=it, client=riya, defaults={"quantity": q, "unit": u})
         sugar = Habit.objects.filter(name="No sugary drinks").first()
         if sugar:
             monday = today + timedelta(days=7 - today.weekday())

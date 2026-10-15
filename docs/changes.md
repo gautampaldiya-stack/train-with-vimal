@@ -20,6 +20,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 
 ---
 
+### 2026-10-15 · Habits & supplements page built
+- **Pehle:** `/habits` par "This page is on the way" tha. `me/habits/` sirf ek din ka data deta tha, week grid ya start date nahi.
+- **Ab:** ClientHabits (phone) aur ClientHabitsWeb board jaise: Day / Week tabs, week strip, habits (water, steps, sleep, tick), Details sheets, supplements (Take / Undo / Took it, stock, running low), Week grids. API me `week`, `starts_on`, `set_by`, supplement `group`, `taken_at`, `last_7`. Seed me supplement stock.
+- **Kyun:** Gautam: next screen (Home ke "See all" yahan aate hain).
+- **Updated:** app/lib/features/client/habits/*, router, colors, backend/apps/habits/views.py, seed_demo, tests, docs/screens/status.md + behaviour.md, CURRENT.md · Decision D-18
+
 ### 2026-10-15 · Train — workout options on the banner; toast above sheets
 - **Pehle:** Train par chal rahe workout ke banner me sirf Continue tha. Past workout detail me "3 sets" beech me aata tha. Phone par sheet khuli ho to toast sheet ke andar neeche aata tha aur sheet khaali jagah ke saath badi ho jaati thi. Timer sheet kehta tha "Leaving this screen does not stop it".
 - **Ab:** Banner / bar par `⋯`: Pause / Resume timer, Finish, Restart, Discard (confirm ke saath). "3 sets" right edge par. Sheet khuli ho to toast upar aata hai, sheet ka size nahi badalta. Timer sheet: "The timer stops when you finish the workout, or when you leave Train. Continue workout starts it again."

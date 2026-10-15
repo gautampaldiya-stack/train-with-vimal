@@ -87,6 +87,17 @@ abstract final class AppColors {
   static const truncTip = Color(0xFF1F1F22);
 
   // Scrims
+  // Habits & supplements board (`hk-*`)
+  static const missDot = Color(0xFFF6D2CF); // missed day dot, legend
+  static const missBar = Color(0xFFF2A7A3); // missed day bar
+  static const partDay = Color(0xFFFDE7C7); // week strip: some habits missed
+  static const soonBg = Color(0xFFFCFCFA); // habit that starts later
+  static const missTickBg = Color(0xFFFFF5F4);
+  static const streak = Color(0xFFC2410C);
+  static const cellBg = Color(0xFFF7F7F4); // stat cells, notes
+  static const offA = Color(0xFFF3F3F0), offB = Color(0xFFFAFAF8); // not started stripes
+  static const futCell = Color(0xFFF5F5F2), futLine = Color(0xFFD6D6D0), futLegend = Color(0xFFC9C9C3);
+  static const lowText = Color(0xFF8A4B00); // running low
   static const scrimModal = Color(0x5C171717); // rgba(23,23,23,.36)
   static const scrimDrawer = Color(0x4D171717); // .30
   static const scrimSheet = Color(0x61111111); // rgba(17,17,17,.38)
