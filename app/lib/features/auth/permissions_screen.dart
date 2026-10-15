@@ -177,7 +177,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
     final (children, foot) = switch (_s) {
       _Ps.ask => (
           [
-            AuthTop(lead: _When(k.when), hideOnWeb: false, help: !authSplit(context)),
+            AuthTop(lead: _When(k.when), hideOnWeb: false, help: !authPanel(context)),
             IllBox(k.ill),
             AuthHeading(k.title, sub: k.body),
             Column(spacing: 4, children: [
@@ -199,7 +199,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
         ),
       _Ps.allowed => (
           [
-            AuthTop(lead: _When(k.when), hideOnWeb: false, help: !authSplit(context)),
+            AuthTop(lead: _When(k.when), hideOnWeb: false, help: !authPanel(context)),
             const StatusBadge(ok: true),
             AuthHeading('You are all set', sub: k.okBody, center: true),
           ],
@@ -207,7 +207,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
         ),
       _Ps.blocked => (
           [
-            AuthTop(lead: _When(k.when), hideOnWeb: false, help: !authSplit(context)),
+            AuthTop(lead: _When(k.when), hideOnWeb: false, help: !authPanel(context)),
             const _BlockedBadge(),
             AuthHeading('Permission not given', sub: 'Your $_where blocked it. The app still works, you just ${k.noTail}', center: true),
             CaCard(

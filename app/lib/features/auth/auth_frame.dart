@@ -52,9 +52,25 @@ class BrandSteps {
   final String coachFirst;
 }
 
-const kSplitWidth = 1000.0;
+/// Phone layout only below 600 (phones). Tablets and desktop get the web layout.
+const kSplitWidth = Breakpoints.tablet;
+
+/// The side panel needs room: from 900 it sits next to the page, below that (tablet
+/// portrait) the page is centred under a logo bar.
+const kPanelWidth = 900.0;
 
 bool authSplit(BuildContext context) => MediaQuery.sizeOf(context).width >= kSplitWidth;
+bool authPanel(BuildContext context) => MediaQuery.sizeOf(context).width >= kPanelWidth;
+
+/// Side panel width: 520 on wide screens, narrower on small laptops and tablet landscape.
+double _panelW(BuildContext context) => (MediaQuery.sizeOf(context).width * .4).clamp(360.0, 520.0);
+
+/// Panel picture: 260 tall, smaller on short laptop screens so the panel text still fits.
+double _illH(BuildContext context, double rest) => (MediaQuery.sizeOf(context).height - rest).clamp(120.0, 260.0);
+
+/// Side panel padding (`wl-brand` 36 / 44, tighter when the panel is narrow).
+EdgeInsets _panelPad(BuildContext context) =>
+    _panelW(context) < 460 ? const EdgeInsets.symmetric(horizontal: 32, vertical: 32) : const EdgeInsets.symmetric(horizontal: 44, vertical: 36);
 
 class AuthFrame extends StatelessWidget {
   const AuthFrame({
@@ -171,8 +187,9 @@ class AuthFrame extends StatelessWidget {
           child: Scaffold(
           backgroundColor: AppColors.caWebBg,
           body: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            if (authPanel(context))
             SizedBox(
-              width: 520,
+              width: _panelW(context),
               child: plain != null
                   ? _PlainPanel(plain!)
                   : list != null
@@ -188,10 +205,25 @@ class AuthFrame extends StatelessWidget {
                   child: ConstrainedBox(
                     constraints: BoxConstraints(minHeight: c.maxHeight - 80),
                     child: Column(mainAxisAlignment: MainAxisAlignment.center, spacing: 16, children: [
+                      // Tablet portrait: no side panel, so the logo sits above the page.
+                      if (!authPanel(context))
+                        ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: wide ? 616 : 476),
+                          child: const Padding(padding: EdgeInsets.only(bottom: 4), child: _BrandHead()),
+                        ),
                       ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: wide ? 560 : 420),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
+                        constraints: BoxConstraints(maxWidth: (wide ? 560 : 420) + (authPanel(context) ? 0 : 56)),
+                        child: Container(
+                          // Tablet portrait: the page sits in a white card on the grey background.
+                          padding: authPanel(context) ? const EdgeInsets.symmetric(vertical: 8) : const EdgeInsets.all(28),
+                          decoration: authPanel(context)
+                              ? null
+                              : BoxDecoration(
+                                  color: AppColors.card,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: AppColors.line),
+                                  boxShadow: const [BoxShadow(color: AppColors.shadowSoft, offset: Offset(0, 8), blurRadius: 24)],
+                                ),
                           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 18, children: [
                             Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: children),
                             if (foot.isNotEmpty)
@@ -256,7 +288,7 @@ class _SoftPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         color: AppColors.brandSoft,
-        padding: const EdgeInsets.symmetric(horizontal: 44, vertical: 36),
+        padding: _panelPad(context),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 28, children: [
           const _BrandHead(),
           Expanded(
@@ -264,7 +296,7 @@ class _SoftPanel extends StatelessWidget {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
                 Padding(
                   padding: const EdgeInsets.only(bottom: 18),
-                  child: SvgPicture.asset('assets/welcome.svg', width: 400, height: 260, alignment: Alignment.center),
+                  child: SvgPicture.asset('assets/welcome.svg', width: 400, height: _illH(context, 640), alignment: Alignment.center),
                 ),
                 BalancedText('Your coach. Your plan. One app.', style: AppText.s(32, W.w8, ls: -0.64, h: 1.12)),
                 ConstrainedBox(
@@ -326,7 +358,7 @@ class _StepsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 44, vertical: 36),
+        padding: _panelPad(context),
         decoration: const BoxDecoration(
           gradient: LinearGradient(begin: Alignment(-0.34, -1), end: Alignment(0.34, 1), colors: [AppColors.accent, AppColors.accentHover]),
         ),
@@ -406,7 +438,7 @@ class _PlainPanel extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
           Padding(
             padding: const EdgeInsets.only(bottom: 18),
-            child: SvgPicture.asset('assets/ill/${p.ill}.svg', width: 400, height: 260, alignment: Alignment.center),
+            child: SvgPicture.asset('assets/ill/${p.ill}.svg', width: 400, height: _illH(context, 420), alignment: Alignment.center),
           ),
           BalancedText(p.title, style: AppText.s(32, W.w8, ls: -0.64, h: 1.12)),
           ConstrainedBox(
@@ -490,7 +522,7 @@ class _AccountPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         color: AppColors.brandSoft,
-        padding: const EdgeInsets.symmetric(horizontal: 44, vertical: 36),
+        padding: _panelPad(context),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 28, children: [
           const Align(alignment: Alignment.centerLeft, child: _BrandHead()),
           Expanded(child: _Centered(child: child)),

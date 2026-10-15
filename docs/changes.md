@@ -5,6 +5,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 **Naya entry ka format (copy karo):**
 
 ```md
+### 2026-10-15 · Responsive — tablet never gets the phone layout; Log out
+- **Pehle:** Login / account pages 1000 px se chhoti width par phone layout dikhate the, isliye tablet aur chhoti browser window me mobile screen khulti thi. Login ke baad Log out ka koi button nahi tha.
+- **Ab:** Phone layout sirf 600 se kam par. 600–899 par web layout (logo upar, page white card me). 900 se upar side panel page ke saath, window ke saath chhota-bada hota hai (360–520), chhoti height par picture chhoti. Settings (admin), My profile (trainer), My account (client) par Log out button, board ka "Log out?" confirm ke saath.
+- **Kyun:** Gautam: mobile wala sirf mobile screen par; tablet aur web acche se aaye, window resize par bhi.
+- **Updated:** app/lib/features/auth/auth_frame.dart, account_widgets.dart, permissions_screen.dart, app/lib/app/router.dart, docs/memory/README.md · Decision D-11
+
 ### YYYY-MM-DD · <Area> — <short title>
 - **Pehle:** …
 - **Ab:** …

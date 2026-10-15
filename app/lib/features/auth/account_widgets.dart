@@ -26,7 +26,7 @@ class AuthTop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (hideOnWeb && authSplit(context)) return const SizedBox.shrink();
+    if (hideOnWeb && authPanel(context)) return const SizedBox.shrink();
     return ConstrainedBox(
       constraints: const BoxConstraints(minHeight: 36),
       child: Row(spacing: 8, children: [
@@ -74,7 +74,7 @@ class IllBox extends StatelessWidget {
   final String name;
   @override
   Widget build(BuildContext context) {
-    if (authSplit(context)) return const SizedBox.shrink();
+    if (authPanel(context)) return const SizedBox.shrink();
     return Container(
       margin: const EdgeInsets.only(top: 4),
       height: 236,

@@ -23,6 +23,9 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
   - Verify email `/verify` and `/verify-email?token=` (inbox, resend, change email, verified, link not valid).
   - Permissions `/permissions?kind=notifications|camera|photos&next=` (ask, allowed, blocked).
   - Approval wait, setup steps incl. the new health conditions + doctor's OK, checklist.
+- Responsive (D-11): phone layout only under 600; 600–899 web layout in a card; side panel from 900, fluid.
+  Checked login, forgot, join, reset, setup and staff shell at 600, 768, 900, 1024 and 1280.
+- Log out: Settings / My profile / My account placeholders have a working Log out (confirm → log in page).
 - Web uses path URLs (`usePathUrlStrategy`): the web server must fall back to `index.html` for unknown paths.
 - Client-app components: `app/lib/core/widgets/client.dart`; auth-only pieces: `features/auth/account_widgets.dart`.
 - Demo logins (password Demo@1234): riya@example.com (all set), isha@example.com (setup not done),

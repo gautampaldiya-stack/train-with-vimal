@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/icons/app_icons.dart';
+import '../core/widgets/button.dart';
 import '../core/widgets/card.dart';
+import '../core/widgets/overlays.dart';
+import '../features/auth/setup/setup_state.dart';
 import '../features/auth/join_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/pending_screen.dart';
@@ -114,8 +118,31 @@ class _Holding extends StatelessWidget {
   const _Holding(this.path);
   final String path;
 
+  /// Settings (admin), My profile (trainer) and My account (client) keep a working Log out
+  /// until the full pages are built.
+  static const _account = {'/settings', '/me', '/more'};
+
   @override
   Widget build(BuildContext context) => StaffPage(
-        children: [EmptyState('This page is on the way', sub: 'Being built now ($path).')],
+        children: [
+          EmptyState(
+            'This page is on the way',
+            sub: 'Being built now ($path).',
+            action: _account.contains(path) ? AppButton('Log out', icon: AppIcons.logout, onPressed: () => confirmLogOut(context)) : null,
+          ),
+        ],
       );
+}
+
+/// "Log out?" confirm from the account boards (`ClientMore`), then sign out → log in page.
+Future<void> confirmLogOut(BuildContext context) async {
+  final ok = await confirmAction(context,
+      title: 'Log out?',
+      body: 'Everything you logged is saved. You need your password to log in again.',
+      confirm: 'Log out',
+      danger: true,
+      icon: AppIcons.logout);
+  if (!ok) return;
+  SetupState.instance.reset();
+  await Services.session.signOut();
 }

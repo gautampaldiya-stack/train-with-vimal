@@ -5,7 +5,7 @@ Things a new person (or a new Claude session) must know. Update when Gautam deci
 - Gautam writes in Hinglish; reply the same way, short.
 - Admin is only Vimal. Trainers and clients are many.
 - Design canvas (v282, 104 boards) is the source of truth: `design/screens/` and https://claude.ai/artifact/NKNGUZt9ZJMVXwiKXbfhiK.
-- Every screen must be responsive (phone, tablet, desktop) and match the canvas exactly.
+- Every screen must be responsive (phone, tablet, desktop) and match the canvas exactly. Phone layout only under 600 (never on tablet); layouts must hold while a browser window is resized (D-11).
 - Login = email or mobile, with password.
 - Messages now: email + in-app + push + realtime. WhatsApp/SMS later via `.env`.
 - No SaaS / independent coaches.
