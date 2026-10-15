@@ -538,7 +538,8 @@ class _ToastBox extends StatelessWidget {
         switch (t.kind) {
           ToastKind.err || ToastKind.warn => AppIcons.alert,
           ToastKind.del => AppIcons.trash,
-          ToastKind.info || ToastKind.water => AppIcons.info,
+          ToastKind.water => AppIcons.water,
+          ToastKind.info => AppIcons.info,
           ToastKind.star => AppIcons.star,
           _ => AppIcons.check,
         };

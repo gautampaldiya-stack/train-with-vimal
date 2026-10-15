@@ -62,6 +62,7 @@ class Command(BaseCommand):
             vimal = self.people()
             program, plan = self.plans(vimal)
             self.history(program, plan)
+            self.riya_home()
         self.stdout.write(self.style.SUCCESS(f"Demo ready. Log in with any demo email and {PASSWORD}"))
         self.stdout.write("Demo links (the reset link works for 15 minutes; run seed_demo again for new ones):")
         for line in self.demo_links():
@@ -265,6 +266,74 @@ class Command(BaseCommand):
                 if day.weekday() < program.days_per_week and assignment:
                     self.workout(c, assignment, program, day)
             refresh_client_stats(cp)
+
+    def riya_home(self):
+        """Fills every card of Riya's Home board: supplements, today's session, a coach reply, the bell,
+        and a habit that starts next Monday."""
+        from apps.accounts.models import User
+        from apps.checkins.models import Form, Submission
+        from apps.habits.models import Habit, HabitAssignment, SupplementAssignment, SupplementPlan
+        from apps.notifications.models import Notification
+        from apps.scheduling.models import Session
+
+        riya = User.objects.filter(email__iexact="riya@example.com").select_related("client_profile").first()
+        if riya is None or riya.client_profile.trainer is None:
+            return
+        aman, today, now = riya.client_profile.trainer, timezone.localdate(), timezone.now()
+        sp = SupplementPlan.objects.filter(name="Fat loss support").first()
+        if sp and not SupplementAssignment.objects.filter(client=riya).exists():
+            SupplementAssignment.objects.create(plan=sp, client=riya, start_date=today - timedelta(days=14),
+                                                assigned_by=aman)
+        if not Session.objects.filter(client=riya, start__gte=now, status=Session.Status.BOOKED).exists():
+            start = timezone.make_aware(timezone.datetime.combine(today, timezone.datetime.min.time())) \
+                + timedelta(hours=18, minutes=30)
+            if start < now:
+                start += timedelta(days=1)
+            Session.objects.create(client=riya, trainer=aman, title="Lower A", start=start,
+                                   end=start + timedelta(minutes=60), place="Gym floor", booked_by=aman)
+        # The board's habits: steps, water (from the water card) and sleep hours.
+        sleep = Habit.objects.filter(name="Sleep 7 hours").first()
+        if sleep:
+            HabitAssignment.objects.get_or_create(habit=sleep, client=riya,
+                                                  defaults={"start_date": riya.client_profile.start_date or today,
+                                                            "assigned_by": aman})
+            HabitAssignment.objects.filter(client=riya, habit__name="Sleep by 11 pm").update(active=False)
+        # Halfway through today, like the board: 1.5 L water, 6,240 steps, 7 h 20 min sleep, 2 of 3 supplements.
+        from apps.habits.models import HabitLog, SupplementLog
+        from apps.nutrition.models import WaterLog
+        from apps.nutrition.services import add_water
+
+        if not WaterLog.objects.filter(client=riya, date=today).exists():
+            add_water(riya, 1500, today)
+        for name, value, target in [("8,000 steps", 6240, 8000), ("Sleep 7 hours", 440, 420)]:
+            h = Habit.objects.filter(name=name).first()
+            if h:
+                HabitLog.objects.get_or_create(habit=h, client=riya, date=today,
+                                               defaults={"value": value, "done": value >= target})
+        if sp and not SupplementLog.objects.filter(client=riya, date=today).exists():
+            for it in sp.items.filter(name__in=["Whey protein", "Vitamin D3"]):
+                SupplementLog.objects.create(item=it, client=riya, date=today)
+        sugar = Habit.objects.filter(name="No sugary drinks").first()
+        if sugar:
+            monday = today + timedelta(days=7 - today.weekday())
+            HabitAssignment.objects.get_or_create(habit=sugar, client=riya,
+                                                  defaults={"start_date": monday, "assigned_by": aman})
+        weekly = Form.objects.filter(type="weekly", status="published").first()
+        if weekly and not Submission.objects.filter(client=riya).exclude(reply="").exists():
+            Submission.objects.create(
+                form=weekly, form_type="weekly", client=riya, date=today - timedelta(days=6),
+                reviewed_at=now - timedelta(hours=2), reviewed_by=aman,
+                reply="Great week, Riya. Your squat looks much better. Keep the protein up on rest days too.")
+        if not Notification.objects.filter(recipient=riya).exists():
+            for ago, event, title, body, read in [
+                (2, "checkin_reviewed", "Aman replied to your check-in", "Great week, Riya. Your squat looks better.",
+                 False),
+                (5, "session_booked", "Session booked", "Today · 6:30 pm · Gym floor", False),
+                (26, "plan_updated", "Your meal plan was updated", "Veg fat loss · 1,800", True),
+            ]:
+                n = Notification.objects.create(recipient=riya, actor=aman, event=event, title=title, body=body,
+                                                read_at=now if read else None)
+                Notification.objects.filter(pk=n.pk).update(created_at=now - timedelta(hours=ago))
 
     def workout(self, client, assignment, program, day):
         from apps.training.models import SetLog, WorkoutLog

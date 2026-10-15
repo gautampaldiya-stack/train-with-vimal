@@ -268,10 +268,62 @@ class TrainerDashboardView(APIView):
 
 
 # ---------------------------------------------------------------- client home
+def _fmt_kg(v):
+    return f"{v:g}" if v is not None else ""
+
+
+def _ex_line(pe):
+    """'4 × 6–8 · 42.5 kg' / '35 min · incline 10%' — the line under an exercise on Home."""
+    reps = pe.reps or ""
+    line = f"{pe.sets} × {reps}" if pe.exercise.log_type != "time" else f"{pe.sets} × {reps}"
+    if pe.target_weight_kg:
+        line += f" · {_fmt_kg(float(pe.target_weight_kg))} kg"
+    return line
+
+
+def _day_minutes(exercises):
+    """Rough session length: each set about 45 s of work plus its rest, rounded to 5 minutes."""
+    secs = sum(pe.sets * (45 + pe.rest_seconds) for pe in exercises)
+    return max(10, int(round(secs / 60 / 5.0)) * 5) if exercises else 0
+
+
+def home_week(client, today, pa):
+    """Home week strip: Mon–Sun with each day's planned workout, so a tap shows that day."""
+    from apps.clients.metrics import program_day_for
+    from apps.training.models import WorkoutLog
+
+    monday = today - timedelta(days=today.weekday())
+    logs = {}
+    for w in (WorkoutLog.objects.filter(client=client, date__range=(monday, monday + timedelta(days=6)))
+              .exclude(status="discarded").prefetch_related("sets").order_by("date", "-started_at")):
+        logs.setdefault(w.date, w)
+    out = []
+    for i in range(7):
+        d = monday + timedelta(days=i)
+        pd = program_day_for(pa, d)
+        exs = list(pd.exercises.select_related("exercise").order_by("order")) if pd and not pd.is_rest else []
+        w = logs.get(d)
+        done_ex = len({s.program_exercise_id or s.exercise_id for s in w.sets.all() if s.done}) if w else 0
+        completed = bool(w and w.status == WorkoutLog.Status.COMPLETED)
+        cardio = bool(exs) and exs[0].exercise.muscle_group == "cardio"
+        out.append({
+            "date": d, "today": d == today, "is_rest": not exs, "name": pd.name if pd and exs else "",
+            "rest_note": pd.rest_note if pd and pd.is_rest else "",
+            "kind": "cardio" if cardio else "strength", "minutes": _day_minutes(exs),
+            "exercises": [{"id": pe.id, "name": pe.exercise.name, "line": _ex_line(pe)} for pe in exs],
+            "done": completed, "in_progress": bool(w) and not completed, "exercises_done": done_ex,
+            "done_line": (f"Done · {round(w.duration_seconds / 60)} min · {min(done_ex, len(exs))} of {len(exs)} exercises"
+                          if completed else ""),
+        })
+    return out
+
+
 class ClientHomeView(APIView):
     permission_classes = [IsClient]
 
     def get(self, request):
+        from apps.checkins.models import Form, Question, Submission
+        from apps.habits.models import HabitAssignment
         from apps.habits.views import habits_day
         from apps.notifications.models import Notification
         from apps.nutrition import services as food
@@ -289,29 +341,46 @@ class ClientHomeView(APIView):
         day = food.day_view(u, today)
         next_meal = next((m for m in day["meals"] if m["pill"] in ("next", "to_log")), None)
         hab = habits_day(u, today)
+        later = {a.habit_id: a.start_date for a in HabitAssignment.objects.filter(client=u, active=True,
+                                                                                     start_date__gt=today)}
+        habits = [h for h in hab["habits"] if h["id"] not in later and str(h["id"]) not in map(str, later)]
+        soon = [{"name": a.habit.name, "starts": a.start_date} for a in
+                HabitAssignment.objects.filter(client=u, active=True, start_date__gt=today)
+                .select_related("habit").order_by("start_date")]
         session = (Session.objects.filter(client=u, start__gte=now - timedelta(hours=1), status="booked")
                    .select_related("trainer").order_by("start").first())
-        from apps.checkins.models import Form, Submission
 
         weekly = Form.objects.filter(type="weekly", status="published").first()
         last_weekly = Submission.objects.filter(client=u, form_type="weekly").order_by("-date").first()
         coming = []
+        if session:
+            mins = round((session.end - session.start).total_seconds() / 60)
+            coming.append({"kind": "session", "title": f"Session with {session.trainer.first_name}",
+                           "date": session.start, "place": session.place, "minutes": mins, "id": str(session.id)})
         if weekly:
             due = (last_weekly.date + timedelta(days=7)) if last_weekly else today
-            coming.append({"kind": "checkin", "title": "Weekly check-in", "date": max(due, today)})
-        if session:
-            coming.append({"kind": "session", "title": f"{session.get_kind_display()} with "
-                                                       f"{session.trainer.first_name}", "date": session.start})
+            qs = Question.objects.filter(form=weekly, is_removed=False)
+            photos = qs.filter(type="photo").count()
+            coming.append({"kind": "checkin", "title": "Weekly check-in", "date": max(due, today),
+                           "questions": qs.exclude(type="photo").count(), "photos": photos})
         if pa:
-            coming.append({"kind": "plan_week", "title": f"Week {min(week + 1, pa.effective_program.weeks)} of "
-                                                         f"{pa.effective_program.name}",
-                           "date": today + timedelta(days=7 - today.weekday())})
+            prog = pa.effective_program
+            ends = pa.end_date or (pa.start_date + timedelta(weeks=prog.weeks) - timedelta(days=1))
+            coming.append({"kind": "plan_end", "title": f"{prog.name} ends", "date": ends})
         cp = u.client_profile
         notices = Notification.objects.filter(recipient=u, in_app=True).order_by("-created_at")[:5]
+        reply = (Submission.objects.filter(client=u).exclude(reply="").filter(reviewed_at__isnull=False)
+                 .select_related("reviewed_by").order_by("-reviewed_at").first())
+        meals = [{"id": m["id"], "name": m["name"], "time": m["time"], "pill": m["pill"],
+                  "foods": ", ".join(x["name"] for x in m.get("items", [])), "kcal": m.get("kcal", 0),
+                  **{k: round(sum(x[k] for x in m.get("items", [])), 1) for k in ("protein", "carbs", "fat")}}
+                 for m in day["meals"]]
         return Response({
             "date": today,
             "week": week, "weeks": pa.effective_program.weeks if pa else None,
             "first_name": u.first_name, "initials": u.initials, "avatar_color": u.avatar_color,
+            "goal": cp.get_goal_display() if cp.goal else "",
+            "strip": home_week(u, today, pa),
             "workout": {"day": {"id": pd.id, "name": pd.name, "is_rest": pd.is_rest, "rest_note": pd.rest_note}
                         if pd else None, "exercises": exercises, "program": pa.effective_program.name if pa else None},
             "session": {"id": str(session.id), "kind": session.get_kind_display(), "start": session.start,
@@ -319,12 +388,17 @@ class ClientHomeView(APIView):
                         "is_call": session.is_call, "call_link": session.call_link} if session else None,
             "water": day["water"],
             "next_meal": next_meal,
+            "meals": meals,
             "macros_target": day["plan"],
             "eaten": day["macros"],
-            "habits": hab["habits"],
+            "habits": habits,
+            "habits_soon": soon,
             "supplements": hab["supplements"],
             "coming_up": coming,
             "notices": [{"id": str(n.id), "title": n.title, "body": n.body, "created_at": n.created_at,
-                         "read": n.read_at is not None, "data": n.data} for n in notices],
+                         "read": n.read_at is not None, "event": n.event, "data": n.data} for n in notices],
+            "unread": Notification.objects.filter(recipient=u, in_app=True, read_at__isnull=True).count(),
             "trainer": _person(cp.trainer) if cp.trainer else None,
+            "trainer_note": {"by": _person(reply.reviewed_by) if reply.reviewed_by else None, "body": reply.reply,
+                             "at": reply.reviewed_at} if reply else None,
         })

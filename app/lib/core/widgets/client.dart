@@ -18,7 +18,7 @@ class CaWeb extends InheritedWidget {
   bool updateShouldNotify(CaWeb old) => old.web != web;
 }
 
-enum CaBtnKind { pri, out }
+enum CaBtnKind { pri, out, dark }
 
 /// `ca-btn`: 44 high, radius 12, 14.5/700 (web: 40, radius 10, 14).
 class CaButton extends StatelessWidget {
@@ -33,10 +33,11 @@ class CaButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final web = CaWeb.of(context);
-    final h = small ? 34.0 : (web ? 40.0 : 44.0);
-    final r = small || web ? 10.0 : 12.0;
+    final h = small ? (web ? 32.0 : 34.0) : (web ? 40.0 : 44.0);
+    final r = small && web ? 8.0 : (small || web ? 10.0 : 12.0);
     final fs = small ? 13.0 : (web ? 14.0 : 14.5);
-    final pri = kind == CaBtnKind.pri;
+    final pri = kind != CaBtnKind.out;
+    final dark = kind == CaBtnKind.dark;
     return Opacity(
       opacity: dimmed || onPressed == null ? 0.55 : 1,
       child: Hover(
@@ -47,15 +48,19 @@ class CaButton extends StatelessWidget {
             height: h,
             padding: EdgeInsets.symmetric(horizontal: small ? 12 : 16),
             decoration: BoxDecoration(
-              color: pri ? (hov ? AppColors.accentHover : AppColors.accent) : (hov ? AppColors.outlineHover : AppColors.white),
+              color: dark
+                  ? (hov ? AppColors.black : AppColors.text)
+                  : pri
+                      ? (hov ? AppColors.accentHover : AppColors.accent)
+                      : (hov ? AppColors.outlineHover : AppColors.white),
               borderRadius: BorderRadius.circular(r),
               border: Border.all(color: pri ? Colors.transparent : AppColors.line),
             ),
-            child: Row(mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, spacing: 7, children: [
+            child: Row(mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, spacing: small ? 5 : 7, children: [
               if (loading)
                 SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: fg))
               else if (icon != null)
-                AppIcon(icon!, size: 17, color: fg),
+                AppIcon(icon!, size: small ? 15 : 17, color: fg),
               if (label.isNotEmpty) Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(fs, W.w7, color: fg, h: 1))),
               if (trailingIcon != null) AppIcon(trailingIcon!, size: 17, color: fg),
             ]),

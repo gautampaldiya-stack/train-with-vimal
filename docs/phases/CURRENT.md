@@ -44,12 +44,24 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
 - Browser check tools used: boards served by `design/screens/serve.py`, app by `flutter build web --no-web-resources-cdn`,
   both driven by Playwright (Chromium needs `locale` set, else Flutter fails on "Incorrect locale information").
 
+## Client Home (2026-10-15)
+- `ClientHome` and `ClientHomeWeb` Done: `app/lib/features/client/home/` (`home_model.dart` data + writes,
+  `home_screen.dart` cards and layouts, `home_sheets.dart` sheets, `home_parts.dart` small `ch-*` pieces).
+- Every write (water, Ate it / Undo, habit values, supplements, Mark all read) changes the screen at once and goes
+  through the outbox with the day's `date`, so it works offline.
+- API `GET me/home/` now also sends: `goal`, `strip` (Mon–Sun with exercises, minutes, done line), `meals` (with
+  macros), `habits_soon`, richer `coming_up` (session, check-in with question / photo count, plan end), `unread`,
+  `trainer_note` (coach's last check-in reply). Water logs also move the water habit (one glass = 250 ml).
+- Seed: Riya has Fat loss support supplements, a 6:30 pm session with Aman, a reviewed check-in, 3 notifications,
+  the habits Walk / Water / Sleep 7 hours, and "No sugary drinks" starting next Monday.
+- `ClientHomeHero` (blue hero option) not built: waiting for Gautam to choose.
+
 ## Doing now
-- Client Home: `ClientHome` (phone), `ClientHomeWeb` (desktop), `ClientHomeHero` (option).
+- Nothing in progress; Home is pushed.
 
 ## Next
-1. Rest of the client screens, then trainer, then admin (order in `phase-5-screens.md`).
-2. Notification centre panel, data table component when first needed.
+1. Pages Home links to: Train + Workout logger (`ClientTrain`, `ClientWorkout`), Habits, Check-in, Food log.
+2. Rest of the client screens, then trainer, then admin (order in `phase-5-screens.md`).
 
 ## How screens plug in
 - Signed-in screens: add to `screens` map in `lib/app/router.dart` (`'/clients'`, `'/clients/:id'`).

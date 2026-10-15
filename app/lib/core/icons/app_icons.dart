@@ -101,4 +101,10 @@ abstract final class AppIcons {
   static const link = Ic.i7b24ef;
   static const user = Ic.ib023cf;
   static const heart = Ic.i7782ae;
+
+  // Client Home (ClientHome board)
+  static const run = Ic.i4345de;
+  static const steps = Ic.i28b540;
+  static const pill = Ic.i5007dd;
+  static const flag = Ic.if60d32;
 }

@@ -52,6 +52,22 @@ abstract final class AppColors {
   static const vegGreen = Color(0xFF16A34A), eggAmber = Color(0xFFD97706), meatRed = Color(0xFFB91C1C);
   static const track = Color(0xFFECECE8);
 
+  // Client Home (ch-*)
+  static const tickRing = Color(0xFFCFCFC9); // empty tick / rest-day dashed ring
+  static const daySubOn = Color(0xFFC9C9C9); // weekday letter on the black picked day
+  static const barTrack = Color(0xFFEDEDE9);
+  static const carbs = Color(0xFFD9A100), fat = Color(0xFFDB2777);
+  static const warmBg = Color(0xFFFFF1EA), warm = Color(0xFFFF7A45); // water
+  static const icAmberBg = Color(0xFFFFF4E0), icAmberText = Color(0xFF9A5B00);
+  static const nextBg = Color(0xFFF7F7F4);
+  static const sessText = Color(0xFF1E3A8A);
+  static const heroGreen = [Color(0xFFEEF6EF), Color(0xFFF8FBF8)];
+  static const heroBlue = [Color(0xFFEAF1FE), Color(0xFFF7FAFF)];
+  static const heroGray = [Color(0xFFF1F1EE), Color(0xFFFAFAF8)];
+  static const chevron = Color(0xFFA1A19B);
+  static const strike = Color(0xFFB5B5AF);
+  static const avGreenBg = Color(0xFFDCFCE7), avGreenText = Color(0xFF166534);
+
   // Toasts
   static const toastStaff = Color(0xFF1F1F1F), toastStaffSub = Color(0xFFB5B5B0), toastStaffAction = Color(0xFF93B4FF);
   static const toastInk = Color(0xFF0E0F0C);

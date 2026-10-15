@@ -272,7 +272,22 @@ def add_water(client, ml, day=None):
     w, _ = WaterLog.objects.get_or_create(client=client, date=day)
     w.ml = max(0, min(10000, w.ml + int(ml)))
     w.save(update_fields=["ml", "updated_at"])
+    sync_water_habit(client, day, w.ml)
     return w
+
+
+def sync_water_habit(client, day, ml):
+    """A water habit counted in glasses follows the water log (one glass = 250 ml), so the Home
+    water card and the habit row never disagree."""
+    from apps.habits.models import Habit, HabitAssignment, HabitLog
+
+    for a in HabitAssignment.objects.filter(client=client, active=True, start_date__lte=day,
+                                            habit__icon="water", habit__kind=Habit.Kind.COUNTER,
+                                            habit__deleted_at__isnull=True).select_related("habit"):
+        h = a.habit
+        value = ml if h.unit.strip().lower() == "ml" else ml // 250
+        HabitLog.objects.update_or_create(habit=h, client=client, date=day,
+                                          defaults={"value": value, "done": bool(h.target) and value >= h.target})
 
 
 def pill_for(meal, state, day, now):

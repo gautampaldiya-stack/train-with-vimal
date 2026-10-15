@@ -20,6 +20,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 
 ---
 
+### 2026-10-15 · Client Home built (phone + web)
+- **Pehle:** Client login ke baad `/home` par "This page is on the way" aata tha. Home API me week strip, meals list, aane wali habits, check-in ke sawal, coach ka reply aur unread count nahi the. Paani log karne se water habit nahi badhti thi.
+- **Ab:** ClientHome aur ClientHomeWeb board jaise bane: week strip, workout card, water, food, habits, supplements, coach card, Coming up, saari sheets (Notifications, Log food, workout preview, Add steps, Sleep) aur toasts Undo ke saath. Web par bell ka dropdown. Har log outbox se jaata hai (offline bhi). `me/home/` me naye fields; water log ab water habit bhi update karta hai. `seed_demo` Riya ke liye supplements, session, coach reply, notifications aur "Sleep 7 hours" habit banata hai. Naya habit "Sleep 7 hours" defaults me.
+- **Kyun:** Gautam: login ke baad client ka Home page se shuru karo.
+- **Updated:** backend/apps/activity/dashboard.py, nutrition/services.py, common/seed_data.py, common/management/commands/seed_demo.py, tests/test_client_home.py, app/lib/features/client/home/*, core/widgets/client.dart (dark + web small button), core/widgets/overlays.dart (water toast icon), core/theme/colors.dart, core/icons/app_icons.dart, app/router.dart, docs/screens/status.md, docs/phases/*
+
 ### 2026-10-15 · Login boards — last 3 checked; text line height
 - **Pehle:** ClientLogin, ClientLoginWeb, ClientWelcome Partial the. Desktop setup panel me neeche ka "Only you and your coach see your answers" card nahi tha, steps 12 px door the (board 4). Finish later sheet me buttons body me the aur web par 44 high the (board 40). All set desktop par 560 chauda tha aur button ke upar line thi. Har text board se ~10% uncha tha (Flutter font ka Windows descent jod raha tha). Approval wait wale account ke liye realtime socket baar baar refuse hota tha aur browser me error aata tha.
 - **Ab:** Teeno boards Done (390, 600, 768, 900, 1024, 1280, 1440 par check). Text ka default line height 1.26 = browser ka `normal`. Question ke neeche 10 px, caption 6 px (board ke negative margins, `Pull` widget). Toast dikh raha ho to sheet neeche 78 px jagah chhodti hai (board rule). "Profile complete" toast me star. Training experience / Where will you train ke tiles board jaise (dono line 11 px grey). Realtime sirf approved account ke liye, approve hote hi connect.

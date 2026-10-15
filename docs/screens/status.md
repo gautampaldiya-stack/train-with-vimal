@@ -23,9 +23,9 @@ Status: **Done** (built and checked in a browser against the board, phone and de
 | ClientHabitsWeb | Not started |  |
 | ClientHealth | Done | Step 4 of setup with health conditions, heart hint and doctor’s OK rule. Checked 390 + 1440. |
 | ClientHealthWeb | Done | Same code as ClientHealth, desktop steps panel. Checked 1440. |
-| ClientHome | Not started |  |
-| ClientHomeHero | Not started |  |
-| ClientHomeWeb | Not started |  |
+| ClientHome | Done | Top line, bell (Notifications sheet, Mark all as read), week strip (tap a day), workout card (today / past / coming / rest, `+ N more` and See all exercises sheet, session line, progress), Water card (all 5 toasts), Food card (ring, macros, Up next Ate it + Undo, Log food sheet), Habits (Add steps sheet, water from the water card, Sleep sheet, tick habits get Done + Undo), Supplements (Take + Undo), coach reply card, Coming up (session toast, check-in, plan end toast). Start workout, See all, Weekly check-in and the food search open Train / Habits / Check-ins / Food, which are not built yet. Checked 390 on 2026-10-15. |
+| ClientHomeHero | Not started | Option board: same Home with a blue hero at the top (picture, “Cardio and core today · 3 of 5 workouts done this week”). Waiting for Gautam to pick plain Home or this one. |
+| ClientHomeWeb | Done | Client sidebar, two columns (left: week, workout, water, Coming up; right: food, habits, supplements, coach), one-line week days, Notifications dropdown under the bell with Mark all read, sheets as centred cards. Under 680 px of panel the cards stack in one column and the week days stack like the phone. Checked 600, 768, 900, 1024, 1280, 1440 on 2026-10-15. |
 | ClientIntro | Done | First-open slides on phone (`twv.introSeen`), then Welcome. Checked 390. |
 | ClientJoinLink | Done | `/join/:code`: invite, create account, account created, broken link (expired / off / full / bad code). Terms sheet, Help sheet. Checked 390. |
 | ClientJoinLinkWeb | Done | Same pages with the steps side panel; also the login link `/start?token=` (set password, you’re in, used link, Details not right? sheet). Checked 1440. |

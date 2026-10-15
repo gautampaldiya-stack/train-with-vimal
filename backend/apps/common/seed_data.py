@@ -124,6 +124,7 @@ SWAPS = {
 HABITS = [
     ("Drink 3 L water", "counter", 12, "glasses", "daily", [], None, "water", "Water keeps hunger and energy steady."),
     ("8,000 steps", "counter", 8000, "steps", "daily", [], None, "steps", "Steps burn more than you think."),
+    ("Sleep 7 hours", "counter", 420, "min", "daily", [], None, "sleep", "Sleep is when your body recovers."),
     ("Sleep by 11 pm", "tick", None, "", "daily", [], None, "sleep", "Good sleep means better workouts."),
     ("Hit protein target", "counter", 150, "g", "daily", [], None, "food", "Protein keeps your muscle."),
     ("10 min mobility", "tick", None, "", "days", [0, 2, 4], None, "timer", "Moves well, lifts well."),
