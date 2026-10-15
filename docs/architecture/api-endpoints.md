@@ -13,6 +13,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `auth/email/verify/` | POST | VerifyEmailView |  |
 | `auth/login-link/accept/` | POST | AcceptLoginLinkView | "Your coach added you": pick a password and you are in (no approval needed). |
 | `auth/login-link/check/` | POST | CheckLinkView | GET-like check used by Reset password / Login link / Verify email screens to show the |
+| `auth/login-link/not-me/` | POST | LoginLinkNotMeView | Login link page → "These are not my details" → "This is not me": the link stops working and the coach is told. |
 | `auth/login/` | POST | LoginView |  |
 | `auth/logout/` | POST | LogoutView |  |
 | `auth/me/` | GET, PUT, PATCH | MeView |  |

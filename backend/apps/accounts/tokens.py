@@ -48,7 +48,7 @@ def issue_one_time_token(user, purpose, email=""):
         purpose=purpose,
         token_hash=hash_token(raw),
         email=email,
-        expires_at=timezone.now() + timedelta(hours=settings.TOKEN_TTL_HOURS[purpose]),
+        expires_at=timezone.now() + timedelta(minutes=settings.TOKEN_TTL_MINUTES[purpose]),
     )
     return raw
 

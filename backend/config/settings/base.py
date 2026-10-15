@@ -267,10 +267,11 @@ WHATSAPP_PROVIDER = env("WHATSAPP_PROVIDER", default="console")  # console | met
 WHATSAPP_PHONE_NUMBER_ID = env("WHATSAPP_PHONE_NUMBER_ID", default="")
 WHATSAPP_ACCESS_TOKEN = env("WHATSAPP_ACCESS_TOKEN", default="")
 
-TOKEN_TTL_HOURS = {
-    "email_verify": 48,
-    "password_reset": 2,
-    "login_link": 72,
+# How long one-time links work, in minutes (copy on the boards: verify 24 h, reset 15 min, login link 7 days).
+TOKEN_TTL_MINUTES = {
+    "email_verify": 24 * 60,
+    "password_reset": 15,
+    "login_link": 7 * 24 * 60,
 }
 
 LOGGING = {

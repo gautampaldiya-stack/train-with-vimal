@@ -319,17 +319,21 @@ class JoinLinkView(APIView):
         t = link.trainer
         return Response({
             "state": link.state,
+            "reason": link.end_reason,  # expired / full / off, null while the link works
+            "code": link.code,
+            "expires_at": link.expires_at,
+            "max_uses": link.max_uses,
             "needs_approval": link.needs_approval,
             "gym": settings.APP_NAME,
-            "trainer": {"full_name": t.full_name, "initials": t.initials, "avatar_color": t.avatar_color,
+            "trainer": {"full_name": t.full_name, "first_name": t.first_name, "initials": t.initials, "avatar_color": t.avatar_color,
                         "speciality": getattr(getattr(t, "trainer_profile", None), "speciality", [])},
         })
 
     @transaction.atomic
     def post(self, request, code):
         link = self._link(code)
-        if link is None or link.state != "on":
-            return Response({"error": {"code": f"link_{'invalid' if link is None else link.state}",
+        if link is None or link.end_reason:
+            return Response({"error": {"code": f"link_{'invalid' if link is None else link.end_reason}",
                                        "message": "This invite link does not work any more."}}, status=400)
         s = JoinSerializer(data=request.data)
         s.is_valid(raise_exception=True)

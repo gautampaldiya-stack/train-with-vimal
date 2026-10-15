@@ -31,7 +31,7 @@ def send_verify_email(user, token, to=None):
         to or user.email,
         f"Confirm your email for {settings.APP_NAME}",
         f"Hi {user.first_name},\n\nTap the link to confirm this email address:\n{url}\n\n"
-        "The link works for 48 hours. If you did not ask for this, ignore this email.",
+        "The link works once, for 24 hours. If you did not ask for this, ignore this email.",
     )
 
 
@@ -44,7 +44,7 @@ def send_password_reset(user, token):
         body = render(tpl.channels["email"].get("body", ""), ctx)
     else:
         subject, body = "Reset your password", f"Hi {user.first_name},"
-    _queue(user.email, subject, f"{body}\n\n{url}\n\nIf you did not ask for this, you can ignore this email.")
+    _queue(user.email, subject, f"{body}\n\n{url}\n\nThe link works once, for 15 minutes. If you did not ask for this, you can ignore this email.")
 
 
 def send_login_link(user, token, template_key="client-invite"):

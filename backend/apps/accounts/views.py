@@ -190,7 +190,44 @@ class CheckLinkView(APIView):
         if problem:
             return _link_error(problem)
         u = row.user
-        return Response({"valid": True, "user": {"full_name": u.full_name, "email": u.email, "phone": u.phone}})
+        cp = getattr(u, "client_profile", None)
+        coach = cp.trainer if cp else None
+        return Response({
+            "valid": True,
+            "user": {"full_name": u.full_name, "first_name": u.first_name, "initials": u.initials,
+                     "email": u.email, "phone": u.phone},
+            # login link page: "Aman Verma made your account", "Workouts and meals start Mon, 12 Oct"
+            "coach": {"full_name": coach.full_name, "first_name": coach.first_name} if coach else None,
+            "start_date": cp.start_date if cp else None,
+        })
+
+
+class LoginLinkNotMeView(APIView):
+    """Login link page → "These are not my details" → "This is not me": the link stops working and the coach is told."""
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "otp"
+
+    @transaction.atomic
+    def post(self, request):
+        s = TokenSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+        row, problem = consume_one_time_token(s.validated_data["token"], OneTimeToken.Purpose.LOGIN_LINK)
+        if problem:
+            return _link_error(problem)
+        row.used_at = timezone.now()
+        row.save(update_fields=["used_at"])
+        user = row.user
+        cp = getattr(user, "client_profile", None)
+        if cp and cp.trainer:
+            from apps.notifications.services import notify
+
+            notify(cp.trainer, "login_link_not_me", f"{user.full_name}'s login link was reported",
+                   "The person who opened it says these are not their details. The link is now off.",
+                   data={"route": f"/clients/{user.id}"})
+        return Response({"detail": "Thanks for telling us. This link is now off."})
 
 
 class ResetPasswordView(AuthThrottleMixin, APIView):

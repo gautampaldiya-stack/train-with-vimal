@@ -116,12 +116,18 @@ class InviteLink(SoftDeleteModel):
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
 
     @property
-    def state(self):
+    def end_reason(self):
+        """Why the link no longer makes accounts: "expired", "full", "off", or None while it works."""
         if self.expires_at and self.expires_at <= timezone.now():
-            return "ended"
+            return "expired"
         if self.max_uses is not None and self.clients.count() >= self.max_uses:
-            return "ended"
-        return "on" if self.is_on else "off"
+            return "full"
+        return None if self.is_on else "off"
+
+    @property
+    def state(self):
+        reason = self.end_reason
+        return "on" if reason is None else ("off" if reason == "off" else "ended")
 
 
 class Approval(TimeStampedModel):

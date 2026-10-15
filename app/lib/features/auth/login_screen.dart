@@ -136,6 +136,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             CaField(
               label: 'Email',
+              hint: 'Email or mobile number',
               controller: _id,
               error: _idError,
               keyboard: TextInputType.emailAddress,
@@ -145,6 +146,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             CaField(
               label: 'Password',
+              hint: 'Your password',
               controller: _pw,
               focusNode: _pwFocus,
               obscure: !_show,

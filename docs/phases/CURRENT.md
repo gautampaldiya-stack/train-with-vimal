@@ -2,7 +2,7 @@
 
 Updated with every push, so anyone (another Claude session, local Claude Code, a developer) can pick up from here.
 
-**Last updated:** 2026-10-14 · branch `working`
+**Last updated:** 2026-10-15 · branch `working`
 
 ## Done
 - Backend complete (all modules, offline sync, seeds, tests). Runs without Docker/Redis.
@@ -13,6 +13,9 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
   router with role redirect (`lib/app/router.dart`). `flutter analyze` clean, `flutter build web` OK.
 
 ## Doing now
+- 2026-10-15: completing the login flow (decision D-15). Backend part pushed: link lifetimes from the boards
+  (reset 15 min, verify 24 h), invite end reasons, login link "not me", `seed_demo` prints demo links. Next: the
+  Flutter pages listed under "Not built yet".
 - Phase 5: login + onboarding, code in `app/lib/features/auth/`. Checked in a browser against the boards on phone
   (390) and desktop (1440): welcome, log in, approval wait, all 5 setup steps, checklist, all set. Still to check:
   Need help / Forgot / Terms sheets and the Finish later sheet. Screens: Welcome, Log in (phone hero / desktop split with side panel), Need help sheet,

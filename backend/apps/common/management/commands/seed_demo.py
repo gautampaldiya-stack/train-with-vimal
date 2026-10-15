@@ -63,6 +63,9 @@ class Command(BaseCommand):
             program, plan = self.plans(vimal)
             self.history(program, plan)
         self.stdout.write(self.style.SUCCESS(f"Demo ready. Log in with any demo email and {PASSWORD}"))
+        self.stdout.write("Demo links (the reset link works for 15 minutes; run seed_demo again for new ones):")
+        for line in self.demo_links():
+            self.stdout.write("  " + line)
 
     def user(self, *, email, **fields):
         from apps.accounts.models import User
@@ -139,6 +142,40 @@ class Command(BaseCommand):
             if answers:
                 cp.onboarding = answers
                 cp.save(update_fields=["onboarding"])
+
+        # Joined from an invite link but has not confirmed the email yet → the Verify email page.
+        if not User.objects.filter(email__iexact="tara@example.com").exists():
+            create_client(actor=None, full_name="Tara Singh", email="tara@example.com", phone="+919820011223",
+                          trainer=aman, send_to_approvals=True, send_login_link=False, password=PASSWORD,
+                          source=SignupSource.WEB)
+        # Added by a coach, no password yet → the login link page.
+        if not User.objects.filter(email__iexact="sana@example.com").exists():
+            create_client(actor=aman, full_name="Sana Khan", email="sana@example.com", phone="+919845022118",
+                          trainer=aman, send_to_approvals=False, send_login_link=False, password=None,
+                          source=SignupSource.ADDED)
+        # The invite link from the Join board.
+        from apps.clients.models import InviteLink
+
+        InviteLink.objects.get_or_create(code="AMAN-4821", defaults={
+            "trainer": aman, "label": "WhatsApp · demo", "needs_approval": True,
+            "expires_at": timezone.now() + timedelta(days=30), "created_by": vimal})
+
+    def demo_links(self):
+        """Fresh one-time links for trying the Login link, Verify email and Reset password pages."""
+        from django.conf import settings
+
+        from apps.accounts.models import OneTimeToken, User
+        from apps.accounts.tokens import issue_one_time_token
+
+        base = settings.FRONTEND_URL.rstrip("/")
+        out = [f"Invite link:     {base}/join/AMAN-4821"]
+        for email, purpose, path in [("sana@example.com", OneTimeToken.Purpose.LOGIN_LINK, "login-link"),
+                                     ("tara@example.com", OneTimeToken.Purpose.EMAIL_VERIFY, "verify-email"),
+                                     ("riya@example.com", OneTimeToken.Purpose.PASSWORD_RESET, "reset-password")]:
+            u = User.objects.filter(email__iexact=email).first()
+            if u:
+                out.append(f"{path + ':':16} {base}/{path}?token={issue_one_time_token(u, purpose, email=u.email)}")
+        return out
 
     def plans(self, vimal):
         from apps.accounts.models import User

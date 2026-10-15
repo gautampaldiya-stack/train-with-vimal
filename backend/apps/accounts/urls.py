@@ -16,6 +16,7 @@ urlpatterns = [
     path("auth/login-link/check/",
          views.CheckLinkView.as_view(purpose=OneTimeToken.Purpose.LOGIN_LINK), name="login-link-check"),
     path("auth/login-link/accept/", views.AcceptLoginLinkView.as_view(), name="login-link-accept"),
+    path("auth/login-link/not-me/", views.LoginLinkNotMeView.as_view(), name="login-link-not-me"),
     path("auth/email/verify/", views.VerifyEmailView.as_view(), name="email-verify"),
     path("auth/email/resend/", views.ResendVerifyEmailView.as_view(), name="email-resend"),
     path("auth/email/change/", views.ChangeEmailView.as_view(), name="email-change"),

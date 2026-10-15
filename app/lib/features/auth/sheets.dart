@@ -119,6 +119,7 @@ class _ForgotState extends State<_Forgot> {
           padding: const EdgeInsets.only(top: 2),
           child: CaField(
             label: 'Email or mobile number',
+            hint: 'name@example.com or 98100 00000',
             controller: _c,
             error: _error,
             keyboard: TextInputType.emailAddress,
