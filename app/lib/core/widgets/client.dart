@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import '../icons/app_icons.dart';
@@ -345,8 +346,10 @@ class CaSeg extends StatelessWidget {
                     borderRadius: BorderRadius.circular(9),
                     boxShadow: i == index ? const [BoxShadow(color: Color(0x14171717), blurRadius: 2, offset: Offset(0, 1)), BoxShadow(color: AppColors.line, spreadRadius: 1)] : null,
                   ),
+                  // As the boards draw it: both lines 11 px grey, the title bold (twv.css `.wl-seg > button span`
+                  // also hits the title's text), the picked one only stands out by its white tile.
                   child: Column(spacing: 1, children: [
-                    Text(options[i].$1, style: AppText.s(13, W.w7, color: i == index ? AppColors.accentText : AppColors.text2)),
+                    Text(options[i].$1, style: AppText.s(11, W.w7, color: AppColors.muted)),
                     Text(options[i].$2, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11, W.w4, color: AppColors.muted)),
                   ]),
                 ),
@@ -573,24 +576,77 @@ class CaShowButton extends StatelessWidget {
 
 /// `wl-q`: question heading with an optional muted line.
 class CaQuestion extends StatelessWidget {
-  const CaQuestion(this.title, {super.key, this.sub});
+  const CaQuestion(this.title, {super.key, this.sub, this.pull = 4});
   final String title;
   final String? sub;
+
+  /// `margin-bottom: -4px` (in a sheet body: -2): the next block sits closer than the page gap.
+  final double pull;
   @override
-  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-        Text(title, style: AppText.s(15.5, W.w8)),
-        if (sub != null) Text(sub!, style: AppText.s(12.5, W.w4, color: AppColors.muted)),
-      ]);
+  Widget build(BuildContext context) => Pull(
+        bottom: pull,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+          Text(title, style: AppText.s(15.5, W.w8)),
+          if (sub != null) Text(sub!, style: AppText.s(12.5, W.w4, color: AppColors.muted)),
+        ]),
+      );
 }
 
 /// `fd-cap`: small muted caption, optional leading icon.
 class CaCaption extends StatelessWidget {
-  const CaCaption(this.text, {super.key, this.icon});
+  const CaCaption(this.text, {super.key, this.icon, this.pullUp = 0});
   final String text;
   final AppIconData? icon;
+
+  /// `.wl-v > .fd-cap { margin-top: -8px }`: a caption right under a block on a page.
+  final double pullUp;
   @override
-  Widget build(BuildContext context) => Text.rich(TextSpan(children: [
-        if (icon != null) WidgetSpan(alignment: PlaceholderAlignment.middle, child: Padding(padding: const EdgeInsets.only(right: 4), child: AppIcon(icon!, size: 13, color: AppColors.muted))),
-        TextSpan(text: text),
-      ]), style: AppText.s(12.5, W.w4, color: AppColors.muted, h: 1.45));
+  Widget build(BuildContext context) => Pull(
+        top: pullUp,
+        child: Text.rich(TextSpan(children: [
+          if (icon != null) WidgetSpan(alignment: PlaceholderAlignment.middle, child: Padding(padding: const EdgeInsets.only(right: 4), child: AppIcon(icon!, size: 13, color: AppColors.muted))),
+          TextSpan(text: text),
+        ]), style: AppText.s(12.5, W.w4, color: AppColors.muted, h: 1.45)),
+      );
+}
+
+/// Negative margin: lays the child out as usual but reports it [top] / [bottom] shorter, so the
+/// blocks around it sit closer (CSS `margin-top: -8px`). The child still paints in full.
+class Pull extends SingleChildRenderObjectWidget {
+  const Pull({super.key, this.top = 0, this.bottom = 0, super.child});
+  final double top, bottom;
+  @override
+  RenderObject createRenderObject(BuildContext context) => RenderPull(top, bottom);
+  @override
+  void updateRenderObject(BuildContext context, RenderPull renderObject) => renderObject
+    ..top = top
+    ..bottom = bottom;
+}
+
+class RenderPull extends RenderShiftedBox {
+  RenderPull(this._top, this._bottom) : super(null);
+  double _top, _bottom;
+  set top(double v) {
+    if (v == _top) return;
+    _top = v;
+    markNeedsLayout();
+  }
+
+  set bottom(double v) {
+    if (v == _bottom) return;
+    _bottom = v;
+    markNeedsLayout();
+  }
+
+  @override
+  void performLayout() {
+    final c = child;
+    if (c == null) {
+      size = constraints.smallest;
+      return;
+    }
+    c.layout(constraints.copyWith(minHeight: 0), parentUsesSize: true);
+    (c.parentData! as BoxParentData).offset = Offset(0, -_top);
+    size = constraints.constrain(Size(c.size.width, (c.size.height - _top - _bottom).clamp(0, double.infinity)));
+  }
 }

@@ -114,12 +114,24 @@ class Session extends ChangeNotifier {
   Future<void> refreshMe() async {
     me = Me(await Services.api.get<Map<String, dynamic>>('auth/me/'));
     await Services.cache.write('me', me!.json);
+    _syncRealtime();
     notifyListeners();
   }
 
   void _afterSignIn() {
     Services.outbox.start();
-    if (Services.tokens.access != null) Services.realtime.connect(Services.tokens.access!);
+    _syncRealtime();
+  }
+
+  /// Realtime is only for people who may use the app: the server refuses the socket while an
+  /// account waits for approval, so connect once it is approved (checked on every refresh).
+  void _syncRealtime() {
+    final token = Services.tokens.access;
+    if (token != null && me != null && !me!.pending) {
+      if (!Services.realtime.active) Services.realtime.connect(token);
+    } else {
+      Services.realtime.disconnect();
+    }
   }
 
   Future<void> signOut({bool remote = true}) async {

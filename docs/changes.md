@@ -20,6 +20,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 
 ---
 
+### 2026-10-15 · Login boards — last 3 checked; text line height
+- **Pehle:** ClientLogin, ClientLoginWeb, ClientWelcome Partial the. Desktop setup panel me neeche ka "Only you and your coach see your answers" card nahi tha, steps 12 px door the (board 4). Finish later sheet me buttons body me the aur web par 44 high the (board 40). All set desktop par 560 chauda tha aur button ke upar line thi. Har text board se ~10% uncha tha (Flutter font ka Windows descent jod raha tha). Approval wait wale account ke liye realtime socket baar baar refuse hota tha aur browser me error aata tha.
+- **Ab:** Teeno boards Done (390, 600, 768, 900, 1024, 1280, 1440 par check). Text ka default line height 1.26 = browser ka `normal`. Question ke neeche 10 px, caption 6 px (board ke negative margins, `Pull` widget). Toast dikh raha ho to sheet neeche 78 px jagah chhodti hai (board rule). "Profile complete" toast me star. Training experience / Where will you train ke tiles board jaise (dono line 11 px grey). Realtime sirf approved account ke liye, approve hote hi connect.
+- **Kyun:** Gautam: Partial boards browser me check karke poore karo.
+- **Updated:** app/lib/core/theme/text.dart, core/widgets/client.dart, core/widgets/overlays.dart, core/realtime/realtime.dart, app/services.dart, features/auth/auth_frame.dart, features/auth/setup/*, docs/screens/status.md, docs/phases/*
+
 ### 2026-10-15 · Auth — whole login flow (reset, invite, login link, verify, permissions)
 - **Pehle:** "Forgot password?" ek chhota modal tha; email links (`/reset/…`, `/join/…`, `/verify`) "This page is on the way" dikhate the. Reset link 1 ghanta, verify 48 ghante chalta tha. Forgot page har email ke liye same jawab deta tha.
 - **Ab:** Har link ka apna page board jaisa: `/forgot` + `/reset-password?token=` (ClientResetPassword), `/join/<code>` (ClientJoinLink), `/start?token=` login link, `/verify` + `/verify-email?token=` (ClientVerifyEmail), `/permissions` (ClientPermissions). Intro slides (ClientIntro) pehli baar phone par. Health step me health conditions + heart condition par doctor’s OK zaroori. Reset link 15 minute, verify 24 ghante (board ke hisaab se). Forgot page board ki tarah "No account uses this email" dikhata hai. Invite link batata hai kyun band hua (expired / off / full). Login link par "This is not me". Web app ab real paths use karta hai.

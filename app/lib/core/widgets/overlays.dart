@@ -6,6 +6,7 @@ import '../icons/app_icons.dart';
 import '../theme/theme.dart';
 import 'button.dart';
 import 'card.dart';
+import 'client.dart';
 import 'hover.dart';
 import 'responsive.dart';
 
@@ -312,7 +313,13 @@ Future<T?> showAppSheet<T>(
                 ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: footer(ctx))
                 : Row(mainAxisAlignment: MainAxisAlignment.end, spacing: 8, children: footer(ctx)),
           ),
-        SizedBox(height: 18 + (phone ? MediaQuery.paddingOf(ctx).bottom : 0)),
+        ValueListenableBuilder(
+          valueListenable: ToastHost.showing,
+          builder: (_, toast, _) => AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            height: (toast ? 78 : 18) + (phone ? MediaQuery.paddingOf(ctx).bottom : 0),
+          ),
+        ),
       ]);
 
   if (context.isPhone) {
@@ -343,7 +350,8 @@ Future<T?> showAppSheet<T>(
           padding: const EdgeInsets.only(top: 6),
           constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * .8),
           decoration: BoxDecoration(color: AppColors.card, borderRadius: AppRadius.all(AppRadius.modal), boxShadow: AppShadows.modal),
-          child: body(ctx, phone: false),
+          // The dialog is outside the page, so tell client widgets they are on web (40 high buttons).
+          child: CaWeb(web: true, child: body(ctx, phone: false)),
         ),
       ),
     ),
@@ -380,6 +388,10 @@ class ToastHost extends StatefulWidget {
 
   /// Sideways nudge from the centre; the desktop log-in pages use 60 (`.wl-w .ca-toast`).
   static final shiftX = ValueNotifier<double>(0);
+
+  /// True while a toast is on screen: sheets then leave room for it at the bottom
+  /// (`:root:has(.ca-toast) .ca-sheet { padding-bottom: 78px }`).
+  static final showing = ValueNotifier<bool>(false);
   static _ToastHostState? _instance;
 
   @override
@@ -408,11 +420,13 @@ class _ToastHostState extends State<ToastHost> {
   void show(_ToastData t) {
     _timer?.cancel();
     setState(() => _t = t);
+    ToastHost.showing.value = true;
     _timer = Timer(Duration(seconds: t.action != null ? 7 : 5), hide);
   }
 
   void hide() {
     if (mounted) setState(() => _t = null);
+    ToastHost.showing.value = false;
   }
 
   @override
@@ -525,6 +539,7 @@ class _ToastBox extends StatelessWidget {
           ToastKind.err || ToastKind.warn => AppIcons.alert,
           ToastKind.del => AppIcons.trash,
           ToastKind.info || ToastKind.water => AppIcons.info,
+          ToastKind.star => AppIcons.star,
           _ => AppIcons.check,
         };
     return Material(

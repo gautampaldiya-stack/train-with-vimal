@@ -376,12 +376,31 @@ class _StepsPanel extends StatelessWidget {
                     child: Text('Five short steps, about three minutes. You can stop and finish later.', style: AppText.s(15, W.w4, color: AppColors.white, h: 1.5)),
                   ),
                 ),
-                const SizedBox(height: 14),
-                for (var i = 0; i < s.titles.length; i++) _StepButton(n: i + 1, title: s.titles[i], sub: s.subs[i], done: s.done.contains(i), cur: s.current == i, onTap: () => s.onTap(i)),
-                const SizedBox(height: 4),
+                // `wl-bs`: 4 apart, 14 below the line above.
+                Padding(
+                  padding: const EdgeInsets.only(top: 14),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 4, children: [
+                    for (var i = 0; i < s.titles.length; i++)
+                      _StepButton(n: i + 1, title: s.titles[i], sub: s.subs[i], done: s.done.contains(i), cur: s.current == i, onTap: () => s.onTap(i)),
+                  ]),
+                ),
                 Opacity(opacity: .8, child: Text('${s.done.length} of ${s.titles.length} done', style: AppText.s(12.5, W.w7, color: AppColors.white))),
               ]),
             ),
+          ),
+          // `wl-bq`: who sees the answers.
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            decoration: BoxDecoration(color: AppColors.white.withValues(alpha: .12), borderRadius: BorderRadius.circular(14)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 6, children: [
+              Text('Only you and your coach see your answers.', style: AppText.s(14, W.w8, color: AppColors.white, h: 1.5)),
+              Opacity(
+                opacity: .78,
+                child: Text('${s.coachFirst[0].toUpperCase()}${s.coachFirst.substring(1)} uses them to set your training, calories and exercise swaps.',
+                    style: AppText.s(12.5, W.w4, color: AppColors.white, h: 1.5)),
+              ),
+            ]),
           ),
         ]),
       );

@@ -12,7 +12,7 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
   realtime socket (`lib/core/realtime`), session (`lib/app/services.dart`), shells (`lib/app/shell`),
   router with role redirect (`lib/app/router.dart`). `flutter analyze` clean, `flutter build web` OK.
 
-## Doing now
+## Login flow (built 2026-10-15)
 - 2026-10-15: login flow complete (decision D-15). Code in `app/lib/features/auth/`. Browser-checked on phone (390)
   and desktop (1440) against the boards:
   - Intro slides (phone, first open only), Welcome, Log in, Need help sheet.
@@ -36,14 +36,19 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
 - Known: realtime socket returns 404 under `manage.py runserver` (needs an ASGI server); the gym phone is empty
   in the seed so the support card shows email only.
 
-## Not finished in this flow (see `docs/screens/status.md`)
-- `ClientLogin` / `ClientLoginWeb` (Partial): Terms sheet and Finish later sheet not browser-checked.
-- `ClientWelcome` (Partial): not checked on its own.
-- Desktop setup steps 1, 3, 5 and All set not browser-checked.
+## Login flow: all boards Done (2026-10-15)
+- ClientLogin, ClientLoginWeb, ClientWelcome checked in the browser at 390, 600, 768, 900, 1024, 1280 and 1440.
+- Text now uses line height 1.26 by default (`AppText.normal`, the browser's `normal` for Plus Jakarta Sans);
+  before, every line was about 10% taller than on the boards. Negative CSS margins use the `Pull` widget.
+- Realtime connects only for approved accounts (the server refuses pending ones).
+- Browser check tools used: boards served by `design/screens/serve.py`, app by `flutter build web --no-web-resources-cdn`,
+  both driven by Playwright (Chromium needs `locale` set, else Flutter fails on "Incorrect locale information").
+
+## Doing now
+- Client Home: `ClientHome` (phone), `ClientHomeWeb` (desktop), `ClientHomeHero` (option).
 
 ## Next
-0. Check the three Partial boards above, then mark them Done in `docs/screens/status.md`.
-1. Client screens, then trainer, then admin (order in `phase-5-screens.md`).
+1. Rest of the client screens, then trainer, then admin (order in `phase-5-screens.md`).
 2. Notification centre panel, data table component when first needed.
 
 ## How screens plug in

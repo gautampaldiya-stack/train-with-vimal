@@ -60,8 +60,8 @@ class _DoneScreenState extends State<DoneScreen> {
     final coach = me.coachFirst;
     final wait = me.pending;
     return AuthFrame(
-      wide: true,
       brand: BrandKind.steps,
+      footBorder: !authSplit(context),
       steps: setupBrand(context, fromDone: true),
       foot: [
         CaButton(

@@ -24,6 +24,9 @@ class Realtime {
   final _events = StreamController<RealtimeEvent>.broadcast();
   Stream<RealtimeEvent> get events => _events.stream;
 
+  /// Asked to stay connected (it may be between reconnects).
+  bool get active => _token != null;
+
   void connect(String token) {
     _token = token;
     _open();
@@ -35,6 +38,8 @@ class Realtime {
     try {
       _ch = WebSocketChannel.connect(Uri.parse('${AppConfig.wsUrl}?token=$_token'));
       _sub = _ch!.stream.listen(_onData, onDone: _schedule, onError: (_) => _schedule());
+      // A refused handshake also fails `ready`; the stream's onError already reconnects.
+      _ch!.ready.catchError((_) {});
       _ping = Timer.periodic(const Duration(seconds: 25), (_) => _ch?.sink.add(jsonEncode({'action': 'ping'})));
     } catch (_) {
       _schedule();

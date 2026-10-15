@@ -226,7 +226,7 @@ class _SetupScreenState extends State<SetupScreen> {
           st.changed();
         },
       ),
-      const CaCaption('Only you and your coach can see this.', icon: AppIcons.lock),
+      const CaCaption('Only you and your coach can see this.', icon: AppIcons.lock, pullUp: 8),
     ];
   }
 
@@ -357,7 +357,7 @@ class _SetupScreenState extends State<SetupScreen> {
         title: 'A doctor has cleared me for exercise',
         sub: st.conditions.contains('heart') ? 'Needed with a heart condition' : 'Tick this if you have a heart, bone or joint condition',
       ),
-      const CaCaption('Only you and your coach can see this.', icon: AppIcons.lock),
+      const CaCaption('Only you and your coach can see this.', icon: AppIcons.lock, pullUp: 8),
     ];
   }
 
@@ -538,44 +538,50 @@ class _Tri extends CustomPainter {
 /// [saveStep]: the step on screen; it is saved first when its answers are complete (board `lt.save`).
 Future<void> showLaterSheet(BuildContext context, {int? saveStep}) {
   final st = SetupState.instance;
-  var pick = st.remind ?? 'tomorrow';
-  var busy = false;
+  final pick = ValueNotifier(st.remind ?? 'tomorrow');
+  final busy = ValueNotifier(false);
   final coach = Services.session.me?.coachFirst ?? 'Your coach';
+  Future<void> save(BuildContext ctx) async {
+    busy.value = true;
+    try {
+      if (saveStep != null && !st.done.contains(saveStep) && st.need(saveStep) == null) await st.save(saveStep);
+      await st.saveAndLeave(pick.value);
+      if (!ctx.mounted) return;
+      Navigator.of(ctx).pop();
+      showToast(context, 'Progress saved', sub: pick.value == 'off' ? 'No reminder set' : st.remindLine, kind: ToastKind.ok);
+      if (context.mounted) context.go('/setup/checklist');
+    } on ApiError catch (e) {
+      busy.value = false;
+      showToast(context, 'Could not save', sub: e.message, kind: ToastKind.err);
+    }
+  }
+
   return showAppSheet<void>(
     context,
     title: 'Finish setup later?',
     sub: 'Your answers so far are saved.',
     footerStretch: true,
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, set) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
-        const CaQuestion('Remind me'),
+    // `ca-sf`: Keep going / Save & leave.
+    footer: (ctx) => [
+      Row(spacing: 8, children: [
+        Expanded(child: CaButton('Keep going', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop())),
+        Expanded(
+          child: ValueListenableBuilder(valueListenable: busy, builder: (_, b, _) => CaButton('Save & leave', loading: b, onPressed: () => save(ctx))),
+        ),
+      ]),
+    ],
+    // Sheet body: Remind me (8 under it), the chips, then the caption 10 below.
+    builder: (ctx) => ValueListenableBuilder(
+      valueListenable: pick,
+      builder: (_, p, _) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
+        const CaQuestion('Remind me', pull: 2),
         CaChips<(String, String, String)>(
           options: SetupState.remindChoices,
           label: (x) => x.$2,
-          isOn: (x) => x.$1 == pick,
-          onTap: (x) => set(() => pick = x.$1),
+          isOn: (x) => x.$1 == p,
+          onTap: (x) => pick.value = x.$1,
         ),
         CaCaption('$coach can’t build your plan until setup is done. $coach can see that it is not finished yet.'),
-        const SizedBox(height: 2),
-        Row(spacing: 8, children: [
-          Expanded(child: CaButton('Keep going', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop())),
-          Expanded(
-            child: CaButton('Save & leave', loading: busy, onPressed: () async {
-              set(() => busy = true);
-              try {
-                if (saveStep != null && !st.done.contains(saveStep) && st.need(saveStep) == null) await st.save(saveStep);
-                await st.saveAndLeave(pick);
-                if (!ctx.mounted) return;
-                Navigator.of(ctx).pop();
-                showToast(context, 'Progress saved', sub: pick == 'off' ? 'No reminder set' : st.remindLine, kind: ToastKind.ok);
-                if (context.mounted) context.go('/setup/checklist');
-              } on ApiError catch (e) {
-                set(() => busy = false);
-                showToast(context, 'Could not save', sub: e.message, kind: ToastKind.err);
-              }
-            }),
-          ),
-        ]),
       ]),
     ),
   );

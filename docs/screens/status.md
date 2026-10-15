@@ -31,8 +31,8 @@ Status: **Done** (built and checked in a browser against the board, phone and de
 | ClientJoinLinkWeb | Done | Same pages with the steps side panel; also the login link `/start?token=` (set password, you’re in, used link, Details not right? sheet). Checked 1440. |
 | ClientLibrary | Not started |  |
 | ClientLibraryWeb | Not started |  |
-| ClientLogin | Partial | Welcome, Log in, Approval wait, 5 setup steps, Checklist, All set, Need help sheet: built and browser-checked (390). "Forgot password?" now opens the ClientResetPassword page (the old modal is gone). Not browser-checked yet: Terms sheet from the login board, Finish later sheet. |
-| ClientLoginWeb | Partial | Log in, Approval wait, Checklist, setup steps 2 and 4 browser-checked (1440). Not browser-checked yet: steps 1, 3, 5, All set and the sheets on desktop. |
+| ClientLogin | Done | Welcome, Log in, Approval wait, 5 setup steps, Checklist, All set, Need help sheet, Finish later sheet (with the toast gap). Terms sheet has no button on the phone board (only the desktop legal line opens it). Checked 390, 600, 768, 900, 1024, 1280, 1440 on 2026-10-15. |
+| ClientLoginWeb | Done | Log in, Terms and Help from the legal line, Approval wait, Checklist, steps 1–5 with the side panel and its “Only you and your coach” card, Finish later sheet, All set (420 column, no line above Go to Home). Checked 1440 + 600–1280 on 2026-10-15. |
 | ClientMealNutrition | Not started |  |
 | ClientMealNutritionWeb | Not started |  |
 | ClientMore | Not started |  |
@@ -51,7 +51,7 @@ Status: **Done** (built and checked in a browser against the board, phone and de
 | ClientTrainWeb | Not started |  |
 | ClientVerifyEmail | Done | `/verify` (inbox, resend, Change email sheet, log out) and `/verify-email?token=` (checking, verified, link not valid). Checked 390. |
 | ClientVerifyEmailWeb | Done | Same, desktop panel "Confirm your email". Checked 1440. |
-| ClientWelcome | Partial | Shares the welcome / login / setup screens with ClientLogin (same code). Check this board separately before marking Done. |
+| ClientWelcome | Done | Same code as ClientLogin, opens on Welcome; Need help logging in? sheet. Checked 390 on 2026-10-15. |
 | ClientWorkout | Not started |  |
 | ClientWorkoutWeb | Not started |  |
 
