@@ -867,8 +867,11 @@ def _refresh_shipped_pdfs(model):
         if not shipped.exists() or it is None:
             continue
         data = shipped.read_bytes()
-        if it.file and it.file.size == len(data):
-            continue
+        try:
+            if it.file and it.file.size == len(data):
+                continue
+        except OSError:  # the old file is gone from media: put the shipped one back
+            pass
         for n in range(1, (it.pages or 0) + 1):
             name = f"content/pages/{it.id}/{n}.png"
             if default_storage.exists(name):
