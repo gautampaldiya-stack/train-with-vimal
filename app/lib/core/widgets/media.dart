@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
+import 'package:webview_flutter_platform_interface/webview_flutter_platform_interface.dart' show WebViewPlatform;
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 
 import '../icons/app_icons.dart';
@@ -337,43 +338,83 @@ class YoutubeBox extends StatefulWidget {
 }
 
 class _YoutubeBoxState extends State<YoutubeBox> {
-  late final YoutubePlayerController yt = YoutubePlayerController.fromVideoId(
-    videoId: youtubeId(widget.url),
-    params: const YoutubePlayerParams(showFullscreenButton: true, strictRelatedVideos: true),
-  );
+  /// No web view on this platform (Windows / Linux desktop, or the app was hot-reloaded after adding the plugin):
+  /// show the YouTube still that opens YouTube instead of a red error box.
+  static bool get canEmbed => WebViewPlatform.instance != null;
+
+  YoutubePlayerController? yt;
 
   @override
   void initState() {
     super.initState();
-    widget.onReady?.call(yt);
+    if (!canEmbed) return;
+    final c = YoutubePlayerController.fromVideoId(
+      videoId: youtubeId(widget.url),
+      params: const YoutubePlayerParams(showFullscreenButton: true, strictRelatedVideos: true),
+    );
+    yt = c;
+    widget.onReady?.call(c);
   }
 
   @override
   void dispose() {
-    yt.close();
+    yt?.close();
     super.dispose();
   }
 
+  void _open() => launchUrl(Uri.parse(widget.url), mode: LaunchMode.externalApplication);
+
   @override
-  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
-        ClipRRect(
-          borderRadius: AppRadius.all(12),
-          child: ColoredBox(color: AppColors.black, child: YoutubePlayer(controller: yt, aspectRatio: 16 / 9, backgroundColor: AppColors.black)),
+  Widget build(BuildContext context) {
+    final c = yt;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
+      ClipRRect(
+        borderRadius: AppRadius.all(12),
+        child: ColoredBox(
+          color: AppColors.black,
+          child: c != null
+              ? YoutubePlayer(controller: c, aspectRatio: 16 / 9, backgroundColor: AppColors.black)
+              : AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: Semantics(
+                    button: true,
+                    label: 'Play on YouTube',
+                    child: GestureDetector(
+                      onTap: _open,
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: Stack(fit: StackFit.expand, children: [
+                          NetImage('https://img.youtube.com/vi/${youtubeId(widget.url)}/hqdefault.jpg', fit: BoxFit.cover, dark: true),
+                          Center(
+                            child: Container(
+                              width: 56,
+                              height: 56,
+                              decoration: BoxDecoration(color: AppColors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: AppColors.lbPlayShadow, blurRadius: 16)]),
+                              child: Center(child: AppIcon(AppIcons.play, size: 22, color: AppColors.text)),
+                            ),
+                          ),
+                        ]),
+                      ),
+                    ),
+                  ),
+                ),
         ),
-        Align(
-          alignment: Alignment.centerRight,
-          child: Semantics(
-            link: true,
-            child: Hover(
-              onTap: () => launchUrl(Uri.parse(widget.url), mode: LaunchMode.externalApplication),
-              builder: (_, h, _) => Row(mainAxisSize: MainAxisSize.min, spacing: 5, children: [
-                Text('Open in YouTube', style: AppText.s(12.5, W.w7, color: h ? AppColors.accentHover : AppColors.accentText)),
-                AppIcon(AppIcons.external, size: 13, color: h ? AppColors.accentHover : AppColors.accentText),
-              ]),
-            ),
+      ),
+      Align(
+        alignment: Alignment.centerRight,
+        child: Semantics(
+          link: true,
+          child: Hover(
+            onTap: _open,
+            builder: (_, h, _) => Row(mainAxisSize: MainAxisSize.min, spacing: 5, children: [
+              Text('Open in YouTube', style: AppText.s(12.5, W.w7, color: h ? AppColors.accentHover : AppColors.accentText)),
+              AppIcon(AppIcons.external, size: 13, color: h ? AppColors.accentHover : AppColors.accentText),
+            ]),
           ),
         ),
-      ]);
+      ),
+    ]);
+  }
 }
 
 // ─────────────────────────────── Pictures

@@ -15,6 +15,10 @@ Date: 2026-10-16 · Asked by: Gautam
    `seed_demo` works on a machine without ffmpeg and fills in videos that have no file. Demo: Leg Press = uploaded
    video, Walking Lunge = YouTube link, Romanian Deadlift = picture.
 
+5. **No web view → still + Open YouTube.** Windows / Linux desktop have no web view (and a hot-reloaded app has not
+   registered the new plugin), so there the box shows the YouTube still with a play button that opens YouTube,
+   instead of Flutter's red error. After `flutter pub get`, stop and run the app again (hot reload is not enough).
+
 ## Why
 Gautam: "video yt ka ho ya library se uploaded ho, isi me show karo, full screen ka option, dusre page me na jae;
 yt pe jana hai to option do", and "image itni badi height na le, puri dikhe". His seeded videos said
