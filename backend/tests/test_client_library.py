@@ -108,3 +108,23 @@ def test_exercise_returns_its_media(db):
     pic = ExerciseSerializer(Exercise.objects.get(name="Romanian Deadlift", is_builtin=True)).data
     assert pic["media"]["kind"] == "image" and pic["media"]["url"].endswith(".png") and pic["thumb"] == pic["media"]["url"]
     assert ExerciseSerializer(Exercise.objects.get(name="Dead Bug", is_builtin=True)).data["media"] is None
+    lp = ExerciseSerializer(Exercise.objects.get(name="Leg Press", is_builtin=True)).data
+    assert lp["media"]["kind"] == "video" and lp["media"]["url"].endswith(".mp4")
+    lunge = Exercise.objects.get(name="Walking Lunge", is_builtin=True)
+    assert lunge.youtube_url.startswith("https://www.youtube.com/") and lunge.video is None
+
+
+def test_library_video_with_only_a_youtube_link_plays_as_youtube(db):
+    from apps.content.library import media_of
+
+    item = ContentItem.objects.create(kind="video", title="Lunge demo", youtube_url="https://youtu.be/YYWhkctnP2o")
+    m = media_of(item)
+    assert m["kind"] == "youtube" and m["url"] == "https://youtu.be/YYWhkctnP2o"
+    item.youtube_url = ""
+    assert media_of(item) is None
+
+
+def test_demo_videos_ship_with_the_code(client_user):
+    # Seeding needs no ffmpeg: the shared videos have real files.
+    for title in ("Box squat: how to", "Upper A walkthrough"):
+        assert ContentItem.objects.get(title=title).file.name.endswith(".mp4")

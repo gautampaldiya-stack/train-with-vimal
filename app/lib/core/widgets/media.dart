@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
+import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 
 import '../icons/app_icons.dart';
 import '../theme/theme.dart';
@@ -316,6 +318,63 @@ Future<void> showVideoFull(BuildContext context, VideoCtl ctl, {required String 
         transitionsBuilder: (_, a, _, child) => FadeTransition(opacity: a, child: child),
       ),
     );
+
+// ─────────────────────────────── YouTube
+
+/// The video id in a youtu.be / youtube.com/watch / shorts / embed link ('' when it is not one).
+String youtubeId(String url) => url.isEmpty ? '' : (YoutubePlayerController.convertUrlToId(url) ?? '');
+
+/// A YouTube video playing right here (YouTube's own player: play, seek, full screen), with
+/// "Open in YouTube" under it for people who prefer the app.
+class YoutubeBox extends StatefulWidget {
+  const YoutubeBox({super.key, required this.url, this.onReady});
+  final String url;
+
+  /// Gives the parent the controller (chapters jump with `seekTo`).
+  final ValueChanged<YoutubePlayerController>? onReady;
+  @override
+  State<YoutubeBox> createState() => _YoutubeBoxState();
+}
+
+class _YoutubeBoxState extends State<YoutubeBox> {
+  late final YoutubePlayerController yt = YoutubePlayerController.fromVideoId(
+    videoId: youtubeId(widget.url),
+    params: const YoutubePlayerParams(showFullscreenButton: true, strictRelatedVideos: true),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    widget.onReady?.call(yt);
+  }
+
+  @override
+  void dispose() {
+    yt.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
+        ClipRRect(
+          borderRadius: AppRadius.all(12),
+          child: ColoredBox(color: AppColors.black, child: YoutubePlayer(controller: yt, aspectRatio: 16 / 9, backgroundColor: AppColors.black)),
+        ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: Semantics(
+            link: true,
+            child: Hover(
+              onTap: () => launchUrl(Uri.parse(widget.url), mode: LaunchMode.externalApplication),
+              builder: (_, h, _) => Row(mainAxisSize: MainAxisSize.min, spacing: 5, children: [
+                Text('Open in YouTube', style: AppText.s(12.5, W.w7, color: h ? AppColors.accentHover : AppColors.accentText)),
+                AppIcon(AppIcons.external, size: 13, color: h ? AppColors.accentHover : AppColors.accentText),
+              ]),
+            ),
+          ),
+        ),
+      ]);
+}
 
 // ─────────────────────────────── Pictures
 

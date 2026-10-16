@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-16 · Media — YouTube app ke andar, chhoti picture, demo videos
+- **Pehle:** YouTube video ki sirf still dikhti thi aur tap par YouTube khulta tha. Library me picture pura modal le leti thi. Gautam ki machine par ffmpeg nahi tha, isliye seed ke videos me file nahi bani ("Video not uploaded yet").
+- **Ab:** YouTube video Library sheet aur Exercise guide ke andar hi chalta hai (iframe / web view, YouTube ka full screen button), neeche `Open in YouTube` link. Chapters embedded video ko seek karte hain. Picture box chhota (Library 240 / web 300), puri picture dikhti hai, tap par full screen. Demo videos ab code ke saath aate hain (`apps/common/demo_media`), seed bina ffmpeg ke chalta hai aur bina file wale videos bhar deta hai. Walking Lunge ab YouTube link hai.
+- **Kyun:** Gautam: "video yt ka ho ya uploaded, isi me show karo... dusre page me na jae... yt pe jana ho to option do", "image itni badi height na le".
+- **Updated:** app pubspec (youtube_player_iframe), core/widgets/media.dart (YoutubeBox), library_sheet.dart, train_parts.dart; backend content/library.py (media_of youtube), seed_demo + demo_media, tests; docs behaviour §4.2 / §4.10, status, CURRENT, memory · Decision D-28
+
 ### 2026-10-16 · Media — PDF pages, video, pictures, exercise media, links
 - **Pehle:** PDF me sirf coach ka page outline dikhta tha; video me seek / full screen nahi tha; picture zoom nahi hoti thi. Exercise guide me video ki jagah sirf ek dark box tha jo Library par le jata tha, picture ka option hi nahi tha. Reference web link share nahi kar sakte the.
 - **Ab:** PDF ke asli pages dikhte hain (server par picture bante hain), tap par full screen zoom aur swipe. Video me seek bar aur full screen (chalta rehta hai). Picture tap par full screen zoom. Exercise guide me exercise ka video yahin chalta hai ya picture dikhti hai; sirf YouTube ho to uski still aur YouTube khulta hai. Details me `Video / picture` row. Naya content type **Link**: Library me `Links` filter, sheet me site + `Open link`. Demo: Leg Press, Walking Lunge video, Romanian Deadlift picture, Riya ke liye ek healthline link.

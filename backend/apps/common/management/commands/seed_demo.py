@@ -67,6 +67,7 @@ class Command(BaseCommand):
             self.riya_checkins()
             self.riya_progress()
             self.riya_library()
+            self.library_videos()
             self.exercise_media()
             self.library_link()
         self.stdout.write(self.style.SUCCESS(f"Demo ready. Log in with any demo email and {PASSWORD}"))
@@ -401,27 +402,47 @@ class Command(BaseCommand):
                                              image=_figure(f"{pose}.jpg", *tints[i % len(tints)], pose))
 
     def exercise_media(self):
-        """Exercise guide media: Leg Press and Walking Lunge get a demo video, Romanian Deadlift a picture.
-        Not shared with clients, so they show in the guide only (not in the Library)."""
+        """Exercise guide media, one of each kind: Leg Press an uploaded video, Romanian Deadlift a picture, Walking
+        Lunge a YouTube video. The uploads are not shared with clients, so they show in the guide, not the Library.
+        Running it again fills a video that has no file yet (older demo data made without ffmpeg)."""
         from apps.accounts.models import User
         from apps.content.models import ContentItem
         from apps.training.models import Exercise
 
         vimal = User.objects.get(email="vimal@trainwithvimal.com")
         for name, kind, title, sec in [("Leg Press", "video", "Leg press: how to", 42),
-                                       ("Walking Lunge", "video", "Walking lunge: how to", 55),
                                        ("Romanian Deadlift", "image", "Romanian deadlift: the hinge", 0)]:
             ex = Exercise.objects.filter(name=name, is_builtin=True).first()
-            if ex is None or ex.video_id:
+            if ex is None:
                 continue
-            f = _video(title.split(":")[0].lower().replace(" ", "-"), sec) if kind == "video" else _hinge_card()
-            item = ContentItem.objects.create(kind=kind, title=title, created_by=vimal, duration_seconds=sec or None,
-                                              description=f"How to do the {name.lower()} with good form.")
-            if f is not None:
-                item.file = f
-                item.save()
-            ex.video = item
-            ex.save(update_fields=["video"])
+            item = ex.video or ContentItem.objects.create(kind=kind, title=title, created_by=vimal,
+                                                          duration_seconds=sec or None,
+                                                          description=f"How to do the {name.lower()} with good form.")
+            if not item.file:
+                f = _video("leg-press", sec) if kind == "video" else _hinge_card()
+                if f is not None:
+                    item.file = f
+                    item.save()
+            if ex.video_id != item.id:
+                ex.video = item
+                ex.save(update_fields=["video"])
+        lunge = Exercise.objects.filter(name="Walking Lunge", is_builtin=True).first()
+        if lunge is not None and not lunge.youtube_url:
+            lunge.video = None
+            lunge.youtube_url = "https://www.youtube.com/watch?v=YYWhkctnP2o"
+            lunge.save(update_fields=["video", "youtube_url"])
+
+    def library_videos(self):
+        """Older demo data made without ffmpeg has Library videos with no file: attach the shipped ones."""
+        from apps.content.models import ContentItem
+
+        for title, slug, sec in [("Box squat: how to", "box", 185), ("Upper A walkthrough", "upa", 380)]:
+            item = ContentItem.objects.filter(title=title, kind="video").first()
+            if item is not None and not item.file:
+                f = _video(slug, sec)
+                if f is not None:
+                    item.file = f
+                    item.save()
 
     def library_link(self):
         """A reference link in Riya's Library (kind=link): Aman shares a web page with a note."""
@@ -758,14 +779,19 @@ def _hinge_card():
 
 
 def _video(slug, seconds):
-    """A small silent MP4 of the right length (needs ffmpeg; None without it)."""
+    """A small silent MP4 of the right length: the one shipped in apps/common/demo_media/<slug>.mp4, else made
+    with ffmpeg (None when neither exists)."""
     import os
     import shutil
     import subprocess
     import tempfile
+    from pathlib import Path
 
     from django.core.files.base import ContentFile
 
+    shipped = Path(__file__).resolve().parents[2] / "demo_media" / f"{slug}.mp4"
+    if shipped.exists():
+        return ContentFile(shipped.read_bytes(), name=f"{slug}.mp4")
     if not shutil.which("ffmpeg"):
         return None
     with tempfile.TemporaryDirectory() as tmp:

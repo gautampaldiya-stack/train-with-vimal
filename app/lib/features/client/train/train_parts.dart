@@ -203,7 +203,7 @@ class _GuidePage extends StatelessWidget {
           ),
       ]),
     ]);
-    final video = e.hasVideo || e.media != null ? _video(context) : null;
+    final video = e.media != null || e.youtube.isNotEmpty ? _video(context) : null;
     final note = e.note.isEmpty ? null : _note();
     final target = _target();
     final details = _details();
@@ -284,7 +284,8 @@ class _GuidePage extends StatelessWidget {
       ('Video / picture', switch (e.mediaKind) {
         'video' => e.mediaSeconds > 0 ? 'Video · ${clockText(e.mediaSeconds)}' : 'Video',
         'image' => 'Picture',
-        _ => e.youtube.isNotEmpty ? 'YouTube link' : 'Not added yet',
+        'youtube' => 'YouTube video',
+        _ => e.youtube.isNotEmpty ? 'YouTube video' : 'Not added yet',
       }),
     ];
     return _card([
@@ -885,8 +886,6 @@ class _GuideMediaState extends State<_GuideMedia> {
     super.dispose();
   }
 
-  void _youtube() => launchUrl(Uri.parse(e.youtube), mode: LaunchMode.externalApplication);
-
   String _label() {
     final c = v!;
     if (c.failed) return 'Could not play here · tap to open';
@@ -921,27 +920,10 @@ class _GuideMediaState extends State<_GuideMedia> {
             ),
           ),
         ),
-      _ => Hover(
-          onTap: _youtube,
-          builder: (_, hov, _) => Container(
-            height: h,
-            decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: AppColors.videoDark)),
-            child: Stack(fit: StackFit.expand, children: [
-              if (e.thumb != null) Opacity(opacity: .75, child: NetImage(e.thumb!, fit: BoxFit.cover, dark: true, height: h)),
-              Center(
-                child: Container(
-                  width: 54,
-                  height: 54,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(color: AppColors.white.withValues(alpha: hov ? .3 : .2), shape: BoxShape.circle),
-                  child: const AppIcon(AppIcons.play, size: 24, color: AppColors.white),
-                ),
-              ),
-            ]),
-          ),
-        ),
+      'youtube' => YoutubeBox(url: e.mediaUrl),
+      _ => YoutubeBox(url: e.youtube),
     };
-    final source = kind.isEmpty ? 'Opens YouTube' : 'From content library';
+    final source = kind.isEmpty ? 'YouTube' : 'From content library';
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),

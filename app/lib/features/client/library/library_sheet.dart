@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:youtube_player_iframe/youtube_player_iframe.dart' show YoutubePlayerController;
 
 import '../../../core/api/api_error.dart';
 import '../../../core/icons/app_icons.dart';
@@ -279,6 +280,7 @@ class _Video extends StatefulWidget {
 
 class _VideoState extends State<_Video> {
   late final VideoCtl v = VideoCtl(x.fileUrl, fallbackSeconds: x.duration, onEnd: _finished);
+  YoutubePlayerController? _yt;
 
   LbItem get x => widget.x;
 
@@ -336,7 +338,11 @@ class _VideoState extends State<_Video> {
     final (bg, fg) = lbTone(x);
     final ch = x.chapters;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-      VideoBox(ctl: v, label: _label, bg: bg, fg: fg, height: CaWeb.of(context) ? 300 : 210, onTapEmpty: _empty, lengthText: x.length, poster: x.youtubeThumb),
+      // An uploaded file plays in our player; a YouTube link plays in YouTube's player, right here.
+      if (!v.hasFile && youtubeId(x.youtube).isNotEmpty)
+        YoutubeBox(url: x.youtube, onReady: (c) => _yt = c)
+      else
+        VideoBox(ctl: v, label: _label, bg: bg, fg: fg, height: CaWeb.of(context) ? 300 : 210, onTapEmpty: _empty, lengthText: x.length),
       ...widget.info,
       if (ch.isNotEmpty) ListenableBuilder(listenable: v, builder: (_, _) => _chapters(ch)),
     ]);
@@ -349,7 +355,15 @@ class _VideoState extends State<_Video> {
       Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('CHAPTERS', style: AppText.s(12, W.w7, color: AppColors.muted, ls: .6))),
       for (var i = 0; i < ch.length; i++)
         Hover(
-          onTap: () => v.seekSeconds(ch[i].$1),
+          onTap: () {
+            final yt = _yt;
+            if (yt != null) {
+              yt.seekTo(seconds: ch[i].$1.toDouble(), allowSeekAhead: true);
+              yt.playVideo();
+            } else {
+              v.seekSeconds(ch[i].$1);
+            }
+          },
           builder: (_, h, _) => Container(
             padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
             decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
@@ -473,7 +487,11 @@ class _Image extends StatelessWidget {
                   onTap: () => showImageViewer(context, [x.fileUrl], title: x.title),
                   child: MouseRegion(
                     cursor: SystemMouseCursors.zoomIn,
-                    child: ClipRRect(borderRadius: AppRadius.all(8), child: NetImage(x.fileUrl, fit: BoxFit.contain)),
+                    child: SizedBox(
+                      // A short box: the whole picture shows, tap for full size (Gautam 2026-10-16).
+                      height: CaWeb.of(context) ? 300 : 240,
+                      child: ClipRRect(borderRadius: AppRadius.all(8), child: NetImage(x.fileUrl, fit: BoxFit.contain)),
+                    ),
                   ),
                 ),
               ),

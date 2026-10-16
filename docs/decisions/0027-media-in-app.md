@@ -15,7 +15,7 @@
    exercises show the YouTube still and open YouTube.
 4. **New content kind `link`** (`link_url`): a reference web page. Library filter `Links`, length shows the site
    (healthline.com), the sheet has `Open link`. Staff must give a link for this kind.
-5. YouTube videos open in the YouTube app / site (no in-app YouTube player yet).
+5. YouTube videos open in the YouTube app / site (no in-app YouTube player yet). *Changed by D-28: YouTube now plays inside the app.*
 
 ## Why
 Coaches share uploaded videos, YouTube links and web pages; clients need all of them to open well on a phone.

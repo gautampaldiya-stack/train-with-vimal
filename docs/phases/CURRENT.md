@@ -136,6 +136,7 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
 - After pulling: `python manage.py migrate` (content 0002) and `seed_demo` (demo PDFs, image and videos; videos need
   ffmpeg, else they show "Video not uploaded yet").
 - Media (D-27): real PDF pages (pypdfium2, run `pip install -r requirements.txt`), video seek / full screen, picture zoom, exercise guide shows the exercise's video or picture, new `link` kind (migration content 0003).
+- YouTube in-app (D-28): YouTube plays inside the Library sheet and exercise guide (`flutter pub get` for youtube_player_iframe); demo videos ship in `backend/apps/common/demo_media`, rerun `seed_demo`. Check YouTube playback in a real browser / phone (blocked in the sandbox).
 - Not built: saving images to the phone gallery, in-app YouTube player.
 - Next client boards: About (`ClientAbout`), Profile (`ClientProfile`).
 

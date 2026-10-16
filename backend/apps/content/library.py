@@ -140,9 +140,12 @@ def item_page(client, item, request=None):
 
 
 def media_of(item, request=None):
-    """An exercise's video or picture for the guide: kind, file URL, title, length. None when it has no file."""
-    if item is None or not item.file or item.kind not in ("video", "image"):
+    """An exercise's video or picture for the guide: kind (video / image / youtube), URL, title, length."""
+    if item is None or item.kind not in ("video", "image"):
         return None
+    if not item.file:  # a library video that is only a YouTube link
+        return ({"id": str(item.id), "kind": "youtube", "url": item.youtube_url, "title": item.title, "cover": "",
+                 "duration": item.duration_seconds or 0} if item.youtube_url else None)
     url = request.build_absolute_uri(item.file.url) if request else item.file.url
     cover = (request.build_absolute_uri(item.cover.url) if request else item.cover.url) if item.cover else ""
     return {"id": str(item.id), "kind": item.kind, "url": url, "title": item.title, "cover": cover,

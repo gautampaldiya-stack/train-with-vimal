@@ -1084,7 +1084,7 @@ Exercise row pe dumbbell ki jagah picture / video cover / YouTube thumbnail (aga
 
 Exercise list blocks me banti hai — `Cardio` (35 min, easy pace) · `Conditioning` (3 sets, rest 60 s) · `Core` (6 sets, rest 45 s).
 
-Exercise pe tap → **detail sheet**: sabse upar exercise ka media (D-27): upload kiya video yahin chalta hai (Tap to play, seek bar, full screen), picture tap par full screen zoom, sirf YouTube link ho to uski still image aur tap par YouTube khulta hai; neeche title + *From content library* / *Opens YouTube*. Details me `Video / picture` row (*Video · 0:42* / *Picture* / *YouTube link* / *Not added yet*). Phir `Today's target` (+ *"Last time: 40 kg × 6"*), `Details`, `How to`, `Form cues`, `Muscles` (body map — `Primary muscle` / `Also works`, `Front` aur `Back` view). `PR` badge jahan personal best ho.
+Exercise pe tap → **detail sheet**: sabse upar exercise ka media (D-27): upload kiya video yahin chalta hai (Tap to play, seek bar, full screen), picture tap par full screen zoom, YouTube link ho to YouTube video yahin chalta hai (YouTube ka full screen) aur neeche `Open in YouTube` (D-28); neeche title + *From content library* / *YouTube*. Details me `Video / picture` row (*Video · 0:42* / *Picture* / *YouTube link* / *Not added yet*). Phir `Today's target` (+ *"Last time: 40 kg × 6"*), `Details`, `How to`, `Form cues`, `Muscles` (body map — `Primary muscle` / `Also works`, `Front` aur `Back` view). `PR` badge jahan personal best ho.
 
 `Start workout` → §4.3 logger.
 
@@ -1266,10 +1266,10 @@ Everything the client can read or watch: what the coach shared (with an optional
 - **Web:** grid of cards (3 / 2 / 1 across by width), right column with the progress card and **Notes from Aman** (every note, newest first).
 - **Empty:** no match → *"Nothing found"* / *"Try another word or another type."* with `Show everything`; Saved empty → *"Nothing saved yet"* / *"Open an item and tap Save for later. It will show up here."* The search box has an × to clear it.
 - **Item sheet** (opening marks it read): title, *"Video · 3:05 · Assigned by Aman · 28 Sep"*.
-  - Video: player in the item's tone (210 high, 300 on web; black once the video loads), seek bar (tap / drag), full screen button; a YouTube video shows its still and opens YouTube, label *Tap to play* / *Playing · <chapter>* / *Paused · …* / *Finished · tap to watch again*, progress bar with times, **CHAPTERS** (tap = jump there and play). Watching to the end marks it done (toast *"Video finished · marked as done"* + Undo). No file → YouTube link or *"Video not uploaded yet"*.
+  - Video: player in the item's tone (210 high, 300 on web; black once the video loads), seek bar (tap / drag), full screen button; a YouTube video plays right here in the YouTube player (its own full-screen button) with `Open in YouTube` under it (D-28), label *Tap to play* / *Playing · <chapter>* / *Paused · …* / *Finished · tap to watch again*, progress bar with times, **CHAPTERS** (tap = jump there and play). Watching to the end marks it done (toast *"Video finished · marked as done"* + Undo). No file → YouTube link or *"Video not uploaded yet"*.
   - PDF: the real page (drawn on the server as a picture), tap = full screen with zoom and swipe (*"1 / 6"*); `‹ Page 1 of 6 ›`, `Download` (opens the file). If the file can't be read, the coach's page outline shows instead.
   - Link: card with the site (*healthline.com*), the address and `Open link` (opens the browser).
-  - Image: the picture on a green box (tap = full screen zoom), *"PNG image · 1 page"*, `Save image`.
+  - Image: the picture on a green box, 240 high (300 on web), whole picture visible (tap = full screen zoom), *"PNG image · 1 page"*, `Save image`.
   - Article: the text under a line.
   - Coach note box *"From Aman"* with avatar, then the description.
   - Footer `Save for later` / `Saved` and `Mark as done` / `Done · undo`. Toasts *"Marked as done · <title> · 4 of 8 done"*, *"All caught up!"* when the last one is done, *"Marked as not done"*, each with Undo. Save / done go through the offline outbox.
