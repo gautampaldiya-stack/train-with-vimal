@@ -104,3 +104,17 @@ def test_copy_yesterday_can_be_undone(client_user):
     r = client_user.post("/api/v1/me/food-log/undo-copy/", {"ids": c["ids"], "meals": c["meals"]}, format="json")
     assert r.json()["removed"] == c["copied"]
     assert next(m for m in _day(client_user)["meals"] if m["id"] == meal["id"])["pill"] != "logged"
+
+
+def test_other_time_entry_has_its_own_name_and_time(client_user):
+    from datetime import timedelta
+    at = timezone.now() - timedelta(minutes=50)
+    apple = Food.objects.get(name="Apple", owner_client=None)
+    r = client_user.post("/api/v1/me/food-log/", {"meal_name": "Evening chai", "other_time": True, "food": str(apple.id),
+                                                  "logged_at": at.isoformat()}, format="json")
+    assert r.status_code == 201, r.content
+    e = r.json()
+    assert e["other_time"] and e["source"] == "off_plan" and e["meal_name"] == "Evening chai"
+    row = next(x for x in _day(client_user)["log"] if x["id"] == e["id"])
+    assert row["other_time"] and abs((timezone.datetime.fromisoformat(row["time"]) - at).total_seconds()) < 1
+    client_user.delete(f"/api/v1/me/food-log/{e['id']}/")

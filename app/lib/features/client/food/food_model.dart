@@ -331,15 +331,21 @@ class FEntry {
   double get fat => _n(j['fat']);
   String get source => '${j['source']}';
   bool get fromPlan => source == 'plan';
+
+  /// Log food → Add to → Other time: eaten outside the meal times; [mealName] is the name the client gave.
+  bool get otherTime => j['other_time'] == true;
   String get reason => '${j['reason'] ?? ''}';
   String? get photo => (j['photo'] as String?)?.isEmpty ?? true ? null : j['photo'] as String;
   String get swappedFrom => '${j['swapped_from'] ?? ''}';
   String get amount => amtOf(unit, quantity);
 
   /// The body that logs this entry again (Undo of Delete entry).
-  Map<String, dynamic> again() => j['food'] != null
-      ? {'meal_name': mealName, 'food': j['food'], 'quantity': quantity, 'unit_name': unit, 'off_plan': source == 'off_plan', 'reason': reason}
-      : {'meal_name': mealName, 'name': name, 'kcal': kcal, 'protein': protein, 'carbs': carbs, 'fat': fat, 'off_plan': source == 'off_plan', 'reason': reason};
+  Map<String, dynamic> again() => {
+    ...(j['food'] != null
+        ? {'meal_name': mealName, 'food': j['food'], 'quantity': quantity, 'unit_name': unit, 'off_plan': source == 'off_plan', 'reason': reason}
+        : {'meal_name': mealName, 'name': name, 'kcal': kcal, 'protein': protein, 'carbs': carbs, 'fat': fat, 'off_plan': source == 'off_plan', 'reason': reason}),
+    if (otherTime) ...{'other_time': true, 'logged_at': time.toUtc().toIso8601String()},
+  };
 }
 
 /// "8:10 am"

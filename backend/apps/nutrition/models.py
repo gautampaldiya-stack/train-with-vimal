@@ -230,6 +230,9 @@ class FoodLogEntry(TimeStampedModel):
     source = models.CharField(max_length=10, choices=Source.choices, default=Source.PLAN)
     swapped_from = models.CharField(max_length=120, blank=True, default="")
     reason = models.CharField(max_length=20, blank=True, default="")  # off-plan: "Ate out", "Party", "Travelling"
+    # Log food → Add to → Other time: eaten outside the meal times, so it sits in the food log at its own time
+    # under its own name (meal_name) and never inside a meal card. Always off-plan.
+    other_time = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["logged_at"]

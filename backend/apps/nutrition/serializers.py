@@ -264,9 +264,9 @@ class FoodLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = FoodLogEntry
         fields = ["id", "date", "logged_at", "meal_name", "meal", "food", "name", "quantity", "unit_name", "grams",
-                  "kcal", "protein", "carbs", "fat", "source", "swapped_from", "reason"]
+                  "kcal", "protein", "carbs", "fat", "source", "swapped_from", "reason", "other_time"]
         read_only_fields = ["date", "logged_at", "name", "kcal", "protein", "carbs", "fat", "grams", "source",
-                            "swapped_from"]
+                            "swapped_from", "other_time"]
 
 
 class LogFoodSerializer(serializers.Serializer):
@@ -285,6 +285,8 @@ class LogFoodSerializer(serializers.Serializer):
     unit_name = serializers.CharField(max_length=40, required=False, allow_blank=True)
     off_plan = serializers.BooleanField(required=False, default=False)
     reason = serializers.ChoiceField(choices=["", "Ate out", "Party", "Travelling"], required=False, default="")
+    # Add to → Other time: meal_name is the name the client gave ("Evening chai"), logged_at the time they picked
+    other_time = serializers.BooleanField(required=False, default=False)
 
     def validate(self, attrs):
         if not attrs.get("food") and not attrs.get("kcal"):

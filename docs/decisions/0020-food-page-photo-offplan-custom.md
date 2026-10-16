@@ -27,3 +27,8 @@
 10. **Copy yesterday Undo:** `copy-yesterday` answers `{copied, ids, meals}` and skips plan rows of meals already
    logged today. `POST me/food-log/undo-copy/ {ids, meals}` deletes exactly those rows (today, own) and un-logs
    a meal that has no plan rows left. Answer `{removed}`.
+11. **Other time** (Gautam, 2026-10-16): Log food's Add to has "Other time" for food eaten outside the meal
+   times. The client names it and picks a time today (not later than now). `POST me/food-log/` with
+   `other_time: true`, `meal_name` = that name and `logged_at` = that time; the entry is always off-plan, has
+   `other_time` on it (`FoodLogEntry.other_time`, migration `nutrition 0003`), shows in the food log at that
+   time and never inside a meal card. Copy yesterday keeps its clock time. Route `/food/log?meal=<name>&at=HH:MM`.

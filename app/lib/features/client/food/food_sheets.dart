@@ -469,7 +469,7 @@ class FdLogRow {
     : meal = null,
       time = entry.time,
       title = entry.name,
-      sub = '${entry.mealName} · ${entry.amount}${entry.source == 'off_plan' ? ' · off-plan${entry.reason.isEmpty ? '' : ' (${entry.reason.toLowerCase()})'}' : ''}',
+      sub = '${entry.mealName}${entry.otherTime ? ' · other time' : ''} · ${entry.amount}${entry.source == 'off_plan' ? ' · off-plan${entry.reason.isEmpty ? '' : ' (${entry.reason.toLowerCase()})'}' : ''}',
       kcal = entry.kcal,
       photo = entry.photo;
   final FMeal? meal;
@@ -500,7 +500,7 @@ Future<void> showEntrySheet(BuildContext context, FoodController c, FdLogRow r, 
   final m = r.meal, e = r.entry;
   final mac = m != null ? [m.kcal.toDouble(), m.protein, m.carbs, m.fat] : [e!.kcal.toDouble(), e.protein, e.carbs, e.fat];
   final tg = d.target[0];
-  final where = switch (e?.source) { 'off_plan' => 'outside the plan', 'quick_add' => 'quick add', _ => 'extra food' };
+  final where = e?.otherTime ?? false ? 'other time, outside the plan' : switch (e?.source) { 'off_plan' => 'outside the plan', 'quick_add' => 'quick add', _ => 'extra food' };
   final sub = m != null
       ? 'Logged ${fdClock(r.time)} · planned for ${mealTime(m.timeRaw)} · from your plan'
       : 'Logged ${fdClock(r.time)} · ${e!.mealName} · $where';
@@ -539,7 +539,7 @@ Future<void> showEntrySheet(BuildContext context, FoodController c, FdLogRow r, 
             icon: AppIcons.plus,
             title: 'Log more to ${e.mealName}',
             sub: 'Search and add another food',
-            onTap: () => go(() => context.go('/food/log?meal=${Uri.encodeComponent(e.mealName)}')),
+            onTap: () => go(() => context.go('/food/log?meal=${Uri.encodeComponent(e.mealName)}${e.otherTime ? '&at=${e.time.hour}:${'${e.time.minute}'.padLeft(2, '0')}' : ''}')),
           ),
         if (e != null && today)
           FdMenuItem(

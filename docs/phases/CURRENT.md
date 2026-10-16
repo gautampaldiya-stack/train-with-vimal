@@ -112,5 +112,5 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
 - Old boards ClientFood / ClientNutrition are replaced by this page (not built on purpose).
 - Round 2 (2026-10-16): photo first then Mark as eaten, `photo` meal op, extras inside the meal card, Copy yesterday
   Undo (`undo-copy`), Log food web list scrolls alone, fit tabs (`TwoTabs.fit`), rest-day Train card full width,
-  daily edit button `Save changes`. Waiting on Gautam: "Other time" option in Add to (idea, not built).
+  daily edit button `Save changes`. "Other time" in Add to built (D-20 #11).
 - Next: remaining client tabs (Progress, More), then trainer / admin boards.

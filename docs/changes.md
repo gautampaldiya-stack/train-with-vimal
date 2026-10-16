@@ -20,6 +20,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 
 ---
 
+### 2026-10-16 · Log food — "Other time" in Add to
+- **Pehle:** Log food har food ko kisi plan meal (Breakfast, Lunch…) me daalta tha. Meal times ke bahar khaya khana kisi meal me hi jaata tha.
+- **Ab:** `Add to ▾` ke last me `Other time`. Sheet: Name (*"e.g. Evening chai"*), Time (−/+ 15 min, Now / 30 min ago / 1 h ago / 2 h ago; aaj ka, abhi se baad ka nahi), `Use this time`. Phir library, Recent, My foods ya Quick add se jo add ho woh seedha Food log me us time par jaata hai, naam ke saath, hamesha off-plan. Meal card me nahi dikhta. Header me *"Other time · 4:30 pm · off-plan"* (tap = change). Backend: `FoodLogEntry.other_time` (migration nutrition 0003), `POST me/food-log/` `{other_time, logged_at, meal_name}`.
+- **Kyun:** Gautam ka idea, card par "Build it" chuna.
+- **Updated:** app/lib/features/client/food/food_log_screen.dart, food_model.dart, food_sheets.dart, food_screen.dart, app/router.dart; backend/apps/nutrition (models, services, serializers, migration 0003), tests/test_client_food.py; docs/screens/behaviour.md §4.5, status.md, decisions/0020 · Decision D-20
+
 ### 2026-10-16 · Food page round 2 — photo then confirm, extras in the meal, Copy yesterday Undo
 - **Pehle:** `Upload photo and mark as eaten` photo chunte hi meal mark kar deta tha, photo badal nahi sakte the. Log food se kisi meal me jo extra khaya (Apple in Breakfast) woh sirf Food log me dikhta tha, meal card me nahi. Copy yesterday ka Undo nahi tha, aur wo aaj ke already logged meal ko dobara copy kar deta tha. Log food (web) par poora page scroll hota tha; tabs poori width me khinche hue the. Rest day par Train card aadhi width leta tha. Daily answers edit karte waqt button "Send to Aman" bolta tha.
 - **Ab:** Photo chunne par meal mark nahi hota: photo header me pill ke paas dikhti hai, "Photo ready" bar me Change / × hai, aur alag `Mark as eaten` button photo ke saath log karta hai. Bina photo wala option turant mark karta hai. Logged meal ke ☰ me Add / Change / Remove photo (`photo` op). Meal card me "ALSO LOGGED · OUTSIDE THE PLAN" section (+N kcal), har row tap pe details. Copy yesterday toast me Undo (`POST me/food-log/undo-copy/`), aur already logged meals copy nahi hote. Log food web: header, search, chips, tabs fixed, sirf food list apne card me scroll. Tabs chhote, fit width (phone par full). Rest day = poori width. Edit me button `Save changes`.

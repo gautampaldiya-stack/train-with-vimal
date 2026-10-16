@@ -650,7 +650,7 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
 
   /// Foods added to this meal from Log food (outside the plan's own foods).
   List<Widget> _extras(FoodDay d, FMeal m) {
-    final xs = d.log.where((e) => e.mealName == m.name && !(e.fromPlan && e.meal != null)).toList();
+    final xs = d.log.where((e) => e.mealName == m.name && !e.otherTime && !(e.fromPlan && e.meal != null)).toList();
     if (xs.isEmpty) return const [];
     return [
       Padding(

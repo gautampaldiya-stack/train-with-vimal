@@ -230,9 +230,11 @@ def skip(client, meal, day):
 
 
 def log_food(client, *, meal_name, food=None, quantity=1, unit=None, name="", kcal=None, protein=0, carbs=0,
-             fat=0, day=None, off_plan=False, reason=""):
-    """[off_plan]: the client ticked "Off-plan meal" (party, eating out), so the entry is marked for the coach."""
+             fat=0, day=None, off_plan=False, reason="", other_time=False):
+    """[off_plan]: the client ticked "Off-plan meal" (party, eating out), so the entry is marked for the coach.
+    [other_time]: eaten outside the meal times ("Other time" in Add to); always off-plan, kept out of meal cards."""
     day = day or timezone.localdate()
+    off_plan = off_plan or other_time
     mp = _active_plan(client, day)
     if food is not None:
         grams = Decimal(str(quantity)) * (unit.grams if unit else Decimal(1))
@@ -244,14 +246,21 @@ def log_food(client, *, meal_name, food=None, quantity=1, unit=None, name="", kc
         return FoodLogEntry.objects.create(
             client=client, date=day, meal_name=meal_name, food=food, name=food.name, quantity=quantity,
             unit_name=unit.name if unit else "g", grams=grams, kcal=m["kcal"], protein=m["protein"],
-            carbs=m["carbs"], fat=m["fat"], reason=reason if off_plan else "",
+            carbs=m["carbs"], fat=m["fat"], reason=reason if off_plan else "", other_time=other_time,
             source=FoodLogEntry.Source.PLAN if food.id in planned_ids and not off_plan
             else FoodLogEntry.Source.OFF_PLAN)
     return FoodLogEntry.objects.create(client=client, date=day, meal_name=meal_name, name=name or "Quick add",
                                        quantity=1, unit_name="serving", kcal=kcal, protein=protein or 0,
                                        carbs=carbs or 0, fat=fat or 0, reason=reason if off_plan else "",
+                                       other_time=other_time,
                                        source=FoodLogEntry.Source.OFF_PLAN if off_plan
                                        else FoodLogEntry.Source.QUICK_ADD)
+
+
+def _same_time(at, day, now):
+    """An "Other time" entry copied to [day] keeps its clock time (never later than now)."""
+    local = timezone.localtime(at)
+    return min(timezone.make_aware(datetime.combine(day, local.time().replace(tzinfo=None))), now)
 
 
 def copy_yesterday(client, day=None):
@@ -264,10 +273,11 @@ def copy_yesterday(client, day=None):
             if not (r.source == FoodLogEntry.Source.PLAN and r.meal_id in logged)]
     now = timezone.now()
     new = FoodLogEntry.objects.bulk_create([
-        FoodLogEntry(client=client, date=day, logged_at=now, meal_name=r.meal_name, meal=r.meal, food=r.food,
+        FoodLogEntry(client=client, date=day, logged_at=_same_time(r.logged_at, day, now) if r.other_time else now,
+                     meal_name=r.meal_name, meal=r.meal, food=r.food,
                      name=r.name, quantity=r.quantity, unit_name=r.unit_name, grams=r.grams, kcal=r.kcal,
                      protein=r.protein, carbs=r.carbs, fat=r.fat, source=r.source, swapped_from=r.swapped_from,
-                     reason=r.reason)
+                     reason=r.reason, other_time=r.other_time)
         for r in rows])
     meals = sorted({r.meal_id for r in rows if r.meal_id and r.source == FoodLogEntry.Source.PLAN})
     for meal_id in meals:
@@ -417,7 +427,7 @@ def day_view(client, day, request=None):
                  "carbs": float(e.carbs), "fat": float(e.fat), "source": e.source, "food": e.food_id,
                  "grams": float(e.grams) if e.grams is not None else None, "reason": e.reason,
                  "photo": photos.get(e.meal_id) if e.source == "plan" else None,
-                 "swapped_from": e.swapped_from} for e in entries],
+                 "swapped_from": e.swapped_from, "other_time": e.other_time} for e in entries],
         "water": {"ml": water.ml if water else 0, "goal_ml": plan.water_ml if plan else 3000},
         "week": week,
     }

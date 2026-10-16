@@ -973,6 +973,7 @@ Everything eaten, one row per food. Big table: always read by (client, date).
 | `source` | CharField | choices: plan, off_plan, quick_add |
 | `swapped_from` | CharField |  |
 | `reason` | CharField |  |
+| `other_time` | BooleanField |  |
 
 ### WaterLog
 

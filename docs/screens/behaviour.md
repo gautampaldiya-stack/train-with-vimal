@@ -1166,6 +1166,8 @@ Search (44 high, *"Search food, e.g. paneer, dal, roti"*, clear ×), `Try` chips
 - `Create custom food` — sheet: Name, Serving (`1 katori`), 4 steppers (ek serving ke), `Save food` → toast *"X saved to My foods — Tap + to log it"*, tab My foods.
 - `Off-plan meal` tick + chips `Ate out` / `Party` / `Travelling` — jo add hoga woh `Off-plan` (amber tag) + reason, coach ko dikhta hai.
 
+**`Other time`** (Add to ka last item, Gautam 2026-10-16) — sheet `Other time`, cap *"Ate outside your meal times? It goes straight to your food log at this time, marked off-plan."* Name (*"e.g. Evening chai"*, khali = "Other time"), Time −/+ 15 min aur chips `Now` / `30 min ago` / `1 h ago` / `2 h ago` (sirf aaj, abhi se aage nahi). `Use this time` → toast *"Adding to Evening chai · 4:30 pm — Tap + on a food to log it"*. Header ke neeche *"Other time · 4:30 pm · off-plan"* (tap = sheet dobara). Jo bhi add ho (library, Recent, My foods, Quick add) woh off-plan, Food log me us time par row *"Evening chai · other time · 1 cup · off-plan"*; meal card me nahi aata. Off-plan tick on rehta hai (tap pe toast *"Other time food is always off-plan"*). Details sheet ka `Log more to Evening chai` wapas usi time par khulta hai.
+
 Web (720 px content aur 520 px height se upar, Gautam 2026-10-16): header, search, Try chips aur tabs fixed; sirf food list apne card ke andar scroll hoti hai (saari loaded rows + `Show more foods`), right column alag scroll. Tabs fit width. Usse chhota = poora page scroll.
 
 ### 4.6 Nutrition (log view) — `ClientNutrition`

@@ -59,7 +59,7 @@ final Map<String, Widget Function(GoRouterState)> screens = {
   '/habits': (_) => const ClientHabitsScreen(),
   '/food': (_) => const ClientFoodScreen(),
   '/food/:id': (st) => st.pathParameters['id'] == 'log'
-      ? FoodLogScreen(key: ValueKey(st.uri.toString()), meal: st.uri.queryParameters['meal'])
+      ? FoodLogScreen(key: ValueKey(st.uri.toString()), meal: st.uri.queryParameters['meal'], at: st.uri.queryParameters['at'])
       : const ClientFoodScreen(),
   '/checkins': (_) => const ClientCheckinsScreen(),
   '/checkins/:id': (st) => ClientCheckinsScreen(

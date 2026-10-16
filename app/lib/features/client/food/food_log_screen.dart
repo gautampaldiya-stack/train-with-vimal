@@ -7,6 +7,7 @@ import '../../../app/services.dart';
 import '../../../core/api/api_error.dart';
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
+import '../../../core/widgets/card.dart' show Divider1;
 import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/overlays.dart';
@@ -21,8 +22,11 @@ import 'food_sheets.dart' show fdError;
 /// foods and yours, + adds one to the picked meal at once (through the outbox, so it works offline). Quick add
 /// takes just the numbers; Create custom food saves one to My foods. Every number can be typed.
 class FoodLogScreen extends StatefulWidget {
-  const FoodLogScreen({super.key, this.meal});
+  const FoodLogScreen({super.key, this.meal, this.at});
   final String? meal;
+
+  /// "Other time" (`?meal=Evening chai&at=16:30`): eaten outside the meal times.
+  final String? at;
   @override
   State<FoodLogScreen> createState() => _FoodLogScreenState();
 }
@@ -64,6 +68,10 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
   bool _all = false;
   String? _meal;
   bool _off = false;
+
+  /// Add to → Other time: the time it was eaten (today), and [_meal] is its name. Always off-plan.
+  DateTime? _at;
+  bool get _offNow => _off || _at != null;
   String _why = '';
 
   // The list
@@ -85,6 +93,13 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
   void initState() {
     super.initState();
     _meal = widget.meal;
+    final hm = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(widget.at ?? '');
+    if (hm != null) {
+      final n = DateTime.now();
+      final t = DateTime(n.year, n.month, n.day, int.parse(hm[1]!), int.parse(hm[2]!));
+      _at = t.isAfter(n) ? n : t;
+      _meal = (widget.meal ?? '').trim().isEmpty ? 'Other time' : widget.meal;
+    }
     day.addListener(_onDay);
     day.start();
     _search();
@@ -118,6 +133,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
   FMeal? _mealOf(String name) => day.data?.meals.where((m) => m.name == name).firstOrNull;
 
   String get meal {
+    if (_at != null) return _meal ?? 'Other time';
     if (_meal != null && _mealNames.contains(_meal)) return _meal!;
     final ms = day.data?.meals ?? const <FMeal>[];
     final open = ms.where((m) => m.open).firstOrNull;
@@ -125,12 +141,16 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
   }
 
   /// Foods added to [name] today outside the plan's own rows.
-  List<FEntry> _added(String name) => [
-    for (final e in day.data?.log ?? const <FEntry>[])
-      if (e.mealName == name && !(e.fromPlan && e.meal != null)) e,
-    for (final e in _pending)
-      if (e.mealName == name) e,
-  ];
+  /// With [other] the "Other time" entries of that name, otherwise the ones added to the meal [name].
+  List<FEntry> _added(String name, {bool? other}) {
+    final o = other ?? (_at != null && name == meal);
+    return [
+      for (final e in day.data?.log ?? const <FEntry>[])
+        if (e.mealName == name && e.otherTime == o && !(e.fromPlan && e.meal != null)) e,
+      for (final e in _pending)
+        if (e.mealName == name && e.otherTime == o) e,
+    ];
+  }
 
   // ─────────────────────────────── Search
 
@@ -205,7 +225,15 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
 
   Future<void> _log(Map<String, dynamic> body, {required String title, required String sub}) async {
     final m = meal;
-    final full = {'meal_name': m, 'off_plan': _off, 'reason': _off ? _why : '', 'date': ymd(day.today), ...body};
+    final at = _at;
+    final full = {
+      'meal_name': m,
+      'off_plan': _offNow,
+      'reason': _offNow ? _why : '',
+      'date': ymd(day.today),
+      if (at != null) ...{'other_time': true, 'logged_at': at.toUtc().toIso8601String()},
+      ...body,
+    };
     try {
       final send = {...full}..removeWhere((k, _) => k.startsWith('_'));
       final r = await Services.outbox.enqueue('POST', 'me/food-log/', send, tag: 'food:log:add');
@@ -218,7 +246,8 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
         // Offline: show it now, it is sent when the phone is back online.
         added = FEntry({
           'id': 'local-${DateTime.now().microsecondsSinceEpoch}',
-          'time': DateTime.now().toUtc().toIso8601String(),
+          'time': (at ?? DateTime.now()).toUtc().toIso8601String(),
+          'other_time': at != null,
           'meal_name': m,
           'name': body['name'] ?? title.replaceFirst(RegExp(r' added to .*$'), ''),
           'quantity': body['quantity'] ?? 1,
@@ -227,8 +256,8 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
           'protein': body['_protein'] ?? body['protein'] ?? 0,
           'carbs': 0,
           'fat': 0,
-          'source': _off ? 'off_plan' : 'quick_add',
-          'reason': _off ? _why : '',
+          'source': _offNow ? 'off_plan' : 'quick_add',
+          'reason': _offNow ? _why : '',
           'food': body['food'],
         });
         _pending.add(added);
@@ -270,7 +299,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     _log(
       {'food': f.id, 'quantity': q, if (u != null) 'unit': u.id, 'name': f.name, '_kcal': m[0].round(), '_protein': m[1], 'unit_name': u?.name ?? 'g'},
       title: '${f.name} added to $meal',
-      sub: '$amt · ${inNum(m[0])} kcal${_off ? ' · marked off-plan' : ''}',
+      sub: '$amt · ${inNum(m[0])} kcal${_offNow ? ' · marked off-plan' : ''}',
     );
   }
 
@@ -373,12 +402,20 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
             ),
           ),
         ),
+        if (_at != null)
+          Hover(
+            onTap: _otherSheet,
+            builder: (_, h, _) => Row(mainAxisSize: MainAxisSize.min, spacing: 5, children: [
+              AppIcon(AppIcons.clock, size: 13, color: h ? AppColors.accentText : AppColors.muted),
+              Text('Other time · ${fdClock(_at!)} · off-plan', style: AppText.s(12, W.w6, color: h ? AppColors.accentText : AppColors.muted)),
+            ]),
+          ),
       ]),
     ),
   ]);
 
   String _mealSub(String name) {
-    final add = _added(name);
+    final add = _added(name, other: false);
     if (add.isNotEmpty) return '${inNum(add.fold(0, (a, e) => a + e.kcal))} kcal added now';
     final m = _mealOf(name);
     return m == null ? 'Nothing added yet' : 'Plan: ${m.foods}';
@@ -396,7 +433,8 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
         context,
         title: 'Add to',
         builder: (ctx) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          for (final (i, n) in names.indexed) _mealItem(ctx, label(n), _mealSub(n), n == meal, first: i == 0, () => setState(() => _meal = n)),
+          for (final (i, n) in names.indexed) _mealItem(ctx, label(n), _mealSub(n), _at == null && n == meal, first: i == 0, () => _pickMeal(n)),
+          _mealItem(ctx, 'Other time', _otherSub, _at != null, icon: AppIcons.clock, _otherSheet),
         ]),
       );
       return;
@@ -428,7 +466,9 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                     padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),
                     child: Text('ADD TO', style: AppText.s(11, W.w7, color: AppColors.muted, ls: .55)),
                   ),
-                  for (final n in names) _mealItem(ctx, label(n), _mealSub(n), n == meal, menu: true, () => setState(() => _meal = n)),
+                  for (final n in names) _mealItem(ctx, label(n), _mealSub(n), _at == null && n == meal, menu: true, () => _pickMeal(n)),
+                  const Divider1(),
+                  _mealItem(ctx, 'Other time', _otherSub, _at != null, menu: true, icon: AppIcons.clock, _otherSheet),
                 ]),
               ),
             ),
@@ -438,7 +478,69 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     );
   }
 
-  Widget _mealItem(BuildContext ctx, String title, String sub, bool on, VoidCallback pick, {bool menu = false, bool first = false}) => Semantics(
+  void _pickMeal(String n) => setState(() {
+    _meal = n;
+    _at = null;
+  });
+
+  String get _otherSub => _at != null ? '${fdClock(_at!)} · straight to your food log · off-plan' : 'Ate outside your meal times? Pick when';
+
+  /// Add to → Other time: a name and the time it was eaten (today, not later than now).
+  void _otherSheet() {
+    final now = DateTime.now();
+    final name = TextEditingController(text: _at != null ? meal : '');
+    final at = ValueNotifier<DateTime>(_at ?? now.subtract(Duration(minutes: now.minute % 5)));
+    final dayStart = DateTime(now.year, now.month, now.day);
+    void set(DateTime t) => at.value = t.isAfter(DateTime.now()) ? DateTime.now() : (t.isBefore(dayStart) ? dayStart : t);
+    Widget quick(String l, int ago) {
+      final t = now.subtract(Duration(minutes: ago));
+      final on = (at.value.difference(t).inMinutes).abs() < 1;
+      return FdChip(l, height: 30, on: on, onTap: () => set(t));
+    }
+
+    showAppSheet(
+      context,
+      listen: at,
+      title: 'Other time',
+      sub: 'Ate outside your meal times? It goes straight to your food log at this time, marked off-plan.',
+      webWidth: 440,
+      footerStretch: true,
+      builder: (_) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+        CaField(label: 'Name', controller: name, hint: 'e.g. Evening chai', autofocus: true, action: TextInputAction.done),
+        Text('Time', style: AppText.s(13, W.w6)),
+        Row(mainAxisAlignment: MainAxisAlignment.center, spacing: 18, children: [
+          CaIconBtn(AppIcons.minus, tooltip: '15 minutes earlier', onTap: () => set(at.value.subtract(const Duration(minutes: 15)))),
+          SizedBox(width: 120, child: Text(fdClock(at.value), textAlign: TextAlign.center, style: AppText.s(26, W.w8))),
+          CaIconBtn(AppIcons.plus, tooltip: '15 minutes later', onTap: () => set(at.value.add(const Duration(minutes: 15)))),
+        ]),
+        Wrap(alignment: WrapAlignment.center, spacing: 6, runSpacing: 6, children: [
+          quick('Now', 0),
+          quick('30 min ago', 30),
+          quick('1 h ago', 60),
+          quick('2 h ago', 120),
+        ]),
+        fdCap('Today only. Add foods from the library, Quick add or My foods; your coach sees them at this time.'),
+      ]),
+      footer: (ctx) => [
+        Row(spacing: 8, children: [
+          Expanded(child: CaButton('Cancel', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop())),
+          Expanded(
+            child: CaButton('Use this time', icon: AppIcons.check, onPressed: () {
+              Navigator.of(ctx).pop();
+              final n = name.text.trim();
+              setState(() {
+                _at = at.value;
+                _meal = n.isEmpty ? 'Other time' : n;
+              });
+              showToast(context, 'Adding to ${_meal!} · ${fdClock(at.value)}', sub: 'Tap + on a food to log it', kind: ToastKind.info);
+            }),
+          ),
+        ]),
+      ],
+    );
+  }
+
+  Widget _mealItem(BuildContext ctx, String title, String sub, bool on, VoidCallback pick, {bool menu = false, bool first = false, AppIconData? icon}) => Semantics(
     button: true,
     selected: on,
     child: Hover(
@@ -454,6 +556,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
           border: menu || first ? null : const Border(top: BorderSide(color: AppColors.line)),
         ),
         child: Row(spacing: 10, children: [
+          if (icon != null) AppIcon(icon, size: 16, color: on ? AppColors.accent : AppColors.text2),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(title, style: AppText.s(menu ? 13.5 : 14.5, on ? W.w7 : W.w6)),
@@ -690,17 +793,23 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     ]),
     Semantics(
       button: true,
-      checked: _off,
+      checked: _offNow,
       child: Hover(
-        onTap: () => setState(() {
-          _off = !_off;
-          _why = '';
-        }),
+        onTap: () {
+          if (_at != null) {
+            showToast(context, 'Other time food is always off-plan', sub: '${day.data?.coach ?? 'Your coach'} sees it in your food log at ${fdClock(_at!)}', kind: ToastKind.info);
+            return;
+          }
+          setState(() {
+            _off = !_off;
+            _why = '';
+          });
+        },
         builder: (_, h, _) => Container(
           padding: const EdgeInsets.only(top: 10),
           decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
-            Padding(padding: const EdgeInsets.only(top: 1), child: CaCheckBox(_off)),
+            Padding(padding: const EdgeInsets.only(top: 1), child: CaCheckBox(_offNow)),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
                 Text('Off-plan meal', style: AppText.s(13.5, W.w7)),
@@ -711,7 +820,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
         ),
       ),
     ),
-    if (_off)
+    if (_offNow)
       Padding(
         padding: const EdgeInsets.only(left: 28),
         child: Wrap(spacing: 6, runSpacing: 6, children: [
