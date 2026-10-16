@@ -11,6 +11,15 @@ class GymSettings(models.Model):
     phone = models.CharField(max_length=20, blank=True, default="")
     address = models.CharField(max_length=300, blank=True, default="")
     instagram = models.CharField(max_length=100, blank=True, default="")
+    # Client About page (ClientAbout board): tagline, website, support hours and the head coach card.
+    tagline = models.CharField(max_length=120, blank=True, default="Online coaching for weight gain and muscle gain")
+    website = models.CharField(max_length=200, blank=True, default="trainwithvimal.com")
+    whatsapp = models.CharField(max_length=20, blank=True, default="")  # blank = same as phone
+    support_hours = models.CharField(max_length=60, blank=True, default="Mon–Sat, 9 am – 9 pm")
+    coach_role = models.CharField(max_length=60, blank=True, default="Head coach · Online")
+    coach_intro = models.CharField(max_length=300, blank=True, default=(
+        "Vimal coaches people online to gain weight and build muscle, with plans that fit home food and a busy day."))
+    coach_stats = models.JSONField(default=list, blank=True)  # [["10+", "Years coaching"], ...]
     timezone = models.CharField(max_length=40, default="Asia/Kolkata")
     language = models.CharField(max_length=10, default="en")
 

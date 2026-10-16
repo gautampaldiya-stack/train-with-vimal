@@ -541,6 +541,13 @@ Singleton: Settings → Gym profile, Regional & defaults, Branding.
 | `phone` | CharField |  |
 | `address` | CharField |  |
 | `instagram` | CharField |  |
+| `tagline` | CharField |  |
+| `website` | CharField |  |
+| `whatsapp` | CharField |  |
+| `support_hours` | CharField |  |
+| `coach_role` | CharField |  |
+| `coach_intro` | CharField |  |
+| `coach_stats` | JSONField |  |
 | `timezone` | CharField |  |
 | `language` | CharField |  |
 | `logo` | FileField | optional |

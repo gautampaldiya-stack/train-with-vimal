@@ -24,7 +24,21 @@ class PublicGymView(APIView):
             "name": g.name, "email": g.email, "phone": g.phone, "address": g.address, "instagram": g.instagram,
             "logo": request.build_absolute_uri(g.logo.url) if g.logo else None,
             "accent_color": g.accent_color, "theme": g.theme, "timezone": g.timezone,
+            "tagline": g.tagline, "website": g.website, "whatsapp": g.whatsapp or g.phone, "hours": g.support_hours,
+            "coach": _head_coach(g, request),
         })
+
+
+def _head_coach(g, request):
+    """The About page's coach card: the admin's name and photo plus the gym's words about them."""
+    from apps.accounts.models import User
+
+    admin = User.objects.filter(role="admin", is_active=True).order_by("date_joined").first()
+    name = (admin.first_name or admin.get_full_name() or "Vimal") if admin else "Vimal"
+    photo = getattr(admin, "avatar", None) if admin else None
+    return {"name": name, "role": g.coach_role, "intro": g.coach_intro,
+            "photo": request.build_absolute_uri(photo.url) if photo else None,
+            "stats": [{"value": v, "label": lbl} for v, lbl in (g.coach_stats or [])]}
 
 
 class GymProfileView(APIView):

@@ -54,7 +54,7 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
   `trainer_note` (coach's last check-in reply). Water logs also move the water habit (one glass = 250 ml).
 - Seed: Riya has Fat loss support supplements, a 6:30 pm session with Aman, a reviewed check-in, 3 notifications,
   the habits Walk / Water / Sleep 7 hours, and "No sugary drinks" starting next Monday.
-- `ClientHomeHero` (blue hero option) not built: waiting for Gautam to choose.
+- `ClientHomeHero`: Gautam picked it (2026-10-16); phone Home uses the hero (D-29).
 
 ## Train tab and workout logger (2026-10-15)
 - `ClientTrain`, `ClientTrainWeb`, `ClientWorkout`, `ClientWorkoutWeb` Done: `app/lib/features/client/train/`
@@ -137,6 +137,13 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
   ffmpeg, else they show "Video not uploaded yet").
 - Media (D-27): real PDF pages (pypdfium2, run `pip install -r requirements.txt`), video seek / full screen, picture zoom, exercise guide shows the exercise's video or picture, new `link` kind (migration content 0003).
 - YouTube in-app (D-28): YouTube plays inside the Library sheet and exercise guide (`flutter pub get` for youtube_player_iframe); demo videos ship in `backend/apps/common/demo_media`, rerun `seed_demo`. Check YouTube playback in a real browser / phone (blocked in the sandbox).
-- Not built: saving images to the phone gallery, in-app YouTube player.
-- Next client boards: About (`ClientAbout`), Profile (`ClientProfile`).
+- Not built: saving images to the phone gallery.
+
+## About page + Home hero (2026-10-16, D-29)
+- `ClientAbout` / `ClientAboutWeb` Done: `app/lib/features/client/more/about_screen.dart`, route `/more/about`,
+  opened from Help & about. Contact and coach card come from `GymSettings` (new fields, migration gym 0002;
+  `seed_defaults` fills phone, email and stats). Admin edits them with `PATCH settings/gym/`.
+- `ClientHomeHero` Done (phone Home). After pulling: `migrate`, `seed_defaults`.
+- Client boards are all built now except `ClientProfile*` (that is the trainer / admin view of a client, built with
+  the trainer screens). Next: trainer boards.
 

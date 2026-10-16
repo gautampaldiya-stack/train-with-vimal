@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-16 · Client — About page, Home hero
+- **Pehle:** About page nahi tha. Phone Home par plain top line (date, Hey Riya, bell) tha; hero wala design choose nahi hua tha. Gym ka support time code me "6 am to 10 pm" likha tha.
+- **Ab:** About page (`/more/about`, Help & about se): app card + version copy, Vimal ka coach card (stats ke saath), Contact (WhatsApp, Call, Email, Website, Support hours), App (What's new, Rate the app, Terms, Privacy, Open-source licences). Contact aur coach ki baatein gym settings se aati hain (admin badal sakta hai). Phone Home ab hero wala: blue hero status bar ke neeche tak, "Hey Riya", aaj ka workout + "3 of 5 workouts done this week", runner picture, week strip hero par overlap.
+- **Kyun:** Gautam: "client about banado... homehero ye hero wala rakhna hai".
+- **Updated:** backend gym (models + migration 0002, serializers, views `gym/`), seed_defaults, clients/account.py, tests/test_client_about.py; app about_screen.dart, more_parts (MoMenuRow info row), more_sheets (About row), router, home_screen (hero), app_shell (no top safe area on client Home), colors, app_icons, assets/ill/hero_run.svg; docs behaviour §4.1 / §4.12, status, CURRENT, memory · Decision D-29
+
 ### 2026-10-16 · Media — YouTube app ke andar, chhoti picture, demo videos
 - **Pehle:** YouTube video ki sirf still dikhti thi aur tap par YouTube khulta tha. Library me picture pura modal le leti thi. Gautam ki machine par ffmpeg nahi tha, isliye seed ke videos me file nahi bani ("Video not uploaded yet").
 - **Ab:** YouTube video Library sheet aur Exercise guide ke andar hi chalta hai (iframe / web view, YouTube ka full screen button), neeche `Open in YouTube` link. Chapters embedded video ko seek karte hain. Picture box chhota (Library 240 / web 300), puri picture dikhti hai, tap par full screen. Demo videos ab code ke saath aate hain (`apps/common/demo_media`), seed bina ffmpeg ke chalta hai aur bina file wale videos bhar deta hai. Walking Lunge ab YouTube link hai. Jahan web view nahi hai (Windows desktop) wahan YouTube ki still + play button dikhta hai jo YouTube kholta hai, red error nahi.

@@ -124,6 +124,9 @@ abstract final class AppIcons {
   // Client Library (board ClientLibrary)
   static const bookmark = Ic.i5d68f8;
   static const downloadLine = Ic.i78fb3d;
+  static const globe = Ic.iddd536;
+  static const gift = Ic.i0378f1;
+  static const code = Ic.i3da285;
   // Not on any board (full-screen video); same 24 grid and stroke as the board icons.
   static const expand = AppIconData('0 0 24 24', '<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>');
 }

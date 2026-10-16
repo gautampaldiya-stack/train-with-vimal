@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/icons/app_icons.dart';
@@ -61,15 +63,118 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
 
   // ─────────────────────────────── Layouts
 
-  Widget _phone(HomeData d) => RefreshIndicator(
-        onRefresh: c.load,
-        color: AppColors.accent,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 6, 16, 20),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-            _top(d, web: false),
-            _week(d, web: false),
+  /// Phone = board `ClientHomeHero` (Gautam picked the hero, 2026-10-16): the blue hero runs under the status
+  /// bar and the week strip overlaps its bottom edge by 34.
+  Widget _phone(HomeData d) => AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light,
+        child: RefreshIndicator(
+          onRefresh: c.load,
+          color: AppColors.accent,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.only(bottom: 20),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              _hero(d),
+              Transform.translate(
+                offset: const Offset(0, -34),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+                    DecoratedBox(
+                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), boxShadow: const [BoxShadow(color: AppColors.weekShadow, blurRadius: 18, offset: Offset(0, 6))]),
+                      child: _week(d, web: false),
+                    ),
+                    ..._phoneCards(d),
+                  ]),
+                ),
+              ),
+            ]),
+          ),
+        ),
+      );
+
+  Widget _hero(HomeData d) {
+    final top = MediaQuery.paddingOf(context).top;
+    final today = d.todayIndex >= 0 && d.todayIndex < d.strip.length ? d.strip[d.todayIndex] : null;
+    final planned = d.strip.where((x) => !x.rest).length;
+    final done = d.strip.where((x) => !x.rest && x.done).length;
+    final line1 = d.strip.isEmpty
+        ? 'Your coach is setting up your plan.'
+        : today == null || today.rest
+            ? 'Rest day today.'
+            : '${today.name.isEmpty ? (today.cardio ? 'Cardio' : 'Strength') : today.name} today.';
+    final line2 = planned == 0 ? '' : '\n$done of $planned workout${planned == 1 ? '' : 's'} done this week.';
+    return Container(
+      padding: EdgeInsets.fromLTRB(18, top + 4, 18, 46),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(begin: Alignment(-0.35, -1), end: Alignment(0.35, 1), colors: AppColors.homeHero, stops: [0, .55, 1]),
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        SizedBox(
+          height: 44,
+          child: Row(spacing: 8, children: [
+            Expanded(
+              child: Text('${dayShort(d.date)}${d.week != null && d.weeks != null ? ' · Week ${d.week} of ${d.weeks}' : ''}',
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.homeHeroSub)),
+            ),
+            Semantics(
+              label: 'Notifications',
+              button: true,
+              child: Hover(
+                onTap: () => showNoticesSheet(context, c),
+                builder: (_, h, _) => Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(color: h ? AppColors.homeHeroSub.withValues(alpha: .3) : AppColors.homeHeroBtn, borderRadius: BorderRadius.circular(12)),
+                  child: Stack(alignment: Alignment.center, children: [
+                    const AppIcon(AppIcons.bell, size: 18, color: AppColors.white),
+                    if (d.unread > 0)
+                      Positioned(
+                        top: 7,
+                        right: 8,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(color: AppColors.red, shape: BoxShape.circle, border: Border.all(color: AppColors.homeHeroDotRing, width: 2)),
+                        ),
+                      ),
+                  ]),
+                ),
+              ),
+            ),
+          ]),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.end, spacing: 8, children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Hey ${d.firstName}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(28, W.w8, ls: -0.56, color: AppColors.white, h: 1.2)),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text('$line1$line2', style: AppText.s(13, W.w4, color: AppColors.homeHeroSub, h: 1.45)),
+                ),
+              ]),
+            ),
+            // 128 × 116 picture with margin 0 -6 -10 0: it takes 122 of the row and hangs 6 past the edge, 10 below.
+            SizedBox(
+              width: 122,
+              height: 106,
+              child: OverflowBox(
+                alignment: Alignment.topLeft,
+                maxWidth: 128,
+                maxHeight: 116,
+                child: SvgPicture.asset('assets/ill/hero_run.svg', width: 128, height: 116, fit: BoxFit.contain),
+              ),
+            ),
+          ]),
+        ),
+      ]),
+    );
+  }
+
+  List<Widget> _phoneCards(HomeData d) => [
             _workout(d),
             _waterCard(d),
             _food(d),
@@ -77,9 +182,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
             if (_dueSupps(d).isNotEmpty) _supps(d),
             ?_coach(d),
             if (d.coming.isNotEmpty) ...[const ChSection('Coming up'), _coming(d)],
-          ]),
-        ),
-      );
+          ];
 
   Widget _web(HomeData d) => CaWeb(
         web: true,

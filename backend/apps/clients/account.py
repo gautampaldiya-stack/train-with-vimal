@@ -150,7 +150,7 @@ def account_page(client, request=None):
                                                      "trainer_reply", "progress", "quiet_on")}
         | {"quiet_from": prefs.quiet_from, "quiet_to": prefs.quiet_to},
         "deletion_on": deletion,
-        "gym": {"name": gym.name, "phone": gym.phone, "email": gym.email, "hours": "6 am to 10 pm"},
+        "gym": {"name": gym.name, "phone": gym.phone, "email": gym.email, "hours": gym.support_hours},
         "version": getattr(settings, "APP_VERSION", "1.0.0"),
     }
 

@@ -12,7 +12,8 @@ HEX_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
 class GymProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = GymSettings
-        fields = ["name", "email", "phone", "address", "instagram", "timezone", "language"]
+        fields = ["name", "email", "phone", "address", "instagram", "timezone", "language", "tagline", "website", "whatsapp",
+                  "support_hours", "coach_role", "coach_intro", "coach_stats"]
 
     def validate_timezone(self, v):
         import zoneinfo

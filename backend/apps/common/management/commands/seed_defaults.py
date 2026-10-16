@@ -18,7 +18,15 @@ class Command(BaseCommand):
         from apps.nutrition.models import Food, FoodUnit
         from apps.training.models import Exercise
 
-        GymSettings.load()
+        gym = GymSettings.load()
+        # The About page's contact and coach card (ClientAbout board); only fills what is still empty.
+        if not gym.phone:
+            gym.phone = "+91 70874 03476"
+        if gym.email in ("", "hello@trainwithvimal.com"):
+            gym.email = "trainwithvimal@gmail.com"
+        if not gym.coach_stats:
+            gym.coach_stats = [["10+", "Years coaching"], ["300+", "Transformations"], ["17,000+", "Followers"]]
+        gym.save()
         RoleMatrix.load()
         seed_notifications()
         seed_forms()

@@ -776,6 +776,11 @@ Future<void> showHelpAboutSheet(BuildContext context, MoreController c, {String?
           }),
           row(AppIcons.file, 'Terms of use', 'What you agree to', () => showTermsSheet(context, readOnly: true)),
           row(AppIcons.lock, 'Privacy policy', 'How we keep your data safe', () => showTermsSheet(context, readOnly: true)),
+          // Not on the board: the only way into the About page (ClientAbout), Gautam 2026-10-16.
+          row(AppIcons.info, 'About ${d.gym['name'] ?? 'Train With Vimal'}', 'Coach, contact and app version', () {
+            Navigator.of(ctx).pop();
+            context.go('/more/about');
+          }),
         ]),
         Column(children: [
           Text('${d.gym['name'] ?? 'Train With Vimal'}', style: AppText.s(13, W.w7)),

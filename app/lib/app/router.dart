@@ -23,6 +23,7 @@ import '../features/client/progress/progress_pages.dart';
 import '../features/client/progress/progress_screen.dart';
 import '../features/client/home/home_screen.dart';
 import '../features/client/library/library_screen.dart';
+import '../features/client/more/about_screen.dart';
 import '../features/client/more/more_screen.dart';
 import '../features/client/train/train_screen.dart';
 import '../features/client/train/workout_screen.dart';
@@ -91,7 +92,9 @@ final Map<String, Widget Function(GoRouterState)> screens = {
   '/library': (_) => const ClientLibraryScreen(),
   '/library/:id': (st) => ClientLibraryScreen(key: ValueKey(st.uri.toString()), id: st.pathParameters['id']),
   '/more': (_) => const ClientMoreScreen(),
-  '/more/:id': (st) => ClientMoreScreen(key: ValueKey(st.uri.toString()), view: st.pathParameters['id']!),
+  '/more/:id': (st) => st.pathParameters['id'] == 'about'
+      ? const ClientAboutScreen()
+      : ClientMoreScreen(key: ValueKey(st.uri.toString()), view: st.pathParameters['id']!),
 };
 
 final appRouter = GoRouter(

@@ -63,6 +63,12 @@ abstract final class AppColors {
   static const nextBg = Color(0xFFF7F7F4);
   static const sessText = Color(0xFF1E3A8A);
   static const heroGreen = [Color(0xFFEEF6EF), Color(0xFFF8FBF8)];
+  // Home hero (ClientHomeHero board, Gautam picked it 2026-10-16): sky → blue gradient, white text on it.
+  static const homeHero = [Color(0xFF4FB8EE), Color(0xFF2F8FE6), Color(0xFF2563EB)];
+  static const homeHeroBtn = Color(0x33FFFFFF); // bell button (white 20%)
+  static const homeHeroDotRing = Color(0xFF3A9DEA);
+  static const homeHeroSub = Color(0xE6FFFFFF); // 90% white
+  static const weekShadow = Color(0x14171717); // 0 6 18 / .08 under the week strip
   static const heroBlue = [Color(0xFFEAF1FE), Color(0xFFF7FAFF)];
   static const heroGray = [Color(0xFFF1F1EE), Color(0xFFFAFAF8)];
   static const chevron = Color(0xFFA1A19B);

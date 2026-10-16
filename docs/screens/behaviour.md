@@ -1054,7 +1054,7 @@ Toast yahan `ca-toast` style ke hote hain — `ok` / `info` / `warn` / `err` / `
 
 ### 4.1 Home — `ClientHome` / `ClientHomeHero` / `ClientHomeWeb`
 
-Top line: `Fri, 9 Oct · Week 6 of 12`. Right me notification bell + avatar `RS`.
+Phone (ClientHomeHero, D-29): blue hero — `Fri, 9 Oct · Week 6 of 12`, white bell (Notifications sheet), **Hey Riya**, *"Cardio and core today."* (ya *"Rest day today."*) + *"3 of 5 workouts done this week."*, runner picture; week strip hero ke neeche overlap. Web (ClientHomeWeb): top line + bell, no avatar.
 
 | Card | Kya hai | Click pe |
 |---|---|---|
@@ -1292,7 +1292,23 @@ Routes `/more`, `/more/profile`, `/more/notifications`, `/more/activity`. Data `
 
 ### 4.12 About — `ClientAbout`
 
-`Contact` (gym ka phone, email, address) · `App` (version, `New` pill update pe) · terms aur privacy links. Footer `© 2026 Train With Vimal · Made in India`. `Got it` / `Close`.
+Route `/more/about` (Help & about → *About Train With Vimal*). Header `About` + *"Train With Vimal · Version 1.0.0 (1)"*, back → More.
+
+| Control | Click pe |
+|---|---|
+| `Version 1.0.0 (1)` chip | Copy; toast *"Version copied"* · *"Train With Vimal 1.0.0 (1) · paste it when you report a problem"* |
+| Coach card | Vimal · *Head coach · Online*, intro, stats `10+ Years coaching` · `300+ Transformations` · `17,000+ Followers` (gym settings se) |
+| `WhatsApp` | wa.me khulta hai, toast *"Opening WhatsApp"* · *"Chat with +91 …"* |
+| `Call` | Phone dialer, toast *"Calling +91 …"* · support hours |
+| `Email` | Mail draft, toast *"Email draft opened"* · *"To …"* |
+| `Website` | Browser, toast *"Opening trainwithvimal.com"* · *"In your browser"* |
+| `Support hours` | Sirf info (no chevron) |
+| `What's new` (`New` pill) | Sheet *"What's new"* · *"Version 1.0.0 (1) · 12 Oct 2026"*, 4 points, `Got it` |
+| `Rate the app` | Play Store page, toast *"Opening the store"* |
+| `Terms of use` / `Privacy policy` | Sheet with 4 points, *"Last updated · 1 Sep 2026"*, `Close` |
+| `Open-source licences` | Sheet *"Thank you to these projects"*, name left + licence right, `Close` |
+
+Number missing ho to toast *"No … yet"* · *"Ask at the front desk"*. Footer `© 2026 Train With Vimal · Made in India`. Web: do columns (app + coach left, Contact + App right).
 
 ---
 

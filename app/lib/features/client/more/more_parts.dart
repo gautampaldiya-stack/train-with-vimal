@@ -121,11 +121,11 @@ Widget moMh(String t) => Padding(
 class MoMenuRow extends StatelessWidget {
   const MoMenuRow({super.key, required this.icon, required this.title, required this.sub, this.pill, this.first = false, required this.onTap, this.pillTone = ChTone.blue});
   final AppIconData icon;
-  final String title, sub;
+  final String title, sub; // empty sub = title only
   final String? pill;
   final ChTone pillTone;
   final bool first;
-  final VoidCallback onTap;
+  final VoidCallback? onTap; // null = an info row (no chevron, no hover)
   @override
   Widget build(BuildContext context) => Semantics(
         button: true,
@@ -139,12 +139,12 @@ class MoMenuRow extends StatelessWidget {
               MoIc(icon),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                  Text(title, style: AppText.s(14, W.w7, color: h ? AppColors.accentText : AppColors.text)),
-                  Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w4, color: AppColors.muted)),
+                  Text(title, style: AppText.s(14, W.w7, color: h && onTap != null ? AppColors.accentText : AppColors.text)),
+                  if (sub.isNotEmpty) Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w4, color: AppColors.muted)),
                 ]),
               ),
               if (pill != null) MoPill(pill!, tone: pillTone),
-              const AppIcon(AppIcons.chevronRight, size: 16, color: AppColors.muted),
+              if (onTap != null) const AppIcon(AppIcons.chevronRight, size: 16, color: AppColors.muted),
             ]),
           ),
         ),
