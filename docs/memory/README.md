@@ -33,3 +33,4 @@ Things a new person (or a new Claude session) must know. Update when Gautam deci
 - Library (2026-10-16, D-26): coach share can carry a note; New / Done / Saved per client on ContentView; video plays in the app and finishing marks it done. Grey tab bars are label-width everywhere (Gautam).
 - Media (2026-10-16, D-27): content = uploaded video, YouTube link, PDF, image, article or reference link (Gautam). Exercise guide shows the exercise's video / picture. PDF pages are drawn on the server. YouTube plays inside the app with an Open in YouTube option; modal pictures stay short and whole (D-28).
 - Home hero (2026-10-16, D-29): Gautam picked ClientHomeHero for phone Home. About page contact / coach text comes from gym settings.
+- Gautam (2026-10-16): data must match for client, trainer and admin ("kahi ulta na ho"). One check-in queue (`apps/checkins/queue.py`), client counts = active and not removed, Feeling low = latest check-in only (D-30).

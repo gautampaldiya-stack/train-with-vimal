@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-16 · Trainer — Dashboard; trainer, admin aur client ke numbers ek jaise
+- **Pehle:** Trainer dashboard ka page nahi tha (holding page). "Check-ins to review" har jagah alag gina jata tha: dashboard API weekly + monthly, Check-ins page weekly + daily + monthly, admin Trainers table weekly + daily. "Feeling low" purane low din se bhi aa jata tha jabki client ke latest check-in 4 / 5 the. Trainer aur client ke same paths (`/checkins`, `/more`, `/habits`) ek hi screen kholte the.
+- **Ab:** Trainer Dashboard (web + phone hero) board jaisa: stats, Today (Done, ⋯ menu, Cancel + Undo), Clients who need you (chips, Remind + Undo, ek client ek row), Check-ins to review + review drawer (reply, quick replies, Undo), This week, bell, New session. Ek hi check-in queue sab jagah (dashboard, Check-ins page, sidebar badge, My profile, admin dashboard, Trainers table) — test check karta hai ki numbers same hain. Feeling low sirf latest check-in se. Router me trainer ke apne pages. Drawer ab board wale `.drawer` jaisa. Aman ke liye demo din (`seed_demo`).
+- **Kyun:** Gautam: "ab trainer ke banane start karo", "data match hone chahiye sabhi... client admin trainer... kahi ulta na ho".
+- **Updated:** backend activity/trainer_home.py (new), dashboard.py, checkins/queue.py + review.py (new), checkins/views.py, trainers/views.py, clients/metrics.py, seed_demo, tests/test_trainer_dashboard.py; app features/trainer/dashboard/*, router, app_shell, overlays (drawer look, modal width, menus on root overlay), button (filled icon), avatar (initials), colors, app_icons, assets/ill/trainer_hero.svg; docs behaviour §3.1, status, CURRENT, memory · Decision D-30
+
 ### 2026-10-16 · Client — About page, Home hero
 - **Pehle:** About page nahi tha. Phone Home par plain top line (date, Hey Riya, bell) tha; hero wala design choose nahi hua tha. Gym ka support time code me "6 am to 10 pm" likha tha.
 - **Ab:** About page (`/more/about`, Help & about se): app card + version copy, Vimal ka coach card (stats ke saath), Contact (WhatsApp, Call, Email, Website, Support hours), App (What's new, Rate the app, Terms, Privacy, Open-source licences). Contact aur coach ki baatein gym settings se aati hain (admin badal sakta hai). Phone Home ab hero wala: blue hero status bar ke neeche tak, "Hey Riya", aaj ka workout + "3 of 5 workouts done this week", runner picture, week strip hero par overlap.

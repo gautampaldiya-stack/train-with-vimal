@@ -147,3 +147,14 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
 - Client boards are all built now except `ClientProfile*` (that is the trainer / admin view of a client, built with
   the trainer screens). Next: trainer boards.
 
+
+## Trainer dashboard (2026-10-16, D-30)
+- `TrainerDashboard` + `TrainerDashboardMobile` Done: `app/lib/features/trainer/dashboard/` (model, screen, parts =
+  bell dropdown, review drawer, New session modal). API `dashboard/trainer/` = `apps/activity/trainer_home.py`;
+  review view = `apps/checkins/review.py` (on `GET checkins/<id>/`).
+- One check-in queue for all roles: `apps/checkins/queue.py`. Anything that counts "to review" must use it.
+- Router: trainer pages go in `trainerScreens` (paths overlap with the client app). Admin map is empty for now.
+- Demo: `seed_demo` gives Aman a full day (5 sessions, 5 more clients, 3 weekly check-ins, Rohan's plan ending
+  Sunday). Log in as aman@trainwithvimal.com / Demo@1234.
+- Next trainer boards: TrainerClients(+Mobile), TrainerClientProfile, TrainerCheckins, TrainerCalendar, TrainerMe,
+  TrainerMoreMobile, TrainerProfile, Trainers. Then admin.

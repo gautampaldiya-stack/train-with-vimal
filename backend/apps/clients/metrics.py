@@ -210,7 +210,7 @@ def needs_attention(client):
         items.append({"kind": "flag", "title": n.body.split("\n")[0][:80], "detail": n.body[80:200].strip(),
                       "id": str(n.id)})
     for s in Submission.objects.filter(client=client, reviewed_at__isnull=True,
-                                       form_type__in=["weekly", "daily"]).order_by("-created_at")[:2]:
+                                       form_type__in=["weekly", "daily", "survey"]).order_by("-created_at")[:2]:  # = checkins.queue.REVIEW_TYPES
         label = f"Week {s.week_number} check-in to review" if s.week_number else "Check-in to review"
         items.append({"kind": "checkin", "title": label, "detail": f"Sent {dfmt(s.created_at, '%a, %-d %b')}",
                       "id": str(s.id)})

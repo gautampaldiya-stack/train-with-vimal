@@ -30,7 +30,7 @@ class MenuEntry {
 Future<void> showAppMenu(BuildContext anchor, List<MenuEntry> entries, {double width = 200, bool alignRight = true}) async {
   if (anchor.isPhone) return showActionSheet(anchor, entries);
   final box = anchor.findRenderObject() as RenderBox;
-  final overlay = Overlay.of(anchor).context.findRenderObject() as RenderBox;
+  final overlay = Overlay.of(anchor, rootOverlay: true).context.findRenderObject() as RenderBox;
   final topLeft = box.localToGlobal(Offset.zero, ancestor: overlay);
   final size = overlay.size;
   final left = alignRight ? (topLeft.dx + box.size.width - width) : topLeft.dx;
@@ -144,6 +144,7 @@ Future<T?> showAppModal<T>(
   AppIconData? icon,
   bool danger = false,
   bool wide = false,
+  double? width,
   Widget Function(BuildContext)? content,
   List<Widget> Function(BuildContext)? actions,
   Widget? lead,
@@ -162,7 +163,7 @@ Future<T?> showAppModal<T>(
       child: Material(
         color: Colors.transparent,
         child: Container(
-          width: wide ? 560 : 440,
+          width: width ?? (wide ? 560 : 440),
           margin: const EdgeInsets.all(24),
           constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * .88),
           decoration: BoxDecoration(color: AppColors.card, borderRadius: AppRadius.all(AppRadius.modal), boxShadow: AppShadows.modal),
@@ -220,6 +221,7 @@ Future<T?> showAppDrawer<T>(
   required Widget Function(BuildContext) builder,
   List<Widget> Function(BuildContext)? footer,
   Widget? headerAction,
+  AppIconData? icon,
 }) {
   if (context.isPhone) {
     return showAppSheet<T>(context, title: title, sub: sub, builder: builder, footer: footer, tall: true);
@@ -241,30 +243,28 @@ Future<T?> showAppDrawer<T>(
         child: Container(
           width: wide ? 640 : 520,
           height: double.infinity,
-          decoration: const BoxDecoration(
-            color: AppColors.card,
-            borderRadius: BorderRadius.horizontal(left: Radius.circular(AppRadius.modal)),
-            boxShadow: AppShadows.modal,
-          ),
+          // `.drawer` as the boards draw it: square edge, header 10/12/10/16 with a 32 icon tile, body 0 16 16.
+          decoration: const BoxDecoration(color: AppColors.card, boxShadow: AppShadows.modal),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Container(
-              padding: const EdgeInsets.fromLTRB(22, 18, 16, 14),
+              padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
               decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
-              child: Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
+              child: Row(spacing: 10, children: [
+                if (icon != null) IconTile(icon, size: 32, radius: 8, iconSize: 17),
                 Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 3, children: [
-                    Text(title, style: AppText.s(17, W.w8, ls: -0.2)),
-                    if (sub != null) Text(sub, style: AppText.sub),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+                    Text(title, style: AppText.s(15, W.w8, ls: -0.15, h: 1.3)),
+                    if (sub != null) Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted, h: 1.4)),
                   ]),
                 ),
                 ?headerAction,
                 AppIconButton(AppIcons.close, tooltip: 'Close', ghost: true, small: true, onPressed: () => Navigator.of(ctx).pop()),
               ]),
             ),
-            Expanded(child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(22, 16, 22, 20), child: builder(ctx))),
+            Expanded(child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), child: builder(ctx))),
             if (footer != null)
               Container(
-                padding: const EdgeInsets.fromLTRB(22, 14, 22, 16),
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
                 decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
                 child: Row(mainAxisAlignment: MainAxisAlignment.end, spacing: 8, children: footer(ctx)),
               ),

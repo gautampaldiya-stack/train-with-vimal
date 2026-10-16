@@ -67,8 +67,8 @@ Status: **Done** (built and checked in a browser against the board, phone and de
 | TrainerClientProfileMobile | Not started |  |
 | TrainerClients | Not started |  |
 | TrainerClientsMobile | Not started |  |
-| TrainerDashboard | Not started |  |
-| TrainerDashboardMobile | Not started |  |
+| TrainerDashboard | Done | Stats, Today (Done, ⋯ menu, cancel + Undo), Clients who need you (chips, Remind + Undo, Show more), Check-ins to review + review drawer (reply, quick replies, Undo), This week, bell dropdown, New session modal. Numbers match Check-ins page, My profile and the admin Trainers table (D-30). Checked 600, 768, 900, 1024, 1280, 1440 on 2026-10-16. Open client profile / Plan next / Open go to `/clients/<id>` (TrainerClientProfile not built yet). |
+| TrainerDashboardMobile | Done | Blue hero under the status bar with the 4-cell stats strip, same cards; ⋯ menu as a bottom sheet, bell full width, review drawer as a tall sheet. Checked 390. |
 | TrainerMe | Not started |  |
 | TrainerMeMobile | Not started |  |
 | TrainerMoreMobile | Not started |  |

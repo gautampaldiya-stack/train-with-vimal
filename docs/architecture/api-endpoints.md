@@ -35,7 +35,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `activity/export/` | GET | ActivityViewSet | GET /activity/?range=7d&kind=plan&who=team&person=<id> |
 | `dashboard/admin/` | GET | AdminDashboardView |  |
 | `dashboard/dismiss/` | POST | DismissView | × on a Needs action row. |
-| `dashboard/trainer/` | GET | TrainerDashboardView |  |
+| `dashboard/trainer/` | GET | TrainerDashboardView | Trainer dashboard: stats, Today, Clients who need you, Check-ins to review, This week, bell list. |
 | `me/home/` | GET | ClientHomeView |  |
 
 ## automations

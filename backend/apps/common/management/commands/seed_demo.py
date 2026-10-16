@@ -70,6 +70,8 @@ class Command(BaseCommand):
             self.library_videos()
             self.exercise_media()
             self.library_link()
+            self.aman_dashboard(program, plan)
+            self.settle_old_rows()
         self.stdout.write(self.style.SUCCESS(f"Demo ready. Log in with any demo email and {PASSWORD}"))
         self.stdout.write("Demo links (the reset link works for 15 minutes; run seed_demo again for new ones):")
         for line in self.demo_links():
@@ -641,6 +643,152 @@ class Command(BaseCommand):
         latest = WeightLog.objects.filter(client=riya).order_by("-date").first()
         cp.current_weight_kg = latest.weight_kg if latest else current
         cp.save(update_fields=["current_weight_kg"])
+
+    def aman_dashboard(self, program, plan):
+        """Trainer dashboard board: Aman's day. Five new clients (two start this week, one stopped logging, two
+        missed workouts), today's five sessions, earlier sessions this week, weekly check-ins waiting, and
+        Rohan's plan ending on Sunday."""
+        from apps.accounts.models import AccountStatus, Role, User
+        from apps.checkins.models import Form, Submission
+        from apps.checkins.services import submit
+        from apps.clients.models import ClientProfile
+        from apps.clients.metrics import refresh_client_stats
+        from apps.nutrition.models import MealPlanAssignment, WaterLog
+        from apps.nutrition.services import mark_eaten
+        from apps.scheduling.models import Session
+        from apps.training.models import AssignmentStatus, ProgramAssignment
+
+        aman = User.objects.filter(email__iexact="aman@trainwithvimal.com").first()
+        if aman is None or Session.objects.filter(trainer=aman, title="Push A").exists():
+            return
+        today, now = timezone.localdate(), timezone.now()
+        monday = today - timedelta(days=today.weekday())
+        weekly = Form.objects.filter(type="weekly", status="published").prefetch_related("questions").first()
+        # name, email, gender, start (days ago), how they log: steady | quiet | missing
+        people = [("Neha Jain", "neha.jain@example.com", "female", (today - monday).days, "steady"),
+                  ("Aditya Rao", "aditya@example.com", "male", (today - monday).days, "steady"),
+                  ("Vikram Singh", "vikram.singh@example.com", "male", 35, "missing"),
+                  ("Kabir Anand", "kabir@example.com", "male", 42, "quiet"),
+                  ("Tanya Arora", "tanya@example.com", "female", 28, "missing")]
+        users = {}
+        for i, (name, email, gender, ago, mode) in enumerate(people):
+            u, made = self.user(email=email, phone=f"+91983000{i:04d}", full_name=name, role=Role.CLIENT,
+                                status=AccountStatus.ACTIVE, gender=gender, city="Delhi")
+            users[name] = u
+            if not made:
+                continue
+            start = today - timedelta(days=ago)
+            ClientProfile.objects.create(user=u, trainer=aman, goal="fat_loss" if gender == "female" else "muscle_gain",
+                                         height_cm=165 if gender == "female" else 177, start_weight_kg=70,
+                                         current_weight_kg=69, target_weight_kg=64, start_date=start,
+                                         package_name="3 months · Gym", package_ends_on=start + timedelta(days=90),
+                                         onboarding_done=["account", "basics", "goal_body", "health", "food"],
+                                         ask_parq=False)
+            pa = ProgramAssignment.objects.create(client=u, program=program, start_date=start,
+                                                  status=AssignmentStatus.ACTIVE, assigned_by=aman)
+            MealPlanAssignment.objects.create(client=u, plan=plan, start_date=start, assigned_by=aman)
+            for back in range(min(ago, 21), 0, -1):
+                day = today - timedelta(days=back)
+                if mode == "quiet" and back < 8 or mode == "missing" and day >= monday:
+                    continue
+                WaterLog.objects.update_or_create(client=u, date=day, defaults={"ml": 2500})
+                for meal in plan.meals.all():
+                    mark_eaten(u, meal, day)
+                if day.weekday() < program.days_per_week:
+                    self.workout(u, pa, program, day)
+            if mode == "quiet":
+                User.objects.filter(id=u.id).update(last_seen_at=now - timedelta(days=7))
+            refresh_client_stats(u.client_profile)
+
+        rohan = User.objects.filter(email__iexact="rohan@example.com").first()
+        riya = User.objects.filter(email__iexact="riya@example.com").first()
+        sana = User.objects.filter(email__iexact="sana@example.com").first()
+        if rohan:  # Plan ending: Rohan's program ends this Sunday and nothing is up next.
+            ProgramAssignment.objects.filter(client=rohan, status=AssignmentStatus.ACTIVE).update(
+                end_date=monday + timedelta(days=6))
+
+        def at(day, hh, mm):
+            return timezone.make_aware(timezone.datetime.combine(day, timezone.datetime.min.time())) \
+                + timedelta(hours=hh, minutes=mm)
+
+        # Today: (client, hh, mm, minutes, title, video call)
+        plan_today = [(rohan, 7, 0, 60, "Push A", False), (users["Neha Jain"], 8, 30, 45, "Lower body", False),
+                      (users["Vikram Singh"], 19, 30, 60, "Strength test", False),
+                      (sana, 20, 45, 30, "Form check", True)]
+        for c, hh, mm, mins, title, call in plan_today:
+            if c is None:
+                continue
+            start = at(today, hh, mm)
+            Session.objects.create(client=c, trainer=aman, title=title, start=start, end=start + timedelta(minutes=mins),
+                                   is_call=call, place="" if call else "Gym floor",
+                                   call_link="https://meet.google.com/abc-defg-hij" if call else "",
+                                   status="done" if start + timedelta(minutes=mins) < now else "booked", booked_by=aman)
+        # Earlier this week: most held, one missed.
+        for back, c, title, st in [(1, rohan, "Pull A", "done"), (2, users["Aditya Rao"], "Intro session", "done"),
+                                   (3, users["Tanya Arora"], "Lower body", "missed"), (3, riya, "Upper A", "done")]:
+            day = today - timedelta(days=back)
+            if c is None or day < monday:
+                continue
+            start = at(day, 18, 0)
+            Session.objects.create(client=c, trainer=aman, title=title, start=start, end=start + timedelta(minutes=60),
+                                   place="Gym floor", status=st, booked_by=aman)
+
+        def answers(by_metric, by_text):
+            out = {}
+            for q in weekly.questions.all():
+                if q.is_removed:
+                    continue
+                v = by_metric.get(q.metric) if q.metric else by_text.get(q.text)
+                if v is not None:
+                    out[str(q.id)] = v
+            return out
+
+        # Weekly check-ins waiting: (client, hours ago, weight, week 1-5, meal plan, note)
+        if weekly:
+            for c, hours, kg, wk, meal, note in [
+                    (rohan, 26, 70.4, 5, "Yes, all week", "Bench felt strong. Can we add one more arm day?"),
+                    (users["Tanya Arora"], 6, 66.2, 2, "No, it was a hard week", "Exams this week, very tired."),
+                    (users["Kabir Anand"], 3, 78.0, 3, "Mostly, ate out once or twice", "")]:
+                if c is None:
+                    continue
+                sub = submit(c, weekly, answers({"weight": kg}, {"How was your week?": wk,
+                                                                 "Did you follow the meal plan?": meal,
+                                                                 "Anything your coach should know?": note or None}),
+                             day=today)
+                Submission.objects.filter(id=sub.id).update(created_at=now - timedelta(hours=hours))
+        # Feeling low: Tanya's last two daily check-ins.
+        daily = Form.objects.filter(type="daily", status="published").prefetch_related("questions").first()
+        tanya = users["Tanya Arora"]
+        if daily:
+            for back in (2, 1):
+                vals = {}
+                for q in daily.questions.all():
+                    if q.metric == "weight":
+                        vals[str(q.id)] = 66.3
+                    elif q.metric == "sleep_hours":
+                        vals[str(q.id)] = q.options[1] if q.options else "5 h"
+                    elif q.metric in ("energy", "mood"):
+                        vals[str(q.id)] = 2
+                    elif q.metric:
+                        vals[str(q.id)] = 3
+                sub = submit(tanya, daily, vals, day=today - timedelta(days=back))
+                Submission.objects.filter(id=sub.id).update(created_at=at(today - timedelta(days=back), 8, 0),
+                                                            reviewed_at=at(today - timedelta(days=back), 9, 0),
+                                                            reviewed_by=aman)
+
+    def settle_old_rows(self):
+        """Everything the demo made at once looks "added this week". Clients and plans that started before this
+        Monday get their created date moved back to their start, so the trainer's "This week" card counts right."""
+        from apps.clients.models import ClientProfile
+        from apps.nutrition.models import MealPlanAssignment
+        from apps.training.models import ProgramAssignment
+
+        today = timezone.localdate()
+        monday = today - timedelta(days=today.weekday())
+        old = timezone.now() - timedelta(days=today.weekday() + 21)
+        ClientProfile.objects.filter(created_at__gte=old).exclude(start_date__gte=monday).update(created_at=old)
+        for M in (ProgramAssignment, MealPlanAssignment):
+            M.objects.filter(created_at__gte=old, start_date__lt=monday).update(created_at=old)
 
     def workout(self, client, assignment, program, day):
         from apps.training.models import SetLog, WorkoutLog

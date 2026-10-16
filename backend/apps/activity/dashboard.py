@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.models import AccountStatus, Role
+from apps.checkins.queue import review_queue
 from apps.common.permissions import IsAdmin, IsClient, IsStaff
 
 from .models import ActivityEvent, DismissedItem
@@ -124,7 +125,7 @@ class AdminDashboardView(APIView):
         rate_prev = round(100 * sent_14 / n_active) if n_active else None
         adh = active.aggregate(a7=Avg("adherence_7d"), a30=Avg("adherence_30d"))
         trainers = list(trainers_queryset())
-        to_review = Submission.objects.filter(reviewed_at__isnull=True, form_type__in=["weekly", "daily"])
+        to_review = review_queue(request.user)  # same list the trainers and the Check-ins page count
         onboarding_pending = [cp for cp in active.only("onboarding_done") if
                               len(cp.onboarding_done or []) < 5]
         no_meal = active.exclude(user__meal_plan_assignments__status="active").count()
@@ -194,77 +195,14 @@ class DismissView(APIView):
 
 # ---------------------------------------------------------------- trainer
 class TrainerDashboardView(APIView):
+    """Trainer dashboard: stats, Today, Clients who need you, Check-ins to review, This week, bell list."""
+
     permission_classes = [IsStaff]
 
     def get(self, request):
-        from apps.automations.models import TrainerTask
-        from apps.checkins.models import Submission
-        from apps.checkins.serializers import SubmissionRowSerializer
-        from apps.clients.models import ClientProfile
-        from apps.notifications.models import Notification
-        from apps.scheduling.models import Session
-        from apps.scheduling.views import SessionSerializer
-        from apps.trainers.views import trainer_stats
-        from apps.training.models import ProgramAssignment
+        from .trainer_home import trainer_home
 
-        u = request.user
-        now = timezone.now()
-        today = timezone.localdate()
-        stats = trainer_stats(u)
-        pending = Submission.objects.filter(client__client_profile__trainer=u, reviewed_at__isnull=True,
-                                            form_type__in=["weekly", "daily"]).select_related("client", "form")
-        tz = timezone.get_current_timezone()
-        day_start = timezone.datetime.combine(today, timezone.datetime.min.time(), tz)
-        sessions_today = Session.objects.filter(trainer=u, start__gte=day_start,
-                                                start__lt=day_start + timedelta(days=1)).exclude(
-            status="cancelled").select_related("client", "trainer")
-        monday = today - timedelta(days=today.weekday())
-        week = Session.objects.filter(trainer=u, start__gte=timezone.datetime.combine(monday,
-                                                                                      timezone.datetime.min.time(), tz),
-                                      start__lt=timezone.datetime.combine(monday + timedelta(days=7),
-                                                                          timezone.datetime.min.time(), tz)) \
-            .exclude(status="cancelled").select_related("client", "trainer")
-        mine = ClientProfile.objects.filter(trainer=u, removed_at__isnull=True,
-                                            user__status=AccountStatus.ACTIVE).select_related("user")
-        need = []
-        ending_ids = set(ProgramAssignment.objects.filter(
-            client__client_profile__trainer=u, status="active",
-            end_date__range=(today, today + timedelta(days=7))).values_list("client_id", flat=True))
-        low_ids = set(Submission.objects.filter(client__client_profile__trainer=u,
-                                                created_at__gte=now - timedelta(days=4))
-                      .filter(Q(metrics__energy__lte=2) | Q(metrics__mood__lte=2)).values_list("client_id", flat=True))
-        for cp in mine:
-            seen = cp.user.last_seen_at
-            if seen and seen < now - timedelta(days=7):
-                need.append({**_person(cp.user), "kind": "not_logging",
-                             "reason": f"No workout or meal logged in {(now - seen).days} days",
-                             "reminded_at": cp.last_reminded_at})
-            elif cp.at_risk and "Missed" in cp.at_risk_reason:
-                need.append({**_person(cp.user), "kind": "missed_workouts", "reason": cp.at_risk_reason,
-                             "reminded_at": cp.last_reminded_at})
-            if cp.user_id in ending_ids:
-                need.append({**_person(cp.user), "kind": "plan_ending", "reason": "Plan ends this week",
-                             "reminded_at": None})
-            if cp.user_id in low_ids:
-                need.append({**_person(cp.user), "kind": "feeling_low", "reason": "Low energy or mood in check-in",
-                             "reminded_at": None})
-        notices = Notification.objects.filter(recipient=u, in_app=True).order_by("-created_at")[:6]
-        return Response({
-            "greeting": _greeting(u),
-            "stats": {**stats, "over_48h": pending.filter(form_type="weekly",
-                                                          created_at__lt=now - timedelta(hours=48)).count()},
-            "today": SessionSerializer(sessions_today, many=True, context={"request": request}).data,
-            "clients_who_need_you": need,
-            "checkins_to_review": SubmissionRowSerializer(pending.order_by("created_at")[:10], many=True).data,
-            "tasks": [{"id": str(t.id), "title": t.title, "detail": t.detail, "due_on": t.due_on,
-                       "done": t.done_at is not None, "client": _person(t.client) if t.client else None}
-                      for t in TrainerTask.objects.filter(assignee=u).filter(
-                          Q(done_at__isnull=True) | Q(done_at__gte=now - timedelta(days=1)))
-                      .select_related("client")[:20]],
-            "this_week": SessionSerializer(week, many=True, context={"request": request}).data,
-            "notices": [{"id": str(n.id), "title": n.title, "body": n.body, "created_at": n.created_at,
-                         "read": n.read_at is not None, "data": n.data} for n in notices],
-        })
+        return Response(trainer_home(request.user))
 
 
 # ---------------------------------------------------------------- client home

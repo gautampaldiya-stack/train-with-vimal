@@ -27,6 +27,7 @@ import '../features/client/more/about_screen.dart';
 import '../features/client/more/more_screen.dart';
 import '../features/client/train/train_screen.dart';
 import '../features/client/train/workout_screen.dart';
+import '../features/trainer/dashboard/dashboard_screen.dart';
 import 'services.dart';
 import 'shell/app_shell.dart';
 import 'shell/page.dart';
@@ -97,6 +98,11 @@ final Map<String, Widget Function(GoRouterState)> screens = {
       : ClientMoreScreen(key: ValueKey(st.uri.toString()), view: st.pathParameters['id']!),
 };
 
+/// Trainer pages. Trainer and client paths overlap (/checkins, /calendar, /more, /habits), so each role has its own map.
+final Map<String, Widget Function(GoRouterState)> trainerScreens = {
+  '/dashboard': (_) => const TrainerDashboardScreen(),
+};
+
 final appRouter = GoRouter(
   initialLocation: '/',
   refreshListenable: Services.session,
@@ -160,7 +166,10 @@ final appRouter = GoRouter(
   ],
 );
 
-Widget _screen(String key, GoRouterState st) => screens[key]?.call(st) ?? _Holding(key);
+Widget _screen(String key, GoRouterState st) {
+  final map = switch (Services.session.me?.role) { Role.trainer => trainerScreens, Role.admin => const <String, Widget Function(GoRouterState)>{}, _ => screens };
+  return map[key]?.call(st) ?? _Holding(key);
+}
 
 class _Holding extends StatelessWidget {
   const _Holding(this.path);

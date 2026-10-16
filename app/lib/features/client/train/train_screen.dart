@@ -478,7 +478,7 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
                 borderRadius: BorderRadius.circular(10),
                 border: outline ? Border.all(color: AppColors.line) : null,
               ),
-              child: const AppIcon(AppIcons.dots, size: 18, color: AppColors.text2),
+              child: const AppIcon(AppIcons.dots, size: 18, fill: true, color: AppColors.text2),
             ),
           ),
         ),

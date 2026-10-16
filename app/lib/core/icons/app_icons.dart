@@ -127,6 +127,12 @@ abstract final class AppIcons {
   static const globe = Ic.iddd536;
   static const gift = Ic.i0378f1;
   static const code = Ic.i3da285;
+  // Trainer dashboard (board TrainerDashboard)
+  static const missed = Ic.iec6f62; // circle with an x (Mark as missed)
+  static const undo = Ic.id3785d; // Mark as not done
+  static const pinAlt = Ic.i04a3f5; // session place
+  static const usersAlt = Ic.if2e92a; // trainer stat: My clients
+  static const clipboardShort = Ic.i01abe6; // trainer stat: Check-ins to review
   // Not on any board (full-screen video); same 24 grid and stroke as the board icons.
   static const expand = AppIconData('0 0 24 24', '<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>');
 }

@@ -940,24 +940,23 @@ Trainer login karta hai to usko **apna workspace** milta hai. Sidebar me brand k
 
 ---
 
-### 3.1 Trainer dashboard — `TrainerDashboard`
+### 3.1 Trainer dashboard — `TrainerDashboard` (built, D-30)
 
-Title time ke hisaab se badalta hai — *"Good evening, Aman"*. Top right: notification bell (`Mark all read`), `New session`, profile button `AV`.
+Title time ke hisaab se — *"Good evening, Aman"*, neeche *"Friday, 16 October · 10 clients · 5 sessions today"*. Top right: bell (laal dot jab unread), `New session`, `AV` (My profile).
+Phone (`TrainerDashboardMobile`): blue hero status bar ke neeche tak (date · Trainer workspace, bell, `+`, `AV`, greeting, picture), uske kinare par 4 numbers ki strip.
 
-**4 stats** — `My clients` 24 / 30 (*6 spots free*) · `Check-ins to review` (*"N waiting over 48 hours"* ya *"None waiting long"*) · adherence · reply time.
+**4 stats** — `My clients` 10 / 30 (*20 spots free*; sirf active clients) · `Check-ins to review` (*"N waiting over 48 hours"* ya *"None waiting long"*) · `Workouts done` (last 7 din, *"+4% vs last week"*) · `Avg reply time` (*"Team average 2.1 h"*).
 
 | Card | Kya hai | Click pe |
 |---|---|---|
-| **Today** | Aaj ki sessions — `07:00 Rohan Kapoor · Push A · Gym floor`, `08:30 Neha Jain · Lower body`. Badge `Done` / `Missed` | `Done` button se session done. ⋯ menu: `Mark as missed` · `Mark as not done` · `Open client profile` · `Cancel session` (laal). Khali pe *"No sessions left today."* |
-| **Clients who need you** | cap *"Only your clients"*. Filter chips: `All` · `Missed workouts` · `Not logging` · `Plan ending` · `Feeling low`. Rows jaise *"Ananya Iyer — No workout or meal logged in 7 days"*, *"Priya Nair — Missed 3 workouts this week · 1 of 4 done"* | `Remind` → toast *"Reminder sent to Ananya — Push and WhatsApp"* + `Undo`, button `Reminded` ho jata hai. `Plan next` / `Open` |
-| **Check-ins to review** | Client + kind + summary (*"Weight 61.8 kg · energy 3/5 · knees sore"*) + kitna purana (`2 d`) | Row kholne pe reply box — placeholder *"Write a short reply for Riya…"*, 3 quick replies: *"Great week, keep going!"* · *"Let's talk at your next session."* · *"I've updated your plan."* Buttons `Open profile` + `Close`. Review hone pe toast *"Riya's check-in reviewed — Your reply was sent"* |
-| **Tasks** | Automation se aaye kaam — *"Call Ananya Iyer"* (From automation · Inactive for 7 days), *"Wish Sana Khan a happy birthday"* (From automation · Birthday) | Tick se done. Naya task add karne pe toast *"Task added — Due tomorrow"* |
-| **This week** | `Mon 5 – Thu 8 Oct` ka mini schedule | — |
-| **Notices** | *"Riya Sharma sent her weekly check-in"* (2 days ago), *"It's Sana Khan's birthday today"* (9:00) | `Mark all read` |
+| **Today** | Aaj ki sessions (time, length, client, `Push A · Gym floor` / `Video call`). Badge `Done` / `Missed`; agla session blue row + *"In 40 min"*. Cap *"N left"* / *"All done"* | `Done` button. ⋯ menu: `Mark as missed` · `Mark as not done` · `Open client profile` · `Cancel session` (laal → toast *"Session cancelled · <name> gets a message in the app"* + `Undo`). Khali pe *"No sessions left today."* `Calendar` link |
+| **Clients who need you** | cap *"Only your clients"*, chips `All` · `Missed workouts` · `Not logging` · `Plan ending` · `Feeling low` (count ke saath). Ek client ek hi row (sabse bada reason). 4 rows, phir `Show N more` | `Remind` → toast *"Reminder sent to Kabir · Push and WhatsApp"* + `Undo` (Undo tak reminder ruka rehta hai), button `Reminded`. `Plan next` / `Open` / naam → client profile |
+| **Check-ins to review** | Sabse purane 5 (weekly, daily, monthly) — *"Riya Sharma · Weekly check-in"*, *"Weight 61.8 kg · energy 3/5 · knees sore"*, age badge (laal 48 h+, peela 24 h+). Count = pura queue (Check-ins page aur sidebar badge jaisa). Khali: *"All check-ins reviewed"* | Row → review drawer: 4 numbers, week ke jawab + last week, *"Riya wrote"*, photos, reply + 3 quick replies. `Open profile` · `Close` · `Mark reviewed` / `Send and mark reviewed` → toast *"Riya’s check-in reviewed · Your reply was sent / Moved out of your list"* + `Undo`. `View all` → Check-ins |
+| **This week** | `Mon 12 – Fri 16 Oct`: Sessions held, Check-ins reviewed, Plans changed, New clients | `My profile` link |
 
-**`New session` modal** — client select (*only your clients*), date select (`Today, 8 Oct`), time (`17:30`), length (`30 / 45 / 60 / 90 min`), where (`Gym floor` / `Video call`), note (`Bring your lifting belt`). Buttons `Cancel` + `Add session`. Toast *"Session added — Neha Jain · today 17:30"* + `Undo`.
+**Bell** — *Notifications* list (unread blue), `Mark all read`; check-in wali notice review drawer kholti hai.
 
-Session cancel pe toast *"Session cancelled — <name> gets a message in the app"* + `Undo`.
+**`New session` modal** — Client (sirf apne active clients), Day (aaj + 13 din), Time (15 min steps), Length `30 / 45 / 60 / 90 min`, Where `Gym floor` / `Video call`, note (*Bring your lifting belt*). `Cancel` + `Add session` → toast *"Session added · Neha Jain · today 17:30"* + `Undo` (bina client message ke cancel).
 
 ---
 

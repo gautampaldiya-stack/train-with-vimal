@@ -11,11 +11,14 @@ String initialsOf(String name) {
 
 /// `.av` round avatar; colour comes from the name (docs/design.md §1.1).
 class AppAvatar extends StatelessWidget {
-  const AppAvatar(this.name, {super.key, this.size = 28, this.url, this.colors});
+  const AppAvatar(this.name, {super.key, this.size = 28, this.url, this.colors, this.initials});
   final String name;
   final double size;
   final String? url;
   final (Color, Color)? colors;
+
+  /// Letters from the API ("KA", "V"); otherwise taken from [name].
+  final String? initials;
 
   @override
   Widget build(BuildContext context) {
@@ -32,5 +35,5 @@ class AppAvatar extends StatelessWidget {
     );
   }
 
-  Widget _text(Color fg) => Text(initialsOf(name), style: AppText.s(size * 0.36, W.w8, color: fg, ls: 0.2));
+  Widget _text(Color fg) => Text(initials ?? initialsOf(name), style: AppText.s(size * 0.36, W.w8, color: fg, ls: 0.2));
 }

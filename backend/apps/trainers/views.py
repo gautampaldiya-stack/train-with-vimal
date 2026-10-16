@@ -14,6 +14,7 @@ from apps.accounts.models import AccountStatus, OneTimeToken, Role
 from apps.accounts.tokens import issue_one_time_token
 from apps.activity.services import log as activity_log
 from apps.checkins.models import Submission
+from apps.checkins.queue import WAITING, review_queue
 from apps.clients.models import ClientProfile
 from apps.common.export import csv_response
 from apps.common.permissions import IsAdmin, IsStaff, IsTrainer
@@ -50,9 +51,7 @@ def trainers_queryset():
             avg_adherence=Avg("coached_clients__adherence_7d", filter=ACTIVE_CLIENT),
             n_review=Count(
                 "coached_clients__user__submissions",
-                filter=Q(coached_clients__user__submissions__reviewed_at__isnull=True,
-                         coached_clients__user__submissions__form_type__in=["weekly", "daily"],
-                         coached_clients__removed_at__isnull=True),
+                filter=WAITING,
                 distinct=True,
             ),
         )
@@ -427,8 +426,7 @@ def trainer_stats(user):
     tp = user.trainer_profile
     clients = ClientProfile.objects.filter(trainer=user, removed_at__isnull=True, user__status=AccountStatus.ACTIVE)
     n = clients.count()
-    pending = Submission.objects.filter(client__client_profile__trainer=user, reviewed_at__isnull=True,
-                                        form_type__in=["weekly", "daily"]).order_by("created_at")
+    pending = review_queue(user).order_by("created_at")
     oldest = pending.first()
     adh = clients.aggregate(a=Avg("adherence_7d"))["a"]
     now = timezone.now()

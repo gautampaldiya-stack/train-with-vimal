@@ -78,12 +78,15 @@ class AppButton extends StatelessWidget {
 
 /// Square icon button `.ibtn`: 36×36 radius 10 (sm 30×30 radius 8), optional red dot.
 class AppIconButton extends StatelessWidget {
-  const AppIconButton(this.icon, {super.key, required this.tooltip, this.onPressed, this.small = false, this.ghost = false, this.dot = false, this.color});
+  const AppIconButton(this.icon, {super.key, required this.tooltip, this.onPressed, this.small = false, this.ghost = false, this.dot = false, this.color, this.fill = false});
   final AppIconData icon;
   final String tooltip;
   final VoidCallback? onPressed;
   final bool small, ghost, dot;
   final Color? color;
+
+  /// Filled glyph (`.i.fill`, e.g. the ⋯ dots).
+  final bool fill;
 
   @override
   Widget build(BuildContext context) {
@@ -101,7 +104,7 @@ class AppIconButton extends StatelessWidget {
             border: Border.all(color: ghost && !hov ? Colors.transparent : AppColors.line),
           ),
           child: Stack(alignment: Alignment.center, children: [
-            AppIcon(icon, size: small ? 15 : 16, color: color ?? (hov ? AppColors.text : AppColors.text2)),
+            AppIcon(icon, size: small ? 15 : 16, fill: fill, color: color ?? (hov ? AppColors.text : AppColors.text2)),
             if (dot)
               Positioned(
                 top: small ? 6 : 8,

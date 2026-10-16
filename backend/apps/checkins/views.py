@@ -20,6 +20,7 @@ from apps.common.permissions import IsClient, IsStaff
 
 from . import services
 from .defaults import TEMPLATES
+from .queue import REVIEW_TYPES, review_queue, staff_submissions
 from .models import Form, FormRequest, Measurement, PhotoSet, ProgressPhoto, Question, Submission, WeightLog
 from .serializers import (
     FormCreateSerializer,
@@ -196,18 +197,13 @@ class CheckinReviewViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, vie
 
     def get_queryset(self):
         u = self.request.user
-        qs = (Submission.objects.filter(client__in=visible_clients(u))
+        qs = (staff_submissions(u)
               .select_related("client", "form", "reviewed_by")
               .annotate(n_photos=Count("answers", filter=~Q(answers__photo="") & Q(answers__photo__isnull=False))))
-        if u.is_trainer:
-            tp = u.trainer_profile
-            allowed = [t for t, key in (("daily", "checkins.daily"), ("weekly", "checkins.weekly"))
-                       if tp.has_perm(key)] + ["survey", "onboarding", "waiver"]
-            qs = qs.filter(form_type__in=allowed)
         p = self.request.query_params
         tab = p.get("tab", "to_review")
         if tab == "to_review":
-            qs = qs.filter(reviewed_at__isnull=True, form_type__in=["weekly", "daily", "survey"])
+            qs = qs.filter(reviewed_at__isnull=True, form_type__in=REVIEW_TYPES)
         elif tab == "reviewed":
             qs = qs.filter(reviewed_at__isnull=False)
         kind = p.get("kind")
@@ -226,9 +222,8 @@ class CheckinReviewViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, vie
 
     @action(detail=False)
     def counts(self, request):
-        base = Submission.objects.filter(client__in=visible_clients(request.user),
-                                         form_type__in=["weekly", "daily", "survey"])
-        waiting = base.filter(reviewed_at__isnull=True)
+        base = staff_submissions(request.user).filter(form_type__in=REVIEW_TYPES)
+        waiting = review_queue(request.user)
         return Response({
             "to_review": waiting.count(),
             "over_48h": waiting.filter(created_at__lt=timezone.now() - timedelta(hours=48)).count(),
@@ -249,6 +244,9 @@ class CheckinReviewViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, vie
         data["plan"] = {"name": pa.effective_program.name, "week": services.week_number(sub.client, sub.date)} \
             if pa else None
         data["trainer"] = cp.trainer.full_name if cp.trainer else None
+        from .review import review_view
+
+        data["review"] = review_view(sub)
         return Response(data)
 
     @action(detail=True, methods=["post"])

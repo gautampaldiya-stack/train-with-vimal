@@ -68,8 +68,8 @@ class _AppShellState extends State<AppShell> {
         offset: 75,
         child: Scaffold(
           backgroundColor: isClient ? AppColors.caBg : AppColors.panel,
-          // Client Home's blue hero runs under the status bar, so that page keeps the top inset itself.
-          body: SafeArea(bottom: false, top: !(isClient && widget.location == '/home'), child: widget.child),
+          // Client Home and the trainer dashboard have a blue hero that runs under the status bar, so they keep the top inset themselves.
+          body: SafeArea(bottom: false, top: !(isClient ? widget.location == '/home' : me.role == Role.trainer && widget.location == '/dashboard'), child: widget.child),
           bottomNavigationBar: _BottomBar(items: bottomFor(me.role), location: widget.location),
         ),
       );

@@ -33,3 +33,4 @@ One file per decision. Add a new file for every new decision (next number), and 
 | [D-27](0027-media-in-app.md) | Media in the app: in-app video, picture zoom, real PDF pages, exercise media, link kind | 2026-10-16 |
 | [D-28](0028-youtube-in-app.md) | YouTube plays inside the app (Library + exercise guide), short picture box, demo videos ship with the code | 2026-10-16 |
 | [D-29](0029-about-and-home-hero.md) | Client About page reads contact and coach from gym settings; phone Home uses the hero | 2026-10-16 |
+| [D-30](0030-trainer-dashboard.md) | Trainer dashboard; one check-in queue so trainer, admin and client numbers match | 2026-10-16 |

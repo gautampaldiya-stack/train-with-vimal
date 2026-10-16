@@ -18,6 +18,7 @@ abstract final class AppColors {
   static const accentHover = Color(0xFF1D4ED8);
   static const accentSoft = Color(0xFFEAF0FE);
   static const accentText = Color(0xFF1D4ED8);
+  static const linkHover = Color(0xFF1E3A8A); // `a:hover` on the boards
   static const accentRing = Color(0xFFBFD3FB);
   static const white = Color(0xFFFFFFFF);
   static const black = Color(0xFF000000);
@@ -136,6 +137,10 @@ abstract final class AppColors {
   static const moBan = Color(0xFFFFF8E6); // "Account deletion on …" banner (border amberLine, text amberDeep)
   static const moSwOff = Color(0xFFD9D9D4); // switch track off
   static const moBadBox = Color(0xFFFFFAFA), moBadLine = Color(0xFFF3C6C7); // Delete my account box
+  // Trainer dashboard board (`td-*`)
+  static const meAvBg = Color(0xFFDCE6FB); // `.profile .pav` top-right avatar (text accentText, hover ring accentSoft)
+  static const tdNoteNew = Color(0xFFF3F7FF); // unread row in the bell dropdown
+  static const tdOkIcon = Color(0xFF027A48); // "All check-ins reviewed" tick
   static const viewerBg = Color(0xF0111111), viewerBtn = Color(0x29FFFFFF), viewerBtnHover = Color(0x47FFFFFF), viewerBtnDark = Color(0x8C111111); // full-size photo viewer
 
   /// Avatar pairs (bg, text), picked from the name so a person keeps their colour.
@@ -147,6 +152,12 @@ abstract final class AppColors {
     (Color(0xFFFDECF3), Color(0xFF9D174D)),
     (Color(0xFFE6F6F8), Color(0xFF0E6874)),
   ];
+
+  /// Board avatar class `c1`–`c6` (the API sends it as `color` / `avatar_color`).
+  static (Color, Color) avatarCode(String code) {
+    final i = int.tryParse(code.replaceAll(RegExp(r'[^0-9]'), '')) ?? 1;
+    return avatars[(i - 1).clamp(0, avatars.length - 1)];
+  }
 
   static (Color, Color) avatarFor(String name) {
     var h = 0;
