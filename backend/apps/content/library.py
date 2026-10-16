@@ -9,6 +9,7 @@ from django.utils.text import slugify
 from apps.common.utils import dfmt
 
 from .models import ContentItem, ContentShare, ContentView
+from .pdf_pages import page_images
 
 KIND_LABEL = {"video": "Video", "pdf": "PDF", "image": "Image", "article": "Article"}
 FILTERS = ("all", "video", "pdf", "image", "article", "saved")
@@ -115,4 +116,14 @@ def item_page(client, item, request=None):
             "chapters": item.chapters or [], "outline": item.outline or [], "file_url": url,
             "file_name": _file_name(item),
             "youtube_url": item.youtube_url, "duration": item.duration_seconds or 0,
-            "kind_label": KIND_LABEL.get(item.kind, item.kind)}
+            "kind_label": KIND_LABEL.get(item.kind, item.kind), "page_images": page_images(item, request)}
+
+
+def media_of(item, request=None):
+    """An exercise's video or picture for the guide: kind, file URL, title, length. None when it has no file."""
+    if item is None or not item.file or item.kind not in ("video", "image"):
+        return None
+    url = request.build_absolute_uri(item.file.url) if request else item.file.url
+    cover = (request.build_absolute_uri(item.cover.url) if request else item.cover.url) if item.cover else ""
+    return {"id": str(item.id), "kind": item.kind, "url": url, "title": item.title, "cover": cover,
+            "duration": item.duration_seconds or 0}

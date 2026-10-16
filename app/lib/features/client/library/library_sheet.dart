@@ -2,13 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:video_player/video_player.dart';
 
 import '../../../core/api/api_error.dart';
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
 import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
+import '../../../core/widgets/media.dart';
 import '../../../core/widgets/overlays.dart';
 import '../home/home_parts.dart' show ChAvatar;
 import 'library_model.dart';
@@ -276,45 +276,21 @@ class _Video extends StatefulWidget {
 }
 
 class _VideoState extends State<_Video> {
-  VideoPlayerController? _v;
-  bool _ready = false, _failed = false, _ended = false;
-  int _maxPct = 0;
+  late final VideoCtl v = VideoCtl(x.fileUrl, fallbackSeconds: x.duration, onEnd: _finished);
 
   LbItem get x => widget.x;
-  int get _dur => _ready ? _v!.value.duration.inSeconds : x.duration;
-  int get _pos => _ready ? _v!.value.position.inSeconds : 0;
-  bool get _playing => _ready && _v!.value.isPlaying;
 
   @override
-  void initState() {
-    super.initState();
-    if (x.fileUrl.isNotEmpty) {
-      final v = _v = VideoPlayerController.networkUrl(Uri.parse(x.fileUrl));
-      v.initialize().then((_) {
-        if (mounted) setState(() => _ready = true);
-      }).catchError((_) {
-        if (mounted) setState(() => _failed = true);
-      });
-      v.addListener(_tick);
-    }
-  }
-
-  void _tick() {
-    final v = _v!.value;
-    if (!mounted || !_ready) return;
-    final d = v.duration.inMilliseconds;
-    if (d > 0) _maxPct = (v.position.inMilliseconds * 100 ~/ d).clamp(_maxPct, 100);
-    final end = d > 0 && v.position.inMilliseconds >= d - 250 && !v.isPlaying;
-    if (end && !_ended) {
-      _ended = true;
-      _finished();
-    }
-    setState(() {});
+  void dispose() {
+    if (v.maxPct > 0 && v.maxPct < 100) widget.c.watched(x.id, v.maxPct);
+    v.dispose();
+    super.dispose();
   }
 
   void _finished() {
+    if (!mounted) return;
     final c = widget.c;
-    widget.c.watched(x.id, 100);
+    c.watched(x.id, 100);
     if (x.done) {
       showToast(context, 'Video finished', sub: x.title, kind: ToastKind.ok);
       return;
@@ -323,158 +299,62 @@ class _VideoState extends State<_Video> {
     showToast(context, 'Video finished · marked as done', sub: x.title, kind: ToastKind.star, action: 'Undo', onAction: () => c.setDone(x, false));
   }
 
-  @override
-  void dispose() {
-    final v = _v;
-    if (v != null) {
-      v.removeListener(_tick);
-      if (_maxPct > 0 && _maxPct < 100) widget.c.watched(x.id, _maxPct);
-      v.dispose();
-    }
-    super.dispose();
-  }
-
-  Future<void> _toggle() async {
-    final v = _v;
-    if (v == null) {
-      if (!await _openUrl(x.youtube) && mounted) showToast(context, 'Video not uploaded yet', sub: 'Ask ${widget.c.coach} to add it', kind: ToastKind.info);
-      return;
-    }
-    if (_failed) {
+  /// Play with nothing playable here: YouTube link, the file in the browser, or "not uploaded".
+  Future<void> _empty() async {
+    if (v.failed) {
       if (!await _openUrl(x.fileUrl) && mounted) showToast(context, 'Could not open the video', sub: x.title, kind: ToastKind.err);
       return;
     }
-    if (!_ready) return;
-    if (v.value.isPlaying) {
-      await v.pause();
-    } else {
-      if (_pos >= _dur) await v.seekTo(Duration.zero);
-      _ended = false;
-      await v.play();
-    }
-  }
-
-  Future<void> _seek(int s) async {
-    final v = _v;
-    if (v == null || !_ready) return;
-    _ended = false;
-    await v.seekTo(Duration(seconds: s));
-    await v.play();
+    if (!await _openUrl(x.youtube) && mounted) showToast(context, 'Video not uploaded yet', sub: 'Ask ${widget.c.coach} to add it', kind: ToastKind.info);
   }
 
   int get _chapter {
     final ch = x.chapters;
     var i = 0;
     for (var k = 0; k < ch.length; k++) {
-      if (ch[k].$1 <= _pos) i = k;
+      if (ch[k].$1 <= v.pos) i = k;
     }
     return i;
   }
 
-  String get _label {
+  String _label() {
     final ch = x.chapters;
     final name = ch.isEmpty ? '' : ' · ${ch[_chapter].$2}';
-    if (_failed) return 'Could not play here · tap to open';
-    if (_v == null && x.youtube.isEmpty) return 'Video not uploaded yet';
-    if (_v == null) return 'Watch on YouTube';
-    if (_playing) return 'Playing$name';
-    if (_ready && _dur > 0 && _pos >= _dur) return 'Finished · tap to watch again';
-    if (_pos > 0) return 'Paused$name';
+    if (v.failed) return 'Could not play here · tap to open';
+    if (!v.hasFile && x.youtube.isEmpty) return 'Video not uploaded yet';
+    if (!v.hasFile) return 'Watch on YouTube';
+    if (v.playing) return 'Playing$name';
+    if (v.finished) return 'Finished · tap to watch again';
+    if (v.pos > 0) return 'Paused$name';
     return 'Tap to play';
   }
 
   @override
   Widget build(BuildContext context) {
     final (bg, fg) = lbTone(x);
-    final web = CaWeb.of(context);
-    final pct = _dur > 0 ? (_pos / _dur).clamp(0.0, 1.0) : 0.0;
     final ch = x.chapters;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-      ClipRRect(
-        borderRadius: AppRadius.all(12),
-        child: Container(
-          height: web ? 260 : 188,
-          color: bg,
-          child: Stack(children: [
-            if (_ready) Positioned.fill(child: FittedBox(fit: BoxFit.contain, child: SizedBox(width: _v!.value.size.width, height: _v!.value.size.height, child: VideoPlayer(_v!)))),
-            Positioned.fill(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  Container(
-                    height: 24,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    decoration: BoxDecoration(color: AppColors.white.withValues(alpha: .85), borderRadius: AppRadius.all(99)),
-                    child: Row(mainAxisSize: MainAxisSize.min, spacing: 6, children: [
-                      AppIcon(AppIcons.video, size: 13, color: AppColors.text),
-                      Text(_label, style: AppText.s(11.5, W.w7, h: 1)),
-                    ]),
-                  ),
-                  Column(spacing: 4, children: [
-                    ClipRRect(
-                      borderRadius: AppRadius.all(99),
-                      child: Container(
-                        height: 5,
-                        color: AppColors.white.withValues(alpha: .7),
-                        alignment: Alignment.centerLeft,
-                        child: FractionallySizedBox(widthFactor: pct, child: Container(color: fg)),
-                      ),
-                    ),
-                    Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                      Text(lbClock(_pos), style: AppText.s(11.5, W.w7, color: fg, tabular: true)),
-                      Text(_dur > 0 ? lbClock(_dur) : x.length, style: AppText.s(11.5, W.w7, color: fg, tabular: true)),
-                    ]),
-                  ]),
-                ]),
-              ),
-            ),
-            Align(
-              alignment: const Alignment(0, -0.12),
-              child: Semantics(
-                label: 'Play or pause',
-                button: true,
-                child: Hover(
-                  onTap: _toggle,
-                  builder: (_, h, _) => AnimatedScale(
-                    scale: h ? 1.05 : 1,
-                    duration: const Duration(milliseconds: 120),
-                    child: Container(
-                      width: 58,
-                      height: 58,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(color: AppColors.white, shape: BoxShape.circle, boxShadow: const [BoxShadow(color: Color(0x2E171717), blurRadius: 16, offset: Offset(0, 4))]),
-                      child: _v != null && !_ready && !_failed
-                          ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.text))
-                          : AppIcon(_playing ? AppIcons.pause : AppIcons.play, size: 24, color: AppColors.text, fill: !_playing),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ]),
-        ),
-      ),
+      VideoBox(ctl: v, label: _label, bg: bg, fg: fg, height: CaWeb.of(context) ? 300 : 210, onTapEmpty: _empty, lengthText: x.length),
       ...widget.info,
-      if (ch.isNotEmpty) _chapters(ch),
+      if (ch.isNotEmpty) ListenableBuilder(listenable: v, builder: (_, _) => _chapters(ch)),
     ]);
   }
 
-  /// `lb-chs`: CHAPTERS, each row seeks there and plays.
+  /// `lb-chs`: CHAPTERS, each row jumps there and plays.
   Widget _chapters(List<(int, String)> ch) {
-    final on = _pos > 0 || _playing ? _chapter : -1;
+    final on = v.pos > 0 || v.playing ? _chapter : -1;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('CHAPTERS', style: AppText.s(12, W.w7, color: AppColors.muted, ls: .6))),
       for (var i = 0; i < ch.length; i++)
         Hover(
-          onTap: () => _seek(ch[i].$1),
+          onTap: () => v.seekSeconds(ch[i].$1),
           builder: (_, h, _) => Container(
             padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
             decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
             child: Row(spacing: 10, children: [
               SizedBox(width: 40, child: Text(lbClock(ch[i].$1), style: AppText.s(12, W.w7, color: i == on ? AppColors.accent : AppColors.muted, tabular: true))),
               Expanded(
-                child: Text(ch[i].$2,
-                    style: AppText.s(13.5, i == on ? W.w8 : W.w6, color: i == on || h ? AppColors.accentText : AppColors.text)),
+                child: Text(ch[i].$2, style: AppText.s(13.5, i == on ? W.w8 : W.w6, color: i == on || h ? AppColors.accentText : AppColors.text)),
               ),
             ]),
           ),
@@ -498,39 +378,63 @@ class _PdfState extends State<_Pdf> {
   @override
   Widget build(BuildContext context) {
     final x = widget.x;
-    final pages = x.outline.isEmpty ? [(x.title, x.description)] : x.outline;
-    final (t, p) = pages[pg.clamp(0, pages.length - 1)];
+    final pics = x.pageImages;
+    final count = pics.isNotEmpty ? pics.length : (x.outline.isEmpty ? 1 : x.outline.length);
+    final i = pg.clamp(0, count - 1);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       // lb-pdf: grey box with the page; the pager under it is white (board: margin 0 -10, white).
       Container(
         padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
         decoration: const BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.vertical(top: Radius.circular(12))),
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 132),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(color: AppColors.white, borderRadius: AppRadius.all(10), border: Border.all(color: AppColors.line), boxShadow: const [BoxShadow(color: AppColors.shadowSoft, blurRadius: 8, offset: Offset(0, 2))]),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 6, children: [
-            Text(x.fileName.isEmpty ? '${x.title}.pdf' : x.fileName, style: AppText.s(10.5, W.w7, color: AppColors.muted)),
-            Text(t, style: AppText.s(15, W.w8)),
-            if (p.isNotEmpty) Text(p, style: AppText.s(12.5, W.w4, color: AppColors.text2, h: 1.45)),
-            for (final w in [1.0, 1.0, .6])
-              FractionallySizedBox(widthFactor: w, child: Container(height: 6, decoration: BoxDecoration(color: AppColors.sub, borderRadius: AppRadius.all(6)))),
-          ]),
-        ),
+        child: pics.isNotEmpty ? _picture(x, pics, i) : _outline(x, i),
       ),
       Padding(
         padding: const EdgeInsets.only(top: 8),
         child: Row(spacing: 8, children: [
-          Opacity(opacity: pg > 0 ? 1 : .4, child: CaIconBtn(AppIcons.chevronLeft, tooltip: 'Previous page', onTap: pg > 0 ? () => setState(() => pg--) : null)),
-          Expanded(child: Text('Page ${pg + 1} of ${pages.length}', textAlign: TextAlign.center, style: AppText.s(12.5, W.w7, color: AppColors.text2))),
+          Opacity(opacity: i > 0 ? 1 : .4, child: CaIconBtn(AppIcons.chevronLeft, tooltip: 'Previous page', onTap: i > 0 ? () => setState(() => pg = i - 1) : null)),
+          Expanded(child: Text('Page ${i + 1} of $count', textAlign: TextAlign.center, style: AppText.s(12.5, W.w7, color: AppColors.text2))),
           Opacity(
-            opacity: pg < pages.length - 1 ? 1 : .4,
-            child: CaIconBtn(AppIcons.chevronRight, tooltip: 'Next page', onTap: pg < pages.length - 1 ? () => setState(() => pg++) : null),
+            opacity: i < count - 1 ? 1 : .4,
+            child: CaIconBtn(AppIcons.chevronRight, tooltip: 'Next page', onTap: i < count - 1 ? () => setState(() => pg = i + 1) : null),
           ),
           CaButton('Download', kind: CaBtnKind.out, small: true, expand: false, icon: AppIcons.downloadLine, onPressed: () => _download(context, x, 'Downloaded', '${x.fileName} · saved to your files')),
         ]),
       ),
     ]);
+  }
+
+  /// The real page (drawn by the server), tap for full screen with zoom and swipe.
+  Widget _picture(LbItem x, List<String> pics, int i) => Semantics(
+        button: true,
+        label: 'Open page ${i + 1} full screen',
+        child: GestureDetector(
+          onTap: () async {
+            await showImageViewer(context, pics, start: i, title: x.title);
+          },
+          child: Container(
+            decoration: BoxDecoration(color: AppColors.white, borderRadius: AppRadius.all(6), border: Border.all(color: AppColors.line), boxShadow: const [BoxShadow(color: AppColors.shadowSoft, blurRadius: 8, offset: Offset(0, 2))]),
+            clipBehavior: Clip.antiAlias,
+            child: AspectRatio(aspectRatio: 1 / 1.414, child: NetImage(pics[i], fit: BoxFit.contain)),
+          ),
+        ),
+      );
+
+  /// No page pictures (file missing or unreadable): the coach's outline for that page.
+  Widget _outline(LbItem x, int i) {
+    final pages = x.outline.isEmpty ? [(x.title, x.description)] : x.outline;
+    final (t, p) = pages[i];
+    return Container(
+      constraints: const BoxConstraints(minHeight: 132),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(color: AppColors.white, borderRadius: AppRadius.all(10), border: Border.all(color: AppColors.line), boxShadow: const [BoxShadow(color: AppColors.shadowSoft, blurRadius: 8, offset: Offset(0, 2))]),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 6, children: [
+        Text(x.fileName.isEmpty ? '${x.title}.pdf' : x.fileName, style: AppText.s(10.5, W.w7, color: AppColors.muted)),
+        Text(t, style: AppText.s(15, W.w8)),
+        if (p.isNotEmpty) Text(p, style: AppText.s(12.5, W.w4, color: AppColors.text2, h: 1.45)),
+        for (final w in [1.0, 1.0, .6])
+          FractionallySizedBox(widthFactor: w, child: Container(height: 6, decoration: BoxDecoration(color: AppColors.sub, borderRadius: AppRadius.all(6)))),
+      ]),
+    );
   }
 }
 
@@ -554,10 +458,16 @@ class _Image extends StatelessWidget {
         decoration: BoxDecoration(color: AppColors.lbImgBg, borderRadius: AppRadius.all(12), border: Border.all(color: AppColors.lbImgLine)),
         child: x.fileUrl.isEmpty
             ? SizedBox(height: 120, child: Center(child: AppIcon(AppIcons.photo, size: 28, color: AppColors.okText)))
-            : ClipRRect(
-                borderRadius: AppRadius.all(8),
-                child: Image.network(x.fileUrl, fit: BoxFit.contain,
-                    errorBuilder: (_, _, _) => SizedBox(height: 120, child: Center(child: AppIcon(AppIcons.photo, size: 28, color: AppColors.okText)))),
+            : Semantics(
+                button: true,
+                label: 'Open the picture full screen',
+                child: GestureDetector(
+                  onTap: () => showImageViewer(context, [x.fileUrl], title: x.title),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.zoomIn,
+                    child: ClipRRect(borderRadius: AppRadius.all(8), child: NetImage(x.fileUrl, fit: BoxFit.contain)),
+                  ),
+                ),
               ),
       ),
       Row(spacing: 8, children: [

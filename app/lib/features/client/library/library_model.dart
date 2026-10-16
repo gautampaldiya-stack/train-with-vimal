@@ -33,6 +33,7 @@ class LbItem {
   List<String> get body => [for (final p in (j['body'] as List? ?? const [])) '$p'];
   List<(int, String)> get chapters => [for (final c in (j['chapters'] as List? ?? const [])) (((c as List)[0] as num).toInt(), '${c[1]}')];
   List<(String, String)> get outline => [for (final p in (j['outline'] as List? ?? const [])) ('${(p as List)[0]}', '${p[1]}')];
+  List<String> get pageImages => [for (final u in (j['page_images'] as List? ?? const [])) '$u'];
   String get fileUrl => '${j['file_url'] ?? ''}';
   String get fileName => '${j['file_name'] ?? ''}';
   String get youtube => '${j['youtube_url'] ?? ''}';

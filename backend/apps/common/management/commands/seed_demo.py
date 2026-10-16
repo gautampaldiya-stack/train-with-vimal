@@ -67,6 +67,7 @@ class Command(BaseCommand):
             self.riya_checkins()
             self.riya_progress()
             self.riya_library()
+            self.exercise_media()
         self.stdout.write(self.style.SUCCESS(f"Demo ready. Log in with any demo email and {PASSWORD}"))
         self.stdout.write("Demo links (the reset link works for 15 minutes; run seed_demo again for new ones):")
         for line in self.demo_links():
@@ -398,6 +399,29 @@ class Command(BaseCommand):
                 ProgressPhoto.objects.create(photo_set=ps, pose=pose,
                                              image=_figure(f"{pose}.jpg", *tints[i % len(tints)], pose))
 
+    def exercise_media(self):
+        """Exercise guide media: Leg Press and Walking Lunge get a demo video, Romanian Deadlift a picture.
+        Not shared with clients, so they show in the guide only (not in the Library)."""
+        from apps.accounts.models import User
+        from apps.content.models import ContentItem
+        from apps.training.models import Exercise
+
+        vimal = User.objects.get(email="vimal@trainwithvimal.com")
+        for name, kind, title, sec in [("Leg Press", "video", "Leg press: how to", 42),
+                                       ("Walking Lunge", "video", "Walking lunge: how to", 55),
+                                       ("Romanian Deadlift", "image", "Romanian deadlift: the hinge", 0)]:
+            ex = Exercise.objects.filter(name=name, is_builtin=True).first()
+            if ex is None or ex.video_id:
+                continue
+            f = _video(title.split(":")[0].lower().replace(" ", "-"), sec) if kind == "video" else _hinge_card()
+            item = ContentItem.objects.create(kind=kind, title=title, created_by=vimal, duration_seconds=sec or None,
+                                              description=f"How to do the {name.lower()} with good form.")
+            if f is not None:
+                item.file = f
+                item.save()
+            ex.video = item
+            ex.save(update_fields=["video"])
+
     def riya_library(self):
         """Library board: eight items (2 videos, 3 PDFs, 1 image, 2 articles) shared four ways: by Aman with a
         note, with the program, with the meal plan, and for all clients. Videos, PDFs and the image are small real
@@ -681,6 +705,37 @@ def _snack_card(title, tiles):
     buf = BytesIO()
     im.save(buf, "PNG")
     return ContentFile(buf.getvalue(), name="snacks.png")
+
+
+def _hinge_card():
+    """Demo exercise picture: three numbered steps of the hip hinge."""
+    from io import BytesIO
+
+    from django.core.files.base import ContentFile
+    from PIL import Image, ImageDraw, ImageFont
+
+    try:
+        f1 = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 34)
+        f2 = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24)
+    except OSError:
+        f1 = f2 = ImageFont.load_default()
+    im = Image.new("RGB", (1200, 675), (234, 240, 254))
+    d = ImageDraw.Draw(im)
+    d.text((60, 50), "Romanian deadlift · the hinge", fill=(29, 78, 216), font=f1)
+    steps = [("1", "Stand tall, bar at the hips"), ("2", "Push the hips back, shins still"), ("3", "Squeeze glutes to stand")]
+    for i, (n, t) in enumerate(steps):
+        x = 60 + i * 370
+        d.rounded_rectangle([x, 140, x + 340, 600], radius=28, fill="white")
+        cx, top = x + 170, 220 + i * 25
+        d.ellipse([cx - 26, top - 52, cx + 26, top], outline=(40, 40, 40), width=6)  # head
+        lean = (0, 70, 130)[i] if i < 2 else 0
+        d.line([cx, top, cx + lean, top + 150], fill=(40, 40, 40), width=8)  # back
+        d.line([cx + lean, top + 150, cx + lean - 10, top + 300], fill=(40, 40, 40), width=8)  # legs
+        d.line([cx, top + 40, cx + lean // 2, top + 170], fill=(37, 99, 235), width=8)  # arms to the bar
+        d.text((x + 24, 520), f"{n}. {t}", fill=(30, 30, 30), font=f2)
+    buf = BytesIO()
+    im.save(buf, "PNG")
+    return ContentFile(buf.getvalue(), name="hinge.png")
 
 
 def _video(slug, seconds):

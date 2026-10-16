@@ -524,6 +524,13 @@ class MyTrainView(APIView):
                 d["exercise_full"] = ExerciseSerializer(e.exercise, context={"request": request}).data
                 if e.override:
                     d["exercise_full"].update({k: v for k, v in e.override.items() if k in d["exercise_full"]})
+                    if "video" in e.override:  # this program's own video / picture
+                        from apps.content.library import media_of
+                        from apps.content.models import ContentItem
+
+                        own = ContentItem.objects.filter(id=e.override["video"]).first() if e.override["video"] else None
+                        d["exercise_full"]["media"] = media_of(own, request)
+                        d["exercise_full"]["video_title"] = own.title if own else None
                 d["last_time"] = last.get(e.exercise_id)
                 d["pr"] = prs.get(e.exercise_id)
                 mine = [s for s in here.sets.all() if s.exercise_id == e.exercise_id] if here else []

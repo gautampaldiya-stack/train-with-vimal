@@ -40,21 +40,31 @@ class ExerciseSerializer(serializers.ModelSerializer):
     video_title = serializers.CharField(source="video.title", read_only=True, default=None)
     source = serializers.SerializerMethodField()
     thumb = serializers.SerializerMethodField()
+    media = serializers.SerializerMethodField()
 
     class Meta:
         model = Exercise
         fields = ["id", "name", "muscle_group", "primary_muscle", "also_works", "equipment", "level", "is_builtin",
-                  "source", "video", "video_title", "youtube_url", "thumb", "cover_at_seconds", "how_to", "form_cues",
-                  "log_type", "default_sets", "default_reps", "default_rest_seconds", "default_rpe",
+                  "source", "video", "video_title", "youtube_url", "thumb", "media", "cover_at_seconds", "how_to",
+                  "form_cues", "log_type", "default_sets", "default_reps", "default_rest_seconds", "default_rpe",
                   "default_tempo", "duplicated_from", "programs", "created_at", "updated_at"]
         read_only_fields = ["is_builtin", "duplicated_from"]
 
     def get_source(self, obj):
         return "builtin" if obj.is_builtin else "custom"
 
+    def get_media(self, obj):
+        """The video or picture the guide shows (null: none uploaded; a YouTube link stays in youtube_url)."""
+        from apps.content.library import media_of
+
+        return media_of(obj.video, self.context.get("request"))
+
     def get_thumb(self, obj):
         """Picture for the exercise tile: the video's cover, else the YouTube still, else none (icon)."""
         v = obj.video
+        if v and v.kind == "image" and v.file:
+            req = self.context.get("request")
+            return req.build_absolute_uri(v.file.url) if req else v.file.url
         if v and v.cover:
             req = self.context.get("request")
             return req.build_absolute_uri(v.cover.url) if req else v.cover.url
