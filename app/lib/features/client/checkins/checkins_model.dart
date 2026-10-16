@@ -37,6 +37,9 @@ class CheckinsController extends ChangeNotifier {
   bool hasMore = false, _more = false;
   String? _before;
 
+  /// Whole list (not just the loaded page): all, sent, missed. Shown in the Past check-ins header.
+  int total = 0, totalSent = 0, totalMissed = 0;
+
   /// Saved in the outbox, waiting for the network (shown as sent). Shared by every check-ins page.
   static CkRow? queuedDaily, queuedWeekly;
 
@@ -87,6 +90,10 @@ class CheckinsController extends ChangeNotifier {
       ..addAll([for (final r in (j['history'] as List? ?? [])) CkRow(r as Map<String, dynamic>)]);
     hasMore = j['has_more'] == true;
     _before = j['next_before'] as String?;
+    final t = (j['history_total'] as Map?) ?? const {};
+    total = (t['all'] as num?)?.toInt() ?? rows.length;
+    totalSent = (t['sent'] as num?)?.toInt() ?? rows.where((r) => !r.missed).length;
+    totalMissed = (t['missed'] as num?)?.toInt() ?? rows.where((r) => r.missed).length;
   }
 
   Future<void> load() async {

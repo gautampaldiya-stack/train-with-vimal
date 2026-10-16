@@ -134,7 +134,7 @@ class PxChip extends StatelessWidget {
   );
 }
 
-/// `tabs px-tabs`: grey track, the picked tab white. [fit] keeps it to its labels (web sub pages, sheets).
+/// `tabs px-tabs`: grey track, the picked tab white. [fit] keeps each tab to its label (web, Gautam 2026-10-16: smaller).
 class PxTabs extends StatelessWidget {
   const PxTabs({super.key, required this.labels, required this.index, required this.onPick, this.fit = false});
   final List<String> labels;
@@ -151,7 +151,7 @@ class PxTabs extends StatelessWidget {
         builder: (_, h, _) => Container(
           height: 32,
           alignment: Alignment.center,
-          padding: EdgeInsets.symmetric(horizontal: fit ? 14 : 6),
+          padding: EdgeInsets.symmetric(horizontal: fit ? 16 : 6),
           decoration: BoxDecoration(
             color: i == index ? AppColors.white : null,
             borderRadius: BorderRadius.circular(6),
@@ -165,7 +165,7 @@ class PxTabs extends StatelessWidget {
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(8)),
       child: Row(mainAxisSize: fit ? MainAxisSize.min : MainAxisSize.max, children: [
-        for (final (i, l) in labels.indexed) fit ? SizedBox(width: 106, child: tab(i, l)) : Expanded(child: tab(i, l)),
+        for (final (i, l) in labels.indexed) fit ? tab(i, l) : Expanded(child: tab(i, l)),
       ]),
     );
     return fit ? Align(alignment: Alignment.centerLeft, child: track) : track;

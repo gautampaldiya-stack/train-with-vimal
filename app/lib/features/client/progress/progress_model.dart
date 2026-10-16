@@ -169,6 +169,8 @@ class PxData {
   double? get goal => _nn((j['goal'] as Map?)?['kg']);
   DateTime? get goalEta => (j['goal'] as Map?)?['eta'] == null ? null : _d((j['goal'] as Map)['eta']);
   DateTime get nextMeasure => _d((j['next_measure'] as Map?)?['date']);
+  /// Photos page "Next set due": 2 weeks after the last photo set, on that week's Sunday.
+  DateTime get nextPhotos => (j['next_photos'] as Map?)?['date'] == null ? nextMeasure : _d((j['next_photos'] as Map)['date']);
   int get nextMeasureWeek => (((j['next_measure'] as Map?)?['week']) as num?)?.toInt() ?? 1;
 
   /// The weigh-in on or before [d].

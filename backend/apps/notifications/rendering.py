@@ -4,6 +4,7 @@ import re
 
 from django.conf import settings
 from django.utils import timezone
+from apps.common.utils import dfmt
 
 VARIABLES = ["first_name", "coach_name", "gym_name", "package_name", "date"]
 _VAR_RE = re.compile(r"\{\{\s*([a-z_]+)\s*\}\}")
@@ -17,7 +18,7 @@ def context_for(user, extra=None):
         "coach_name": trainer.full_name if trainer else "",
         "gym_name": settings.APP_NAME,
         "package_name": getattr(profile, "package_name", "") if profile else "",
-        "date": timezone.localdate().strftime("%a, %-d %b"),
+        "date": dfmt(timezone.localdate(), "%a, %-d %b"),
     }
     ctx.update(extra or {})
     return ctx

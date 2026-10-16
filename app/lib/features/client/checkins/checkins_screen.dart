@@ -30,6 +30,7 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
   final _scroll = ScrollController();
   final _list = ScrollController(); // past check-ins scroll inside their card
   bool _opened = false;
+  bool _atEnd = false;
 
   @override
   void initState() {
@@ -37,6 +38,9 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
     c.start().then((_) => _openFromLink());
     _list.addListener(() {
       if (_list.position.extentAfter < 200) c.loadMore();
+      // The fade and "scroll for older" line follow the list's position.
+      final end = _list.position.extentAfter < 4;
+      if (end != _atEnd) setState(() => _atEnd = end);
     });
   }
 
@@ -344,7 +348,18 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
 
   // ─────────────────────────────── Past check-ins
 
+  /// No cue when the list is at its end, or every row is loaded and fits without scrolling.
+  bool get _scrollEnd {
+    if (_list.hasClients && _list.position.hasContentDimensions) return _list.position.maxScrollExtent <= 0 || _atEnd && !c.hasMore;
+    return !c.hasMore && c.rows.length >= c.total && c.rows.length <= 5;
+  }
+
   Widget _history(CheckinsData d) {
+    // The list's size is known only after layout: check the cue again once this frame is drawn.
+    final shownEnd = _scrollEnd;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _scrollEnd != shownEnd) setState(() {});
+    });
     Widget tab(String l, String v) => Hover(
       onTap: () => c.pickTab(v),
       builder: (_, h, _) {
@@ -381,7 +396,18 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
             child: Row(
               spacing: 8,
               children: [
-                Expanded(child: Text('Past check-ins', style: AppText.s(15, W.w8))),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+                    Text('Past check-ins', style: AppText.s(15, W.w8)),
+                    // Count of the whole list, so it is clear how many there are before scrolling (Gautam 2026-10-16).
+                    if (c.total > 0)
+                      Text(
+                        '${c.total} ${c.total == 1 ? 'check-in' : 'check-ins'} · ${c.totalSent} sent'
+                        '${c.totalMissed == 0 ? '' : ' · ${c.totalMissed} missed'}',
+                        style: AppText.s(12, W.w4, color: AppColors.muted),
+                      ),
+                  ]),
+                ),
                 Container(
                   padding: const EdgeInsets.all(3),
                   decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(8)),
@@ -393,7 +419,11 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
           if (rows.isNotEmpty)
             ConstrainedBox(
               constraints: BoxConstraints(maxHeight: maxH),
-              child: ListView.builder(
+              child: Stack(children: [
+                Scrollbar(
+                  controller: _list,
+                  thumbVisibility: true,
+                  child: ListView.builder(
                 controller: _list,
                 shrinkWrap: true,
                 padding: EdgeInsets.zero,
@@ -406,7 +436,32 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
                           child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent)),
                         ),
                       ),
-              ),
+                  ),
+                ),
+                // Fade at the bottom while more rows are below: the list scrolls.
+                if (!_scrollEnd)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    height: 36,
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [AppColors.white.withValues(alpha: 0), AppColors.white]),
+                        ),
+                      ),
+                    ),
+                  ),
+              ]),
+            ),
+          if (rows.isNotEmpty && !_scrollEnd)
+            Padding(
+              padding: const EdgeInsets.only(top: 6, bottom: 2),
+              child: Row(mainAxisAlignment: MainAxisAlignment.center, spacing: 4, children: [
+                const AppIcon(AppIcons.chevronDown, size: 13, color: AppColors.muted),
+                Text(rows.length < c.total ? 'Scroll for older · ${rows.length} of ${c.total} shown' : 'Scroll for more', style: AppText.s(12, W.w6, color: AppColors.muted)),
+              ]),
             ),
           if (rows.isEmpty)
             Container(

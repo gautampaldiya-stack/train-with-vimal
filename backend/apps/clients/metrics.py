@@ -6,6 +6,7 @@ from datetime import timedelta
 
 from django.db.models import Count, Q
 from django.utils import timezone
+from apps.common.utils import dfmt
 
 
 def active_program(client, on=None):
@@ -211,7 +212,7 @@ def needs_attention(client):
     for s in Submission.objects.filter(client=client, reviewed_at__isnull=True,
                                        form_type__in=["weekly", "daily"]).order_by("-created_at")[:2]:
         label = f"Week {s.week_number} check-in to review" if s.week_number else "Check-in to review"
-        items.append({"kind": "checkin", "title": label, "detail": f"Sent {s.created_at:%a, %-d %b}",
+        items.append({"kind": "checkin", "title": label, "detail": f"Sent {dfmt(s.created_at, '%a, %-d %b')}",
                       "id": str(s.id)})
     today = timezone.localdate()
     pa = active_program(client)

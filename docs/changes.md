@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-16 · Progress round 2, Check-ins count, Windows dates
+- **Pehle:** Windows par History khulte hi 500 (`strftime("%-I")` Windows par nahi chalta; yahi baaki session / notification texts me bhi tha). Progress / History / Photos / Compare ke tabs board jitne chaude. Progress photos me Compare neeche sticky bar me tha, "Next set due" measurements ki date se aata tha. Past check-ins me total pata nahi chalta tha aur scroll ka ishara nahi tha.
+- **Ab:** `dfmt()` helper (apps/common/utils.py) har jagah, aur ek test jo `%-` wapas aane nahi deta. Web par tabs label jitne chhote (`PxTabs.fit`), Progress me Compare tabs ke saath. Progress photos: Compare + "2 of 2 selected" upar, pose tabs ke right (phone par tabs ke saath button, neeche line). "Next set due" = last photo set + 2 hafte, us hafte ka Sunday (`next_photos`). Past check-ins header me *"20 check-ins · 8 sent · 12 missed"* (`history_total`), scrollbar dikhta hai, neeche fade + *"Scroll for older · 20 of 45 shown"*.
+- **Kyun:** Gautam ka feedback (screenshots, 2026-10-16).
+- **Updated:** backend apps/common/utils.py, checkins/progress.py, client_page.py, scheduling/views.py, notifications/*, clients/metrics.py, habits/views.py, tests/test_dates_portable.py, test_client_checkins.py; app progress_parts / screen / pages / sheets / model, checkins_screen / model; docs/screens/behaviour.md
+
 ### 2026-10-16 · Progress — tab, History, Photos, Compare
 - **Pehle:** `/progress` par holding page tha. Weight / photos ka API tha, par History, measurements, lifts ka nahi.
 - **Ab:** Board jaisa Progress tab (phone + web): goal, Weight / Body / Strength, First day vs now, photos, stats, adherence; sheets Log weight (Undo, milestone), Workouts, Lift, Photo set, Add photos. Naye pages History (range, type, summary, day sheet, paging), Progress photos (do set chuno), Compare (A / B, measurements). API `GET me/progress/` (poora tab), `GET me/history/`, `POST me/photos/` data URL bhi leta hai. Demo me Riya ke measurements aur photo sets.

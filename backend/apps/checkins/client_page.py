@@ -212,12 +212,16 @@ def checkins_page(client, tab="weekly", before=None, request=None):
     on_time = len([r for r in sent_w if r.get("on_time")])
     last_change = next((r.get("change_kg") for r in sent_w if r.get("change_kg") is not None), None)
 
+    all_rows = daily_rows(client, daily) if tab == "daily" else w_rows
+    # Past check-ins header: "12 sent · 3 missed" over the whole list, so the count shows before scrolling.
+    totals = {"all": len(all_rows), "sent": len([r for r in all_rows if r["kind"] != "missed"]),
+              "missed": len([r for r in all_rows if r["kind"] == "missed"])}
     if tab == "daily":
-        rows, more = page(daily_rows(client, daily), before)
+        rows, more = page(all_rows, before)
         for r in rows:
             r.update(_habit_day(client, r["date"]))
     else:
-        rows, more = page(w_rows, before)
+        rows, more = page(all_rows, before)
         for r in rows:
             r.update(_week_counts(client, _monday(r["date"])))
 
@@ -244,6 +248,6 @@ def checkins_page(client, tab="weekly", before=None, request=None):
                    "sent": {**this_week, **full_row(Submission.objects.get(id=this_week["id"]), request)}
                    if this_week else None,
                    "last_weight": float(prev_weekly_w) if prev_weekly_w is not None else None},
-        "tab": tab, "history": rows, "has_more": more,
+        "tab": tab, "history": rows, "has_more": more, "history_total": totals,
         "next_before": rows[-1]["date"] if rows and more else None,
     }

@@ -11,6 +11,7 @@ from datetime import timedelta
 from django.utils import timezone
 
 from .models import Measurement, PhotoSet, Submission, WeightLog
+from apps.common.utils import dfmt
 
 MEASURE_EVERY = 14  # days, with the photo check-in
 HISTORY_RANGES = {"week": 7, "month": 30, "3months": 91}
@@ -126,6 +127,10 @@ def progress_page(client, request=None):
     from .services import week_number
 
     sets = PhotoSet.objects.filter(client=client).prefetch_related("photos").order_by("date", "created_at")
+    # Photos page "Next set due": 2 weeks after the last set that has a photo, on that week's Sunday (check-in day).
+    last_set = PhotoSet.objects.filter(client=client, photos__isnull=False).order_by("-date").values_list("date", flat=True).first()
+    pn = max(last_set + timedelta(days=MEASURE_EVERY), today) if last_set else today
+    p_sunday = pn + timedelta(days=(6 - pn.weekday()))
     return {
         "start": {"kg": _f(cp.start_weight_kg if cp.start_weight_kg is not None else getattr(first, "weight_kg", None)),
                   "date": first.date if first else (cp.start_date or client.date_joined.date())},
@@ -135,6 +140,7 @@ def progress_page(client, request=None):
         "measurements": [{"date": m.date, "waist": _f(m.waist_cm), "hips": _f(m.hips_cm), "chest": _f(m.chest_cm),
                           "arm": _f(m.arm_cm), "body_fat": _f(m.body_fat_pct)} for m in measures],
         "next_measure": {"date": sunday, "week": week_number(client, sunday)},
+        "next_photos": {"date": p_sunday, "week": week_number(client, p_sunday)},
         "lifts": _lifts(client),
         "adherence": _adherence(client, today),
         "photo_sets": [s for s in PhotoSetSerializer(sets, many=True, context={"request": request}).data
@@ -204,7 +210,7 @@ def history(client, *, rng="week", kind=None, offset=0, limit=7):
     protein_target = (mp.plan.protein_g if mp else None) or None
 
     def clock(t):
-        return t.strftime("%-I:%M %p").lower()
+        return dfmt(t, "%-I:%M %p").lower()
 
     out_days, kcal_days, protein_days, wo_done, wo_planned = [], [], [], 0, 0
     scores = []

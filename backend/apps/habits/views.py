@@ -28,6 +28,7 @@ from .models import (
     SupplementStock,
 )
 from .serializers import QUICK_ADD, HabitSerializer, SupplementPlanSerializer
+from apps.common.utils import dfmt
 
 
 def _set_clients(model, field, obj, ids, actor, label):
@@ -266,7 +267,7 @@ def habits_day(client, day):
             due = not it.days or day.weekday() in it.days
             lg = took.get((it.id, day))
             if day < sa.start_date:
-                pill = f"Starts {sa.start_date:%a, %-d %b}"
+                pill = f"Starts {dfmt(sa.start_date, '%a, %-d %b')}"
             elif lg:
                 pill = "taken"
             elif not due:

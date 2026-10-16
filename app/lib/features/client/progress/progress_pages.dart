@@ -409,40 +409,36 @@ class _ProgressPhotosScreenState extends State<ProgressPhotosScreen> {
 
       final ready = pick.length == 2;
       final a = ready ? byId[pick[0]]! : null, b = ready ? byId[pick[1]]! : null;
-      final bar = Container(
-        padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.line),
-          boxShadow: AppShadows.selbar,
-        ),
-        child: Row(spacing: 10, children: [
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-              Text('${pick.length} of 2 selected', style: AppText.s(13.5, W.w7)),
-              Text(
-                ready
-                    ? '${pxDm(a!.date)} vs ${pxDm(b!.date)}${a.kg != null && b.kg != null ? ' · ${pxChg(b.kg! - a.kg!, 'kg')}' : ''}'
-                    : (pick.isEmpty ? 'Tap two sets to compare' : 'Pick one more set'),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppText.s(12, W.w4, color: AppColors.muted),
-              ),
-            ]),
-          ),
-          Opacity(
-            opacity: ready ? 1 : .45,
-            child: CaButton('Compare', icon: AppIcons.photo, small: true, expand: false, onPressed: () {
-              if (!ready) {
-                showPxToast(context, 'Pick two sets first', 'Tap two photos in the timeline');
-                return;
-              }
-              context.go('/progress/compare?a=${a!.id}&b=${b!.id}&pose=$_pose');
-            }),
-          ),
-        ]),
+      final selText = ready
+          ? '${pxDm(a!.date)} vs ${pxDm(b!.date)}${a.kg != null && b.kg != null ? ' · ${pxChg(b.kg! - a.kg!, 'kg')}' : ''}'
+          : (pick.isEmpty ? 'Tap two sets to compare' : 'Pick one more set');
+      final cmpBtn = Opacity(
+        opacity: ready ? 1 : .45,
+        child: CaButton('Compare', icon: AppIcons.photo, small: true, expand: false, onPressed: () {
+          if (!ready) {
+            showPxToast(context, 'Pick two sets first', 'Tap two photos in the timeline');
+            return;
+          }
+          context.go('/progress/compare?a=${a!.id}&b=${b!.id}&pose=$_pose');
+        }),
       );
+      final tabs = PxTabs(labels: pxPoses, index: pxPoses.indexOf(_pose), fit: web, onPick: (i) => setState(() => _pose = pxPoses[i]));
+      // Compare sits at the top, right of the pose tabs (Gautam 2026-10-16), not in a bar at the bottom.
+      final pickRow = web
+          ? Row(spacing: 12, children: [
+              tabs,
+              const Spacer(),
+              if (sets.length > 1)
+                Column(crossAxisAlignment: CrossAxisAlignment.end, spacing: 1, children: [
+                  Text('${pick.length} of 2 selected', style: AppText.s(13, W.w7)),
+                  Text(selText, style: AppText.s(12, W.w4, color: AppColors.muted)),
+                ]),
+              if (sets.length > 1) cmpBtn,
+            ])
+          : Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
+              Row(spacing: 8, children: [Expanded(child: tabs), if (sets.length > 1) cmpBtn]),
+              if (sets.length > 1) Text('${pick.length} of 2 selected · $selText', style: AppText.s(12, W.w6, color: AppColors.muted)),
+            ]);
 
       return pxPage(
         context,
@@ -454,7 +450,7 @@ class _ProgressPhotosScreenState extends State<ProgressPhotosScreen> {
             sets.isEmpty ? 'No photos yet' : '${sets.length} ${sets.length == 1 ? 'set' : 'sets'} · $n ${n == 1 ? 'photo' : 'photos'} · since ${pxDm(sets.first.date)}',
             actions: [CaButton('Add photos', kind: CaBtnKind.out, small: true, expand: false, icon: AppIcons.camera, onPressed: () => showAddPhotos(context, c, pose: _pose))],
           ),
-          PxTabs(labels: pxPoses, index: pxPoses.indexOf(_pose), fit: web, onPick: (i) => setState(() => _pose = pxPoses[i])),
+          pickRow,
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
             decoration: BoxDecoration(color: AppColors.infoBg, borderRadius: BorderRadius.circular(10)),
@@ -482,7 +478,7 @@ class _ProgressPhotosScreenState extends State<ProgressPhotosScreen> {
               ),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                  Text(todaySet != null ? 'Today’s set · ${todaySet.photos.length} of 3 poses added' : 'Next set due ${pxWdm(d.nextMeasure)}', style: AppText.s(13.5, W.w7)),
+                  Text(todaySet != null ? 'Today’s set · ${todaySet.photos.length} of 3 poses added' : 'Next set due ${pxWdm(d.nextPhotos)}', style: AppText.s(13.5, W.w7)),
                   Text('Same spot, same light, in the morning before eating', style: AppText.s(12, W.w4, color: AppColors.muted)),
                 ]),
               ),
@@ -491,7 +487,6 @@ class _ProgressPhotosScreenState extends State<ProgressPhotosScreen> {
           ]),
           if (sets.isEmpty) fdCapPx('Your first photo set shows here. Add a front, side and back photo.'),
         ],
-        bottom: sets.isEmpty ? null : bar,
       );
     },
   );

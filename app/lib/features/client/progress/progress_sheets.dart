@@ -245,7 +245,7 @@ Future<void> showPhotoSheet(BuildContext context, ProgressController c, PxSet se
     builder: (ctx) {
       final photo = set.of(p.value);
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
-        PxTabs(labels: pxPoses, index: pxPoses.indexOf(p.value), fit: true, onPick: (i) => p.value = pxPoses[i]),
+        PxTabs(labels: pxPoses, index: pxPoses.indexOf(p.value), fit: !ctx.isPhone, onPick: (i) => p.value = pxPoses[i]),
         Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 250),

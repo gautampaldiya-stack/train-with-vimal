@@ -19,6 +19,7 @@ from apps.common.permissions import IsClient, IsStaff
 from apps.notifications.services import notify
 
 from .models import Availability, Session
+from apps.common.utils import dfmt
 
 User = get_user_model()
 
@@ -82,7 +83,7 @@ class SessionSerializer(serializers.ModelSerializer):
         if clash:
             raise serializers.ValidationError({"start": [
                 f"{trainer.first_name} already has {clash.client.full_name} at "
-                f"{timezone.localtime(clash.start):%-I:%M} – {timezone.localtime(clash.end):%-I:%M %p}"]})
+                f"{dfmt(timezone.localtime(clash.start), '%-I:%M')} – {dfmt(timezone.localtime(clash.end), '%-I:%M %p')}"]})
         return attrs
 
 
@@ -145,11 +146,11 @@ class SessionViewSet(viewsets.ModelViewSet):
         if tell:
             where = "on a call" if s.is_call else (s.place or "at the gym")
             notify(s.client, "session_booked", f"{s.get_kind_display()} with {s.trainer.first_name}",
-                   f"{when:%a, %-d %b · %-I:%M %p} · {where}", actor=self.request.user,
+                   f"{dfmt(when, '%a, %-d %b · %-I:%M %p')} · {where}", actor=self.request.user,
                    data={"route": f"/sessions/{s.id}"})
         if s.trainer != self.request.user:
             notify(s.trainer, "session_booked", f"New session with {s.client.full_name}",
-                   f"{when:%a, %-d %b · %-I:%M %p}", actor=self.request.user, data={"route": "/calendar"})
+                   f"{dfmt(when, '%a, %-d %b · %-I:%M %p')}", actor=self.request.user, data={"route": "/calendar"})
 
     def perform_update(self, serializer):
         old = serializer.instance.start
@@ -160,12 +161,12 @@ class SessionViewSet(viewsets.ModelViewSet):
             s.save(update_fields=["reminder_sent_at"])
             activity_log("moved a session", "session", actor=self.request.user, target=s.client,
                          target_label=s.get_kind_display(),
-                         change=(f"{timezone.localtime(old):%a %-d %b %-I:%M %p}",
-                                 f"{timezone.localtime(s.start):%a %-d %b %-I:%M %p}"),
+                         change=(f"{dfmt(timezone.localtime(old), '%a %-d %b %-I:%M %p')}",
+                                 f"{dfmt(timezone.localtime(s.start), '%a %-d %b %-I:%M %p')}"),
                          client=s.client, trainer=s.trainer)
             if tell:
                 notify(s.client, "session_moved", "Your session moved",
-                       f"Now {timezone.localtime(s.start):%a, %-d %b · %-I:%M %p}", actor=self.request.user,
+                       f"Now {dfmt(timezone.localtime(s.start), '%a, %-d %b · %-I:%M %p')}", actor=self.request.user,
                        data={"route": f"/sessions/{s.id}"})
 
     def destroy(self, request, *args, **kwargs):
@@ -176,7 +177,7 @@ class SessionViewSet(viewsets.ModelViewSet):
         tell = str(request.query_params.get("tell_client", "true")).lower() != "false"
         if tell:
             notify(s.client, "session_cancelled", "Session cancelled",
-                   f"{s.get_kind_display()} on {timezone.localtime(s.start):%a, %-d %b · %-I:%M %p} was cancelled.",
+                   f"{s.get_kind_display()} on {dfmt(timezone.localtime(s.start), '%a, %-d %b · %-I:%M %p')} was cancelled.",
                    actor=request.user)
         activity_log("cancelled a session", "session", actor=request.user, target=s.client,
                      target_label=s.get_kind_display(), client=s.client, trainer=s.trainer)

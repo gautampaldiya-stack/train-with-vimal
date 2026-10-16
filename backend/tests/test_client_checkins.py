@@ -47,6 +47,8 @@ def test_daily_history_pages_and_shows_missed_days(client_user):
     missed = [r for r in d["history"] if r["kind"] == "missed"]
     assert missed and missed[0]["reminder"] == "9:00 pm"
     assert any(r.get("reply") for r in d["history"])
+    t = d["history_total"]
+    assert t["all"] > 20 and t["sent"] + t["missed"] == t["all"] and t["missed"] >= len(missed)
     older = _page(client_user, tab="daily", before=d["next_before"])
     assert all(date.fromisoformat(r["date"]) < date.fromisoformat(d["next_before"]) for r in older["history"])
     assert client_user.get("/api/v1/me/checkins/", {"tab": "monthly"}).status_code == 400

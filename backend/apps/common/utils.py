@@ -79,3 +79,13 @@ def data_url_file(item, name, field="photo"):
     if len(raw) > 10 * 1024 * 1024:
         raise ValidationError({field: ["Photos can be up to 10 MB."]})
     return ContentFile(raw, name=f"{name}.{ext}")
+
+
+def dfmt(value, fmt):
+    """strftime with "%-d" / "%-I" / "%-H" / "%-m" (no leading zero) on every OS. Windows' strftime refuses "%-"."""
+    for code, val in (("%-d", value.day if hasattr(value, "day") else 0),
+                      ("%-m", value.month if hasattr(value, "month") else 0),
+                      ("%-H", getattr(value, "hour", 0)),
+                      ("%-I", (getattr(value, "hour", 0) % 12) or 12)):
+        fmt = fmt.replace(code, str(val))
+    return value.strftime(fmt)

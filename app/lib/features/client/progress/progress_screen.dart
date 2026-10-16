@@ -183,16 +183,20 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
 
   // ─────────────────────────────── Tabs + Compare chip (`px-sw`)
 
-  Widget _switch() => Row(spacing: 8, children: [
-    Expanded(
-      child: PxTabs(
-        labels: const ['Weight', 'Body', 'Strength'],
-        index: const ['Weight', 'Body', 'Strength'].indexOf(_tab),
-        onPick: (i) => setState(() => _tab = const ['Weight', 'Body', 'Strength'][i]),
-      ),
-    ),
-    PxChip('Compare', icon: AppIcons.swapAlt, on: _cmp, onTap: () => setState(() => _cmp = !_cmp)),
-  ]);
+  Widget _switch() {
+    // Web: tabs as wide as their labels, Compare next to them (Gautam 2026-10-16). Phone: board, tabs fill the row.
+    final web = !context.isPhone;
+    final tabs = PxTabs(
+      labels: const ['Weight', 'Body', 'Strength'],
+      index: const ['Weight', 'Body', 'Strength'].indexOf(_tab),
+      fit: web,
+      onPick: (i) => setState(() => _tab = const ['Weight', 'Body', 'Strength'][i]),
+    );
+    return Row(spacing: 8, children: [
+      if (web) tabs else Expanded(child: tabs),
+      PxChip('Compare', icon: AppIcons.swapAlt, on: _cmp, onTap: () => setState(() => _cmp = !_cmp)),
+    ]);
+  }
 
   Widget _firstVsNow(PxData d) {
     final start = d.startKg, now = d.last;

@@ -14,6 +14,7 @@ from django.utils import timezone
 
 from .models import ReminderLog, ReminderPreference, StaffNotificationPreference
 from .services import notify, send_template
+from apps.common.utils import dfmt
 
 log = logging.getLogger("reminders")
 User = get_user_model()
@@ -60,7 +61,7 @@ def workout_reminders():
         if _prefs(s.client).workout:
             where = "on a call" if s.is_call else (s.place or "at the gym")
             notify(s.client, "session_reminder", f"{s.get_kind_display()} in 1 hour",
-                   f"With {s.trainer.first_name} at {timezone.localtime(s.start):%-I:%M %p} · {where}",
+                   f"With {s.trainer.first_name} at {dfmt(timezone.localtime(s.start), '%-I:%M %p')} · {where}",
                    data={"route": f"/sessions/{s.id}"})
             sent += 1
         s.reminder_sent_at = now
