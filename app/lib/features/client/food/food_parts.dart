@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
+import '../../../core/util/input_rules.dart';
 import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
 
@@ -91,7 +91,7 @@ class _NumStepperState extends State<NumStepper> {
               textAlign: TextAlign.center,
               style: style,
               keyboardType: TextInputType.numberWithOptions(decimal: widget.decimals),
-              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(widget.decimals ? r'[0-9.,]' : r'[0-9]'))],
+              inputFormatters: inputRules(TextInputType.numberWithOptions(decimal: widget.decimals)),
               cursorColor: AppColors.accent,
               onSubmitted: (_) => _commit(),
               decoration: InputDecoration(

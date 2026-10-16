@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 import '../icons/app_icons.dart';
 import '../theme/theme.dart';
+import '../util/input_rules.dart';
 import 'hover.dart';
 
 /// Client-app components (the `ca-*`, `fd-*`, `wl-*` classes on the client boards).
@@ -557,7 +558,7 @@ class _CaFieldState extends State<CaField> {
                 onSubmitted: widget.onSubmitted,
                 onTap: widget.onTap,
                 autofillHints: widget.autofill,
-                inputFormatters: widget.maxLength == null ? null : [LengthLimitingTextInputFormatter(widget.maxLength)],
+                inputFormatters: [...inputRules(widget.keyboard), if (widget.maxLength != null) LengthLimitingTextInputFormatter(widget.maxLength)],
                 cursorColor: AppColors.accent,
                 style: AppText.s(14.5, W.w6),
                 decoration: InputDecoration.collapsed(hintText: widget.hint, hintStyle: AppText.s(14.5, W.w5, color: AppColors.muted)),

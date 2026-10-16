@@ -7,6 +7,7 @@ import '../../app/services.dart';
 import '../../core/api/api_error.dart';
 import '../../core/icons/app_icons.dart';
 import '../../core/theme/theme.dart';
+import '../../core/util/input_rules.dart';
 import '../../core/widgets/client.dart';
 import '../../core/widgets/overlays.dart';
 import 'account_widgets.dart';
@@ -144,11 +145,8 @@ class _JoinScreenState extends State<JoinScreen> {
     };
   }
 
-  bool get _emailOk => RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(_email.text.trim());
-  bool get _phoneOk {
-    final d = _phone.text.replaceAll(RegExp(r'[^0-9]'), '');
-    return d.length == 10 || (d.length == 12 && d.startsWith('91'));
-  }
+  bool get _emailOk => isEmail(_email.text);
+  bool get _phoneOk => isMobile(_phone.text);
 
   Future<void> _create() async {
     setState(() {
@@ -172,7 +170,7 @@ class _JoinScreenState extends State<JoinScreen> {
         {
           'full_name': _name.text.trim(),
           'email': _email.text.trim(),
-          'phone': _phone.text.trim(),
+          'phone': '+91${_phone.text.replaceAll(RegExp(r'[^0-9]'), '')}',
           'password': _pw.text,
           'accept_terms': true,
           'platform': Session.platform,
@@ -351,7 +349,8 @@ class _JoinScreenState extends State<JoinScreen> {
         ),
         CaField(
           label: 'Phone number',
-          hint: '+91 98765 43210',
+          hint: '98765 43210',
+          leading: '+91',
           controller: _phone,
           error: _err['phone'],
           keyboard: TextInputType.phone,

@@ -667,3 +667,147 @@ void disposeLater(List<ChangeNotifier> items) =>
         i.dispose();
       }
     });
+
+// ─────────────────────────────── Filter menu with side submenus (`.fm-menu` + `.dr-submenu`)
+
+/// One `.mi.sub` row of a filter menu: its label, the current pick on the right, and its options.
+class MenuGroup {
+  const MenuGroup(this.label, {required this.value, required this.options});
+  final String label, value;
+  final List<MenuEntry> options;
+}
+
+/// `.fm-menu`: one row per group ("Goal   Any ›"); pointing at a row opens its options beside the menu
+/// (`.dr-submenu`, on the left when there is room, else on the right). The last row clears every filter.
+/// Phone: the groups as an action sheet, a group opens its options as a second sheet.
+Future<void> showFilterMenu(BuildContext anchor, List<MenuGroup> groups, {VoidCallback? onClear, double width = 240}) async {
+  if (anchor.isPhone) {
+    return showActionSheet(anchor, [
+      for (final g in groups)
+        MenuEntry(g.label, end: g.value, onTap: () => Future.microtask(() {
+              if (anchor.mounted) showActionSheet(anchor, g.options, title: g.label);
+            })),
+      MenuEntry('Clear filters', icon: AppIcons.close, onTap: onClear),
+    ], title: 'Filter');
+  }
+  final box = anchor.findRenderObject() as RenderBox;
+  final overlay = Overlay.of(anchor, rootOverlay: true).context.findRenderObject() as RenderBox;
+  final topLeft = box.localToGlobal(Offset.zero, ancestor: overlay);
+  final size = overlay.size;
+  final left = (topLeft.dx + box.size.width - width).clamp(8.0, size.width - width - 8);
+  final top = topLeft.dy + box.size.height + 4;
+  await showGeneralDialog(
+    context: anchor,
+    barrierDismissible: true,
+    barrierLabel: 'menu',
+    barrierColor: Colors.transparent,
+    transitionDuration: const Duration(milliseconds: 90),
+    pageBuilder: (ctx, _, _) => _FilterMenu(groups: groups, onClear: onClear, left: left, top: top, width: width, screen: size, close: () => Navigator.of(ctx).pop()),
+    transitionBuilder: (_, a, _, child) => FadeTransition(opacity: a, child: child),
+  );
+}
+
+class _FilterMenu extends StatefulWidget {
+  const _FilterMenu({required this.groups, required this.onClear, required this.left, required this.top, required this.width, required this.screen, required this.close});
+  final List<MenuGroup> groups;
+  final VoidCallback? onClear, close;
+  final double left, top, width;
+  final Size screen;
+  @override
+  State<_FilterMenu> createState() => _FilterMenuState();
+}
+
+class _FilterMenuState extends State<_FilterMenu> {
+  static const _row = 32.0, _gap = 3.0, _subW = 200.0;
+  int? open;
+
+  Widget _item({required Widget child, required bool on, VoidCallback? onTap, VoidCallback? onEnter}) => MouseRegion(
+        onEnter: (_) => onEnter?.call(),
+        child: Hover(
+          onTap: onTap,
+          builder: (_, h, _) => Container(
+            height: _row,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(color: h || on ? AppColors.sub : null, borderRadius: AppRadius.all(AppRadius.item)),
+            child: child,
+          ),
+        ),
+      );
+
+  BoxDecoration get _box => BoxDecoration(color: AppColors.card, borderRadius: AppRadius.all(AppRadius.menu), border: Border.all(color: AppColors.line), boxShadow: AppShadows.menu);
+
+  @override
+  Widget build(BuildContext context) {
+    final w = widget;
+    final g = open == null ? null : w.groups[open!];
+    // The submenu's first option lines up with its row: menu padding 6 + border 1.
+    final subTop = w.top + 6 + (open ?? 0) * (_row + _gap) - 7;
+    final onLeft = w.left - 4 - _subW >= 8;
+    return DefaultTextStyle(
+      style: AppText.s(13, W.w5),
+      child: Stack(children: [
+        Positioned(
+          left: w.left,
+          top: w.top,
+          width: w.width,
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: _box,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: _gap, children: [
+              for (final (i, g) in w.groups.indexed)
+                _item(
+                  on: open == i,
+                  onEnter: () => setState(() => open = i),
+                  onTap: () => setState(() => open = open == i ? null : i),
+                  child: Row(spacing: 10, children: [
+                    Expanded(child: Text(g.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w5))),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 120),
+                      child: Text(g.value, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w6, color: AppColors.muted)),
+                    ),
+                    const AppIcon(AppIcons.chevronRight, size: 14, color: AppColors.muted),
+                  ]),
+                ),
+              Container(height: 1, color: AppColors.line, margin: const EdgeInsets.symmetric(vertical: 3)),
+              _item(
+                on: false,
+                onEnter: () => setState(() => open = null),
+                onTap: w.onClear == null
+                    ? null
+                    : () {
+                        w.close?.call();
+                        w.onClear!();
+                      },
+                child: Align(alignment: Alignment.centerLeft, child: Text('Clear filters', style: AppText.s(13, W.w5, color: AppColors.muted))),
+              ),
+            ]),
+          ),
+        ),
+        if (g != null)
+          Positioned(
+            left: onLeft ? w.left - 4 - _subW : w.left + w.width + 4,
+            top: subTop.clamp(8.0, math.max(8.0, w.screen.height - 12 - 12 - g.options.length * (_row + _gap))),
+            width: _subW,
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: _box,
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: _gap, children: [
+                for (final o in g.options)
+                  _item(
+                    on: false,
+                    onTap: () {
+                      w.close?.call();
+                      o.onTap?.call();
+                    },
+                    child: Row(children: [
+                      Expanded(child: Text(o.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, o.selected ? W.w7 : W.w5))),
+                      if (o.selected) const AppIcon(AppIcons.check, size: 15, color: AppColors.accent, stroke: 2.2),
+                    ]),
+                  ),
+              ]),
+            ),
+          ),
+      ]),
+    );
+  }
+}

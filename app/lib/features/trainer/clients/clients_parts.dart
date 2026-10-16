@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/api/api_error.dart';
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
+import '../../../core/util/input_rules.dart';
 import '../../../core/widgets/button.dart';
 import '../../../core/widgets/card.dart';
+import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/input.dart';
 import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
@@ -17,6 +20,7 @@ const _goals = [('fat_loss', 'Lose fat'), ('muscle_gain', 'Muscle gain'), ('stre
 class _EditState extends ChangeNotifier {
   bool loaded = false, busy = false;
   String gender = '', goal = '';
+  DateTime? dob;
   Map<String, String> errors = {};
   void set(VoidCallback f) {
     f();
@@ -30,7 +34,7 @@ Future<bool?> showEditClientDrawer(BuildContext context, MyClientsController c, 
   final first = r.name.split(' ').first;
   final s = _EditState();
   final name = TextEditingController(), phone = TextEditingController(), email = TextEditingController();
-  final dob = TextEditingController(), city = TextEditingController(), goalW = TextEditingController();
+  final city = TextEditingController(), goalW = TextEditingController();
   final height = TextEditingController(), weight = TextEditingController(), notes = TextEditingController();
   final detail = c.detail(r.id).then((d) {
     String num(Object? v) => v == null ? '' : '${double.tryParse('$v')?.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '') ?? v}';
@@ -40,7 +44,6 @@ Future<bool?> showEditClientDrawer(BuildContext context, MyClientsController c, 
     phone.text = ph.startsWith('+91') ? ph.substring(3).trim() : ph;
     email.text = '${d['email'] ?? ''}';
     final b = '${d['date_of_birth'] ?? ''}';
-    dob.text = b.length == 10 ? '${b.substring(8)} / ${b.substring(5, 7)} / ${b.substring(0, 4)}' : '';
     city.text = '${d['city'] ?? ''}';
     goalW.text = num(p['target_weight_kg']);
     height.text = num(p['height_cm']);
@@ -49,6 +52,7 @@ Future<bool?> showEditClientDrawer(BuildContext context, MyClientsController c, 
     s.set(() {
       s.gender = '${d['gender'] ?? ''}';
       s.goal = '${p['goal'] ?? ''}';
+      s.dob = DateTime.tryParse(b);
       s.loaded = true;
     });
     return d;
@@ -58,18 +62,16 @@ Future<bool?> showEditClientDrawer(BuildContext context, MyClientsController c, 
     final errs = <String, String>{};
     if (name.text.trim().isEmpty) errs['full_name'] = 'Enter the full name.';
     final digits = phone.text.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.length != 10) errs['phone'] = 'Enter a 10-digit mobile number.';
-    String? isoDob;
-    final d = dob.text.replaceAll(RegExp(r'[^0-9]'), '');
-    if (d.isNotEmpty) {
-      final dt = d.length == 8 ? DateTime.tryParse('${d.substring(4)}-${d.substring(2, 4)}-${d.substring(0, 2)}') : null;
-      if (dt == null || dt.year < 1920 || dt.isAfter(DateTime.now())) {
-        errs['date_of_birth'] = 'Use DD / MM / YYYY.';
-      } else {
-        isoDob = '${d.substring(4)}-${d.substring(2, 4)}-${d.substring(0, 2)}';
-      }
-    }
+    if (!isMobile(digits)) errs['phone'] = 'Enter a 10-digit mobile number.';
+    if (email.text.trim().isNotEmpty && !isEmail(email.text)) errs['email'] = 'Enter a valid email.';
     num? n(TextEditingController t) => t.text.trim().isEmpty ? null : num.tryParse(t.text.trim());
+    void range(String key, TextEditingController t, num lo, num hi, String msg) {
+      final v = n(t);
+      if (t.text.trim().isNotEmpty && (v == null || v < lo || v > hi)) errs[key] = msg;
+    }
+    range('target_weight_kg', goalW, 25, 300, 'Enter a weight between 25 and 300 kg.');
+    range('current_weight_kg', weight, 25, 300, 'Enter a weight between 25 and 300 kg.');
+    range('height_cm', height, 100, 250, 'Enter a height between 100 and 250 cm.');
     s.set(() => s.errors = errs);
     if (errs.isNotEmpty) return;
     s.set(() => s.busy = true);
@@ -79,7 +81,7 @@ Future<bool?> showEditClientDrawer(BuildContext context, MyClientsController c, 
         'phone': '+91$digits',
         'email': email.text.trim(),
         'gender': s.gender,
-        'date_of_birth': isoDob,
+        'date_of_birth': s.dob == null ? null : DateFormat('yyyy-MM-dd').format(s.dob!),
         'city': city.text.trim(),
         'goal': s.goal,
         'target_weight_kg': n(goalW),
@@ -158,7 +160,7 @@ Future<bool?> showEditClientDrawer(BuildContext context, MyClientsController c, 
                 ),
                 two(
                   ctx,
-                  field('Date of birth', AppTextField(controller: dob, placeholder: 'DD / MM / YYYY', keyboard: TextInputType.datetime), error: e['date_of_birth']),
+                  field('Date of birth', _DateBox(s.dob, onPick: (v) => s.set(() => s.dob = v)), error: e['date_of_birth']),
                   field('City', AppTextField(controller: city, placeholder: 'City'), error: e['city']),
                 ),
               ]),
@@ -190,7 +192,40 @@ Future<bool?> showEditClientDrawer(BuildContext context, MyClientsController c, 
         builder: (_, _) => AppButton.primary('Save changes', icon: AppIcons.check, expand: ctx.isPhone, loading: s.busy, onPressed: s.loaded && !s.busy ? () => save(ctx) : null),
       ),
     ],
-  ).whenComplete(() => disposeLater([s, name, phone, email, dob, city, goalW, height, weight, notes]));
+  ).whenComplete(() => disposeLater([s, name, phone, email, city, goalW, height, weight, notes]));
 }
 
 Widget _unit(String u) => Text(u, style: AppText.s(13, W.w6, color: AppColors.muted));
+
+/// Date of birth: a box like the other inputs that opens the date picker (no typing).
+class _DateBox extends StatelessWidget {
+  const _DateBox(this.value, {required this.onPick});
+  final DateTime? value;
+  final ValueChanged<DateTime> onPick;
+
+  @override
+  Widget build(BuildContext context) => Hover(
+        onTap: () async {
+          final now = DateTime.now();
+          final v = await showDatePicker(
+            context: context,
+            initialDate: value ?? DateTime(now.year - 25),
+            firstDate: DateTime(now.year - 100),
+            lastDate: DateTime(now.year - 10, now.month, now.day),
+          );
+          if (v != null) onPick(v);
+        },
+        builder: (_, h, _) => Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(color: AppColors.white, borderRadius: AppRadius.all(AppRadius.input), border: Border.all(color: h ? AppColors.lineHover : AppColors.line2)),
+          child: Row(spacing: 8, children: [
+            Expanded(
+              child: Text(value == null ? 'Pick a date' : DateFormat('d MMM yyyy').format(value!),
+                  style: AppText.s(14, value == null ? W.w5 : W.w6, color: value == null ? AppColors.muted : AppColors.text)),
+            ),
+            const AppIcon(AppIcons.calendar, size: 16, color: AppColors.muted),
+          ]),
+        ),
+      );
+}

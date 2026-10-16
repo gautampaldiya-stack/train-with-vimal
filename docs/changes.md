@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-16 · Fields sirf sahi type lein; Filter side menu; Export band; tab title + favicon
+- **Pehle:** Mobile, kg, cm jaise fields me letters bhi type ho jaate the. Edit details me Date of birth haath se `DD / MM / YYYY` likhna padta tha. My clients Filter me group par click karke doosra menu usi jagah khulta tha. Export aur select boxes the. Browser tab me hamesha "twv" aur Flutter ka default favicon.
+- **Ab:** Poore app me field apne keyboard type se input leta hai (`core/util/input_rules.dart`): phone = sirf 10 digit, number = sirf digit, decimal (kg, cm) = digit + ek `.` aur 2 decimal, email = bina space. Save par Mobile 10 digit (6–9) aur Email format check — Edit details, Edit profile (client), Join. Join me Mobile ke aage `+91`. DOB date picker se. Filter board jaisa: row par value + `›`, options side me. Export + checkbox comment kar diye. Tab title page ka naam ("My clients · Train With Vimal"), favicon aur app icons TWV logo se.
+- **Kyun:** Gautam: "export ... comment kar do", "date sleect ka option rakho", "number ki ho to number hi aae ... mobile 10 digits ... emails bhi", "filter esi banao", "faviicon laga do ... page ka uper name".
+- **Updated:** app core/util/input_rules.dart, core/widgets/input.dart, client.dart, overlays.dart (`showFilterMenu`), app/page_title.dart, app.dart, web/index.html, manifest.json, favicon + icons, features/trainer/clients/*, auth/join_screen.dart, client/more/more_sheets.dart, client/food/food_parts.dart; docs behaviour §3.2 · Decision D-33
+
 ### 2026-10-16 · Trainer — My clients
 - **Pehle:** Trainer ke liye My clients page nahi tha (holding page). Clients API me Next check-in aur Last active nahi the; Next check-in filter sirf Overdue tha.
 - **Ab:** My clients (web table + phone list) board jaisa: tabs + counts, search, Filter, Export CSV (list ya selected), select boxes, ⋯ menu (View profile, Edit details drawer), 8 rows ka pager. API me `goal_label`, `next_checkin`, `last_active`; filter `today` / `week` / `overdue` column wale rule se; export `ids=` se selected. Top par AV nahi.

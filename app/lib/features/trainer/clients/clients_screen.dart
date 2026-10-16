@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/shell/page.dart';
-import '../../../core/api/api_error.dart';
+// import '../../../core/api/api_error.dart'; // Export is off for now
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
-import '../../../core/util/save_file.dart';
+// import '../../../core/util/save_file.dart'; // Export is off for now
 import '../../../core/widgets/avatar.dart';
 import '../../../core/widgets/badge.dart';
 import '../../../core/widgets/button.dart';
@@ -20,7 +20,7 @@ import 'clients_model.dart';
 import 'clients_parts.dart';
 
 /// My clients (boards `TrainerClients` + `TrainerClientsMobile`). Only the trainer's own clients (the API
-/// starts from `visible_clients`). Web: table with a select box, row ⋯ menu, pager. Phone: one line per client.
+/// starts from `visible_clients`). Web: table, row ⋯ menu, pager. Phone: one line per client.
 class TrainerClientsScreen extends StatefulWidget {
   const TrainerClientsScreen({super.key});
   @override
@@ -130,57 +130,52 @@ class _TrainerClientsScreenState extends State<TrainerClientsScreen> {
               ? AppIconButton(AppIcons.filter, tooltip: nf > 0 ? 'Filter · $nf' : 'Filter', dot: nf > 0, onPressed: () => _filter(b))
               : AppButton(nf > 0 ? 'Filter · $nf' : 'Filter', icon: AppIcons.filter, onPressed: () => _filter(b)),
         ),
-        Builder(
-          builder: (b) => phone
-              ? AppIconButton(AppIcons.downloadLine, tooltip: 'Export', onPressed: () => _exportMenu(b))
-              : AppButton('Export', icon: AppIcons.downloadLine, trailingIcon: AppIcons.chevronDown, onPressed: () => _exportMenu(b)),
-        ),
+        // Export is off for now (Gautam, 16 Oct: "abhi need nahi hai"). The API (`clients/export/`) is still there.
+        // Builder(
+        //   builder: (b) => phone
+        //       ? AppIconButton(AppIcons.downloadLine, tooltip: 'Export', onPressed: () => _exportMenu(b))
+        //       : AppButton('Export', icon: AppIcons.downloadLine, trailingIcon: AppIcons.chevronDown, onPressed: () => _exportMenu(b)),
+        // ),
       ]),
     );
   }
 
-  /// `.fm-menu`: one row per group with its current pick ("Goal · Any"); a row opens that group's options.
-  void _filter(BuildContext anchor) => showAppMenu(
+  /// `.fm-menu`: one row per group with its current pick ("Goal   Any ›"); its options open beside it.
+  void _filter(BuildContext anchor) => showFilterMenu(
         anchor,
         [
           for (final g in mcFilters)
-            MenuEntry(g.label,
-                end: g.options.firstWhere((o) => o.$1 == (c.filters[g.key] ?? ''), orElse: () => g.options.first).$2,
-                onTap: () => Future.microtask(() {
-                      if (anchor.mounted) _options(anchor, g);
-                    })),
-          const MenuEntry.separator(),
-          MenuEntry('Clear filters', icon: AppIcons.close, onTap: c.activeFilters > 0 ? c.clearFilters : null),
+            MenuGroup(
+              g.label,
+              value: g.options.firstWhere((o) => o.$1 == (c.filters[g.key] ?? ''), orElse: () => g.options.first).$2,
+              options: [for (final (v, l) in g.options) MenuEntry(l, selected: (c.filters[g.key] ?? '') == v, onTap: () => c.setFilter(g.key, v))],
+            ),
         ],
-        width: 240,
+        onClear: c.activeFilters > 0 ? c.clearFilters : null,
       );
 
-  void _options(BuildContext anchor, McFilter g) => showAppMenu(anchor, [
-        MenuEntry.header(g.label),
-        for (final (v, l) in g.options) MenuEntry(l, selected: (c.filters[g.key] ?? '') == v, onTap: () => c.setFilter(g.key, v)),
-      ], width: 240);
+  // Export is off for now; the menu and the save are kept here to switch back on.
+  // void _exportMenu(BuildContext anchor) => showAppMenu(
+  //       anchor,
+  //       [
+  //         MenuEntry(c.activeFilters > 0 || c.search.isNotEmpty || c.tab != 'all' ? 'This list (${c.count})' : 'All clients (${c.count})',
+  //             icon: AppIcons.downloadLine, onTap: () => _export(false)),
+  //         MenuEntry(c.selected.isEmpty ? 'Selected clients' : 'Selected clients (${c.selected.length})',
+  //             icon: AppIcons.check, onTap: c.selected.isEmpty ? null : () => _export(true)),
+  //       ],
+  //       width: 220,
+  //     );
 
-  void _exportMenu(BuildContext anchor) => showAppMenu(
-        anchor,
-        [
-          MenuEntry(c.activeFilters > 0 || c.search.isNotEmpty || c.tab != 'all' ? 'This list (${c.count})' : 'All clients (${c.count})',
-              icon: AppIcons.downloadLine, onTap: () => _export(false)),
-          MenuEntry(c.selected.isEmpty ? 'Selected clients' : 'Selected clients (${c.selected.length})',
-              icon: AppIcons.check, onTap: c.selected.isEmpty ? null : () => _export(true)),
-        ],
-        width: 220,
-      );
-
-  Future<void> _export(bool selected) async {
-    try {
-      final bytes = await c.export(onlySelected: selected);
-      final d = DateTime.now();
-      final where = await saveFile('my-clients-${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}.csv', bytes);
-      if (mounted) showToast(context, 'Exported', sub: selected ? '${c.selected.length} clients · $where' : '${c.count} clients · $where', kind: ToastKind.ok);
-    } catch (e) {
-      if (mounted) showToast(context, 'Could not export', sub: e is ApiError ? e.message : 'Check your connection and try again.', kind: ToastKind.info);
-    }
-  }
+  // Future<void> _export(bool selected) async {
+  //   try {
+  //     final bytes = await c.export(onlySelected: selected);
+  //     final d = DateTime.now();
+  //     final where = await saveFile('my-clients-${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}.csv', bytes);
+  //     if (mounted) showToast(context, 'Exported', sub: selected ? '${c.selected.length} clients · $where' : '${c.count} clients · $where', kind: ToastKind.ok);
+  //   } catch (e) {
+  //     if (mounted) showToast(context, 'Could not export', sub: e is ApiError ? e.message : 'Check your connection and try again.', kind: ToastKind.info);
+  //   }
+  // }
 
   // ─────────────────────────────── Row actions
 
@@ -200,7 +195,7 @@ class _TrainerClientsScreenState extends State<TrainerClientsScreen> {
 
   static const _cols = <(String, double, bool)>[
     // label, width, right aligned (Client takes what is left)
-    ('', 42, false),
+    // ('', 42, false), // select box: off with Export for now
     ('Client', 200, false),
     ('Goal', 124, false),
     ('Status', 104, false),
@@ -214,8 +209,8 @@ class _TrainerClientsScreenState extends State<TrainerClientsScreen> {
   Widget _table() => LayoutBuilder(builder: (context, box) {
         final min = _cols.fold<double>(0, (a, x) => a + x.$2);
         final extra = (box.maxWidth - min).clamp(0.0, double.infinity);
-        final widths = [for (final (i, x) in _cols.indexed) x.$2 + (i == 1 ? extra : 0)];
-        final allOn = c.rows.isNotEmpty && c.rows.every((r) => c.selected.contains(r.id));
+        final widths = [for (final (i, x) in _cols.indexed) x.$2 + (i == 0 ? extra : 0)];
+        // final allOn = c.rows.isNotEmpty && c.rows.every((r) => c.selected.contains(r.id));
         final table = SizedBox(
           width: min + extra,
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -229,11 +224,10 @@ class _TrainerClientsScreenState extends State<TrainerClientsScreen> {
                 for (final (i, x) in _cols.indexed)
                   Container(
                     width: widths[i],
-                    padding: EdgeInsets.fromLTRB(i == 0 ? 14 : 12, 0, i == 0 ? 0 : 12, 0),
+                    padding: EdgeInsets.fromLTRB(i == 0 ? 16 : 12, 0, 12, 0),
                     alignment: x.$3 ? Alignment.centerRight : Alignment.centerLeft,
-                    child: i == 0
-                        ? AppCheckbox(value: allOn, onChanged: (_) => c.toggleAll())
-                        : Text(x.$1.toUpperCase(), maxLines: 1, style: AppText.s(11.5, W.w7, color: AppColors.muted, ls: .58)),
+                    // child: i == 0 ? AppCheckbox(value: allOn, onChanged: (_) => c.toggleAll()) : …
+                    child: Text(x.$1.toUpperCase(), maxLines: 1, style: AppText.s(11.5, W.w7, color: AppColors.muted, ls: .58)),
                   ),
               ]),
             ),
@@ -299,7 +293,7 @@ class _TableRow extends StatelessWidget {
     final body = AppText.s(13.5, W.w4);
     Widget cell(int i, Widget child, {bool right = false}) => Container(
           width: widths[i],
-          padding: EdgeInsets.fromLTRB(i == 0 ? 14 : 14, 0, i == 0 ? 0 : 14, 0),
+          padding: EdgeInsets.fromLTRB(i == 0 ? 16 : 12, 0, 12, 0),
           alignment: right ? Alignment.centerRight : Alignment.centerLeft,
           child: child,
         );
@@ -311,9 +305,9 @@ class _TableRow extends StatelessWidget {
           border: last ? null : const Border(bottom: BorderSide(color: AppColors.line)),
         ),
         child: Row(children: [
-          cell(0, AppCheckbox(value: c.selected.contains(r.id), onChanged: (_) => c.toggle(r.id))),
+          // cell(0, AppCheckbox(value: c.selected.contains(r.id), onChanged: (_) => c.toggle(r.id))), // select box: off for now
           cell(
-            1,
+            0,
             Row(spacing: 10, children: [
               _av(r),
               Expanded(
@@ -330,19 +324,19 @@ class _TableRow extends StatelessWidget {
               ),
             ]),
           ),
-          cell(2, Text(r.goal.isEmpty ? '—' : r.goal, maxLines: 1, overflow: TextOverflow.ellipsis, style: body)),
-          cell(3, _badge(r)),
+          cell(1, Text(r.goal.isEmpty ? '—' : r.goal, maxLines: 1, overflow: TextOverflow.ellipsis, style: body)),
+          cell(2, _badge(r)),
           cell(
-            4,
+            3,
             Row(spacing: 8, children: [
               ProgressBar(value: r.onbDone <= 1 ? 0 : r.onb, width: 90),
               Flexible(child: Text(r.onbText, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis, style: cap)),
             ]),
           ),
-          cell(5, Text(r.phoneText, maxLines: 1, softWrap: false, style: cap)),
-          cell(6, Text(r.next, maxLines: 1, style: r.next == 'Overdue' ? AppText.s(13.5, W.w7, color: AppColors.badText) : body)),
-          cell(7, Text(r.lastActive, maxLines: 1, style: cap), right: true),
-          cell(8, Builder(builder: (b) => AppIconButton(AppIcons.dots, tooltip: 'More actions', small: true, fill: true, onPressed: () => onMenu(b))), right: true),
+          cell(4, Text(r.phoneText, maxLines: 1, softWrap: false, style: cap)),
+          cell(5, Text(r.next, maxLines: 1, style: r.next == 'Overdue' ? AppText.s(13.5, W.w7, color: AppColors.badText) : body)),
+          cell(6, Text(r.lastActive, maxLines: 1, style: cap), right: true),
+          cell(7, Builder(builder: (b) => AppIconButton(AppIcons.dots, tooltip: 'More actions', small: true, fill: true, onPressed: () => onMenu(b))), right: true),
         ]),
       ),
     );

@@ -11,6 +11,7 @@ import '../../../app/services.dart';
 import '../../../core/api/api_error.dart';
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
+import '../../../core/util/input_rules.dart';
 import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/overlays.dart';
@@ -138,6 +139,15 @@ Future<void> showEditProfileSheet(BuildContext context, MoreController c) {
 
   String norm(String p) => p.replaceAll(RegExp(r'[^0-9+]'), '');
   Future<void> save(BuildContext ctx) async {
+    final bad = <String, String>{
+      if (name.text.trim().isEmpty) 'name': 'Enter your full name',
+      if (!isEmail(email.text)) 'email': 'Enter a valid email',
+      if (!isMobile(phone.text)) 'phone': 'Enter a 10-digit mobile number',
+    };
+    if (bad.isNotEmpty) {
+      errors.value = bad;
+      return;
+    }
     final ch = <String, dynamic>{};
     if (name.text.trim() != d.name) ch['full_name'] = name.text.trim();
     if (email.text.trim().toLowerCase() != d.email.toLowerCase()) ch['email'] = email.text.trim();

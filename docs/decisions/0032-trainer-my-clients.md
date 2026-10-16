@@ -17,3 +17,4 @@ Date: 2026-10-16
   have them.
 - Shared widgets: `AppSelect` (core/widgets/select.dart), `Pager` (core/widgets/pager.dart), `disposeLater`
   (overlays.dart).
+- Export and selection were turned off on 16 Oct (D-33); code is commented, API kept.

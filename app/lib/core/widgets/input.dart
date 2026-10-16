@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../icons/app_icon.dart';
 import '../theme/theme.dart';
+import '../util/input_rules.dart';
 
 /// `.field` = label + `.inp` + hint/error (docs/design.md §3.2). Input 36 high, radius 8, focus ring accent-soft.
 class AppTextField extends StatefulWidget {
@@ -100,7 +101,7 @@ class _AppTextFieldState extends State<AppTextField> {
               minLines: widget.minLines,
               autofocus: widget.autofocus,
               enabled: widget.enabled,
-              inputFormatters: widget.formatters,
+              inputFormatters: widget.formatters ?? inputRules(widget.keyboard),
               textInputAction: widget.textInputAction,
               autofillHints: widget.autofill,
               style: AppText.s(widget.fontSize ?? 14, W.w5),

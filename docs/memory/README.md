@@ -35,3 +35,4 @@ Things a new person (or a new Claude session) must know. Update when Gautam deci
 - Home hero (2026-10-16, D-29): Gautam picked ClientHomeHero for phone Home. About page contact / coach text comes from gym settings.
 - Gautam (2026-10-16): data must match for client, trainer and admin ("kahi ulta na ho"). One check-in queue (`apps/checkins/queue.py`), client counts = active and not removed, Feeling low = latest check-in only (D-30).
 - Gautam (2026-10-16): trainer dashboard gets an Activity card (trainer + their clients, Show more), stat cards fill the row, demo PDF is a real designed guide, guides are set for reading (D-31).
+- Gautam (2026-10-16): every field takes only its type (mobile 10 digits, numbers, kg/cm decimals, email) and checks on save; dates are picked, not typed; My clients Export + checkboxes off for now (commented); filter = side submenu; tab title = page name; TWV favicon (D-33).
