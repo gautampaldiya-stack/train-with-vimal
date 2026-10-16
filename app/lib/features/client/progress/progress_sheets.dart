@@ -102,7 +102,9 @@ Future<void> showLogWeight(BuildContext context, ProgressController c, {ValueCha
   final d = c.data;
   final today = c.today;
   final s = _Lw(d?.last?.kg ?? d?.startKg ?? 70, today);
-  final days = [for (var o = 0; o < 4; o++) today.subtract(Duration(days: o))];
+  // One entry per period (Gautam 2026-10-16): no date to pick. This period's entry, or a new one for today.
+  final entry = d?.measureEntry;
+  if (entry != null) s.day = entry;
 
   String note() {
     final w = d?.weights ?? const <PxWeight>[];
@@ -156,12 +158,7 @@ Future<void> showLogWeight(BuildContext context, ProgressController c, {ValueCha
         ),
       ),
       PxQuick(items: const ['−1 kg', '−0.5 kg', '+0.5 kg', '+1 kg'], onPick: (i) => s.set(s.kg + const [-1, -.5, .5, 1][i])),
-      pxLbl('Date'),
-      PxQuick(
-        items: [for (final (i, x) in days.indexed) i == 0 ? 'Today' : (i == 1 ? 'Yesterday' : pxWdm(x))],
-        on: days.indexWhere((x) => DateUtils0.same(x, s.day)),
-        onPick: (i) => s.pick(days[i]),
-      ),
+      _measureWhen(entry, today, d?.nextMeasure),
       Padding(padding: const EdgeInsets.only(top: 2), child: pxNote(pxScale, note())),
     ]),
     footer: pxFooter((ctx) => [
@@ -526,10 +523,48 @@ class _Lm extends ChangeNotifier {
     notifyListeners();
   }
 
-  void pick(DateTime d) {
-    day = d;
-    notifyListeners();
+}
+
+/// Which entry this log goes to: "This period's entry · Wed, 14 Oct" (changes it) or "New entry · today".
+Widget _measureWhen(DateTime? entry, DateTime today, DateTime? due) => Container(
+  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+  decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(10)),
+  child: Row(spacing: 10, children: [
+    Icon(Icons.event_note_outlined, size: 18, color: AppColors.text2),
+    Expanded(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+        Text(entry == null ? 'New entry · Today, ${pxWdm(today)}' : 'This period · logged ${pxWdm(entry)}', style: AppText.s(13, W.w7)),
+        Text(
+          entry == null
+              ? 'One entry every period. You can change it until the next one is due.'
+              : 'Changes update this entry${due == null ? '' : ' · next one due ${pxWdm(due)}'}',
+          style: AppText.s(12, W.w4, color: AppColors.muted),
+        ),
+      ]),
+    ),
+  ]),
+);
+
+/// The last entries, newest first, each with its date: "Wed, 14 Oct · Chest 91, Waist 79.5, Hips 99 +3".
+Widget _pastEntries(List<PxMeasure> all, List<PxMetric> metrics) {
+  final rows = all.reversed.take(4).toList();
+  String sum(PxMeasure m) {
+    final bits = [for (final x in metrics) if (m.of(x) != null) '${x.label.replaceAll(' L · R', '')} ${x.amt(m.of(x)!)}'];
+    return bits.isEmpty ? '${m.v.length} measured' : '${bits.take(3).join(', ')}${bits.length > 3 ? ' +${bits.length - 3}' : ''}';
   }
+
+  return Container(
+    padding: const EdgeInsets.only(top: 10),
+    decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
+      pxLbl('Your entries'),
+      for (final m in rows)
+        Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
+          SizedBox(width: 92, child: Text(pxWdm(m.date), style: AppText.s(12.5, W.w7))),
+          Expanded(child: Text(sum(m), style: AppText.s(12.5, W.w4, color: AppColors.text2))),
+        ]),
+    ]),
+  );
 }
 
 /// Log measurements sheet (Body tab): the coach's measurements, each starting at its last value. Only the numbers
@@ -544,7 +579,9 @@ Future<void> showLogMeasures(BuildContext context, ProgressController c) {
   }
   const start = {'neck': 34.0, 'chest': 90.0, 'abdomen': 85.0, 'waist': 80.0, 'hips': 98.0, 'bicep_l': 29.0, 'bicep_r': 29.0, 'thigh_l': 55.0, 'thigh_r': 55.0, 'calf_l': 36.0, 'calf_r': 36.0, 'body_fat': 25.0};
   final s = _Lm(today, {for (final m in metrics) for (final k in m.keys) k: lastOf[k]?.$1 ?? start[k] ?? 50});
-  final days = [for (var o = 0; o < 4; o++) today.subtract(Duration(days: o))];
+  // One entry per period (Gautam 2026-10-16): no date to pick. This period's entry, or a new one for today.
+  final entry = d?.measureEntry;
+  if (entry != null) s.day = entry;
   String side(String k) => k.endsWith('_l') ? 'Left' : (k.endsWith('_r') ? 'Right' : '');
 
   Future<void> save(BuildContext ctx) async {
@@ -584,12 +621,7 @@ Future<void> showLogMeasures(BuildContext context, ProgressController c) {
     listen: s,
     footerStretch: true,
     builder: (_) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
-      pxLbl('Date'),
-      PxQuick(
-        items: [for (final (i, x) in days.indexed) i == 0 ? 'Today' : (i == 1 ? 'Yesterday' : pxWdm(x))],
-        on: days.indexWhere((x) => DateUtils0.same(x, s.day)),
-        onPick: (i) => s.pick(days[i]),
-      ),
+      _measureWhen(entry, today, d?.nextMeasure),
       for (final m in metrics)
         Container(
           padding: const EdgeInsets.only(top: 8),
@@ -625,6 +657,7 @@ Future<void> showLogMeasures(BuildContext context, ProgressController c) {
           ]),
         ),
       if (metrics.isEmpty) fdCap('Your coach has not picked any measurements yet.'),
+      if ((d?.measures ?? const []).isNotEmpty) _pastEntries(d!.measures, metrics),
     ]),
     footer: pxFooter((ctx) => [
       CaButton('Cancel', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop()),

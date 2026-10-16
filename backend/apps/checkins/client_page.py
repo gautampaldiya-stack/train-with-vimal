@@ -73,8 +73,11 @@ def form_payload(form, coach_first, photos=True, client=None):
         "id": q.id, "text": q.text, "type": q.type, "options": q.options, "scale_labels": q.scale_labels,
         "allow_other": q.allow_other, "help_text": q.help_text.replace("{coach}", coach_first or "your coach"),
         "required": q.required, "metric": q.metric, "chip": _chip(q)} for q in qs]
+    # Skipped when this period already has its entry (logged from Progress): one entry per period (D-25).
+    from .services import measure_entry
+
     if photos and client is not None and form.type == "weekly" and \
-            not any(q.metric in MEASURE_KEYS for q in qs):
+            not any(q.metric in MEASURE_KEYS for q in qs) and measure_entry(client) is None:
         at = next((i for i, q in enumerate(qs) if q.type == QuestionType.PHOTO), len(out))
         out.insert(at, measures_question(client))
     return {"id": str(form.id), "name": form.name, "type": form.type, "questions": out}

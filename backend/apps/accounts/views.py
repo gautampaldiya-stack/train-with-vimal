@@ -131,10 +131,20 @@ class MeView(generics.RetrieveUpdateAPIView):
     def perform_update(self, serializer):
         user = self.request.user
         new_email = serializer.validated_data.pop("email", None)
+        height = serializer.validated_data.pop("height_cm", ...)
         before = {k: getattr(user, k) for k in serializer.validated_data}
         serializer.save()
+        extra = []
+        if height is not ... and user.is_client:
+            cp = user.client_profile
+            if cp.height_cm != height:
+                def cm(v):
+                    return "—" if v is None else f"{float(v):g} cm"
+                extra.append(["Height", f"{cm(cp.height_cm)} → {cm(height)}"])
+                cp.height_cm = height
+                cp.save(update_fields=["height_cm"])
         if user.is_client:
-            _log_account_change(user, before, new_email)
+            _log_account_change(user, before, new_email, extra)
         if new_email and new_email != (user.email or ""):
             # Design: a new email is used only after its verification link is opened.
             user.pending_email = new_email
@@ -165,19 +175,21 @@ def _show(user, k, v):
     return dict(field.choices).get(v, v) if field.choices else str(v)
 
 
-def _log_account_change(user, before, new_email):
-    """Client My activity → Account: "You updated your profile" with old → new per field."""
+def _log_account_change(user, before, new_email, extra=()):
+    """Client My activity → Account: "You updated your profile" with old → new per field.
+    `extra` = rows for fields kept elsewhere (height on the client profile)."""
     changed = {k: v for k, v in before.items() if getattr(user, k) != v}
     if new_email and new_email != (user.email or ""):
         changed["email"] = user.email
     for labels, title in ((_PROFILE_LABELS, "You updated your profile"), (_PREF_LABELS, "You changed your preferences")):
         keys = [k for k in labels if k in changed]
-        if not keys:
+        more = list(extra) if labels is _PROFILE_LABELS else []
+        if not keys and not more:
             continue
         rows = [[labels[k], f"{_show(user, k, changed[k])} → "
-                            f"{new_email if k == 'email' else _show(user, k, getattr(user, k))}"] for k in keys]
+                            f"{new_email if k == 'email' else _show(user, k, getattr(user, k))}"] for k in keys] + more
         activity_log(title[4:].replace("your", "their"), "client", actor=user, client=user,
-                     meta={"mine": {"t": title, "s": ", ".join(labels[k] for k in keys), "rows": rows}})
+                     meta={"mine": {"t": title, "s": ", ".join(r[0] for r in rows), "rows": rows}})
 
 
 class PasswordChangeView(APIView):

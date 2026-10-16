@@ -165,15 +165,34 @@ class _ProgressHistoryScreenState extends State<ProgressHistoryScreen> {
       final sum = _summary();
       final days = _days();
       if (!web) return pxPage(context, [...head, sum, ...days]);
-      return pxPage(context, [
-        ...head,
-        IntrinsicHeight(
-          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 20, children: [
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: days)),
-            SizedBox(width: 340, child: PxSticky(child: sum)),
-          ]),
+      // Web: the top (title, range tabs, chips) and the summary on the right stay put; only the day list
+      // scrolls (Gautam 2026-10-16).
+      return CaWeb(
+        web: true,
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1144),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(32, 32, 32, 16),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 16, children: head),
+              ),
+              Expanded(
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(32, 0, 20, 48),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: days),
+                    ),
+                  ),
+                  Padding(padding: const EdgeInsets.only(right: 32), child: SizedBox(width: 340, child: SingleChildScrollView(padding: const EdgeInsets.only(bottom: 24), child: sum))),
+                ]),
+              ),
+            ]),
+          ),
         ),
-      ]);
+      );
     },
   );
 

@@ -73,6 +73,8 @@ class MoData {
   DateTime? get dob => _d(profile['date_of_birth']);
   int? get age => (profile['age'] as num?)?.toInt();
   double? get heightCm => _n(profile['height_cm']);
+  bool get dailySent => (j['daily'] as Map?)?['sent_today'] == true;
+  String get dailyReminder => '${(j['daily'] as Map?)?['reminder'] ?? '9:00 pm'}';
   DateTime get since => _d(profile['since']) ?? DateTime.now();
   String get coachFirst => '${coach?['first_name'] ?? 'your coach'}';
   String get coachName => '${coach?['name'] ?? 'Your coach'}';

@@ -226,6 +226,8 @@ class PxData {
   PxWeight? get last => weights.lastOrNull;
   double? get goal => _nn((j['goal'] as Map?)?['kg']);
   DateTime? get goalEta => (j['goal'] as Map?)?['eta'] == null ? null : _d((j['goal'] as Map)['eta']);
+  /// This period's measurement entry (D-25): logging again changes it. Null = a new entry is due.
+  DateTime? get measureEntry => (j['measure_entry'] as Map?)?['date'] == null ? null : _d((j['measure_entry'] as Map)['date']);
   DateTime get nextMeasure => _d((j['next_measure'] as Map?)?['date']);
   /// Photos page "Next set due": 2 weeks after the last photo set, on that week's Sunday.
   DateTime get nextPhotos => (j['next_photos'] as Map?)?['date'] == null ? nextMeasure : _d((j['next_photos'] as Map)['date']);

@@ -37,6 +37,9 @@ String moPhone(String p) {
 }
 
 /// "Every Sunday, 6:00 pm".
+/// "Every day · sent today" / "Every day · reminder at 9:00 pm".
+String moDailyLine(MoData d) => d.dailySent ? 'Every day · sent today' : 'Every day · reminder at ${d.dailyReminder}';
+
 String moCheckinWhen(MoData d) => 'Every Sunday, ${minClock(hmsToMin(d.checkinTime))}';
 
 void moFailed(BuildContext context, [Object? e]) => showToast(context, 'Could not save',
@@ -77,6 +80,7 @@ Future<void> showCoachSheet(BuildContext context, MoreController c) {
   final rows = [
     ('Next session', sessionLine()),
     if (days.isNotEmpty) ('Training days', days.join(', ')),
+    ('Daily check-in', moDailyLine(d)),
     ('Weekly check-in', moCheckinWhen(d)),
     ('Next check-in', '${dayShort(d.nextCheckin)} · week ${d.checkinWeek}'),
     ('Check-in reply', '${d.checkin['reply'] ?? ''}'),
@@ -114,10 +118,6 @@ Future<void> showCoachSheet(BuildContext context, MoreController c) {
           showToast(context, 'Session added to your calendar', sub: '${dayShort(start)} · ${clock(start)} · reminder 1 h before', kind: ToastKind.ok);
         }
       }),
-      CaButton('Open check-ins', icon: AppIcons.clipboard, onPressed: () {
-        Navigator.of(ctx).pop();
-        context.go('/checkins');
-      }),
     ]),
   );
 }
@@ -129,6 +129,8 @@ Future<void> showEditProfileSheet(BuildContext context, MoreController c) {
   final local = d.phone.startsWith('+91') ? moPhone(d.phone).substring(4) : d.phone;
   final name = TextEditingController(text: d.name), email = TextEditingController(text: d.email);
   final phone = TextEditingController(text: local), city = TextEditingController(text: d.city);
+  String cmText(double? v) => v == null ? '' : (v == v.roundToDouble() ? '${v.toInt()}' : '$v');
+  final height = TextEditingController(text: cmText(d.heightCm));
   final dob = ValueNotifier<DateTime?>(d.dob);
   final errors = ValueNotifier<Map<String, String>>({});
   final busy = ValueNotifier(false);
@@ -142,6 +144,13 @@ Future<void> showEditProfileSheet(BuildContext context, MoreController c) {
     final ph = norm(phone.text);
     if (ph.isNotEmpty && (ph.startsWith('+') ? ph : '+91$ph') != d.phone) ch['phone'] = ph.startsWith('+') ? ph : '+91$ph';
     if (city.text.trim() != d.city) ch['city'] = city.text.trim();
+    final hText = height.text.trim().replaceAll(',', '.');
+    final h = hText.isEmpty ? null : double.tryParse(hText);
+    if (hText.isNotEmpty && (h == null || h < 100 || h > 250)) {
+      errors.value = {'height': 'Enter your height in cm, between 100 and 250'};
+      return;
+    }
+    if (h != d.heightCm) ch['height_cm'] = h;
     if (dob.value != d.dob) ch['date_of_birth'] = dob.value == null ? null : DateFormat('yyyy-MM-dd').format(dob.value!);
     if (ch.isEmpty) {
       Navigator.of(ctx).pop();
@@ -152,6 +161,7 @@ Future<void> showEditProfileSheet(BuildContext context, MoreController c) {
       if (ch.containsKey('full_name')) 'full_name': d.name,
       if (ch.containsKey('phone')) 'phone': d.phone,
       if (ch.containsKey('city')) 'city': d.city,
+      if (ch.containsKey('height_cm')) 'height_cm': d.heightCm,
       if (ch.containsKey('date_of_birth')) 'date_of_birth': d.dob == null ? null : DateFormat('yyyy-MM-dd').format(d.dob!),
     };
     busy.value = true;
@@ -159,7 +169,7 @@ Future<void> showEditProfileSheet(BuildContext context, MoreController c) {
       await c.saveProfile(ch);
     } on ApiError catch (e) {
       busy.value = false;
-      const keys = {'full_name': 'name', 'email': 'email', 'phone': 'phone', 'city': 'city', 'date_of_birth': 'dob'};
+      const keys = {'full_name': 'name', 'email': 'email', 'phone': 'phone', 'city': 'city', 'date_of_birth': 'dob', 'height_cm': 'height'};
       final f = {for (final MapEntry(:key, :value) in e.fields.entries) keys[key] ?? key: value.first};
       if (f.isEmpty) {
         if (context.mounted) moFailed(context, e);
@@ -197,6 +207,14 @@ Future<void> showEditProfileSheet(BuildContext context, MoreController c) {
       CaField(label: 'Email', controller: email, error: errors.value['email'], keyboard: TextInputType.emailAddress),
       CaField(label: 'Mobile', controller: phone, leading: '+91', error: errors.value['phone'], keyboard: TextInputType.phone),
       CaField(label: 'City', controller: city, error: errors.value['city']),
+      CaField(
+        label: 'Height',
+        controller: height,
+        hint: 'e.g. 162',
+        error: errors.value['height'],
+        keyboard: const TextInputType.numberWithOptions(decimal: true),
+        trailing: Padding(padding: const EdgeInsets.only(right: 12), child: Text('cm', style: AppText.s(13.5, W.w6, color: AppColors.muted))),
+      ),
       Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 5, children: [
         Text('Date of birth', style: AppText.s(12.5, W.w7, color: AppColors.text2)),
         Hover(

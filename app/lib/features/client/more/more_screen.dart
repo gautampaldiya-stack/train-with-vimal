@@ -83,16 +83,26 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
       'activity' => _activityPage(web: false),
       _ => _mainPhone(d),
     };
-    return RefreshIndicator(
+    // Notifications and My activity: the header with its tabs / filters stays put, only the list scrolls (Gautam).
+    final fixed = _view == 'notifications' || _view == 'activity' ? 2 : 0;
+    final list = RefreshIndicator(
       onRefresh: _refresh,
       color: AppColors.accent,
       child: SingleChildScrollView(
         controller: _scroll,
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: children),
+        padding: EdgeInsets.fromLTRB(16, fixed > 0 ? 2 : 8, 16, 20),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: children.sublist(fixed)),
       ),
     );
+    if (fixed == 0) return list;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: children.sublist(0, fixed)),
+      ),
+      Expanded(child: list),
+    ]);
   }
 
   Future<void> _refresh() async {
@@ -101,8 +111,64 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
     if (_view == 'activity') await c.loadActivity(c.actKind);
   }
 
+  Widget _webTitle(MoData d, int tab) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 18, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('My account', style: AppText.s(26, W.w8, ls: -0.26, h: 1.2)),
+              Text('${d.name} · client of ${d.coachName}', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
+            ]),
+          ),
+        ]),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: MoTabs(
+            fit: true,
+            labels: ['Overview', d.unread > 0 ? 'Notifications · ${d.unread}' : 'Notifications', 'My activity'],
+            index: tab,
+            onPick: (i) => context.go(const ['/more', '/more/notifications', '/more/activity'][i]),
+          ),
+        ),
+      ]);
+
+  /// Web Notifications / My activity: title, tabs and the list's own bar stay put; only the list scrolls.
+  Widget _webList(MoData d, int tab) {
+    final all = tab == 1 ? _noticesPage(d, web: true) : _activityPage(web: true);
+    final fixed = tab == 1 ? 1 : 2;
+    Widget col(List<Widget> w, double gap) => Align(
+          alignment: Alignment.topLeft,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 760),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: gap, children: w),
+          ),
+        );
+    Widget wide(Widget w) => Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 1080), child: w));
+    return CaWeb(
+      web: true,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(32, 32, 32, 14),
+          child: wide(Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 18, children: [_webTitle(d, tab), col(all.sublist(0, fixed), 12)])),
+        ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _refresh,
+            color: AppColors.accent,
+            child: SingleChildScrollView(
+              controller: _scroll,
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(32, 2, 32, 72),
+              child: wide(col(all.sublist(fixed), tab == 1 ? 14 : 12)),
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
+
   Widget _web(MoData d) {
     final tab = switch (_view) { 'notifications' => 1, 'activity' => 2, _ => 0 };
+    if (tab != 0) return _webList(d, tab);
     return CaWeb(
       web: true,
       child: RefreshIndicator(
@@ -125,7 +191,6 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
                         Text('${d.name} · client of ${d.coachName}', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
                       ]),
                     ),
-                    ChBell(dot: d.unread > 0, onTap: () => context.go('/more/notifications')),
                   ]),
                   Align(
                     alignment: Alignment.centerLeft,
@@ -136,11 +201,7 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
                       onPick: (i) => context.go(const ['/more', '/more/notifications', '/more/activity'][i]),
                     ),
                   ),
-                  if (tab == 1)
-                    Align(alignment: Alignment.topLeft, child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 760), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: _noticesPage(d, web: true))))
-                  else if (tab == 2)
-                    Align(alignment: Alignment.topLeft, child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 760), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: _activityPage(web: true))))
-                  else ...[
+                  ...[
                     if (d.deletionOn != null) _deletionBanner(d),
                     if (two)
                       Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 20, children: [
@@ -172,7 +233,6 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
 
   List<Widget> _overviewRight(MoData d) => [
         _coachCard(d),
-        ChCard(padding: const EdgeInsets.fromLTRB(14, 2, 14, 2), gap: 0, children: [moMh('Your plan'), ..._planRows(d, firstLine: false)]),
         ChCard(padding: const EdgeInsets.fromLTRB(14, 2, 14, 2), gap: 0, children: [moMh('Settings'), ..._settingsRows(d, web: true)]),
       ];
 
@@ -301,6 +361,7 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
         chSm('Details', () => showCoachSheet(context, c)),
       ]),
       row(AppIcons.calendarAlt, ChTone.blue, 'Next session', sessionLine()),
+      row(AppIcons.clipboard, ChTone.purple, 'Daily check-in', moDailyLine(d)),
       row(AppIcons.clipboard, ChTone.amber, 'Weekly check-in', '${moCheckinWhen(d)} · next ${dayShort(d.nextCheckin)}'),
     ]);
   }

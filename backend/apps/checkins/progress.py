@@ -10,7 +10,7 @@ from datetime import timedelta
 
 from django.utils import timezone
 
-from .models import DEFAULT_MEASURES, MEASURES, Measurement, PhotoSet, Submission, WeightLog
+from .models import DEFAULT_MEASURES, MEASURE_KEYS, MEASURES, Measurement, PhotoSet, Submission, WeightLog
 from apps.common.utils import dfmt
 
 HISTORY_RANGES = {"week": 7, "month": 30, "3months": 91}
@@ -121,12 +121,14 @@ def progress_page(client, request=None):
     goal = cp.target_weight_kg
     measures = list(Measurement.objects.filter(client=client).order_by("date"))
     tracked = set(cp.measure_keys or DEFAULT_MEASURES)
-    from .services import next_photos_due, week_number
+    from .services import measure_entry, next_measure_due, next_photos_due, week_number
 
     sets = PhotoSet.objects.filter(client=client).prefetch_related("photos").order_by("date", "created_at")
     # Photos page "Next set due": the coach's N weeks (default 2) after the last set, on that week's Sunday,
     # the same week the weekly check-in asks for photos.
     p_sunday = next_photos_due(client, today)
+    m_open = measure_entry(client, today)
+    m_sunday = next_measure_due(client, today)
     return {
         "start": {"kg": _f(cp.start_weight_kg if cp.start_weight_kg is not None else getattr(first, "weight_kg", None)),
                   "date": first.date if first else (cp.start_date or client.date_joined.date())},
@@ -137,9 +139,11 @@ def progress_page(client, request=None):
         # The measurements this client tracks (the coach's pick, else the default set) plus any already logged.
         "measures": [{"key": k, "label": lbl, "unit": u, "tracked": k in tracked} for k, lbl, u in MEASURES
                      if k in tracked or any(k in m.values for m in measures)],
-        # Measurements are asked with the photo check-in (D-24), so they fall due the same Sunday.
-        "next_measure": {"date": p_sunday, "week": week_number(client, p_sunday),
+        # One measurement entry per photo period (D-25); due N weeks after the current entry's week.
+        "next_measure": {"date": m_sunday, "week": week_number(client, m_sunday),
                          "every_weeks": cp.photo_every_weeks},
+        # This period's entry (logging again changes it), or null when a new one is due.
+        "measure_entry": {"date": m_open.date, "values": m_open.values} if m_open else None,
         "next_photos": {"date": p_sunday, "week": week_number(client, p_sunday)},
         "lifts": _lifts(client),
         "adherence": _adherence(client, today),
@@ -206,6 +210,13 @@ def history(client, *, rng="week", kind=None, offset=0, limit=7):
         subs[s.date].append(s)
     photo_days = set(PhotoSet.objects.filter(client=client, date__range=(start, today)).values_list("date", flat=True))
     all_w = list(WeightLog.objects.filter(client=client, date__lte=today).order_by("date"))
+    all_m = list(Measurement.objects.filter(client=client, date__lte=today).order_by("date"))
+    m_names = {k: (lbl, u) for k, lbl, u in MEASURES}
+
+    def amt(k, v):
+        u = m_names.get(k, ("", "cm"))[1]
+        return f"{v:g}%" if u == "%" else f"{v:g} {u}"
+
     target = (mp.plan.kcal_target if mp else None) or None
     protein_target = (mp.plan.protein_g if mp else None) or None
 
@@ -288,6 +299,20 @@ def history(client, *, rng="week", kind=None, offset=0, limit=7):
                               f"{prev.date.strftime('%b')}" if prev else "First weigh-in",
                        "detail": [["Weigh-in", _kg(w.weight_kg)]] +
                                  ([["Since start", _chg(w.weight_kg - all_w[0].weight_kg)]] if all_w else [])})
+        m = next((x for x in all_m if x.date == d), None)
+        if m and m.values:
+            # Body measurements sit with the weigh-ins (Weight filter), each row with its change since the last time.
+            keys = sorted(m.values, key=lambda k: MEASURE_KEYS.index(k) if k in MEASURE_KEYS else 99)
+            det = []
+            for k in keys:
+                before = next((x.values[k] for x in reversed(all_m) if x.date < d and k in x.values), None)
+                ch = "" if before is None else f" ({'+' if m.values[k] > before else ''}{round(m.values[k] - before, 1):g})" \
+                    if m.values[k] != before else " (same)"
+                det.append([m_names.get(k, (k, ""))[0], amt(k, m.values[k]) + ch])
+            es.append({"type": "weight", "title": f"Measurements · {len(keys)} logged",
+                       "sub": ", ".join(f"{m_names.get(k, (k, ''))[0]} {amt(k, m.values[k])}" for k in keys[:3])
+                              + (f" +{len(keys) - 3}" if len(keys) > 3 else ""),
+                       "detail": det})
         score = adherence(client, 1, d)
         if score is not None and d < today:
             scores.append(score)

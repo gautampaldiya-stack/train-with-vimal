@@ -48,7 +48,7 @@ def _lower(name):
 
 
 def account_page(client, request=None):
-    from apps.checkins.client_page import WEEKLY_DUE
+    from apps.checkins.client_page import DAILY_REMINDER, WEEKLY_DUE
     from apps.checkins.models import Submission, WeightLog
     from apps.checkins.progress import _goal_eta
     from apps.checkins.services import week_number
@@ -143,6 +143,8 @@ def account_page(client, request=None):
         "stats": {"lost_kg": round(start_kg - now_kg, 1) if None not in (start_kg, now_kg) else None,
                   "checkins_sent": sent_count},
         "habits": {"habits": habits, "supplements": supps},
+        "daily": {"sent_today": Submission.objects.filter(client=client, form_type="daily", date=today).exists(),
+                  "reminder": DAILY_REMINDER},
         "unread": unread_count(client),
         "reminders": {k: getattr(prefs, k) for k in ("workout", "meal", "water", "supps", "habit", "checkin",
                                                      "trainer_reply", "progress", "quiet_on")}
@@ -314,7 +316,7 @@ def my_activity(client, kind="All"):
         for h in (HabitLog.objects.filter(client=client, date__range=(start, today))
                   .select_related("habit")):
             hb = h.habit
-            if not (h.value or h.done):
+            if not h.value and (not h.done or hb.kind != "tick"):  # a number habit at 0 is not a log
                 continue
             unit = (hb.unit or "").lower()
             at = h.updated_at if timezone.localtime(h.updated_at).date() == h.date else \

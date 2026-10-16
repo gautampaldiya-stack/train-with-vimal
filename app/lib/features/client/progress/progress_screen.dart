@@ -200,13 +200,13 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
 
   Widget _firstVsNow(PxData d) {
     final start = d.startKg, now = d.last;
-    final m0 = d.measures.firstOrNull, m1 = d.measures.lastOrNull;
     final weeks = now == null ? 0 : (now.date.difference(d.startDate).inDays / 7).round();
+    // Weight, then every measurement shown under Body (first value vs the latest), so biceps and the rest
+    // compare too (Gautam 2026-10-16).
     final rows = <(String, String, String, String, bool?)>[
       if (start != null && now != null) _row('Weight', 'kg', start, now.kg),
-      // The board's rows: weight, waist, hips, body fat.
       for (final m in d.metrics)
-        if (const ['waist', 'hips', 'body_fat'].contains(m.key) && m0 != m1 && m0?.of(m) != null && m1?.of(m) != null) pxMRow(m, m0!.of(m)!, m1!.of(m)!),
+        if ([for (final x in d.measures) if (x.of(m) != null) x.of(m)!] case final pts when pts.length > 1) pxMRow(m, pts.first, pts.last),
     ];
     return ChCard(children: [
       PxHead('First day vs now', '${pxDm(d.startDate)} → ${pxDm(now?.date ?? c.today)} · $weeks ${weeks == 1 ? 'week' : 'weeks'}'),

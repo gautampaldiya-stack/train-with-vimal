@@ -180,6 +180,8 @@ def test_photo_week_checkin_asks_measurements_and_saves_them_to_progress(client_
     today = timezone.localdate()
     from apps.checkins.models import Submission
     Submission.objects.filter(client=riya, form_type="weekly", date__gte=today - timedelta(days=today.weekday())).delete()
+    # The demo's entry from this period makes the step go away (one entry per period); start without it.
+    Measurement.objects.filter(client=riya, date__gte=today - timedelta(days=today.weekday() + 7)).delete()
     form = client_user.get("/api/v1/me/checkins/").json()["weekly"]["form"]
     mq = next(q for q in form["questions"] if q["type"] == "measures")
     keys = [m["key"] for m in mq["measures"]]
@@ -199,3 +201,46 @@ def test_photo_week_checkin_asks_measurements_and_saves_them_to_progress(client_
                          format="json")
     assert r.status_code == 201, r.content
     assert Measurement.objects.get(client=riya, date=today).values["waist"] == 79.0
+
+
+def test_height_is_editable_and_logged(client_user, django_capture_on_commit_callbacks):
+    with django_capture_on_commit_callbacks(execute=True):
+        r = client_user.patch("/api/v1/auth/me/", {"height_cm": "165"}, format="json")
+    assert r.status_code == 200, r.content
+    assert client_user.get("/api/v1/me/account/").json()["profile"]["height_cm"] == 165.0
+    item = client_user.get("/api/v1/me/activity/", {"kind": "Account"}).json()["days"][0]["items"][0]
+    assert ["Height", "162 cm → 165 cm"] in item["rows"]
+    assert client_user.patch("/api/v1/auth/me/", {"height_cm": 20}, format="json").status_code == 400
+
+
+def test_account_has_daily_checkin_state(client_user):
+    d = client_user.get("/api/v1/me/account/").json()["daily"]
+    assert d["reminder"] == "9:00 pm" and isinstance(d["sent_today"], bool)
+
+
+def test_history_lists_measurements_with_weigh_ins(client_user):
+    today = timezone.localdate()
+    client_user.post("/api/v1/me/measurements/", {"date": today.isoformat(), "values": {"waist": 79, "bicep_l": 28}},
+                     format="json")
+    d = client_user.get("/api/v1/me/history/", {"type": "weight"}).json()
+    e = next(e for e in d["days"][0]["entries"] if e["title"].startswith("Measurements"))
+    assert e["type"] == "weight" and any(r[0] == "Waist" for r in e["detail"])
+
+
+def test_measurements_are_one_entry_per_period(client_user):
+    from apps.checkins.models import Measurement
+
+    riya = User.objects.get(email="riya@example.com")
+    today = timezone.localdate()
+    Measurement.objects.filter(client=riya, date__gte=today - timedelta(days=30)).delete()
+    url = "/api/v1/me/measurements/"
+    # No entry in this period: the log makes one for today.
+    assert client_user.post(url, {"date": today.isoformat(), "values": {"waist": 80}}, format="json").status_code == 201
+    p = client_user.get("/api/v1/me/progress/").json()
+    assert p["measure_entry"]["date"] == today.isoformat()
+    # Logging again in the same period changes that entry; no second row.
+    client_user.post(url, {"date": today.isoformat(), "values": {"hips": 99}}, format="json")
+    rows = Measurement.objects.filter(client=riya, date__gte=today - timedelta(days=30))
+    assert rows.count() == 1 and rows[0].values == {"waist": 80.0, "hips": 99.0}
+    monday = today - timedelta(days=today.weekday())
+    assert p["next_measure"]["date"] == (monday + timedelta(days=6 + 14)).isoformat()

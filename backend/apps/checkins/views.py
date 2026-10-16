@@ -506,7 +506,10 @@ class MyMeasurementViewSet(MyWeightViewSet):
         day = s.validated_data["date"]
         if day > timezone.localdate():
             raise serializers.ValidationError({"date": ["Pick today or an earlier day."]})
-        old = Measurement.objects.filter(client=request.user, date=day).values_list("values", flat=True).first() or {}
+        # One entry per period: a log while this period's entry exists changes that entry.
+        open_ = services.measure_entry(request.user, day)
+        day = open_.date if open_ else day
+        old = open_.values if open_ else {}
         m = services.save_measures(request.user, day, s.validated_data["values"])
         services.log_body_change(request.user, day, "measurements", old, m.values if m else {})
         if m is None:

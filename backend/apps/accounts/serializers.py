@@ -84,10 +84,13 @@ class MeUpdateSerializer(serializers.ModelSerializer):
                                     validators=[validate_file_size(10)])
     email = serializers.EmailField(required=False)
     phone = serializers.CharField(required=False, max_length=20)
+    # Kept on the client's profile (ClientProfile.height_cm); More → Edit profile changes it.
+    height_cm = serializers.DecimalField(required=False, allow_null=True, max_digits=5, decimal_places=1,
+                                         min_value=100, max_value=250)
 
     class Meta:
         model = User
-        fields = ["full_name", "avatar", "gender", "date_of_birth", "city", "email", "phone", "unit_weight",
+        fields = ["height_cm", "full_name", "avatar", "gender", "date_of_birth", "city", "email", "phone", "unit_weight",
                   "unit_length", "unit_water", "timezone", "week_start", "theme", "share_photos", "usage_data"]
 
     def validate_phone(self, v):

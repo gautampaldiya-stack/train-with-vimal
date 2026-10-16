@@ -35,8 +35,7 @@ def test_checkins_page_has_the_board_numbers(client_user, photo_week):
     assert d["program"]["week"] == d["weekly"]["week"]
     assert d["stats"] == {"streak": 2, "weekly_on_time": 5, "weekly_due": 6, "last_change_kg": -0.6}
     w = d["weekly"]
-    assert [q["chip"] for q in w["form"]["questions"]] == ["Weight", "Your week", "Meal plan", "Measurements", "3 photos",
-                                                          "Notes"]
+    assert [q["chip"] for q in w["form"]["questions"]] == ["Weight", "Your week", "Meal plan", "3 photos", "Notes"]
     assert "Aman" in w["form"]["questions"][2]["help_text"]
     due = timezone.localtime(timezone.datetime.fromisoformat(w["due_at"]))
     assert due.weekday() == 6 and due.hour == 18 and w["sent"] is None

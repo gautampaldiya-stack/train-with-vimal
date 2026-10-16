@@ -128,6 +128,29 @@ def next_photos_due(client, today=None):
     return _sunday(max(last + timedelta(weeks=n), today) if last else today)
 
 
+def measure_entry(client, day=None):
+    """Measurements are one entry per period (the photo cadence, N weeks; Gautam 2026-10-16): the entry whose
+    period still covers `day`, else None. Logging again in that period changes this entry, never adds one."""
+    day = day or timezone.localdate()
+    n = client.client_profile.photo_every_weeks or 1
+    last = Measurement.objects.filter(client=client, date__lte=day).order_by("-date").first()
+    if last and _monday(day) < _monday(last.date) + timedelta(weeks=n):
+        return last
+    return None
+
+
+def next_measure_due(client, today=None):
+    """The Sunday the next measurements are due: N weeks after the current entry's week, else this Sunday."""
+    today = today or timezone.localdate()
+    open_ = measure_entry(client, today)
+    n = client.client_profile.photo_every_weeks or 1
+    return _sunday(_monday(open_.date) + timedelta(weeks=n)) if open_ else _sunday(today)
+
+
+def _monday(d):
+    return d - timedelta(days=d.weekday())
+
+
 def week_number(client, day):
     from apps.clients.metrics import active_program
 
@@ -216,7 +239,8 @@ def submit(client, form, answers, files=None, *, request_obj=None, submission=No
     # Measurement answers (a question whose metric is waist, hips, …) also go on the Progress page.
     taken = {k: metrics[k] for k in MEASURE_KEYS if metrics.get(k) is not None}
     if taken:
-        save_measures(client, submission.date, taken)
+        open_ = measure_entry(client, submission.date)
+        save_measures(client, open_.date if open_ else submission.date, taken)
     if "weight" in metrics:
         WeightLog.objects.update_or_create(client=client, date=submission.date,
                                            defaults={"weight_kg": Decimal(str(metrics["weight"])),
