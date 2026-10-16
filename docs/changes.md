@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-16 · Progress — tab, History, Photos, Compare
+- **Pehle:** `/progress` par holding page tha. Weight / photos ka API tha, par History, measurements, lifts ka nahi.
+- **Ab:** Board jaisa Progress tab (phone + web): goal, Weight / Body / Strength, First day vs now, photos, stats, adherence; sheets Log weight (Undo, milestone), Workouts, Lift, Photo set, Add photos. Naye pages History (range, type, summary, day sheet, paging), Progress photos (do set chuno), Compare (A / B, measurements). API `GET me/progress/` (poora tab), `GET me/history/`, `POST me/photos/` data URL bhi leta hai. Demo me Riya ke measurements aur photo sets.
+- **Kyun:** Gautam: "next image ka karo start" — next board ClientProgress.
+- **Updated:** backend/apps/checkins/progress.py, views.py, urls.py, seed_demo.py, tests/test_client_progress.py, app/lib/features/client/progress/*, app/lib/app/router.dart, theme colors / metrics, docs/screens/behaviour.md §4.7, status.md, phases/CURRENT.md, memory/README.md · Decision D-21
+
 ### 2026-10-16 · Habits — Day / Week tabs chhote
 - **Pehle:** Habits & supplements ke Day / Week tabs 34 px oonche, 13.5 px text, tabs ke beech gap nahi.
 - **Ab:** Board jaisa: 32 px oonche, 13 px text, 4 px gap, track radius 8, tab radius 6 (web par har tab 110 px).

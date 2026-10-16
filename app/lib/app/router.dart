@@ -19,6 +19,8 @@ import '../features/client/checkins/checkins_screen.dart';
 import '../features/client/food/food_log_screen.dart';
 import '../features/client/food/food_screen.dart';
 import '../features/client/habits/habits_screen.dart';
+import '../features/client/progress/progress_pages.dart';
+import '../features/client/progress/progress_screen.dart';
 import '../features/client/home/home_screen.dart';
 import '../features/client/train/train_screen.dart';
 import '../features/client/train/workout_screen.dart';
@@ -67,6 +69,16 @@ final Map<String, Widget Function(GoRouterState)> screens = {
         id: st.pathParameters['id'],
         edit: st.uri.queryParameters['edit'] == '1',
       ),
+  '/progress': (_) => const ClientProgressScreen(),
+  '/progress/:id': (st) {
+    final q = st.uri.queryParameters;
+    return switch (st.pathParameters['id']) {
+      'history' => ProgressHistoryScreen(key: ValueKey(st.uri.toString()), type: q['type'], range: q['range']),
+      'photos' => const ProgressPhotosScreen(),
+      'compare' => ProgressCompareScreen(key: ValueKey(st.uri.toString()), a: q['a'], b: q['b'], pose: q['pose']),
+      _ => const ClientProgressScreen(),
+    };
+  },
   '/train': (st) => ClientTrainScreen(discarded: int.tryParse(st.uri.queryParameters['discarded'] ?? '') ?? 0),
   '/train/:id': (st) => WorkoutScreen(
         key: ValueKey(st.uri.toString()),

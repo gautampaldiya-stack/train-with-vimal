@@ -113,4 +113,10 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
 - Round 2 (2026-10-16): photo first then Mark as eaten, `photo` meal op, extras inside the meal card, Copy yesterday
   Undo (`undo-copy`), Log food web list scrolls alone, fit tabs (`TwoTabs.fit`), rest-day Train card full width,
   daily edit button `Save changes`. "Other time" in Add to built (D-20 #11).
-- Next: remaining client tabs (Progress, More), then trainer / admin boards.
+
+## Progress (built 2026-10-16, D-21)
+- `/progress` (ClientProgress + Web), `/progress/history`, `/progress/photos`, `/progress/compare`.
+  Code in `app/lib/features/client/progress/` (model, parts, sheets, screen, pages). API `me/progress/`,
+  `me/history/`, `me/weights/`, `me/photos/` (data URL). Demo: `seed_demo` adds Riya's measurements and photo sets.
+- Habits Day / Week tabs sized like the board (2026-10-16).
+- Next: More tab, then trainer / admin boards.

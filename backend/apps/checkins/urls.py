@@ -15,6 +15,7 @@ urlpatterns = [
     path("clients/<uuid:client_pk>/progress/", views.ClientProgressView.as_view(), name="client-progress"),
     path("me/checkins/", views.MyCheckinsView.as_view(), name="my-checkins"),
     path("me/progress/", views.MyProgressView.as_view(), name="my-progress"),
+    path("me/history/", views.MyHistoryView.as_view(), name="my-history"),
     path("me/photos/", views.MyPhotoView.as_view(), name="my-photos"),
     *router.urls,
 ]

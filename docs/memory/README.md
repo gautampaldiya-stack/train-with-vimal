@@ -26,3 +26,4 @@ Things a new person (or a new Claude session) must know. Update when Gautam deci
 - Gautam (2026-10-15): Train week strip days tap like Home; logger Past workouts = this exercise only, one tap fills past sets; workout timer stops when leaving Train / logger, goes on with Continue (D-17).
 - Gautam (2026-10-15): bottom nav padding top 4, bottom 12 (his code). Do not gender trainers in app text ("You will usually get a reply").
 - Check-ins (2026-10-15): weekly check-in due every Sunday 6:00 pm; built-in weekly / daily forms ask the boards' questions; photos go with the check-in through the outbox (D-19).
+- Progress (2026-10-16): one `me/progress/` answer, chart range filtered on the phone, goal date from the last 8 weeks' pace, History is its own paged endpoint, photos go as data URLs through the outbox (D-21). Habits Day / Week tabs = board size (Gautam).

@@ -43,8 +43,8 @@ Status: **Done** (built and checked in a browser against the board, phone and de
 | ClientPermissionsWeb | Done | Side panel with To ask / Allowed / Blocked / Not now pills. Checked 1440. |
 | ClientProfile | Not started |  |
 | ClientProfileMobile | Not started |  |
-| ClientProgress | Not started |  |
-| ClientProgressWeb | Not started |  |
+| ClientProgress | Done | `/progress`: goal, Weight / Body / Strength, First day vs now, photos, stats, adherence; sheets Log weight, workouts, lift, photo set, Add photos. Sub pages `/progress/history` (+ day sheet), `/progress/photos`, `/progress/compare`. Checked 390, 600. |
+| ClientProgressWeb | Done | Two columns (right 340: goal, photos, stats); History summary sticks on the right; Compare photos 540 + table. Checked 768, 1024, 1280, 1440. |
 | ClientResetPassword | Done | `/forgot` (forgot, email sent, resend in 30 s) and `/reset-password?token=` (set, updated, link not valid). Checked 390. |
 | ClientResetPasswordWeb | Done | Same, desktop panel "Back in a minute". Checked 1440. |
 | ClientTrain | Done | `/train`: top line + History (Past workouts sheet with "this workout" / All filter, Show more, workout detail), week strip, Today card (Start / Continue / Log more sets, session line, rest day), Note from coach, exercise blocks (tap → Exercise guide page with target tiles, details, how-to, form cues, body map), live workout bar, "Workout discarded" toast. Block names are worked out by the app (D-16). The guide's video plays only when the exercise has one (none in the seed). Day tap on the week strip shows that day, ⋯ on the running workout (Pause / Resume, Finish, Restart, Discard) (D-17), exercise rows show the video cover / YouTube picture when there is one. A rest day with no exercises takes the full width on web (2026-10-16). Checked 390 on 2026-10-15. |

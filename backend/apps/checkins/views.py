@@ -431,58 +431,38 @@ class MySubmissionViewSet(mixins.RetrieveModelMixin, mixins.CreateModelMixin, mi
 
 
 class MyProgressView(APIView):
-    """Progress tab: weight series + range, measurements, photo timeline, lifts, adherence by week."""
+    """Progress tab: goal, every weigh-in (the app filters 4 wk / 12 wk / 6 mo / All), measurements, lifts,
+    adherence by week, photo sets."""
 
     permission_classes = [IsClient]
 
     def get(self, request):
-        from apps.clients.metrics import adherence
+        from .progress import progress_page
 
-        u = request.user
-        rng = request.query_params.get("range", "12wk")
-        days = {"4wk": 28, "12wk": 84, "6mo": 182}.get(rng)
-        weights = WeightLog.objects.filter(client=u).order_by("date")
-        if days:
-            weights = weights.filter(date__gte=timezone.localdate() - timedelta(days=days))
-        cp = u.client_profile
-        weeks = []
-        end = timezone.localdate() - timedelta(days=1)
-        for i in range(6):
-            e = end - timedelta(days=7 * i)
-            weeks.append({"week_ending": e, "adherence": adherence(u, 7, e)})
-        return Response({
-            "weights": WeightLogSerializer(weights, many=True).data,
-            "current": float(cp.current_weight_kg) if cp.current_weight_kg else None,
-            "goal": float(cp.target_weight_kg) if cp.target_weight_kg else None,
-            "start": float(cp.start_weight_kg) if cp.start_weight_kg else None,
-            "measurements": MeasurementSerializer(Measurement.objects.filter(client=u).order_by("date"),
-                                                  many=True).data,
-            "photo_sets": PhotoSetSerializer(PhotoSet.objects.filter(client=u).prefetch_related("photos"),
-                                             many=True, context={"request": request}).data,
-            "adherence_weeks": list(reversed(weeks)),
-            "lifts": _lifts(u),
-        })
+        return Response(progress_page(request.user, request))
 
 
-def _lifts(user, limit=4):
-    from django.db.models import Max
+class MyHistoryView(APIView):
+    """Progress → History: every day's logs, newest first. ?range=week|month|3months &type=workout|meal|checkin|
+    weight &offset= &limit= (days, max 31)."""
 
-    from apps.training.models import SetLog
+    permission_classes = [IsClient]
 
-    top = (SetLog.objects.filter(workout__client=user, done=True, is_warmup=False, weight_kg__isnull=False)
-           .values("exercise_id", "exercise__name").annotate(n=Count("id"), best=Max("weight_kg"))
-           .order_by("-n")[:limit])
-    out = []
-    for row in top:
-        series = (SetLog.objects.filter(workout__client=user, exercise_id=row["exercise_id"], done=True,
-                                        is_warmup=False, weight_kg__isnull=False)
-                  .values("workout__date").annotate(w=Max("weight_kg")).order_by("workout__date"))
-        best = (SetLog.objects.filter(workout__client=user, exercise_id=row["exercise_id"], done=True,
-                                      weight_kg=row["best"]).order_by("-reps").first())
-        out.append({"exercise": row["exercise_id"], "name": row["exercise__name"],
-                    "best": {"weight_kg": float(row["best"]), "reps": best.reps if best else None},
-                    "series": [{"date": s["workout__date"], "kg": float(s["w"])} for s in series]})
-    return out
+    def get(self, request):
+        from .progress import HISTORY_RANGES, HISTORY_TYPES, history
+
+        q = request.query_params
+        rng = q.get("range", "week")
+        if rng not in HISTORY_RANGES:
+            raise serializers.ValidationError({"range": ["Use week, month or 3months."]})
+        kind = q.get("type") or None
+        if kind and kind not in HISTORY_TYPES:
+            raise serializers.ValidationError({"type": ["Use workout, meal, checkin or weight."]})
+        try:
+            offset, limit = max(0, int(q.get("offset", 0))), min(31, max(1, int(q.get("limit", 7))))
+        except ValueError:
+            raise serializers.ValidationError({"offset": ["Send numbers."]})
+        return Response(history(request.user, rng=rng, kind=kind, offset=offset, limit=limit))
 
 
 class MyWeightViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, mixins.DestroyModelMixin,
@@ -524,19 +504,31 @@ class MyMeasurementViewSet(MyWeightViewSet):
 
 
 class MyPhotoView(APIView):
-    """Add photos sheet: one pose into today's set."""
+    """Add photos sheet: one pose into today's set (a file, or a data URL so it can wait in the offline outbox).
+    A pose already in today's set is replaced; the answer says so (`replaced`)."""
 
     permission_classes = [IsClient]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def post(self, request):
-        s = ProgressPhotoSerializer(data=request.data)
-        if not request.FILES.get("image"):
+        from apps.common.utils import data_url_file
+
+        data = request.data
+        image = request.FILES.get("image")
+        if image is None and isinstance(data.get("image"), str) and data["image"]:
+            image = data_url_file(data["image"], data.get("pose") or "photo", field="image")
+        if image is None:
             raise serializers.ValidationError({"image": ["Take or choose a photo first — Then save it to today's "
                                                          "set"]})
+        s = ProgressPhotoSerializer(data={"pose": data.get("pose"), "image": image})
         s.is_valid(raise_exception=True)
-        p = services.save_photo(request.user, pose=s.validated_data["pose"], image=s.validated_data["image"])
-        return Response(ProgressPhotoSerializer(p, context={"request": request}).data, status=201)
+        day = timezone.localdate()
+        replaced = ProgressPhoto.objects.filter(photo_set__client=request.user, photo_set__date=day,
+                                                photo_set__submission=None, pose=s.validated_data["pose"]).exists()
+        p = services.save_photo(request.user, pose=s.validated_data["pose"], image=s.validated_data["image"],
+                                label="Added by you")
+        out = ProgressPhotoSerializer(p, context={"request": request}).data
+        return Response({**out, "replaced": replaced, "set": str(p.photo_set_id)}, status=201)
 
     def delete(self, request):
         pid = request.query_params.get("id")

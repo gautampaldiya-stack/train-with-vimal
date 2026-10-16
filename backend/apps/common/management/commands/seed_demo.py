@@ -65,6 +65,7 @@ class Command(BaseCommand):
             self.riya_home()
             self.riya_train()
             self.riya_checkins()
+            self.riya_progress()
         self.stdout.write(self.style.SUCCESS(f"Demo ready. Log in with any demo email and {PASSWORD}"))
         self.stdout.write("Demo links (the reset link works for 15 minutes; run seed_demo again for new ones):")
         for line in self.demo_links():
@@ -362,6 +363,40 @@ class Command(BaseCommand):
                                                 read_at=now if read else None)
                 Notification.objects.filter(pk=n.pk).update(created_at=now - timedelta(hours=ago))
 
+    def riya_progress(self):
+        """Progress board: measurements every 2 weeks since day 1 and four photo sets (start, weeks 2, 4, 6; the
+        week 2 set has no Back photo). The photos are drawn placeholders, so the timeline and Compare have data."""
+        from apps.accounts.models import User
+        from apps.checkins.models import Measurement, PhotoSet, ProgressPhoto, WeightLog
+
+        riya = User.objects.get(email="riya@example.com")
+        if Measurement.objects.filter(client=riya).exists():
+            return
+        today, start = timezone.localdate(), riya.client_profile.start_date
+        # waist, hips, chest, arm, body fat — a little lower each time
+        base = [(84, 102, 93, 29.5, 31), (82.5, 101, 92, 29, 30), (81, 100, 91.5, 28.5, 29), (79.5, 99, 91, 28.5, 28)]
+        for i, (wa, hi, ch, ar, bf) in enumerate(base):
+            d = start + timedelta(days=14 * i)
+            if d > today:
+                break
+            Measurement.objects.create(client=riya, date=d, waist_cm=wa, hips_cm=hi, chest_cm=ch, arm_cm=ar,
+                                       body_fat_pct=bf)
+        tints = [((219, 230, 252), (88, 120, 220)), ((220, 240, 228), (70, 150, 100)),
+                 ((236, 228, 250), (140, 110, 210)), ((252, 236, 220), (210, 140, 70))]
+        last_sunday = today - timedelta(days=today.weekday() + 1)
+        sets = [(start, "Start photos", ["front", "side", "back"])]
+        for wk, poses in ((2, ["front", "side"]), (4, ["front", "side", "back"]), (6, ["front", "side", "back"])):
+            d = start + timedelta(days=7 * wk - 1)
+            d -= timedelta(days=(d.weekday() + 1) % 7)  # that week's Sunday check-in
+            if d <= last_sunday:
+                sets.append((d, f"Week {wk} check-in", poses))
+        for i, (d, label, poses) in enumerate(sets):
+            w = WeightLog.objects.filter(client=riya, date__lte=d).order_by("-date").first()
+            ps = PhotoSet.objects.create(client=riya, date=d, label=label, weight_kg=w.weight_kg if w else None)
+            for pose in poses:
+                ProgressPhoto.objects.create(photo_set=ps, pose=pose,
+                                             image=_figure(f"{pose}.jpg", *tints[i % len(tints)], pose))
+
     def riya_checkins(self):
         """Check-ins board: six weekly check-ins (one missed, one waiting for Aman, two with a reply) and the
         last 10 days of daily check-ins (two missed, one with a reply). Today's daily one is still due."""
@@ -458,3 +493,24 @@ class Command(BaseCommand):
         SetLog.objects.bulk_create(sets)
         w.sets_done = w.sets_planned = len(sets)
         w.save(update_fields=["sets_done", "sets_planned"])
+
+
+def _figure(name, bg, fg, pose):
+    """A plain drawn person on a soft colour: demo progress photos (no real pictures in the repo)."""
+    from io import BytesIO
+
+    from django.core.files.base import ContentFile
+    from PIL import Image, ImageDraw
+
+    im = Image.new("RGB", (360, 480), bg)
+    d = ImageDraw.Draw(im)
+    for y in range(480):  # light top-to-bottom wash
+        k = y / 480 * 0.12
+        d.line([(0, y), (360, y)], fill=tuple(int(c + (255 - c) * (0.12 - k)) for c in bg))
+    cx = 180 + {"front": 0, "side": 8, "back": 0}[pose]
+    d.ellipse([cx - 38, 90, cx + 38, 166], outline=fg, width=10)
+    body = [cx - 78, 190, cx + 78, 420] if pose != "side" else [cx - 50, 190, cx + 50, 420]
+    d.rounded_rectangle(body, radius=60, outline=fg, width=10)
+    buf = BytesIO()
+    im.save(buf, "JPEG", quality=82)
+    return ContentFile(buf.getvalue(), name=name)

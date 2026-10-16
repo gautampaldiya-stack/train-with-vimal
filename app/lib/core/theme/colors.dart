@@ -111,6 +111,18 @@ abstract final class AppColors {
   static const scrimModal = Color(0x5C171717); // rgba(23,23,23,.36)
   static const scrimDrawer = Color(0x4D171717); // .30
   static const scrimSheet = Color(0x61111111); // rgba(17,17,17,.38)
+  // Progress board (`px-*`)
+  static const pxTiles = [ // photo placeholders t1–t4: (from, to, figure)
+    (Color(0xFFEEF3FE), Color(0xFFD9E4FC), Color(0xFF7B95D6)),
+    (Color(0xFFEDF7F1), Color(0xFFD3EEDD), Color(0xFF5E9F78)),
+    (Color(0xFFFFF6E8), Color(0xFFFBE3BE), Color(0xFFC08A3A)),
+    (Color(0xFFF4F0FE), Color(0xFFE1D7FB), Color(0xFF8B72CF)),
+  ];
+  static const pxNone = Color(0xFFFAFAF8), pxNone2 = Color(0xFFF3F3F0), pxNoneFig = Color(0xFFC9C9C4); // "No photo" stripes
+  static const pxBar = Color(0xFFA8C2F7), pxBarLo = Color(0xFFF5C46B), pxBarLoOn = Color(0xFFE39B12); // adherence bars
+  static const pxHist = Color(0xFF93B4F8); // older measurement bars
+  static const pxGoal = Color(0xFF16A34A); // goal line on the weight chart
+  static const pxPoseBg = Color(0xE0FFFFFF); // pose label on a photo
   static const viewerBg = Color(0xF0111111), viewerBtn = Color(0x29FFFFFF), viewerBtnHover = Color(0x47FFFFFF), viewerBtnDark = Color(0x8C111111); // full-size photo viewer
 
   /// Avatar pairs (bg, text), picked from the name so a person keeps their colour.

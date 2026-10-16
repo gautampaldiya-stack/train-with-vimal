@@ -80,10 +80,11 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `forms/<pk>/unarchive/` | POST | FormViewSet |  |
 | `forms/counts/` | GET | FormViewSet |  |
 | `me/checkins/` | GET | MyCheckinsView | Check-ins page: the daily and weekly cards, the numbers on top, and past check-ins (weekly or daily, |
+| `me/history/` | GET | MyHistoryView | Progress → History: every day's logs, newest first. ?range=week/month/3months &type=workout/meal/checkin/ |
 | `me/measurements/` | GET, POST | MyMeasurementViewSet |  |
 | `me/measurements/<pk>/` | DELETE | MyMeasurementViewSet |  |
-| `me/photos/` | POST, DELETE | MyPhotoView | Add photos sheet: one pose into today's set. |
-| `me/progress/` | GET | MyProgressView | Progress tab: weight series + range, measurements, photo timeline, lifts, adherence by week. |
+| `me/photos/` | POST, DELETE | MyPhotoView | Add photos sheet: one pose into today's set (a file, or a data URL so it can wait in the offline outbox). |
+| `me/progress/` | GET | MyProgressView | Progress tab: goal, every weigh-in (the app filters 4 wk / 12 wk / 6 mo / All), measurements, lifts, |
 | `me/submissions/` | POST | MySubmissionViewSet | Send a check-in or a requested form; Edit answers; View what you sent. |
 | `me/submissions/<pk>/` | GET, PATCH, DELETE | MySubmissionViewSet | Send a check-in or a requested form; Edit answers; View what you sent. |
 | `me/weights/` | GET, POST | MyWeightViewSet |  |

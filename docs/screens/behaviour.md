@@ -1186,20 +1186,35 @@ Info modal: *"Workout calories are not added back. Your plan already accounts fo
 
 ---
 
-### 4.7 Progress — `ClientProgress`
+### 4.7 Progress — `ClientProgress` / `ClientProgressWeb` (built 2026-10-16, D-21)
 
-**Weight** — chart, `Current` 71.2 kg, `Goal 68 kg` line, cap *"Tap a dot to see that weigh-in."* Range: `4 wk` · `12 wk` · `6 mo` · `All`. `Log weight` → modal (`Weight`, `Date`, `Cancel` / `Save`).
+Data: `GET me/progress/` (one answer, cached for offline). Writes go through the outbox.
 
-**Measurements** — Waist · Hips · Chest · Arm · Body fat %, har ek ka trend. Cap *"Next measurements are due with your week 7 check-in on Sun, 11 Oct."* `Add` button.
+**Top** — `Progress` · *"Weight, body and strength"* (web *"Weight, measurements, strength and adherence"*). Clock icon (web `View past logs`) → `/progress/history`. `Log weight` → Log weight sheet.
 
-**Progress photos** — timeline of sets (`Start photos` 12 Jan 78.0 kg · `Week 2 check-in` 6 Sep 74.1 kg · …), poses `Front` / `Side` / `Back`. Missing pe `No photo` ya *"No Back photo in this set"*.
-- `Add photos` → sheet: `Pose` select, `Photo` pick, `Added today` tag. Cap *"Same spot, same light, in the morning before eating. Only you and Aman can see it."* Photo na ho to toast *"Take or choose a photo first — Then save it to today's set"* (`warn`).
-- `Compare photos side by side` / `Compare` → do set chunne hote hain; na chuno to toast *"Pick two sets first — Tap two photos in the timeline"* (`info`). `Compare with start` shortcut.
-- `All photos`.
+**Goal weight** — Start · Now · Goal cells, bar, *"3.9 kg lost since 3 Sep"* · *"39% of the way"*, pill *"6.1 kg to go"* / *"Goal reached"*. ⓘ tip: *"Set with Aman when you joined. At your pace you reach it around Dec 2026."* (pace of the last 8 weeks).
 
-**Lifts** — `Bench press` ka progression (30 → 45 kg), best `45 kg × 6`, note *"Two warm-up sets first. Next step 47.5 kg."* `See every logged set`.
+**Tabs** `Weight` · `Body` · `Strength` + `Compare` chip (shows **First day vs now**: Weight, Waist, Hips, Body fat; `Compare photos side by side` → Compare page; fewer than 2 sets → toast *"Add a second photo set first"*).
+- **Weight:** Current, change pill (*"−3.9 kg in 6 wks"*), chart with goal line, dots (tap = selected box: Vs previous · Since start · To goal, ✕ closes). Range `4 wk` · `12 wk` (default) · `6 mo` · `All` filters on the phone, no request.
+- **Body:** Waist · Hips · Chest · Arm · Body fat, each opens its dated bars (Waist open first). Cap *"Next measurements are due with your week N check-in on Sun, 1 Nov."*
+- **Strength:** lifts with spark line, best, change; tap → Lift sheet.
 
-**Adherence** — hafta-wise workouts done aur % (92, 90, 82, 85, 80, 86). `Try 3 months` · `Show all types` · `View past logs`.
+**Photos** — latest set's Front / Side / Back (tap → Photo set sheet; no set yet → Add photos), `All photos` → `/progress/photos`, `Add photos`, `Compare`.
+**Stats** — Waist (→ Body tab), Workouts (→ Workouts sheet), Bench best (→ Strength tab).
+**Adherence** — 6 weeks of bars (amber under 85%), tap a bar → its line *"Week of 28 Sep · 4 of 5 workouts · 93% of the plan followed"*.
+
+**Sheets**
+- *Log weight:* big − / + (0.1, typeable), `−1 kg` `−0.5 kg` `+0.5 kg` `+1 kg`; Date `Today` `Yesterday` + 2 days; note *"Replaces the 68.1 kg you logged on Thu, 15 Oct."* / *"… · −0.4 kg since 14 Oct (68.5 kg)."* / *"Your first weigh-in."* `Cancel` / `Save`. Toast *"Weight logged"* / *"Weight updated"* (Undo), or *"New milestone: 5 kg lost"* (star) when a whole kg is crossed.
+- *Workouts:* *"12 workouts done"* · since · program; This week, Planned so far, Missed (last 3 dates), Average adherence. `View past logs` → History (Workouts, 3 months).
+- *Lift:* Started at, Best set, Weight went up N times, Last logged, coach note. `See every logged set` → History (Workouts, 3 months).
+- *Photo set:* *"Sun, 11 Oct · Side"*, pose tabs, big photo (tap = full size) or *"No side photo in this set"*. `Compare with start` → Compare (first set vs this one; the first set vs the latest).
+- *Add photos:* Pose radio cards (Front / Side / Back, `Added today` tag), `Take photo` / `Choose from gallery`, *"Front photo ready · IMG.jpg"*. `Save photo` dim until a photo; without one toast *"Take or choose a photo first"*. Saved → *"Front photo added"* (Undo deletes it) or *"… replaced"* (no Undo, the old photo is gone).
+
+**History** (`/progress/history?type=&range=`) — `‹ Progress`, *"All your logs in one place · 10 Oct – 16 Oct 2026"*. Range `This week` · `Month` · `3 months`; chips All · Workouts · Meals · Check-ins · Weight. Summary card (Workouts done, Avg calories, Avg protein, Weight change, adherence pill; web: right column, sticks while scrolling). Days newest first, score % (green ≥ 90, amber < 75), 7 days then `Show 10 more days · N left`, end *"That's everything for the last 3 months"*. Empty: *"No workouts in this range"* + `Try 3 months` / `Show all types`. Tap a day → Day sheet (each log with its details, coach reply in green) and `Open training` / `Open check-ins` / `Open meal plan`.
+
+**Progress photos** (`/progress/photos`) — sets by month (newest first), pose tabs, private note, tap two sets (A / B, first and last picked at the start), due card *"Next set due Sun, 1 Nov"* / *"Today's set · 1 of 3 poses added"* + `Add`, bar *"2 of 2 selected · 3 Sep vs 15 Oct · −3.9 kg"* `Compare` (fewer → toast *"Pick two sets first"*).
+
+**Compare** (`/progress/compare?a=&b=&pose=`) — `‹ Timeline`, pose tabs, A / B photos with ‹ › to step sets (A stays before B), Measurements table from the nearest measurement, *"In 42 days: weight −3.9 kg, waist −4.5 cm, hips −3 cm."* Web: photos 540 left, table right.
 
 ---
 
