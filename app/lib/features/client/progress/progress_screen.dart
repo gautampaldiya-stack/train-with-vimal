@@ -184,16 +184,14 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
   // ─────────────────────────────── Tabs + Compare chip (`px-sw`)
 
   Widget _switch() {
-    // Web: tabs as wide as their labels, Compare next to them (Gautam 2026-10-16). Phone: board, tabs fill the row.
-    final web = !context.isPhone;
+    // Tabs as wide as their labels at every width (Gautam 2026-10-16), Compare next to them.
     final tabs = PxTabs(
       labels: const ['Weight', 'Body', 'Strength'],
       index: const ['Weight', 'Body', 'Strength'].indexOf(_tab),
-      fit: web,
       onPick: (i) => setState(() => _tab = const ['Weight', 'Body', 'Strength'][i]),
     );
     return Row(spacing: 8, children: [
-      if (web) tabs else Expanded(child: tabs),
+      tabs,
       PxChip('Compare', icon: AppIcons.swapAlt, on: _cmp, onTap: () => setState(() => _cmp = !_cmp)),
     ]);
   }

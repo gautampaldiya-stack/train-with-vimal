@@ -123,7 +123,6 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
         Align(
           alignment: Alignment.centerLeft,
           child: MoTabs(
-            fit: true,
             labels: ['Overview', d.unread > 0 ? 'Notifications · ${d.unread}' : 'Notifications', 'My activity'],
             index: tab,
             onPick: (i) => context.go(const ['/more', '/more/notifications', '/more/activity'][i]),
@@ -195,7 +194,6 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: MoTabs(
-                      fit: true,
                       labels: ['Overview', d.unread > 0 ? 'Notifications · ${d.unread}' : 'Notifications', 'My activity'],
                       index: tab,
                       onPick: (i) => context.go(const ['/more', '/more/notifications', '/more/activity'][i]),

@@ -853,7 +853,7 @@ class PrFlag extends StatelessWidget {
 
 /// `tabs` (pw-f): grey track, the picked tab white with a hairline ring. [fit]: compact, as wide as the labels.
 class TwoTabs extends StatelessWidget {
-  const TwoTabs({super.key, required this.labels, required this.index, required this.onPick, this.fit = false});
+  const TwoTabs({super.key, required this.labels, required this.index, required this.onPick, this.fit = true});
   final List<String> labels;
   final int index;
   final ValueChanged<int> onPick;

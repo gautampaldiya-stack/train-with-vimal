@@ -324,8 +324,9 @@ class MoChips extends StatelessWidget {
 }
 
 /// `mo-tabs` / `mo-wt`: the grey tab bar (Overview · Notifications · My activity, All · Unread).
+/// As wide as its labels at every width by default (Gautam 2026-10-16).
 class MoTabs extends StatelessWidget {
-  const MoTabs({super.key, required this.labels, required this.index, required this.onPick, this.fit = false});
+  const MoTabs({super.key, required this.labels, required this.index, required this.onPick, this.fit = true});
   final List<String> labels;
   final int index;
   final ValueChanged<int> onPick;
@@ -350,13 +351,14 @@ class MoTabs extends StatelessWidget {
             ),
           ),
         );
-    return Container(
+    final track = Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(8)),
       child: Row(mainAxisSize: fit ? MainAxisSize.min : MainAxisSize.max, spacing: 4, children: [
         for (var i = 0; i < labels.length; i++) fit ? tab(i) : Expanded(child: tab(i)),
       ]),
     );
+    return fit ? Align(alignment: Alignment.centerLeft, widthFactor: 1, child: track) : track;
   }
 }
 

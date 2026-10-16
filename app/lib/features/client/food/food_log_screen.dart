@@ -608,7 +608,6 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
           ]),
         ),
       TwoTabs(
-        fit: !context.isPhone,
         labels: const ['All', 'Recent', 'My foods'],
         index: const ['All', 'Recent', 'My foods'].indexOf(_tab),
         onPick: (i) {

@@ -470,7 +470,6 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
   // ─────────────────────────────── Tabs and lists
 
   Widget _tabs(FoodDay d) => TwoTabs(
-    fit: !context.isPhone,
     labels: ['My plan', 'Food log · ${logRows(d).length}'],
     index: c.tab == 'plan' ? 0 : 1,
     onPick: (i) => c.pickTab(i == 0 ? 'plan' : 'log'),

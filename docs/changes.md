@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-16 · Tabs — har width par chhote (label jitne)
+- **Pehle:** Grey tab bars (My account ke All / Unread, Food ke My plan / Food log aur All / Recent / My foods, Progress ke Weight / Body / Strength, History ranges, photo poses) phone par aur kuch web par bhi poori width me faile rehte the.
+- **Ab:** Ye sab tab bars har width (390 se 1440) par label jitne chhote, left me. `MoTabs`, `PxTabs`, `TwoTabs` ka default ab compact hai.
+- **Kyun:** Gautam (screenshot, 2026-10-16): "ye tabs chote karo... kahi bhi ho tabs... fir width pe ho".
+- **Updated:** app more_parts / more_screen, progress_parts / progress_screen / progress_pages / progress_sheets, train_parts, food_screen / food_log_screen; docs/memory/README.md
+
 ### 2026-10-16 · More / Progress round 2: one measurement entry per period, height, History sticky
 - **Pehle:** Log measurements sheet me Today / Yesterday / 2 din pehle ki chips thi, roz naya entry ban sakta tha. Web My account me Your plan card tha (sidebar me wahi links already hain). Coach Details me `Open check-ins` button tha aur daily check-in ka zikr nahi tha. Edit profile me height nahi thi. First day vs now me sirf weight, waist, hips, body fat. History web par poora page scroll hota tha.
 - **Ab:** Measurements ek period (photo cadence, 2 hafte) me ek entry: date chips hat gayi, sheet batata hai "This period · logged Thu, 15 Oct · next one due Sun, 1 Nov", dobara log karne par wahi entry badalti hai (My activity me change line), neeche "Your entries" dates ke saath. Check-in measurements tabhi poochta hai jab is period ki entry nahi hai. History (Weight filter) me "Measurements · 6 logged" har change ke saath. Web My account se Your plan card hata. Coach Details: Open check-ins hata, "Daily check-in · Every day · reminder at 9:00 pm / sent today" row (card aur sheet dono me). Edit profile me Height (cm), My activity me "Height 162 cm → 165 cm". First day vs now me har measurement (biceps bhi). History web: upar ka hissa aur Summary jagah par, sirf list scroll. My activity aur Notifications (phone + web): header, tabs / filters ruke rehte hain, sirf list scroll. Web My account ke title par bell nahi (Notifications tab hai). My activity me 0 wale step / water / sleep logs nahi aate.

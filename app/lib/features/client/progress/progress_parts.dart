@@ -136,7 +136,7 @@ class PxChip extends StatelessWidget {
 
 /// `tabs px-tabs`: grey track, the picked tab white. [fit] keeps each tab to its label (web, Gautam 2026-10-16: smaller).
 class PxTabs extends StatelessWidget {
-  const PxTabs({super.key, required this.labels, required this.index, required this.onPick, this.fit = false});
+  const PxTabs({super.key, required this.labels, required this.index, required this.onPick, this.fit = true});
   final List<String> labels;
   final int index;
   final ValueChanged<int> onPick;

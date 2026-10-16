@@ -145,7 +145,6 @@ class _ProgressHistoryScreenState extends State<ProgressHistoryScreen> {
         PxTabs(
           labels: [for (final r in HistoryController.ranges) r.$2],
           index: ri,
-          fit: web,
           onPick: (i) => h.setRange(HistoryController.ranges[i].$1),
         ),
         Transform.translate(
@@ -441,7 +440,7 @@ class _ProgressPhotosScreenState extends State<ProgressPhotosScreen> {
           context.go('/progress/compare?a=${a!.id}&b=${b!.id}&pose=$_pose');
         }),
       );
-      final tabs = PxTabs(labels: pxPoses, index: pxPoses.indexOf(_pose), fit: web, onPick: (i) => setState(() => _pose = pxPoses[i]));
+      final tabs = PxTabs(labels: pxPoses, index: pxPoses.indexOf(_pose), onPick: (i) => setState(() => _pose = pxPoses[i]));
       // Compare sits at the top, right of the pose tabs (Gautam 2026-10-16), not in a bar at the bottom.
       final pickRow = web
           ? Row(spacing: 12, children: [
@@ -455,7 +454,7 @@ class _ProgressPhotosScreenState extends State<ProgressPhotosScreen> {
               if (sets.length > 1) cmpBtn,
             ])
           : Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
-              Row(spacing: 8, children: [Expanded(child: tabs), if (sets.length > 1) cmpBtn]),
+              Row(spacing: 8, children: [tabs, const Spacer(), if (sets.length > 1) cmpBtn]),
               if (sets.length > 1) Text('${pick.length} of 2 selected · $selText', style: AppText.s(12, W.w6, color: AppColors.muted)),
             ]);
 
@@ -620,7 +619,7 @@ class _ProgressCompareScreenState extends State<ProgressCompareScreen> {
       ]);
       return pxPage(context, [
         ...pxHeader('Timeline', () => context.go('/progress/photos'), 'Compare', '$_pose · ${pxDm(a.date)} → ${pxDm(b.date)}'),
-        PxTabs(labels: pxPoses, index: pxPoses.indexOf(_pose), fit: web, onPick: (i) => setState(() => _pose = pxPoses[i])),
+        PxTabs(labels: pxPoses, index: pxPoses.indexOf(_pose), onPick: (i) => setState(() => _pose = pxPoses[i])),
         if (web)
           LayoutBuilder(
             builder: (_, bx) => bx.maxWidth >= 860
