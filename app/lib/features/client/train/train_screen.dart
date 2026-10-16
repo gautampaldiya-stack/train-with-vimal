@@ -390,7 +390,7 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 11),
                   decoration: i == 0 ? null : const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
                   child: Row(spacing: 12, children: [
-                    ExThumb(e.kind, thumb: e.thumb, video: e.hasVideo),
+                    ExThumb(e.kind, thumb: e.thumb, video: e.hasVideo && e.mediaKind != 'image'),
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
                         Text(e.name, style: AppText.s(14.5, W.w7, color: h ? AppColors.accentText : AppColors.text)),

@@ -26,6 +26,7 @@ class ContentItem(SoftDeleteModel):
         ARTICLE = "article", "Article"
         PDF = "pdf", "PDF"
         IMAGE = "image", "Image"
+        LINK = "link", "Link"  # a reference web page (opens in the browser)
 
     kind = models.CharField(max_length=8, choices=Kind.choices, db_index=True)
     title = models.CharField(max_length=140)
@@ -33,6 +34,7 @@ class ContentItem(SoftDeleteModel):
     description = models.CharField(max_length=300, blank=True, default="")
     file = models.FileField(upload_to=content_path, null=True, blank=True)
     youtube_url = models.URLField(blank=True, default="")
+    link_url = models.URLField(max_length=500, blank=True, default="")  # kind=link
     cover = models.ImageField(upload_to="content/covers/", null=True, blank=True)
     body = models.TextField(blank=True, default="", max_length=50000)  # article
     read_minutes = models.PositiveSmallIntegerField(null=True, blank=True)

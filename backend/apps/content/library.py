@@ -11,8 +11,8 @@ from apps.common.utils import dfmt
 from .models import ContentItem, ContentShare, ContentView
 from .pdf_pages import page_images
 
-KIND_LABEL = {"video": "Video", "pdf": "PDF", "image": "Image", "article": "Article"}
-FILTERS = ("all", "video", "pdf", "image", "article", "saved")
+KIND_LABEL = {"video": "Video", "pdf": "PDF", "image": "Image", "article": "Article", "link": "Link"}
+FILTERS = ("all", "video", "pdf", "image", "article", "link", "saved")
 
 
 def _clock(sec):
@@ -30,10 +30,27 @@ def length_label(item):
     if item.kind == "image":
         name = item.file.name if item.file else ""
         return name.rsplit(".", 1)[-1].upper() if "." in name else "Image"
+    if item.kind == "link":
+        return link_site(item.link_url)
     if item.read_minutes:
         return f"{item.read_minutes} min read"
     words = len((item.body or "").split())
     return f"{max(1, round(words / 200))} min read"
+
+
+def link_site(url):
+    """https://www.healthline.com/nutrition/... → healthline.com."""
+    from urllib.parse import urlparse
+
+    host = urlparse(url or "").netloc.lower()
+    return host[4:] if host.startswith("www.") else (host or "Link")
+
+
+def youtube_id(url):
+    import re
+
+    m = re.search(r"(?:youtu\.be/|v=|/shorts/|/embed/)([A-Za-z0-9_-]{11})", url or "")
+    return m.group(1) if m else ""
 
 
 def _first(user):
@@ -86,7 +103,7 @@ def library(client, *, kind="all", q="", request=None):
     def in_kind(r, k):
         return k == "all" or (r["saved"] if k == "saved" else r["kind"] == k)
 
-    text = {str(i.id): f"{i.title} {i.description} {i.body}".lower() for i in items}
+    text = {str(i.id): f"{i.title} {i.description} {i.body} {i.link_url}".lower() for i in items}
     q = (q or "").strip().lower()
     shown = [r for r in rows if in_kind(r, kind) and (not q or q in text[r["id"]] + " " + r["note"].lower())]
     coach = client.client_profile.trainer if hasattr(client, "client_profile") else None
@@ -116,6 +133,9 @@ def item_page(client, item, request=None):
             "chapters": item.chapters or [], "outline": item.outline or [], "file_url": url,
             "file_name": _file_name(item),
             "youtube_url": item.youtube_url, "duration": item.duration_seconds or 0,
+            "youtube_thumb": (f"https://img.youtube.com/vi/{youtube_id(item.youtube_url)}/hqdefault.jpg"
+                              if youtube_id(item.youtube_url) else ""),
+            "link_url": item.link_url, "link_site": link_site(item.link_url) if item.link_url else "",
             "kind_label": KIND_LABEL.get(item.kind, item.kind), "page_images": page_images(item, request)}
 
 

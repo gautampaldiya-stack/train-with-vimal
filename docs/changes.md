@@ -18,11 +18,11 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
-### 2026-10-16 · Library media (adhoora, Gautam ne roka)
-- **Pehle:** PDF me sirf coach ka page outline dikhta tha; video me seek / full screen nahi tha; image zoom nahi hoti thi.
-- **Ab:** PDF ke asli pages server par picture bante hain (`page_images`, pypdfium2) aur app me dikhte hain, tap par full screen zoom. Video me seek bar aur full screen, image tap par zoom (`core/widgets/media.dart`). Exercise ke API me `media` (video / picture); demo me Leg Press, Walking Lunge ka video aur Romanian Deadlift ki picture. Baaki: exercise guide me media dikhana, reference link type, docs.
-- **Kyun:** Gautam: library me PDF / image / video / article achhe se khule, exercise me bhi video / image dikhe. Gautam ne beech me "stop for now" kaha, isliye kaam yahin save kiya.
-- **Updated:** backend content/pdf_pages.py, library.py, training serializers / views, seed_demo, requirements.txt (pypdfium2: `pip install -r requirements.txt`); app core/widgets/media.dart, library_sheet / model, app_icons
+### 2026-10-16 · Media — PDF pages, video, pictures, exercise media, links
+- **Pehle:** PDF me sirf coach ka page outline dikhta tha; video me seek / full screen nahi tha; picture zoom nahi hoti thi. Exercise guide me video ki jagah sirf ek dark box tha jo Library par le jata tha, picture ka option hi nahi tha. Reference web link share nahi kar sakte the.
+- **Ab:** PDF ke asli pages dikhte hain (server par picture bante hain), tap par full screen zoom aur swipe. Video me seek bar aur full screen (chalta rehta hai). Picture tap par full screen zoom. Exercise guide me exercise ka video yahin chalta hai ya picture dikhti hai; sirf YouTube ho to uski still aur YouTube khulta hai. Details me `Video / picture` row. Naya content type **Link**: Library me `Links` filter, sheet me site + `Open link`. Demo: Leg Press, Walking Lunge video, Romanian Deadlift picture, Riya ke liye ek healthline link.
+- **Kyun:** Gautam: "pdf, media (image / videos), article ache se open ho", "excercise me video ya image ho to", "yt links, videos aur reference links bhi honge".
+- **Updated:** backend content (pdf_pages.py, library.py, models + migration 0003 link_url / kind link, views), training serializers / views (media), seed_demo, requirements.txt (pypdfium2), tests; app core/widgets/media.dart, library sheet / screen / model, train parts / model / screen, colors, app_icons; docs behaviour §4.2 / §4.10, status, CURRENT, memory · Decision D-27
 
 ### 2026-10-16 · Library — client ka Library page bana
 - **Pehle:** `/library` ka page nahi tha; More aur sidebar ka Library link khali page par jata tha. Coach share ke saath note nahi likh sakta tha.

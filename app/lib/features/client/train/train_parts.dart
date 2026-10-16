@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -10,6 +9,7 @@ import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
 import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
+import '../../../core/widgets/media.dart';
 import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
 import '../home/home_parts.dart';
@@ -41,7 +41,23 @@ class ExThumb extends StatelessWidget {
       child: AppIcon(icon, size: 20, color: fg),
     );
     final url = thumb;
-    if (url == null) return plain;
+    if (url == null) {
+      if (!video) return plain;
+      return Stack(clipBehavior: Clip.none, children: [
+        plain,
+        Positioned(
+          right: -3,
+          bottom: -3,
+          child: Container(
+            width: 18,
+            height: 18,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: AppColors.text.withValues(alpha: .7), shape: BoxShape.circle, border: Border.all(color: AppColors.white, width: 1.5)),
+            child: const AppIcon(AppIcons.play, size: 9, color: AppColors.white, fill: true),
+          ),
+        ),
+      ]);
+    }
     return ClipRRect(
       borderRadius: BorderRadius.circular(11),
       child: SizedBox(
@@ -187,7 +203,7 @@ class _GuidePage extends StatelessWidget {
           ),
       ]),
     ]);
-    final video = e.hasVideo ? _video(context) : null;
+    final video = e.hasVideo || e.media != null ? _video(context) : null;
     final note = e.note.isEmpty ? null : _note();
     final target = _target();
     final details = _details();
@@ -223,47 +239,7 @@ class _GuidePage extends StatelessWidget {
         if (count != null) Text(count, style: AppText.s(12, W.w7, color: AppColors.muted)),
       ]);
 
-  Widget _video(BuildContext context) => Container(
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Hover(
-            onTap: () {
-              if (e.youtube.isNotEmpty) {
-                launchUrl(Uri.parse(e.youtube), mode: LaunchMode.externalApplication);
-              } else {
-                Navigator.of(context).pop();
-                GoRouter.of(context).go('/library');
-              }
-            },
-            builder: (_, h, _) => Container(
-              height: 180,
-              decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: AppColors.videoDark)),
-              child: Stack(children: [
-                Center(
-                  child: Container(
-                    width: 54,
-                    height: 54,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(color: AppColors.white.withValues(alpha: h ? .3 : .2), shape: BoxShape.circle),
-                    child: const AppIcon(AppIcons.play, size: 24, color: AppColors.white),
-                  ),
-                ),
-                if (e.coverAt > 0)
-                  Positioned(left: 12, bottom: 10, child: Text(clockText(e.coverAt), style: AppText.s(12, W.w6, color: AppColors.white.withValues(alpha: .9)))),
-              ]),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(spacing: 8, children: [
-              const AppIcon(AppIcons.video, size: 15, color: AppColors.muted),
-              Expanded(child: Text(e.videoTitle.isNotEmpty ? e.videoTitle : e.name, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w7))),
-              Text(e.youtube.isNotEmpty && e.full['video'] == null ? 'YouTube' : 'From content library', style: AppText.s(12.5, W.w4, color: AppColors.muted)),
-            ]),
-          ),
-        ]),
-      );
+  Widget _video(BuildContext context) => _GuideMedia(e: e, web: web);
 
   Widget _note() => Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -305,7 +281,11 @@ class _GuidePage extends StatelessWidget {
       ('Equipment', e.equipmentLabel),
       ('Level', e.levelLabel),
       ('You log', e.logsLabel),
-      ('Cover image', e.hasVideo ? 'Frame at ${clockText(e.coverAt)}' : 'No video yet'),
+      ('Video / picture', switch (e.mediaKind) {
+        'video' => e.mediaSeconds > 0 ? 'Video · ${clockText(e.mediaSeconds)}' : 'Video',
+        'image' => 'Picture',
+        _ => e.youtube.isNotEmpty ? 'YouTube link' : 'Not added yet',
+      }),
     ];
     return _card([
       _h('Details'),
@@ -882,5 +862,100 @@ class TwoTabs extends StatelessWidget {
       ]),
     );
     return fit ? Align(alignment: Alignment.centerLeft, child: track) : track;
+  }
+}
+
+/// `cg-vwrap`: the exercise's video (plays here, seek, full screen), its picture (tap to zoom), or a YouTube
+/// link (its still, opens YouTube), with the title line under it.
+class _GuideMedia extends StatefulWidget {
+  const _GuideMedia({required this.e, required this.web});
+  final TrainEx e;
+  final bool web;
+  @override
+  State<_GuideMedia> createState() => _GuideMediaState();
+}
+
+class _GuideMediaState extends State<_GuideMedia> {
+  TrainEx get e => widget.e;
+  late final VideoCtl? v = e.mediaKind == 'video' ? VideoCtl(e.mediaUrl, fallbackSeconds: e.mediaSeconds) : null;
+
+  @override
+  void dispose() {
+    v?.dispose();
+    super.dispose();
+  }
+
+  void _youtube() => launchUrl(Uri.parse(e.youtube), mode: LaunchMode.externalApplication);
+
+  String _label() {
+    final c = v!;
+    if (c.failed) return 'Could not play here · tap to open';
+    if (c.playing) return 'Playing';
+    if (c.finished) return 'Finished · tap to watch again';
+    if (c.pos > 0) return 'Paused';
+    return 'Tap to play';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final h = widget.web ? 240.0 : 190.0;
+    final kind = e.mediaKind;
+    final Widget face = switch (kind) {
+      'video' => VideoBox(
+          ctl: v!,
+          label: _label,
+          bg: AppColors.videoDark.first,
+          fg: AppColors.white,
+          height: h,
+          radius: 0,
+          onTapEmpty: () => launchUrl(Uri.parse(e.mediaUrl), mode: LaunchMode.externalApplication),
+        ),
+      'image' => Semantics(
+          button: true,
+          label: 'Open the picture full screen',
+          child: GestureDetector(
+            onTap: () => showImageViewer(context, [e.mediaUrl], title: e.name),
+            child: MouseRegion(
+              cursor: SystemMouseCursors.zoomIn,
+              child: Container(color: AppColors.sub, height: h, child: NetImage(e.mediaUrl, fit: BoxFit.contain, height: h)),
+            ),
+          ),
+        ),
+      _ => Hover(
+          onTap: _youtube,
+          builder: (_, hov, _) => Container(
+            height: h,
+            decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: AppColors.videoDark)),
+            child: Stack(fit: StackFit.expand, children: [
+              if (e.thumb != null) Opacity(opacity: .75, child: NetImage(e.thumb!, fit: BoxFit.cover, dark: true, height: h)),
+              Center(
+                child: Container(
+                  width: 54,
+                  height: 54,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: AppColors.white.withValues(alpha: hov ? .3 : .2), shape: BoxShape.circle),
+                  child: const AppIcon(AppIcons.play, size: 24, color: AppColors.white),
+                ),
+              ),
+            ]),
+          ),
+        ),
+    };
+    final source = kind.isEmpty ? 'Opens YouTube' : 'From content library';
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        face,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(spacing: 8, children: [
+            AppIcon(kind == 'image' ? AppIcons.photo : AppIcons.video, size: 15, color: AppColors.muted),
+            Expanded(child: Text(e.videoTitle.isNotEmpty ? e.videoTitle : e.name, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w7))),
+            Text(source, style: AppText.s(12.5, W.w4, color: AppColors.muted)),
+          ]),
+        ),
+      ]),
+    );
   }
 }

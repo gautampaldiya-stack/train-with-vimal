@@ -68,6 +68,7 @@ class Command(BaseCommand):
             self.riya_progress()
             self.riya_library()
             self.exercise_media()
+            self.library_link()
         self.stdout.write(self.style.SUCCESS(f"Demo ready. Log in with any demo email and {PASSWORD}"))
         self.stdout.write("Demo links (the reset link works for 15 minutes; run seed_demo again for new ones):")
         for line in self.demo_links():
@@ -421,6 +422,24 @@ class Command(BaseCommand):
                 item.save()
             ex.video = item
             ex.save(update_fields=["video"])
+
+    def library_link(self):
+        """A reference link in Riya's Library (kind=link): Aman shares a web page with a note."""
+        from apps.accounts.models import User
+        from apps.content.models import ContentItem, ContentShare
+
+        title = "Protein sources for vegetarians"
+        riya = User.objects.filter(email="riya@example.com").first()
+        aman = User.objects.filter(email="aman@trainwithvimal.com").first()
+        if riya is None or aman is None or ContentItem.objects.filter(title=title).exists():
+            return
+        it = ContentItem.objects.create(
+            kind="link", title=title, created_by=aman,
+            link_url="https://www.healthline.com/nutrition/protein-for-vegans-vegetarians",
+            description="A good list of veg protein foods with grams of protein per serving.")
+        sh = ContentShare.objects.create(item=it, client=riya, shared_by=aman, source="coach",
+                                         note="Read the dal, paneer and soya parts. Pick two to add to your lunch.")
+        ContentShare.objects.filter(id=sh.id).update(created_at=timezone.now() - timedelta(days=3))
 
     def riya_library(self):
         """Library board: eight items (2 videos, 3 PDFs, 1 image, 2 articles) shared four ways: by Aman with a

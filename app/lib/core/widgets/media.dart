@@ -71,6 +71,11 @@ class VideoCtl extends ChangeNotifier {
     }
   }
 
+  /// Moving the player to / from full screen re-attaches it on web, which pauses it: play again if it was.
+  void keepPlaying(bool was) {
+    if (was) Future.delayed(const Duration(milliseconds: 250), () => _gone ? null : _v?.play());
+  }
+
   Future<void> seekTo(double fraction, {bool play = false}) async {
     final v = _v;
     if (v == null || !ready) return;
@@ -101,9 +106,13 @@ String mediaClock(int s) => '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
 /// `lb-vid`: the player box. Before a file loads it sits on [bg] (the item's tone); once the video is ready the
 /// picture fills it on black. Label chip top left, full screen top right, round play button, seek bar and times.
 class VideoBox extends StatelessWidget {
-  const VideoBox({super.key, required this.ctl, required this.label, required this.bg, required this.fg, required this.height, this.onTapEmpty, this.lengthText});
+  const VideoBox({super.key, required this.ctl, required this.label, required this.bg, required this.fg, required this.height, this.onTapEmpty, this.lengthText, this.radius = 12, this.poster});
   final VideoCtl ctl;
   final String Function() label;
+  final double radius;
+
+  /// Picture behind the controls before a file plays (a YouTube still).
+  final String? poster;
   final Color bg, fg;
   final double height;
 
@@ -115,16 +124,17 @@ class VideoBox extends StatelessWidget {
   Widget build(BuildContext context) => ListenableBuilder(
         listenable: ctl,
         builder: (context, _) => ClipRRect(
-          borderRadius: AppRadius.all(12),
-          child: SizedBox(height: height, child: _VideoFace(ctl: ctl, label: label(), bg: bg, fg: fg, onTapEmpty: onTapEmpty, lengthText: lengthText, full: false)),
+          borderRadius: AppRadius.all(radius),
+          child: SizedBox(height: height, child: _VideoFace(ctl: ctl, label: label, bg: bg, fg: fg, onTapEmpty: onTapEmpty, lengthText: lengthText, full: false, poster: poster)),
         ),
       );
 }
 
 class _VideoFace extends StatelessWidget {
-  const _VideoFace({required this.ctl, required this.label, required this.bg, required this.fg, required this.full, this.onTapEmpty, this.lengthText});
+  const _VideoFace({required this.ctl, required this.label, required this.bg, required this.fg, required this.full, this.onTapEmpty, this.lengthText, this.poster});
+  final String? poster;
   final VideoCtl ctl;
-  final String label;
+  final String Function() label;
   final Color bg, fg;
   final bool full;
   final VoidCallback? onTapEmpty;
@@ -138,6 +148,7 @@ class _VideoFace extends StatelessWidget {
     return Container(
       color: dark ? AppColors.black : bg,
       child: Stack(children: [
+        if (p == null && (poster ?? '').isNotEmpty) Positioned.fill(child: NetImage(poster!, fit: BoxFit.cover)),
         if (p != null)
           Positioned.fill(
             child: GestureDetector(
@@ -145,28 +156,50 @@ class _VideoFace extends StatelessWidget {
               child: Center(child: AspectRatio(aspectRatio: ctl.aspect, child: VideoPlayer(p))),
             ),
           ),
+        // Soft dark band at the bottom so the times and bar read on any video.
+        if (p != null)
+          const Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: 64,
+            child: IgnorePointer(
+              child: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: AppColors.videoScrim))),
+            ),
+          ),
         Positioned.fill(
           child: Padding(
             padding: EdgeInsets.fromLTRB(12, full ? 16 : 10, 12, full ? 20 : 10),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               Row(children: [
-                Flexible(
-                  child: Container(
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
                     height: 24,
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     decoration: BoxDecoration(color: AppColors.white.withValues(alpha: .85), borderRadius: AppRadius.all(99)),
                     child: Row(mainAxisSize: MainAxisSize.min, spacing: 6, children: [
                       AppIcon(AppIcons.video, size: 13, color: AppColors.text),
-                      Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w7, h: 1))),
+                      Flexible(child: Text(label(), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w7, h: 1))),
                     ]),
                   ),
+                  ),
                 ),
-                const Spacer(),
                 if (p != null)
                   _RoundBtn(
                     icon: full ? AppIcons.close : AppIcons.expand,
                     label: full ? 'Close full screen' : 'Full screen',
-                    onTap: () => full ? Navigator.of(context).pop() : showVideoFull(context, ctl, label: label),
+                    onTap: () {
+                      final was = ctl.playing;
+                      if (full) {
+                        Navigator.of(context).pop();
+                        ctl.keepPlaying(was);
+                      } else {
+                        showVideoFull(context, ctl, label: label);
+                        ctl.keepPlaying(was);
+                      }
+                    },
                   ),
               ]),
               Column(spacing: 4, children: [
@@ -267,7 +300,7 @@ class _RoundBtn extends StatelessWidget {
 }
 
 /// The same player full screen on black (rotating the phone gives a bigger picture).
-Future<void> showVideoFull(BuildContext context, VideoCtl ctl, {required String label}) => Navigator.of(context, rootNavigator: true).push(
+Future<void> showVideoFull(BuildContext context, VideoCtl ctl, {required String Function() label}) => Navigator.of(context, rootNavigator: true).push(
       PageRouteBuilder<void>(
         opaque: true,
         transitionDuration: const Duration(milliseconds: 160),

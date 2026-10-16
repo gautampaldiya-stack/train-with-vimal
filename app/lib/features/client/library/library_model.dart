@@ -36,17 +36,20 @@ class LbItem {
   List<String> get pageImages => [for (final u in (j['page_images'] as List? ?? const [])) '$u'];
   String get fileUrl => '${j['file_url'] ?? ''}';
   String get fileName => '${j['file_name'] ?? ''}';
+  String get linkUrl => '${j['link_url'] ?? ''}';
+  String get linkSite => '${j['link_site'] ?? ''}';
+  String get youtubeThumb => '${j['youtube_thumb'] ?? ''}';
   String get youtube => '${j['youtube_url'] ?? ''}';
   int get duration => (j['duration'] as num?)?.toInt() ?? 0;
 }
 
-String lbKind(String k) => const {'video': 'Video', 'pdf': 'PDF', 'image': 'Image', 'article': 'Article'}[k] ?? k;
+String lbKind(String k) => const {'video': 'Video', 'pdf': 'PDF', 'image': 'Image', 'article': 'Article', 'link': 'Link'}[k] ?? k;
 
 /// "0:48".
 String lbClock(int s) => '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
 
 /// Filters: id, label (board order).
-const lbFilters = [('all', 'All'), ('video', 'Videos'), ('pdf', 'PDFs'), ('image', 'Images'), ('article', 'Articles'), ('saved', 'Saved')];
+const lbFilters = [('all', 'All'), ('video', 'Videos'), ('pdf', 'PDFs'), ('image', 'Images'), ('article', 'Articles'), ('link', 'Links'), ('saved', 'Saved')];
 
 class LibraryController extends ChangeNotifier {
   LibraryController() {

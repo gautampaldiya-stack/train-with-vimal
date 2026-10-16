@@ -135,6 +135,7 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
 - Backend: `apps/content/library.py`, `me/library/` list / detail / progress; share notes and sources.
 - After pulling: `python manage.py migrate` (content 0002) and `seed_demo` (demo PDFs, image and videos; videos need
   ffmpeg, else they show "Video not uploaded yet").
-- Not built: in-app PDF renderer, saving images to the phone gallery.
+- Media (D-27): real PDF pages (pypdfium2, run `pip install -r requirements.txt`), video seek / full screen, picture zoom, exercise guide shows the exercise's video or picture, new `link` kind (migration content 0003).
+- Not built: saving images to the phone gallery, in-app YouTube player.
 - Next client boards: About (`ClientAbout`), Profile (`ClientProfile`).
 

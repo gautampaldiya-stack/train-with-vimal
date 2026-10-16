@@ -53,7 +53,7 @@ class ContentSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContentItem
         fields = ["id", "kind", "title", "category", "category_name", "description", "file", "file_url",
-                  "youtube_url", "cover", "cover_url", "body", "read_minutes", "duration_seconds", "pages",
+                  "youtube_url", "link_url", "cover", "cover_url", "body", "read_minutes", "duration_seconds", "pages",
                   "file_size", "resolution", "share_everyone", "chapters", "outline", "shared_count", "added_by", "usage", "created_at",
                   "updated_at"]
         read_only_fields = ["file_size"]
@@ -108,6 +108,8 @@ class ContentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"file": ["Upload a video or paste a YouTube link."]})
         if kind in ("pdf", "image") and not has_file:
             raise serializers.ValidationError({"file": ["Upload the file."]})
+        if kind == "link" and not (attrs.get("link_url") or (self.instance and self.instance.link_url)):
+            raise serializers.ValidationError({"link_url": ["Paste the link, e.g. https://…"]})
         if kind == "article" and not (attrs.get("body") or (self.instance and self.instance.body)):
             raise serializers.ValidationError({"body": ["Write what clients read."]})
         return attrs
@@ -255,7 +257,7 @@ class ClientContentView(mixins.ListModelMixin, viewsets.GenericViewSet):
 
 class MyLibraryViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     """Client Library: shared with me, with everyone, or with my program / meal plan.
-    `?kind=all|video|pdf|image|article|saved&q=` — rows, counts per filter, done / new totals, coach notes."""
+    `?kind=all|video|pdf|image|article|link|saved&q=` — rows, counts per filter, done / new totals, coach notes."""
 
     permission_classes = [IsClient]
     serializer_class = ContentSerializer

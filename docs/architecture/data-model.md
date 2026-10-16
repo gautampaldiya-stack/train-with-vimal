@@ -478,12 +478,13 @@ Constraints: uniq_idempotency_key
 | `created_at` | DateTimeField | indexed |
 | `updated_at` | DateTimeField |  |
 | `deleted_at` | DateTimeField | optional; indexed |
-| `kind` | CharField | choices: video, article, pdf, image; indexed |
+| `kind` | CharField | choices: video, article, pdf, image, link; indexed |
 | `title` | CharField |  |
 | `category` | ForeignKey | → Category; optional; indexed |
 | `description` | CharField |  |
 | `file` | FileField | optional |
 | `youtube_url` | CharField |  |
+| `link_url` | CharField |  |
 | `cover` | FileField | optional |
 | `body` | TextField |  |
 | `read_minutes` | PositiveSmallIntegerField | optional |

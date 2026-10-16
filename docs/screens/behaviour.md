@@ -1078,13 +1078,13 @@ Din pe tap → Home ki tarah us din ka workout (blocks + card) dikhta hai: beeta
 
 Workout chal raha ho to banner / bar pe `⋯`: `Pause timer` / `Resume timer`, `Finish workout`, `Restart workout`, `Discard workout` (laal, pehle "Discard workout?" poochta hai). Phone par koi bottom sheet khuli ho to toast screen ke upar aata hai (D-17).
 
-Exercise row pe dumbbell ki jagah video cover / YouTube thumbnail (agar ho), video pe ▶ nishan.
+Exercise row pe dumbbell ki jagah picture / video cover / YouTube thumbnail (agar ho), video pe ▶ nishan (cover na ho to icon ke kone me chhota ▶).
 
 `Today · Fri, 9 Oct` heading. Agar aaj ka workout ho gaya to chip `Completed today`. `History` button → past workouts list; khali pe *"No past workouts yet."*
 
 Exercise list blocks me banti hai — `Cardio` (35 min, easy pace) · `Conditioning` (3 sets, rest 60 s) · `Core` (6 sets, rest 45 s).
 
-Exercise pe tap → **detail sheet**: `Today's target` (+ *"Last time: 40 kg × 6"*), `Details`, `How to`, `Form cues`, `Muscles` (body map — `Primary muscle` / `Also works`, `Front` aur `Back` view). `PR` badge jahan personal best ho.
+Exercise pe tap → **detail sheet**: sabse upar exercise ka media (D-27): upload kiya video yahin chalta hai (Tap to play, seek bar, full screen), picture tap par full screen zoom, sirf YouTube link ho to uski still image aur tap par YouTube khulta hai; neeche title + *From content library* / *Opens YouTube*. Details me `Video / picture` row (*Video · 0:42* / *Picture* / *YouTube link* / *Not added yet*). Phir `Today's target` (+ *"Last time: 40 kg × 6"*), `Details`, `How to`, `Form cues`, `Muscles` (body map — `Primary muscle` / `Also works`, `Front` aur `Back` view). `PR` badge jahan personal best ho.
 
 `Start workout` → §4.3 logger.
 
@@ -1261,14 +1261,15 @@ Route `/checkins` (More → Check-ins). `/checkins/daily` daily form (`?edit=1` 
 Everything the client can read or watch: what the coach shared (with an optional note), what came with the program or meal plan, and what Vimal shared with all clients. Route `/library`; `/library/<id>` opens that item (the *"New in your library: …"* notification links there).
 
 - **Header:** back, *Library*, *"Videos, PDFs and guides from Aman"*. Progress card *"3 of 8 done"* with a bar and *"2 new from Aman"* / *"All caught up"*.
-- **Search** *"Search videos, PDFs and articles"* (title, description, text and the coach note) with Try chips `squat` · `eating out` · `protein` · `check-in`. Filters `All` · `Videos` · `PDFs` · `Images` · `Articles` · `Saved` (web shows counts). Line *"Everything Aman shared with you · 8"* or the filter / search name. Unread items first, then newest.
+- **Search** *"Search videos, PDFs and articles"* (title, description, text and the coach note) with Try chips `squat` · `eating out` · `protein` · `check-in`. Filters `All` · `Videos` · `PDFs` · `Images` · `Articles` · `Links` · `Saved` (web shows counts; phone row scrolls sideways). `Links` is not on the board (Gautam, D-27). Line *"Everything Aman shared with you · 8"* or the filter / search name. Unread items first, then newest.
 - **Row / card:** tone box with the kind icon (videos show length), title (blue dot when new), *"PDF · 6 pages · by Vimal Singh"*, where it came from (*"Assigned by Aman · 1 Oct"*, *"From Fat loss · 8 weeks"*, *"From your meal plan"*, *"For all clients · 30 Mar"*), *"Note from Aman"*, `New` or `✓ Done` pill, bookmark (toast *"Saved for later"* / *"Removed from saved"* + Undo).
 - **Web:** grid of cards (3 / 2 / 1 across by width), right column with the progress card and **Notes from Aman** (every note, newest first).
 - **Empty:** no match → *"Nothing found"* / *"Try another word or another type."* with `Show everything`; Saved empty → *"Nothing saved yet"* / *"Open an item and tap Save for later. It will show up here."* The search box has an × to clear it.
 - **Item sheet** (opening marks it read): title, *"Video · 3:05 · Assigned by Aman · 28 Sep"*.
-  - Video: player in the item's tone (188 high, 260 on web), label *Tap to play* / *Playing · <chapter>* / *Paused · …* / *Finished · tap to watch again*, progress bar with times, **CHAPTERS** (tap = jump there and play). Watching to the end marks it done (toast *"Video finished · marked as done"* + Undo). No file → YouTube link or *"Video not uploaded yet"*.
-  - PDF: page card (file name, page heading and text from the coach's outline), `‹ Page 1 of 6 ›`, `Download` (opens the file).
-  - Image: the picture on a green box, *"PNG image · 1 page"*, `Save image`.
+  - Video: player in the item's tone (210 high, 300 on web; black once the video loads), seek bar (tap / drag), full screen button; a YouTube video shows its still and opens YouTube, label *Tap to play* / *Playing · <chapter>* / *Paused · …* / *Finished · tap to watch again*, progress bar with times, **CHAPTERS** (tap = jump there and play). Watching to the end marks it done (toast *"Video finished · marked as done"* + Undo). No file → YouTube link or *"Video not uploaded yet"*.
+  - PDF: the real page (drawn on the server as a picture), tap = full screen with zoom and swipe (*"1 / 6"*); `‹ Page 1 of 6 ›`, `Download` (opens the file). If the file can't be read, the coach's page outline shows instead.
+  - Link: card with the site (*healthline.com*), the address and `Open link` (opens the browser).
+  - Image: the picture on a green box (tap = full screen zoom), *"PNG image · 1 page"*, `Save image`.
   - Article: the text under a line.
   - Coach note box *"From Aman"* with avatar, then the description.
   - Footer `Save for later` / `Saved` and `Mark as done` / `Done · undo`. Toasts *"Marked as done · <title> · 4 of 8 done"*, *"All caught up!"* when the last one is done, *"Marked as not done"*, each with Undo. Save / done go through the offline outbox.

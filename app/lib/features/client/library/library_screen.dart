@@ -193,7 +193,7 @@ class _ClientLibraryScreenState extends State<ClientLibraryScreen> {
             ),
             child: Row(mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, spacing: 5, children: [
               Flexible(child: Text(f.$2, maxLines: 1, overflow: TextOverflow.fade, softWrap: false, style: AppText.s(phone ? 12 : 12.5, W.w6, color: on ? AppColors.white : AppColors.text2))),
-              if (!phone) Text('${c.counts[f.$1] ?? 0}', style: AppText.s(11, W.w7, color: on ? const Color(0xFFC9C9C9) : AppColors.muted)),
+              if (!phone) Text('${c.counts[f.$1] ?? 0}', style: AppText.s(11, W.w7, color: on ? AppColors.daySubOn : AppColors.muted)),
             ]),
           ),
         ),
@@ -201,7 +201,8 @@ class _ClientLibraryScreenState extends State<ClientLibraryScreen> {
     }
 
     if (phone) {
-      return Row(spacing: 4, children: [for (final f in lbFilters) Expanded(child: chip(f, expand: true))]);
+      // Seven filters do not fit one row at 390: they scroll sideways at their own width.
+      return SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(spacing: 6, children: [for (final f in lbFilters) chip(f)]));
     }
     return Wrap(spacing: 6, runSpacing: 6, children: [for (final f in lbFilters) chip(f)]);
   }

@@ -243,6 +243,12 @@ class TrainEx {
   String get youtube => '${full['youtube_url'] ?? ''}';
   bool get hasVideo => full['video'] != null || youtube.isNotEmpty;
 
+  /// The uploaded video or picture the guide shows: kind 'video' | 'image', url, title, duration. Null when none.
+  Map<String, dynamic>? get media => (full['media'] as Map?)?.cast<String, dynamic>();
+  String get mediaKind => '${media?['kind'] ?? ''}';
+  String get mediaUrl => '${media?['url'] ?? ''}';
+  int get mediaSeconds => _n(media?['duration']).toInt();
+
   /// Picture for the exercise tile (video cover or YouTube still); null shows the icon.
   String? get thumb => full['thumb'] is String && (full['thumb'] as String).isNotEmpty ? full['thumb'] as String : null;
   int get coverAt => _n(full['cover_at_seconds']).toInt();

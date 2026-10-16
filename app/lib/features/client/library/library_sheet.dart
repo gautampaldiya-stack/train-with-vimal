@@ -29,6 +29,7 @@ AppIconData lbIcon(String kind) => switch (kind) {
       'video' => AppIcons.play,
       'pdf' => AppIcons.file,
       'image' => AppIcons.photo,
+      'link' => AppIcons.link,
       _ => AppIcons.library,
     };
 
@@ -235,6 +236,7 @@ class _ItemView extends StatelessWidget {
           : Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
               if (x.kind == 'pdf') _Pdf(x: x),
               if (x.kind == 'image') _Image(x: x),
+              if (x.kind == 'link') _Link(x: x),
               ...info,
               if (x.kind == 'article' && x.body.isNotEmpty)
                 Container(
@@ -334,7 +336,7 @@ class _VideoState extends State<_Video> {
     final (bg, fg) = lbTone(x);
     final ch = x.chapters;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-      VideoBox(ctl: v, label: _label, bg: bg, fg: fg, height: CaWeb.of(context) ? 300 : 210, onTapEmpty: _empty, lengthText: x.length),
+      VideoBox(ctl: v, label: _label, bg: bg, fg: fg, height: CaWeb.of(context) ? 300 : 210, onTapEmpty: _empty, lengthText: x.length, poster: x.youtubeThumb),
       ...widget.info,
       if (ch.isNotEmpty) ListenableBuilder(listenable: v, builder: (_, _) => _chapters(ch)),
     ]);
@@ -407,15 +409,21 @@ class _PdfState extends State<_Pdf> {
   Widget _picture(LbItem x, List<String> pics, int i) => Semantics(
         button: true,
         label: 'Open page ${i + 1} full screen',
-        child: GestureDetector(
+        child: Center(
+          child: GestureDetector(
           onTap: () async {
             await showImageViewer(context, pics, start: i, title: x.title);
           },
           child: Container(
             decoration: BoxDecoration(color: AppColors.white, borderRadius: AppRadius.all(6), border: Border.all(color: AppColors.line), boxShadow: const [BoxShadow(color: AppColors.shadowSoft, blurRadius: 8, offset: Offset(0, 2))]),
             clipBehavior: Clip.antiAlias,
-            child: AspectRatio(aspectRatio: 1 / 1.414, child: NetImage(pics[i], fit: BoxFit.contain)),
+            // A whole page, but never taller than the sheet can show next to the pager.
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: CaWeb.of(context) ? 440 : 500),
+              child: AspectRatio(aspectRatio: 1 / 1.414, child: NetImage(pics[i], fit: BoxFit.contain)),
+            ),
           ),
+        ),
         ),
       );
 
@@ -475,5 +483,43 @@ class _Image extends StatelessWidget {
         CaButton('Save image', kind: CaBtnKind.out, small: true, expand: false, icon: AppIcons.downloadLine, onPressed: () => _download(context, x, 'Image saved', 'Find it in your photos')),
       ]),
     ]);
+  }
+}
+
+// ── Link (a reference web page; not on the board, Gautam 2026-10-16)
+
+class _Link extends StatelessWidget {
+  const _Link({required this.x});
+  final LbItem x;
+  @override
+  Widget build(BuildContext context) {
+    final (bg, fg) = lbTone(x);
+    Future<void> open() async {
+      if (!await _openUrl(x.linkUrl) && context.mounted) showToast(context, 'Could not open the link', sub: x.linkUrl, kind: ToastKind.err);
+    }
+
+    return Hover(
+      onTap: open,
+      builder: (_, h, _) => Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: AppColors.white, borderRadius: AppRadius.all(12), border: Border.all(color: h ? AppColors.line2 : AppColors.line)),
+        child: Row(spacing: 12, children: [
+          Container(
+            width: 44,
+            height: 44,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: bg, borderRadius: AppRadius.all(10)),
+            child: AppIcon(AppIcons.link, size: 20, color: fg),
+          ),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+              Text(x.linkSite.isEmpty ? 'Web page' : x.linkSite, style: AppText.s(14, W.w8)),
+              Text(x.linkUrl, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
+            ]),
+          ),
+          CaButton('Open link', kind: CaBtnKind.out, small: true, expand: false, trailingIcon: AppIcons.external, onPressed: open),
+        ]),
+      ),
+    );
   }
 }

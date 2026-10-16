@@ -72,6 +72,7 @@ abstract final class AppColors {
   // Client Train / Workout logger (tn-*, cg-*, bm-*, cl-*, cr-*, cd-*)
   static const tnBlueBg = Color(0xFFEAF1FE);
   static const noteBg = Color(0xFFE7EEFC), noteLine = Color(0xFFCFDDFA); // coach note in the guide
+  static const videoScrim = [Color(0x00000000), Color(0x8C000000)]; // under the video controls
   static const videoDark = [Color(0xFF1F2937), Color(0xFF3F4A5A)];
   static const bmOff = Color(0xFFDCDCD5), bmStrong = Color(0xFF7FA3F0), bmLight = Color(0xFFC9D8FA);
   static const metOff = Color(0xFFE5E5E0);
