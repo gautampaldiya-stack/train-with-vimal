@@ -32,6 +32,7 @@ abstract final class AppColors {
   static const darkHover = Color(0xFF333333);
   static const outlineHover = Color(0xFFF6F6F3);
   static const tableHead = Color(0xFFFBFBF9);
+  static const tableHeadDt = Color(0xFFF7F7F5); // `.tbl.dt th` (My clients, Clients): uppercase head with a top line
   static const navActive = Color(0xFFFAFAFA);
 
   // Client app

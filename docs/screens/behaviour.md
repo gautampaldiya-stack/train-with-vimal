@@ -963,19 +963,18 @@ Review drawer ki Photos: photo par click → full screen (zoom, swipe), title *"
 
 ---
 
-### 3.2 My clients — `TrainerClients`
+### 3.2 My clients — `TrainerClients` (built, D-32)
 
-Title **My clients**, sub *"24 clients given to you · 21 active · 2 at risk"*.
+Title **My clients**, sub *"13 clients given to you · 10 active · 2 at risk"* (sirf apne clients). Top right par AV nahi (Gautam).
 
-Tabs `All` (24) · `Active` (21) · `Pending` · `Paused` · `At risk`. Search *"Search name or email"*, `Filter`, `Export`.
+Tabs `All` · `Active` · `Pending` · `Paused` · `At risk` (counts `clients/counts/` se). Search *"Search name or email"* (naam, email, phone; 300 ms baad). `Filter` (`Filter · 1` jab koi laga ho): Goal · Onboarding · Next check-in (`Today`, `This week`, `Overdue`) · Joined — row par click se us group ke options, neeche `Clear filters`. `Export ⌄`: *"This list (N)"* (jo filter laga hai) aur *"Selected clients (n)"* — CSV download.
 
-Table columns — client (avatar + naam + email) · status badge · plan / today ka kaam (`Done` / `40%` / `Not started`) · phone · `Last active` (`2 h ago`, `1 d ago`, `9 d ago`) · `Actions`.
+Table (web) — select box (header box = is page ke sab) · client (avatar + naam + email; naam → profile) · Goal · Status badge (`Active` / `Pending` / `Paused` / `At risk`) · Onboarding bar (`Done` / `40%` / `Not started`) · Phone (`+91 98201 11234`) · Next check-in (`Sun, 18 Oct`, `Today`, laal `Overdue`, `Paused`, `—`) · Last active (`2 h ago`) · ⋯. Columns se patla page ho to table side me scroll hoti hai (board jaisa). 8 rows ek page, pager *"Showing 1–8 of 13"*.
+Phone (`TrainerClientsMobile`): ek line ek client — avatar, naam, goal, badge, ⋯; Filter aur Export icon buttons; menu bottom sheet.
 
-Row ⋯ menu: `View profile` · `Edit details`.
+Row ⋯ menu: `View profile` (`/clients/<id>`, TrainerClientProfile abhi bana nahi) · `Edit details` → **Edit details drawer**: Must have (Full name*, Mobile* `+91`), Good to have (Email, Gender, Date of birth `DD / MM / YYYY`, City), Goal and body (Goal, Goal weight, Height, Current weight, Injuries or health notes). `Cancel` + `Save changes`; galat number / dusre account ka number field ke neeche error. Save par toast *"Riya’s details saved"*.
 
-**Add client drawer** (admin wala hi, trainer-scoped) — naam `Kavya Menon`, phone `+91` (live check *"No client or sign-up with this number"*), email (hint *"For login links and receipts"*), gender, DOB `DD / MM / YYYY`, city, goal select (`Lose fat`), current weight `62 kg`, height `160 cm`, goal weight `68 kg`, health notes (*"Back pain, thyroid, recent surgery…"*), trainer select (`Aman Verma · 24 / 30`, hint *"You can change this later"*), plan (`Pick later`), start date `Mon, 12 Oct` (hint *"Her day 1 for workout and meal plans"*). Toggles: `Send her the login link` (*"WhatsApp and email. She sets her own password."*) aur `Ask her to fill the health form (PAR-Q)` (*"Shown on her first login"*). Footnote *"Only name and mobile are needed"*.
-
-**Invite link drawer** — link `trainwithvimal.app/join/…`, buttons `Copy link` · `WhatsApp` · `Email` · `Download QR`. **Link settings**: trainer select (hint *"This trainer sees them first"*), label `Instagram · October` (*"Only you see this"*), expiry (`30 days · till 8 Nov`), uses (`No limit`), code (`AMAN-5530`, hint *"Made from the trainer name"*), toggle `New sign-ups wait in Approvals` (*"You approve each person before they can log in"*). Preview *"What she sees when she opens the link"*. `Create link` pe note *"The old links keep working"*. Purane links pe ⋯: `Open link and QR` · `Copy link` · `Delete link`.
+Board me Add client aur Invite link drawers hain par unhe kholne ka button board par nahi hai, isliye trainer app me nahi banaye (admin Clients page me aayenge).
 
 ---
 

@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-16 · Trainer — My clients
+- **Pehle:** Trainer ke liye My clients page nahi tha (holding page). Clients API me Next check-in aur Last active nahi the; Next check-in filter sirf Overdue tha.
+- **Ab:** My clients (web table + phone list) board jaisa: tabs + counts, search, Filter, Export CSV (list ya selected), select boxes, ⋯ menu (View profile, Edit details drawer), 8 rows ka pager. API me `goal_label`, `next_checkin`, `last_active`; filter `today` / `week` / `overdue` column wale rule se; export `ids=` se selected. Top par AV nahi.
+- **Kyun:** Gautam: "ab aage ka karo" (next trainer board).
+- **Updated:** backend clients/serializers.py, views.py, filters.py, tests/test_my_clients.py; app features/trainer/clients/*, core/widgets/select.dart + pager.dart, core/util/save_file*.dart, router, colors, pubspec (web); docs behaviour §3.2, status, CURRENT · Decision D-32
+
 ### 2026-10-16 · Trainer dashboard layout; check-in photos; Open in YouTube jagah
 - **Pehle:** This week right column me, Activity uske neeche 6 rows + Show more. Web top par New session ke paas `AV` profile button. Review drawer ki photo click nahi hoti thi. Exercise guide me "Open in YouTube" video ke neeche alag line me tha.
 - **Ab:** This week left (Clients who need you ke neeche), Activity right me Check-ins ke neeche, latest 10, Show more nahi. Web par AV button hata diya. Photo click → full screen viewer. Exercise guide card ki neeche wali line me right side "Open in YouTube" (pehle wahan "YouTube" likha tha).

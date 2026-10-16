@@ -658,3 +658,12 @@ Future<T?> trackSheet<T>(Future<T?> sheet) {
 void showToast(BuildContext context, String title, {String? sub, ToastKind kind = ToastKind.staff, String? action, VoidCallback? onAction, AppIconData? icon}) {
   ToastHost._instance?.show(_ToastData(kind, title, sub, action, onAction, icon));
 }
+
+/// Pop returns before the exit animation ends and the closing sheet still reads its text fields, so their
+/// controllers are freed only after it has gone.
+void disposeLater(List<ChangeNotifier> items) =>
+    Future.delayed(const Duration(milliseconds: 700), () {
+      for (final i in items) {
+        i.dispose();
+      }
+    });

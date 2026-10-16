@@ -11,6 +11,7 @@ import '../../../core/widgets/input.dart';
 import '../../../core/widgets/media.dart' show showImageViewer;
 import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
+import '../../../core/widgets/select.dart';
 import '../../../core/widgets/tabs.dart';
 import '../../../core/widgets/tooltip.dart';
 import 'dashboard_model.dart';
@@ -117,14 +118,6 @@ class ReviewResult {
   final bool profile;
 }
 
-/// Pop returns before the exit animation ends and the closing sheet still reads its text fields, so their
-/// controllers are freed only after it has gone.
-void disposeLater(List<ChangeNotifier> items) =>
-    Future.delayed(const Duration(milliseconds: 700), () {
-      for (final i in items) {
-        i.dispose();
-      }
-    });
 
 const _quick = ['Great week, keep going!', 'Let’s talk at your next session.', 'I’ve updated your plan.'];
 
@@ -459,17 +452,17 @@ Future<NewSession?> showNewSessionModal(BuildContext context, TrainerHomeControl
           return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
             field(
               'Client',
-              _Select(
+              AppSelect(
                 s.client?.name ?? (snap.hasError ? 'Could not load your clients' : 'Loading…'),
                 entries: [for (final p in list) MenuEntry(p.name, selected: p.id == s.client?.id, onTap: () => s.set(() => s.client = p))],
               ),
             ),
             Row(spacing: 12, children: [
               Expanded(
-                child: field('Day', _Select(dayLabel(s.day), entries: [for (var i = 0; i < 14; i++) MenuEntry(dayLabel(i), selected: i == s.day, onTap: () => s.set(() => s.day = i))])),
+                child: field('Day', AppSelect(dayLabel(s.day), entries: [for (var i = 0; i < 14; i++) MenuEntry(dayLabel(i), selected: i == s.day, onTap: () => s.set(() => s.day = i))])),
               ),
               Expanded(
-                child: field('Time', _Select(s.time, entries: [for (final t in times) MenuEntry(t, selected: t == s.time, onTap: () => s.set(() => s.time = t))])),
+                child: field('Time', AppSelect(s.time, entries: [for (final t in times) MenuEntry(t, selected: t == s.time, onTap: () => s.set(() => s.time = t))])),
               ),
             ]),
             field(
@@ -531,27 +524,3 @@ class _NsState extends ChangeNotifier {
 }
 
 /// `.select`: 36 high, line2 border, value 13.5/600 and a chevron; opens a menu with a tick on the picked item.
-class _Select extends StatelessWidget {
-  const _Select(this.value, {required this.entries});
-  final String value;
-  final List<MenuEntry> entries;
-  @override
-  Widget build(BuildContext context) => Builder(
-        builder: (b) => Hover(
-          onTap: entries.isEmpty ? null : () => showAppMenu(b, entries, width: (b.findRenderObject() as RenderBox).size.width, alignRight: false),
-          builder: (_, h, _) => Container(
-            height: 36,
-            padding: const EdgeInsets.fromLTRB(12, 0, 10, 0),
-            decoration: BoxDecoration(
-              color: AppColors.card,
-              borderRadius: AppRadius.all(AppRadius.input),
-              border: Border.all(color: h ? AppColors.lineHover : AppColors.line2),
-            ),
-            child: Row(spacing: 8, children: [
-              Expanded(child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w6))),
-              const AppIcon(AppIcons.chevronDown, size: 16, color: AppColors.muted),
-            ]),
-          ),
-        ),
-      );
-}

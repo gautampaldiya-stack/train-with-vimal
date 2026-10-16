@@ -29,8 +29,54 @@ class PersonMiniSerializer(serializers.Serializer):
     avatar_color = serializers.CharField()
 
 
+def next_checkin(user, today=None):
+    """The table's "Next check-in": weekly check-ins are due every Sunday. "Paused" / "—" (pending), "Overdue"
+    when nothing came in the last 8 days (same rule as the Overdue filter), "Today" on a Sunday still due, else
+    the Sunday it is due. Uses `last_weekly` when the list annotated it (one query for the page)."""
+    from datetime import timedelta
+
+    from apps.common.utils import dfmt
+
+    if user.status == AccountStatus.PAUSED:
+        return "Paused"
+    if user.status != AccountStatus.ACTIVE:
+        return "—"
+    today = today or timezone.localdate()
+    last = getattr(user, "last_weekly", "unset")
+    if last == "unset":
+        last = (user.submissions.filter(form_type="weekly").order_by("-date").values_list("date", flat=True).first())
+    cp = user.client_profile
+    started = cp.start_date or timezone.localdate(user.date_joined)
+    sunday = today + timedelta(days=6 - today.weekday())
+    if (last is None or last < today - timedelta(days=8)) and started <= today - timedelta(days=8):
+        return "Overdue"
+    if last is not None and last >= sunday - timedelta(days=6):  # this week's is in
+        sunday += timedelta(days=7)
+    elif sunday == today:
+        return "Today"
+    return dfmt(sunday, "%a, %-d %b")
+
+
+def ago(dt, now=None):
+    """"2 h ago", "1 d ago", "just now" ("—" when never)."""
+    if not dt:
+        return "—"
+    secs = ((now or timezone.now()) - dt).total_seconds()
+    if secs < 60 * 5:
+        return "just now"
+    if secs < 3600:
+        return f"{int(secs // 60)} min ago"
+    if secs < 86400:
+        return f"{int(secs // 3600)} h ago"
+    return f"{int(secs // 86400)} d ago"
+
+
 class ClientRowSerializer(serializers.ModelSerializer):
     """One row of the Clients / My clients table."""
+
+    goal_label = serializers.CharField(source="client_profile.get_goal_display")
+    next_checkin = serializers.SerializerMethodField()
+    last_active = serializers.SerializerMethodField()
 
     badge = serializers.SerializerMethodField()
     trainer = serializers.SerializerMethodField()
@@ -42,7 +88,14 @@ class ClientRowSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["id", "full_name", "email", "phone", "initials", "avatar_color", "avatar", "status", "badge",
-                  "trainer", "onboarding", "goal", "adherence_7d", "at_risk_reason", "date_joined", "last_seen_at"]
+                  "trainer", "onboarding", "goal", "goal_label", "adherence_7d", "at_risk_reason", "date_joined",
+                  "last_seen_at", "last_active", "next_checkin"]
+
+    def get_next_checkin(self, obj):
+        return next_checkin(obj)
+
+    def get_last_active(self, obj):
+        return ago(obj.last_seen_at)
 
     def get_badge(self, obj):
         return badge_for(obj)
@@ -132,6 +185,8 @@ class ClientUpdateSerializer(serializers.Serializer):
     start_weight_kg = serializers.DecimalField(max_digits=5, decimal_places=1, required=False, allow_null=True,
                                                min_value=20, max_value=400)
     target_weight_kg = serializers.DecimalField(max_digits=5, decimal_places=1, required=False, allow_null=True,
+                                                min_value=20, max_value=400)
+    current_weight_kg = serializers.DecimalField(max_digits=5, decimal_places=1, required=False, allow_null=True,
                                                 min_value=20, max_value=400)
     health_notes = serializers.CharField(required=False, allow_blank=True, max_length=2000)
     start_date = serializers.DateField(required=False, allow_null=True)

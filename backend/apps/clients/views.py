@@ -3,7 +3,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.db.models import Count, Q
+from django.db.models import Count, Max, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
@@ -59,8 +59,10 @@ class ClientViewSet(viewsets.ModelViewSet):
     http_method_names = ["get", "post", "patch", "delete"]
 
     def get_queryset(self):
-        return services.visible_clients(self.request.user).select_related(
-            "client_profile", "client_profile__trainer")
+        qs = services.visible_clients(self.request.user).select_related("client_profile", "client_profile__trainer")
+        if self.action in ("list", "export"):  # Next check-in column without a query per row
+            qs = qs.annotate(last_weekly=Max("submissions__date", filter=Q(submissions__form_type="weekly")))
+        return qs
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -136,6 +138,9 @@ class ClientViewSet(viewsets.ModelViewSet):
     @action(detail=False)
     def export(self, request):
         qs = self.filter_queryset(self.get_queryset())
+        ids = [i for i in request.query_params.get("ids", "").split(",") if i]
+        if ids:  # "Export selected" in My clients
+            qs = qs.filter(id__in=ids)
         rows = (
             (u.full_name, u.email, u.phone, u.get_status_display(),
              u.client_profile.trainer.full_name if u.client_profile.trainer else "",

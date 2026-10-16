@@ -59,10 +59,23 @@ class ClientFilter(django_filters.FilterSet):
         return qs
 
     def filter_next_checkin(self, qs, name, v):
-        if v == "overdue":
-            from apps.checkins.models import Submission
+        """overdue | today | week — the same rules as the Next check-in column (serializers.next_checkin)."""
+        from apps.checkins.models import Submission
 
-            week_ago = timezone.localdate() - timedelta(days=8)
-            recent = Submission.objects.filter(form_type="weekly", date__gte=week_ago).values("client_id")
-            return qs.exclude(id__in=recent)
+        today = timezone.localdate()
+        week_ago = today - timedelta(days=8)
+        recent = Submission.objects.filter(form_type="weekly", date__gte=week_ago).values("client_id")
+        started_long_ago = Q(client_profile__start_date__lte=week_ago) | Q(
+            client_profile__start_date__isnull=True, date_joined__date__lte=week_ago)
+        overdue = Q(status=AccountStatus.ACTIVE) & ~Q(id__in=recent) & started_long_ago
+        if v == "overdue":
+            return qs.filter(overdue)
+        monday = today - timedelta(days=today.weekday())
+        sunday = monday + timedelta(days=6)
+        sent = Submission.objects.filter(form_type="weekly", date__gte=monday).values("client_id")
+        due = qs.filter(status=AccountStatus.ACTIVE).exclude(overdue).exclude(id__in=sent)
+        if v == "today":
+            return due if today == sunday else qs.none()
+        if v == "week":
+            return due
         return qs

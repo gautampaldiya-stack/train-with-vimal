@@ -164,5 +164,7 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
 - Router: trainer pages go in `trainerScreens` (paths overlap with the client app). Admin map is empty for now.
 - Demo: `seed_demo` gives Aman a full day (5 sessions, 5 more clients, 3 weekly check-ins, Rohan's plan ending
   Sunday). Log in as aman@trainwithvimal.com / Demo@1234.
-- Next trainer boards: TrainerClients(+Mobile), TrainerClientProfile, TrainerCheckins, TrainerCalendar, TrainerMe,
+- My clients (D-32): `app/lib/features/trainer/clients/`; API `clients/` (+ `counts/`, `export/?ids=`). Next
+  check-in rule in `apps/clients/serializers.next_checkin` (filter in `filters.py` uses the same rule).
+- Next trainer boards: TrainerClientProfile, TrainerCheckins, TrainerCalendar, TrainerMe,
   TrainerMoreMobile, TrainerProfile, Trainers. Then admin.

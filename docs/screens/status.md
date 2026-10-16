@@ -65,8 +65,8 @@ Status: **Done** (built and checked in a browser against the board, phone and de
 | TrainerCheckinsMobile | Not started |  |
 | TrainerClientProfile | Not started |  |
 | TrainerClientProfileMobile | Not started |  |
-| TrainerClients | Not started |  |
-| TrainerClientsMobile | Not started |  |
+| TrainerClients | Done | Tabs + counts, search, Filter (4 groups, Clear filters), Export CSV (list or selected), table with select boxes, row ⋯ (View profile, Edit details drawer), pager 8 a page, sideways scroll when narrow (as board). No AV top right (Gautam). Add client / Invite link drawers have no button on the board, not built for trainers. Checked 1280, 1440 on 2026-10-16. View profile opens `/clients/<id>` (TrainerClientProfile not built yet). |
+| TrainerClientsMobile | Done | One line per client (avatar, name, goal, badge, ⋯), icon Filter / Export, Edit details as a tall sheet, pager. Checked 390. |
 | TrainerDashboard | Done | Stats, Today (Done, ⋯ menu, cancel + Undo), Clients who need you (chips, Remind + Undo, Show more), Check-ins to review + review drawer (reply, quick replies, Undo), This week (left column), Activity card (latest 10, D-31), review drawer photos open full screen, no AV button on web, bell dropdown, New session modal (Day / Time list fits on screen and scrolls). Numbers match Check-ins page, My profile and the admin Trainers table (D-30). Checked 600, 768, 900, 1024, 1280, 1440 on 2026-10-16. Open client profile / Plan next / Open go to `/clients/<id>` (TrainerClientProfile not built yet; review drawer Open profile now opens it after the drawer closes). Rechecked 390, 1280 on 2026-10-16 (stats cards, Activity, Day list). |
 | TrainerDashboardMobile | Done | Blue hero under the status bar with the 4-cell stats strip, same cards; ⋯ menu as a bottom sheet, bell full width, review drawer as a tall sheet. Checked 390. |
 | TrainerMe | Not started |  |

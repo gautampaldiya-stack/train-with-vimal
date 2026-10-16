@@ -27,6 +27,7 @@ import '../features/client/more/about_screen.dart';
 import '../features/client/more/more_screen.dart';
 import '../features/client/train/train_screen.dart';
 import '../features/client/train/workout_screen.dart';
+import '../features/trainer/clients/clients_screen.dart';
 import '../features/trainer/dashboard/dashboard_screen.dart';
 import 'services.dart';
 import 'shell/app_shell.dart';
@@ -101,6 +102,7 @@ final Map<String, Widget Function(GoRouterState)> screens = {
 /// Trainer pages. Trainer and client paths overlap (/checkins, /calendar, /more, /habits), so each role has its own map.
 final Map<String, Widget Function(GoRouterState)> trainerScreens = {
   '/dashboard': (_) => const TrainerDashboardScreen(),
+  '/clients': (_) => const TrainerClientsScreen(),
 };
 
 final appRouter = GoRouter(
