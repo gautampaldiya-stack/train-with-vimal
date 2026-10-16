@@ -150,7 +150,8 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
                     _top(d),
                     if (d.live != null) _liveBanner(d, d.live!),
                     if (d.strip.isNotEmpty) _week(d, web: (box.maxWidth - 10) / 7 >= 92),
-                    if (two)
+                    // A rest day (no exercises) has nothing on the left: the day card takes the full width.
+                    if (two && left.isNotEmpty)
                       Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 16, children: [
                         Expanded(flex: 6, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: left)),
                         Expanded(flex: 5, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: right)),

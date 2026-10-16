@@ -410,6 +410,17 @@ class MyMealActionView(APIView):
                                 photo=data_url_file(photo, f"meal-{meal.id}") if photo else None)
         elif op in ("unlog", "unskip"):
             services.unmark(request.user, meal, day)
+        elif op == "photo":
+            # Change or remove the photo of a meal already logged (data URL, or null to remove).
+            st = MealDayState.objects.filter(client=request.user, date=day, meal=meal,
+                                             status=MealDayState.Status.LOGGED).first()
+            if st is None:
+                raise serializers.ValidationError("Mark the meal as eaten first.")
+            photo = request.data.get("photo")
+            if st.photo:
+                st.photo.delete(save=False)
+            st.photo = data_url_file(photo, f"meal-{meal.id}") if photo else None
+            st.save(update_fields=["photo", "updated_at"])
         elif op == "skip":
             services.skip(request.user, meal, day)
         elif op == "portions":
@@ -512,7 +523,15 @@ class MyFoodLogViewSet(mixins.CreateModelMixin, mixins.DestroyModelMixin, viewse
 
     @action(detail=False, methods=["post"], url_path="copy-yesterday")
     def copy_yesterday(self, request):
-        return Response({"copied": services.copy_yesterday(request.user)})
+        new, meals = services.copy_yesterday(request.user)
+        return Response({"copied": len(new), "ids": [str(e.id) for e in new], "meals": meals})
+
+    @action(detail=False, methods=["post"], url_path="undo-copy")
+    def undo_copy(self, request):
+        """Undo on the "Copied N foods from yesterday" toast."""
+        ids = [i for i in (request.data.get("ids") or []) if isinstance(i, str)][:500]
+        meals = [m for m in (request.data.get("meals") or []) if isinstance(m, int)][:50]
+        return Response({"removed": services.undo_copy(request.user, ids, meals)})
 
     @action(detail=False, methods=["post"])
     def water(self, request):

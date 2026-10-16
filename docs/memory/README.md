@@ -10,6 +10,7 @@ Things a new person (or a new Claude session) must know. Update when Gautam deci
 - Messages now: email + in-app + push + realtime. WhatsApp/SMS later via `.env`.
 - No SaaS / independent coaches.
 - Client Food tab = combined `ClientMealNutrition` page (`/food`); `ClientFood` / `ClientNutrition` boards are replaced. Mark as eaten is a dropdown with an optional photo; web keeps tabs fixed and scrolls only the meal cards; every stepper number can be typed (Gautam, 2026-10-15).
+- Meal photo: picking a photo never logs the meal; the photo waits on the card (change / remove) and a separate Mark as eaten logs it. Copy yesterday has Undo. Tabs are fit-width on tablet / web, full on phone. Extras logged to a meal show inside that meal card (Gautam, 2026-10-16).
 - Store data in full detail as the screens show.
 - Client logs (food, workouts, habits, water, check-ins) must work offline and sync later without duplicates.
 - Git: `working` → `develop` → `main`. Commits by Gautam only, no Claude names. Claude pushes, Gautam pulls and tests.

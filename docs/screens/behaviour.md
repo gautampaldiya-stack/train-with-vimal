@@ -1166,6 +1166,8 @@ Search (44 high, *"Search food, e.g. paneer, dal, roti"*, clear ×), `Try` chips
 - `Create custom food` — sheet: Name, Serving (`1 katori`), 4 steppers (ek serving ke), `Save food` → toast *"X saved to My foods — Tap + to log it"*, tab My foods.
 - `Off-plan meal` tick + chips `Ate out` / `Party` / `Travelling` — jo add hoga woh `Off-plan` (amber tag) + reason, coach ko dikhta hai.
 
+Web (720 px content aur 520 px height se upar, Gautam 2026-10-16): header, search, Try chips aur tabs fixed; sirf food list apne card ke andar scroll hoti hai (saari loaded rows + `Show more foods`), right column alag scroll. Tabs fit width. Usse chhota = poora page scroll.
+
 ### 4.6 Nutrition (log view) — `ClientNutrition`
 
 Food tab ka doosra view — plan ke bajaye **aaj kya log hua**.
@@ -1315,6 +1317,11 @@ Faisla ho gaya (Gautam, 2026-10-15): yahi combined page rahega.
 - `Mark as eaten` ab dropdown hai (Edit portions ke right): `Upload photo and mark as eaten` (camera / gallery, photo optional) ya `Mark as eaten without a photo`. Photo meal card par chhota thumbnail, Food log row par thumbnail, details sheet me badi; tap pe full-size viewer.
 - Web (700 px se upar): header, week strip aur tabs fixed; sirf meal cards (aur left column) scroll hote hai. Usse chhota = ek column, poora page scroll.
 - Food log me har plan meal ek row, aur har extra food (search / quick add / off-plan) alag row.
+- **Round 2 (2026-10-16):** `Upload photo and mark as eaten` sirf photo leta hai, meal mark nahi karta. Photo header me pill ke paas, card me *"Photo ready — Breakfast is not logged yet"* bar with `Change` (camera) aur ×. Tab button plain `Mark as eaten` ho jata hai jo photo ke saath log karta hai. Toast *"Photo added — Tap Mark as eaten to log Breakfast"*. `Mark as eaten without a photo` turant log karta hai. Logged meal ke ☰ me `Add a photo` / `Change photo` / `Remove photo`.
+- Log food se kisi meal me add hua food us meal card me *"ALSO LOGGED · OUTSIDE THE PLAN · +94 kcal"* ke neeche row (naam, Off-plan tag, amount · time · reason, kcal, chevron → details sheet).
+- `Copy yesterday` toast *"Copied N foods from yesterday"* + `Undo` (sirf woh copied rows hat-ti hai). Aaj jo meal pehle se logged hai woh copy nahi hota.
+- Logged time = jab tap kiya (8:00 ka breakfast 8:40 par mark kiya to row *"Logged 8:40 am · planned for 8:00 am"*).
+- Tabs (My plan / Food log) phone par full width, tablet / web par chhote aur fit width.
 - Purane `ClientFood` aur `ClientNutrition` boards ki jagah yahi page hai; nav ka Food / Nutrition `/food` kholta hai.
 ---
 

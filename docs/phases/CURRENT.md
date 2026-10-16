@@ -110,4 +110,7 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
 - Mark as eaten ▾ with optional photo (data URL with the eat op, outbox); photo on card, log row, details.
 - Web ≥ 700 px content: header, strip, tabs fixed; lists scroll. Checked 390, 600, 768, 900, 1024, 1280, 1440.
 - Old boards ClientFood / ClientNutrition are replaced by this page (not built on purpose).
+- Round 2 (2026-10-16): photo first then Mark as eaten, `photo` meal op, extras inside the meal card, Copy yesterday
+  Undo (`undo-copy`), Log food web list scrolls alone, fit tabs (`TwoTabs.fit`), rest-day Train card full width,
+  daily edit button `Save changes`. Waiting on Gautam: "Other time" option in Add to (idea, not built).
 - Next: remaining client tabs (Progress, More), then trainer / admin boards.

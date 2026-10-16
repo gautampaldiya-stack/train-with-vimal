@@ -255,18 +255,39 @@ def log_food(client, *, meal_name, food=None, quantity=1, unit=None, name="", kc
 
 
 def copy_yesterday(client, day=None):
+    """Copies yesterday's food log to [day]. A plan meal already logged today is not copied twice.
+    Returns (new entries, ids of the plan meals it marked as logged) so the app can Undo it."""
     day = day or timezone.localdate()
-    rows = FoodLogEntry.objects.filter(client=client, date=day - timedelta(days=1))
+    logged = set(MealDayState.objects.filter(client=client, date=day, status=MealDayState.Status.LOGGED)
+                 .values_list("meal_id", flat=True))
+    rows = [r for r in FoodLogEntry.objects.filter(client=client, date=day - timedelta(days=1))
+            if not (r.source == FoodLogEntry.Source.PLAN and r.meal_id in logged)]
     now = timezone.now()
-    new = [FoodLogEntry(client=client, date=day, logged_at=now, meal_name=r.meal_name, meal=r.meal, food=r.food,
-                        name=r.name, quantity=r.quantity, unit_name=r.unit_name, grams=r.grams, kcal=r.kcal,
-                        protein=r.protein, carbs=r.carbs, fat=r.fat, source=r.source, swapped_from=r.swapped_from)
-           for r in rows]
-    FoodLogEntry.objects.bulk_create(new)
-    for meal_id in {r.meal_id for r in rows if r.meal_id and r.source == FoodLogEntry.Source.PLAN}:
+    new = FoodLogEntry.objects.bulk_create([
+        FoodLogEntry(client=client, date=day, logged_at=now, meal_name=r.meal_name, meal=r.meal, food=r.food,
+                     name=r.name, quantity=r.quantity, unit_name=r.unit_name, grams=r.grams, kcal=r.kcal,
+                     protein=r.protein, carbs=r.carbs, fat=r.fat, source=r.source, swapped_from=r.swapped_from,
+                     reason=r.reason)
+        for r in rows])
+    meals = sorted({r.meal_id for r in rows if r.meal_id and r.source == FoodLogEntry.Source.PLAN})
+    for meal_id in meals:
         MealDayState.objects.update_or_create(client=client, date=day, meal_id=meal_id,
                                               defaults={"status": "logged", "logged_at": now})
-    return len(new)
+    return new, meals
+
+
+@transaction.atomic
+def undo_copy(client, ids, meals, day=None):
+    """Undo of Copy yesterday: removes those entries and un-logs the plan meals the copy logged."""
+    day = day or timezone.localdate()
+    n, _ = FoodLogEntry.objects.filter(client=client, date=day, id__in=ids).delete()
+    for st in MealDayState.objects.filter(client=client, date=day, meal_id__in=meals,
+                                          status=MealDayState.Status.LOGGED):
+        if not FoodLogEntry.objects.filter(client=client, date=day, meal_id=st.meal_id,
+                                           source=FoodLogEntry.Source.PLAN).exists():
+            st.status, st.logged_at = "", None
+            st.save(update_fields=["status", "logged_at", "updated_at"])
+    return n
 
 
 def _active_plan(client, day):

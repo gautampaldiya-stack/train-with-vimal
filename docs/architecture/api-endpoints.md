@@ -220,6 +220,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `me/food-log/` | POST | MyFoodLogViewSet |  |
 | `me/food-log/<pk>/` | DELETE | MyFoodLogViewSet |  |
 | `me/food-log/copy-yesterday/` | POST | MyFoodLogViewSet |  |
+| `me/food-log/undo-copy/` | POST | MyFoodLogViewSet |  |
 | `me/food-log/water/` | POST | MyFoodLogViewSet |  |
 | `me/food/` | GET | MyFoodView | Food tab (combined meal plan + nutrition): GET ?date=YYYY-MM-DD. |
 | `me/food/items/<int:item_id>/swaps/` | GET | MySwapOptionsView | Swap sheet for one planned food: approved swaps with match % and matched grams. |

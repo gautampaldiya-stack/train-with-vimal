@@ -130,7 +130,16 @@ Future<void> showCaloriesSheet(BuildContext context, FoodController c) {
 
 // ─────────────────────────────── Meal menu (☰)
 
-Future<void> showMealMenu(BuildContext context, FoodController c, FMeal m, {required VoidCallback onSwap, required VoidCallback onEdit, required VoidCallback onSkip}) {
+Future<void> showMealMenu(
+  BuildContext context,
+  FoodController c,
+  FMeal m, {
+  required VoidCallback onSwap,
+  required VoidCallback onEdit,
+  required VoidCallback onSkip,
+  required VoidCallback onPhoto,
+  required VoidCallback onRemovePhoto,
+}) {
   final swap = c.data!.allowSwaps && m.canSwap && m.open;
   return showAppSheet(
     context,
@@ -146,6 +155,14 @@ Future<void> showMealMenu(BuildContext context, FoodController c, FMeal m, {requ
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         if (swap) FdMenuItem(first: true, icon: AppIcons.swap, title: 'Swap a food', sub: 'Similar macros, different dish', onTap: () => go(onSwap)),
         FdMenuItem(first: !swap, icon: AppIcons.edit, title: 'Edit portions', sub: 'Change grams, pieces or katori', onTap: () => go(onEdit)),
+        if (m.logged)
+          FdMenuItem(
+            icon: AppIcons.camera,
+            title: m.photo == null ? 'Add a photo' : 'Change photo',
+            sub: m.photo == null ? 'A picture of what you ate' : 'Take or pick another picture',
+            onTap: () => go(onPhoto),
+          ),
+        if (m.logged && m.photo != null) FdMenuItem(icon: AppIcons.trash, title: 'Remove photo', sub: 'The meal stays logged', danger: true, onTap: () => go(onRemovePhoto)),
         FdMenuItem(icon: AppIcons.search, title: 'Log something different', sub: 'Ate outside the plan? No stress', onTap: () => go(() => context.go('/food/log?meal=${Uri.encodeComponent(m.name)}'))),
         if (!m.skipped) FdMenuItem(icon: AppIcons.close, title: 'Skip meal', sub: 'It will not count towards today', danger: true, onTap: () => go(onSkip)),
       ]);

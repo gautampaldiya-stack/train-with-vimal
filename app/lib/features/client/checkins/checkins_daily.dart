@@ -194,7 +194,11 @@ class _DailyCheckinState extends State<DailyCheckin> {
       ],
     ),
     if (_autoLine() != null) ckInfo(_autoLine()!),
-    CaButton('Send to $coach', icon: AppIcons.send, dimmed: _missing.isNotEmpty, loading: _busy, onPressed: _send),
+    // Editing a sent check-in saves the changes; a new one is sent.
+    if (_editing && today?.id != null)
+      CaButton('Save changes', icon: AppIcons.check, dimmed: _missing.isNotEmpty, loading: _busy, onPressed: _send)
+    else
+      CaButton('Send to $coach', icon: AppIcons.send, dimmed: _missing.isNotEmpty, loading: _busy, onPressed: _send),
   ];
 
   /// `ck-auto`: what the check-in takes from Habits.

@@ -68,3 +68,39 @@ def test_create_custom_food_by_serving(client_user):
     assert any(x["id"] == f["id"] for x in r.json()["results"])
     r = client_user.post("/api/v1/me/foods/", {"name": "x", "serving": "", "kcal": 0}, format="json")
     assert r.status_code == 400
+
+
+def test_change_and_remove_the_photo_of_a_logged_meal(client_user):
+    today = timezone.localdate().isoformat()
+    meal = _day(client_user)["meals"][-1]
+    url = f"/api/v1/me/food/meals/{meal['id']}/photo/"
+    # not logged yet: no photo on its own
+    assert client_user.post(url, {"date": today, "photo": PNG}, format="json").status_code == 400
+    client_user.post(f"/api/v1/me/food/meals/{meal['id']}/eat/", {"date": today}, format="json")
+    r = client_user.post(url, {"date": today, "photo": PNG}, format="json")
+    assert r.status_code == 200
+    assert next(m for m in r.json()["meals"] if m["id"] == meal["id"])["photo"].startswith("http")
+    r = client_user.post(url, {"date": today, "photo": None}, format="json")
+    m = next(m for m in r.json()["meals"] if m["id"] == meal["id"])
+    assert m["photo"] is None and m["pill"] == "logged"
+
+
+def test_copy_yesterday_can_be_undone(client_user):
+    from datetime import timedelta
+    today = timezone.localdate()
+    meal = _day(client_user)["meals"][0]
+    client_user.post(f"/api/v1/me/food/meals/{meal['id']}/eat/", {"date": (today - timedelta(days=1)).isoformat()},
+                     format="json")
+    MealDayState.objects.filter(meal_id=meal["id"], date=today).delete()
+    FoodLogEntry.objects.filter(meal_id=meal["id"], date=today).delete()
+    r = client_user.post("/api/v1/me/food-log/copy-yesterday/", {}, format="json")
+    c = r.json()
+    assert c["copied"] == len(c["ids"]) > 0 and meal["id"] in c["meals"]
+    assert next(m for m in _day(client_user)["meals"] if m["id"] == meal["id"])["pill"] == "logged"
+    # copying again does not log the same plan meal twice
+    again = client_user.post("/api/v1/me/food-log/copy-yesterday/", {}, format="json").json()
+    assert meal["id"] not in again["meals"]
+    client_user.post("/api/v1/me/food-log/undo-copy/", {"ids": again["ids"], "meals": again["meals"]}, format="json")
+    r = client_user.post("/api/v1/me/food-log/undo-copy/", {"ids": c["ids"], "meals": c["meals"]}, format="json")
+    assert r.json()["removed"] == c["copied"]
+    assert next(m for m in _day(client_user)["meals"] if m["id"] == meal["id"])["pill"] != "logged"

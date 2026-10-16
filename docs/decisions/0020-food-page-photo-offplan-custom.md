@@ -19,3 +19,11 @@
 6. Web: from 700 px of content the header, strip and tabs stay put and only the lists scroll (Gautam).
 7. Every number on these pages (portions, quick add, custom food, portion sheet) keeps − / + and can be typed
    by tapping it (Gautam).
+8. **Photo first, then confirm** (Gautam, 2026-10-16): picking a photo does not log the meal. The photo waits on
+   the card (Change / remove), and a separate `Mark as eaten` sends it with `eat`. A logged meal's photo is
+   changed or removed with `POST me/food/meals/<id>/photo/` (`{photo}` data URL, or empty to clear); only a
+   logged meal takes it ("Mark the meal as eaten first.").
+9. Foods logged from Log food into a meal show inside that meal card as "Also logged · outside the plan".
+10. **Copy yesterday Undo:** `copy-yesterday` answers `{copied, ids, meals}` and skips plan rows of meals already
+   logged today. `POST me/food-log/undo-copy/ {ids, meals}` deletes exactly those rows (today, own) and un-logs
+   a meal that has no plan rows left. Answer `{removed}`.

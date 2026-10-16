@@ -95,6 +95,8 @@ class FoodController extends ChangeNotifier {
       m.j['photo'] = null;
     } else if (op == 'skip') {
       m.j['status'] = 'skipped';
+    } else if (op == 'photo') {
+      m.j['photo'] = body['photo'];
     }
     d.relog();
     notifyListeners();
@@ -142,11 +144,17 @@ class FoodController extends ChangeNotifier {
     await load();
   }
 
-  /// Copy yesterday: returns how many foods were copied.
-  Future<int> copyYesterday() async {
+  /// Copy yesterday: the server's answer (`copied`, `ids`, `meals`) for Undo; null when it waits offline.
+  Future<Map<String, dynamic>?> copyYesterday() async {
     final r = await Services.outbox.enqueue('POST', 'me/food-log/copy-yesterday/', {}, tag: 'food:day:copy');
     await load();
-    return r is Map ? (r['copied'] as num? ?? 0).toInt() : -1;
+    return r is Map ? r.cast<String, dynamic>() : null;
+  }
+
+  /// Undo of Copy yesterday.
+  Future<void> undoCopy(Map<String, dynamic> copy) async {
+    await Services.outbox.enqueue('POST', 'me/food-log/undo-copy/', {'ids': copy['ids'] ?? [], 'meals': copy['meals'] ?? []}, tag: 'food:day:uncopy');
+    await load();
   }
 
   /// The swap sheet's options for one planned food.

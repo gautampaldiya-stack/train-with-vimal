@@ -313,32 +313,46 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     ]),
   );
 
+  /// Web: the header, search and tabs stay put; only the food list (and the right column) scroll.
   Widget _web() => CaWeb(
     web: true,
-    child: SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(32, 32, 32, 72),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1080),
-          child: LayoutBuilder(builder: (context, box) {
-            final two = box.maxWidth >= 720;
-            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 16, children: [
-              _top(),
-              if (two)
-                Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 16, children: [
-                  Expanded(flex: 3, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: _searchPart())),
-                  Expanded(flex: 2, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [_addedCard(), _exCard()])),
-                ])
-              else ...[
-                ..._searchPart(),
-                _addedCard(),
-                _exCard(),
-              ],
-            ]);
-          }),
-        ),
-      ),
-    ),
+    child: LayoutBuilder(builder: (context, page) {
+      final inner = (page.maxWidth - 64).clamp(0.0, 1080.0);
+      final two = inner >= 720 && page.maxHeight >= 520;
+      Widget frame(Widget child, {double bottom = 72}) => Padding(
+        padding: EdgeInsets.fromLTRB(32, 32, 32, bottom),
+        child: Align(alignment: Alignment.topCenter, child: SizedBox(width: inner, child: child)),
+      );
+      if (!two) {
+        return SingleChildScrollView(
+          child: frame(Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+            _top(),
+            ..._searchPart(),
+            _addedCard(),
+            _exCard(),
+          ])),
+        );
+      }
+      return frame(
+        bottom: 24,
+        Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          _top(),
+          const SizedBox(height: 16),
+          Expanded(
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 16, children: [
+              Expanded(flex: 3, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: _searchPart(scroll: true))),
+              Expanded(
+                flex: 2,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [_addedCard(), _exCard()]),
+                ),
+              ),
+            ]),
+          ),
+        ]),
+      );
+    }),
   );
 
   Widget _top() => Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
@@ -454,7 +468,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
 
   // ─────────────────────────────── Search, tabs, list
 
-  List<Widget> _searchPart() {
+  List<Widget> _searchPart({bool scroll = false}) {
     final q = _q.text.trim();
     return [
       Container(
@@ -491,6 +505,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
           ]),
         ),
       TwoTabs(
+        fit: !context.isPhone,
         labels: const ['All', 'Recent', 'My foods'],
         index: const ['All', 'Recent', 'My foods'].indexOf(_tab),
         onPick: (i) {
@@ -499,11 +514,11 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
           _search();
         },
       ),
-      _listCard(),
+      if (scroll) Flexible(child: _listCard(scroll: true)) else _listCard(),
     ];
   }
 
-  Widget _listCard() {
+  Widget _listCard({bool scroll = false}) {
     final q = _q.text.trim();
     final coach = day.data?.coach ?? 'your coach';
     final String cnt;
@@ -516,14 +531,11 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     } else {
       cnt = '${_libCount > 0 ? _libCount : _count} foods in $coach’s library and yours';
     }
-    final showAll = _all || q.isNotEmpty;
+    // In the scrolling web list every loaded food shows; elsewhere the first 8, then Show all.
+    final showAll = scroll || _all || q.isNotEmpty;
     final rows = showAll ? _foods : _foods.take(8).toList();
     final added = _added(meal);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-      decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Padding(padding: const EdgeInsets.fromLTRB(0, 8, 0, 4), child: Text(cnt, style: AppText.s(11.5, W.w7, color: AppColors.muted))),
+    final body = <Widget>[
         if (_loading && _foods.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 18),
@@ -546,7 +558,22 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
           _more('Show all $_count foods', () => setState(() => _all = true))
         else if (showAll && _hasNext && _error == null)
           _more(_loadingMore ? 'Loading…' : 'Show more foods', _loadingMore ? null : () => _search(more: true)),
-      ]),
+    ];
+    final head = Padding(padding: const EdgeInsets.fromLTRB(0, 8, 0, 4), child: Text(cnt, style: AppText.s(11.5, W.w7, color: AppColors.muted)));
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
+      child: scroll
+          ? Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              head,
+              Flexible(
+                child: SingleChildScrollView(
+                  key: PageStorageKey('fl-$_tab'),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: body),
+                ),
+              ),
+            ])
+          : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [head, ...body]),
     );
   }
 
