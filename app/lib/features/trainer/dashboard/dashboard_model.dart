@@ -82,6 +82,20 @@ class TdNotice {
   bool read;
 }
 
+/// One row of the Activity card: who + what over the detail line, a kind dot and when.
+class TdActivity {
+  TdActivity(Map j)
+      : id = '${j['id']}',
+        who = '${j['who']}',
+        what = '${j['what']}',
+        detail = '${j['detail'] ?? ''}',
+        kind = '${j['kind'] ?? ''}',
+        tone = '${j['tone'] ?? ''}',
+        when = '${j['when'] ?? ''}',
+        client = '${j['client'] ?? ''}';
+  final String id, who, what, detail, kind, tone, when, client;
+}
+
 class TrainerHome {
   TrainerHome(Map j)
       : greeting = '${j['greeting']}',
@@ -94,6 +108,8 @@ class TrainerHome {
         checkinsTotal = (j['checkins_total'] as num?)?.toInt() ?? (j['checkins'] as List).length,
         weekRange = '${(j['week'] as Map)['range']}',
         week = [for (final r in (j['week'] as Map)['rows'] as List) ('${(r as Map)['label']}', '${r['value']}')],
+        activity = [for (final s in (j['activity'] as Map?)?['rows'] as List? ?? []) TdActivity(s as Map)],
+        activityNext = '${(j['activity'] as Map?)?['next'] ?? ''}',
         notices = [for (final s in j['notices'] as List) TdNotice(s as Map)],
         unread = (j['unread'] as num?)?.toInt() ?? 0;
   final String greeting, date, subline, weekRange;
@@ -107,6 +123,10 @@ class TrainerHome {
   final List<(String, String)> week;
   final List<TdNotice> notices;
   int unread;
+
+  /// Newest first; [activityNext] is the cursor for "Show more" ('' when there is no more).
+  final List<TdActivity> activity;
+  String activityNext;
 }
 
 /// Trainer dashboard (boards `TrainerDashboard` + `TrainerDashboardMobile`): loads `dashboard/trainer/` and runs
@@ -170,6 +190,24 @@ class TrainerHomeController extends ChangeNotifier {
   void _send(String id) {
     _pending.remove(id);
     Services.api.post('clients/$id/remind/', {}).ignore();
+  }
+
+  bool loadingMore = false;
+
+  /// Activity card "Show more": the next page under the rows already shown.
+  Future<void> moreActivity() async {
+    final d = data;
+    if (d == null || d.activityNext.isEmpty || loadingMore) return;
+    loadingMore = true;
+    notifyListeners();
+    try {
+      final r = await Services.api.get<Map>('dashboard/trainer/activity/', query: {'before': d.activityNext});
+      d.activity.addAll([for (final s in r['rows'] as List) TdActivity(s as Map)]);
+      d.activityNext = '${r['next'] ?? ''}';
+    } finally {
+      loadingMore = false;
+      notifyListeners();
+    }
   }
 
   Future<void> readAll() async {

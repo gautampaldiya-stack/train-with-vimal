@@ -35,7 +35,13 @@ Future<void> showAppMenu(BuildContext anchor, List<MenuEntry> entries, {double w
   final size = overlay.size;
   final left = alignRight ? (topLeft.dx + box.size.width - width) : topLeft.dx;
   final below = topLeft.dy + box.size.height + 6;
-  final openUp = below + 40.0 * entries.length > size.height - 12;
+  // Opens on the side with room; a long list gets that side's height and scrolls, starting at the picked row.
+  final need = 12 + _rowH * entries.length;
+  final roomBelow = size.height - below - 12, roomAbove = topLeft.dy - 6 - 12;
+  final openUp = need > roomBelow && roomAbove > roomBelow;
+  final maxH = (openUp ? roomAbove : roomBelow).clamp(120.0, 420.0);
+  final picked = entries.indexWhere((e) => e.selected);
+  final start = picked <= 0 ? 0.0 : (_rowH * picked - (maxH - _rowH) / 2).clamp(0.0, (need - maxH).clamp(0.0, double.infinity));
   await showGeneralDialog(
     context: anchor,
     barrierDismissible: true,
@@ -48,26 +54,45 @@ Future<void> showAppMenu(BuildContext anchor, List<MenuEntry> entries, {double w
         top: openUp ? null : below,
         bottom: openUp ? size.height - topLeft.dy + 6 : null,
         width: width,
-        child: _MenuBox(entries: entries, close: () => Navigator.of(ctx).pop()),
+        child: _MenuBox(entries: entries, maxHeight: maxH, start: start, close: () => Navigator.of(ctx).pop()),
       ),
     ]),
     transitionBuilder: (_, a, _, child) => FadeTransition(opacity: a, child: child),
   );
 }
 
-class _MenuBox extends StatelessWidget {
-  const _MenuBox({required this.entries, required this.close});
+/// One menu row (34) plus the gap under it (3).
+const _rowH = 37.0;
+
+class _MenuBox extends StatefulWidget {
+  const _MenuBox({required this.entries, required this.close, this.maxHeight = 420, this.start = 0});
   final List<MenuEntry> entries;
   final VoidCallback close;
+  final double maxHeight, start;
+  @override
+  State<_MenuBox> createState() => _MenuBoxState();
+}
+
+class _MenuBoxState extends State<_MenuBox> {
+  late final scroll = ScrollController(initialScrollOffset: widget.start);
+  List<MenuEntry> get entries => widget.entries;
+  VoidCallback get close => widget.close;
+
+  @override
+  void dispose() {
+    scroll.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => Material(
         color: Colors.transparent,
         child: Container(
           padding: const EdgeInsets.all(6),
-          constraints: const BoxConstraints(maxHeight: 420),
+          constraints: BoxConstraints(maxHeight: widget.maxHeight),
           decoration: BoxDecoration(color: AppColors.card, borderRadius: AppRadius.all(AppRadius.menu), border: Border.all(color: AppColors.line), boxShadow: AppShadows.menu),
           child: SingleChildScrollView(
+            controller: scroll,
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 3, children: [
               for (final e in entries)
                 if (e.separator)

@@ -866,7 +866,7 @@ Breadcrumb `Trainers / Aman Verma`. Header: `AV`, **Aman Verma**, badge `Active`
 | `Assign clients` | Drawer — unassigned ya doosre trainer ke clients ki list (Sana Khan *no trainer*, Farhan Ali *from Karan Mehta (full)*…), toggles `Tell the clients` (push *"Aman Verma is your trainer now"*) aur `Keep their current plans` (*"Aman can change them later"*) |
 | ⋯ 3-dot | `Access and permissions` · `Send password reset link` · `Move all clients to another trainer` · `Deactivate Aman` (laal) |
 
-**4 stats** — `24 / 30` clients (*6 spots free*) · check-ins to review (*Oldest from yesterday*) · `84%` adherence (*+2% vs last month*) · `3 h` reply time (*Team average 4 h*).
+**4 stats** (web: 4 barabar cards ek line me, page 760 se patla ho to 2 × 2; height content jitni, kam se kam 80) — `24 / 30` clients (*6 spots free*) · check-ins to review (*Oldest from yesterday*) · `84%` adherence (*+2% vs last month*) · `3 h` reply time (*Team average 4 h*).
 
 **6 tabs** — `Overview` · `Clients` (24) · `Access and permissions` · `Activity` · `Documents` (6) · `What clients see`.
 
@@ -940,7 +940,7 @@ Trainer login karta hai to usko **apna workspace** milta hai. Sidebar me brand k
 
 ---
 
-### 3.1 Trainer dashboard — `TrainerDashboard` (built, D-30)
+### 3.1 Trainer dashboard — `TrainerDashboard` (built, D-30, D-31)
 
 Title time ke hisaab se — *"Good evening, Aman"*, neeche *"Friday, 16 October · 10 clients · 5 sessions today"*. Top right: bell (laal dot jab unread), `New session`, `AV` (My profile).
 Phone (`TrainerDashboardMobile`): blue hero status bar ke neeche tak (date · Trainer workspace, bell, `+`, `AV`, greeting, picture), uske kinare par 4 numbers ki strip.
@@ -953,10 +953,11 @@ Phone (`TrainerDashboardMobile`): blue hero status bar ke neeche tak (date · Tr
 | **Clients who need you** | cap *"Only your clients"*, chips `All` · `Missed workouts` · `Not logging` · `Plan ending` · `Feeling low` (count ke saath). Ek client ek hi row (sabse bada reason). 4 rows, phir `Show N more` | `Remind` → toast *"Reminder sent to Kabir · Push and WhatsApp"* + `Undo` (Undo tak reminder ruka rehta hai), button `Reminded`. `Plan next` / `Open` / naam → client profile |
 | **Check-ins to review** | Sabse purane 5 (weekly, daily, monthly) — *"Riya Sharma · Weekly check-in"*, *"Weight 61.8 kg · energy 3/5 · knees sore"*, age badge (laal 48 h+, peela 24 h+). Count = pura queue (Check-ins page aur sidebar badge jaisa). Khali: *"All check-ins reviewed"* | Row → review drawer: 4 numbers, week ke jawab + last week, *"Riya wrote"*, photos, reply + 3 quick replies. `Open profile` · `Close` · `Mark reviewed` / `Send and mark reviewed` → toast *"Riya’s check-in reviewed · Your reply was sent / Moved out of your list"* + `Undo`. `View all` → Check-ins |
 | **This week** | `Mon 12 – Fri 16 Oct`: Sessions held, Check-ins reviewed, Plans changed, New clients | `My profile` link |
+| **Activity** (Gautam ne add karwaya, board me nahi) | *"You and your clients"*: trainer aur uske clients ne kya kiya, naya sabse upar — check-in bheja, workout khatam, session book / cancel, plan badla, reminder. Har row: kind ka gol dot (check-in blue, plan purple, client logs green, session amber), *"Tanya Arora sent Weekly check-in"*, neeche client · item, right me time (`21:28` / `Yesterday` / `3 days ago`). 6 rows; *"Showing N"* + `Show more` agle 6 laata hai (`dashboard/trainer/activity/?before=`). Sirf apne clients | client line → client profile · `Show more` |
 
 **Bell** — *Notifications* list (unread blue), `Mark all read`; check-in wali notice review drawer kholti hai.
 
-**`New session` modal** — Client (sirf apne active clients), Day (aaj + 13 din), Time (15 min steps), Length `30 / 45 / 60 / 90 min`, Where `Gym floor` / `Video call`, note (*Bring your lifting belt*). `Cancel` + `Add session` → toast *"Session added · Neha Jain · today 17:30"* + `Undo` (bina client message ke cancel).
+**`New session` modal** — Client (sirf apne active clients), Day (aaj + 13 din), Time (15 min steps), Length `30 / 45 / 60 / 90 min`, Where `Gym floor` / `Video call`, note (*Bring your lifting belt*). `Cancel` + `Add session` → toast *"Session added · Neha Jain · today 17:30"* + `Undo` (bina client message ke cancel). Day / Time list jis taraf jagah ho us taraf khulti hai, screen ke andar rehti hai, scroll hoti hai aur chuna hua din / time beech me dikhta hai.
 
 ---
 

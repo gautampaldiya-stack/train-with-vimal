@@ -141,6 +141,11 @@ abstract final class AppColors {
   static const meAvBg = Color(0xFFDCE6FB); // `.profile .pav` top-right avatar (text accentText, hover ring accentSoft)
   static const tdNoteNew = Color(0xFFF3F7FF); // unread row in the bell dropdown
   static const tdOkIcon = Color(0xFF027A48); // "All check-ins reviewed" tick
+  // `.tp-tl-ic` timeline dots by kind (Activity card): k-ci check-in, k-pl plan, k-cl client logs, k-ch session
+  static const tlCiBg = Color(0xFFDBEAFE), tlCiFg = Color(0xFF1D4ED8);
+  static const tlPlBg = Color(0xFFEDE9FE), tlPlFg = Color(0xFF6D28D9);
+  static const tlClBg = Color(0xFFDCFCE7), tlClFg = Color(0xFF15803D);
+  static const tlChBg = Color(0xFFFEF3C7), tlChFg = Color(0xFFB45309);
   static const viewerBg = Color(0xF0111111), viewerBtn = Color(0x29FFFFFF), viewerBtnHover = Color(0x47FFFFFF), viewerBtnDark = Color(0x8C111111); // full-size photo viewer
 
   /// Avatar pairs (bg, text), picked from the name so a person keeps their colour.

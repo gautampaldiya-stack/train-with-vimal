@@ -1,0 +1,190 @@
+<!doctype html>
+<!-- Source of eat.pdf (demo Library guide "Eating out on a fat loss plan"). Printed to A4 with Chromium:
+     node scripts/demo_pdf.js apps/common/demo_media/eat.html apps/common/demo_media/eat.pdf -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Eating out on a fat loss plan</title>
+<style>
+  @font-face { font-family: PJS; font-weight: 400; src: url(../../../../app/assets/fonts/PlusJakartaSans-400.ttf); }
+  @font-face { font-family: PJS; font-weight: 500; src: url(../../../../app/assets/fonts/PlusJakartaSans-500.ttf); }
+  @font-face { font-family: PJS; font-weight: 600; src: url(../../../../app/assets/fonts/PlusJakartaSans-600.ttf); }
+  @font-face { font-family: PJS; font-weight: 700; src: url(../../../../app/assets/fonts/PlusJakartaSans-700.ttf); }
+  @font-face { font-family: PJS; font-weight: 800; src: url(../../../../app/assets/fonts/PlusJakartaSans-800.ttf); }
+  @page { size: A4; margin: 0; }
+  :root { --ink: #171717; --ink2: #3F3F46; --muted: #6B6B70; --line: #E6E6E1; --sub: #F6F6F3; --accent: #2563EB;
+          --accent-soft: #EAF0FE; --ok: #11663D; --ok-bg: #E8F6EE; --warn: #9A3A10; --warn-bg: #FFF1E6; --bad: #A4231B; --bad-bg: #FDECEC; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: PJS, sans-serif; color: var(--ink); font-size: 11.5pt; line-height: 1.6; }
+  .page { width: 210mm; height: 297mm; padding: 18mm 20mm 16mm; position: relative; page-break-after: always; overflow: hidden; }
+  .page:last-child { page-break-after: auto; }
+  .run { display: flex; justify-content: space-between; font-size: 8.5pt; font-weight: 600; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; padding-bottom: 6mm; border-bottom: 1px solid var(--line); margin-bottom: 10mm; }
+  .run b { color: var(--accent); font-weight: 800; }
+  .foot { position: absolute; left: 20mm; right: 20mm; bottom: 12mm; display: flex; justify-content: space-between; font-size: 8.5pt; color: var(--muted); }
+  .kick { font-size: 9pt; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-bottom: 3mm; }
+  h1 { font-size: 34pt; line-height: 1.08; font-weight: 800; letter-spacing: -.02em; margin-bottom: 6mm; }
+  h2 { font-size: 22pt; line-height: 1.15; font-weight: 800; letter-spacing: -.015em; margin-bottom: 4mm; }
+  h3 { font-size: 13pt; font-weight: 700; margin-bottom: 1.5mm; }
+  p { color: var(--ink2); margin-bottom: 4mm; }
+  .lead { font-size: 13.5pt; line-height: 1.55; color: var(--ink2); margin-bottom: 8mm; }
+  .cover { background: linear-gradient(160deg, #1E3A8A 0%, #2563EB 60%, #60A5FA 100%); color: #fff; border-radius: 6mm; padding: 14mm 12mm; margin-bottom: 10mm; }
+  .cover .kick { color: #BFD3FB; }
+  .cover h1 { color: #fff; }
+  .cover p { color: #DCE6FB; font-size: 13pt; margin: 0; }
+  .by { display: flex; align-items: center; gap: 4mm; margin-top: 10mm; }
+  .by span { width: 12mm; height: 12mm; border-radius: 50%; background: #fff; color: var(--accent); display: grid; place-items: center; font-weight: 800; font-size: 11pt; }
+  .by b { display: block; font-size: 11pt; }
+  .by em { font-style: normal; color: #DCE6FB; font-size: 9.5pt; }
+  .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5mm; }
+  .box { background: var(--sub); border: 1px solid var(--line); border-radius: 4mm; padding: 5mm; }
+  .box b { display: block; font-size: 22pt; color: var(--accent); line-height: 1; margin-bottom: 2mm; }
+  .box p { font-size: 10pt; margin: 0; }
+  .rules { counter-reset: r; display: grid; gap: 5mm; }
+  .rule { display: grid; grid-template-columns: 11mm 1fr; gap: 4mm; padding-bottom: 5mm; border-bottom: 1px solid var(--line); }
+  .rule:last-child { border-bottom: 0; }
+  .rule::before { counter-increment: r; content: counter(r); width: 11mm; height: 11mm; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-weight: 800; display: grid; place-items: center; }
+  .rule p { margin: 0; }
+  .cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5mm; margin-top: 6mm; }
+  .col { border-radius: 4mm; padding: 5mm; }
+  .col h3 { font-size: 11.5pt; }
+  .col ul { list-style: none; margin-top: 2mm; }
+  .col li { font-size: 10.5pt; padding: 1.6mm 0; border-top: 1px solid rgba(0,0,0,.07); }
+  .g { background: var(--ok-bg); } .g h3 { color: var(--ok); }
+  .a { background: var(--warn-bg); } .a h3 { color: var(--warn); }
+  .r { background: var(--bad-bg); } .r h3 { color: var(--bad); }
+  .tip { margin-top: 8mm; background: var(--accent-soft); border-left: 3px solid var(--accent); border-radius: 0 3mm 3mm 0; padding: 5mm 6mm; }
+  .tip p { margin: 0; color: var(--ink); }
+  .tip b { color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-size: 10.5pt; }
+  th { text-align: left; font-size: 8.5pt; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 700; padding: 0 3mm 2.5mm; border-bottom: 1.5px solid var(--ink); }
+  td { padding: 3mm; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td small { display: block; color: var(--muted); font-size: 9pt; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
+  th.n { text-align: right; }
+  tr:nth-child(even) td { background: #FAFAF8; }
+  .check { list-style: none; display: grid; gap: 4mm; margin-top: 4mm; }
+  .check li { display: grid; grid-template-columns: 7mm 1fr; gap: 3mm; color: var(--ink2); }
+  .check li::before { content: ""; width: 5mm; height: 5mm; border: 1.5px solid var(--accent); border-radius: 1.5mm; margin-top: 1mm; }
+  .note { margin-top: 10mm; border: 1px solid var(--line); border-radius: 4mm; padding: 6mm; display: grid; grid-template-columns: 12mm 1fr; gap: 4mm; }
+  .note span { width: 12mm; height: 12mm; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-weight: 800; }
+  .note p { margin: 0; }
+</style>
+</head>
+<body>
+
+<section class="page">
+  <div class="run"><b>Train With Vimal</b><span>Nutrition guide</span></div>
+  <div class="cover">
+    <div class="kick">Fat loss · Eating out</div>
+    <h1>Eating out on a fat loss plan</h1>
+    <p>Restaurants, family dinners and weekend plans, without undoing your week.</p>
+    <div class="by"><span>V</span><div><b>Vimal</b><em>Head coach, Train With Vimal</em></div></div>
+  </div>
+  <div class="kick">1 · Eating out is fine</div>
+  <h2>One meal does not undo a week</h2>
+  <p class="lead">Fat loss comes from what you do most days. A dinner out is one meal out of about 28 in a week. Plan it, enjoy it, log it, and go back to your plan at the next meal.</p>
+  <div class="three">
+    <div class="box"><b>1</b><p>Look at the menu before you go and pick your order at home.</p></div>
+    <div class="box"><b>2</b><p>Eat a normal, protein-rich lunch. Don’t arrive starving.</p></div>
+    <div class="box"><b>3</b><p>Log the meal the same night. A rough log beats no log.</p></div>
+  </div>
+  <div class="foot"><span>Eating out on a fat loss plan</span><span>Page 1 of 6</span></div>
+</section>
+
+<section class="page">
+  <div class="run"><b>Train With Vimal</b><span>Nutrition guide</span></div>
+  <div class="kick">2 · Rules of thumb</div>
+  <h2>Six rules that work in any restaurant</h2>
+  <p class="lead">You don’t need to know the calories of every dish. These six habits get you most of the way.</p>
+  <div class="rules">
+    <div class="rule"><div><h3>Start with protein</h3><p>Order a tikka, a grilled fish, an egg dish or a dal first. Protein fills you up, so you eat less of everything else.</p></div></div>
+    <div class="rule"><div><h3>Grilled over fried</h3><p>Tandoori, grilled, roasted and steamed are your friends. Fried, crispy and “golden” add 150–300 kcal a plate.</p></div></div>
+    <div class="rule"><div><h3>Sauces and dressings on the side</h3><p>Ask for them on the side and use a spoon, not the whole bowl. Butter and cream sauces are where calories hide.</p></div></div>
+    <div class="rule"><div><h3>One carb, not three</h3><p>Pick rice <em>or</em> roti <em>or</em> naan. Two rotis or one small bowl of rice is plenty with a protein and a vegetable.</p></div></div>
+    <div class="rule"><div><h3>Half a plate of vegetables</h3><p>Salad, raita, a dry sabzi or a clear soup. They make the plate big without making it heavy.</p></div></div>
+    <div class="rule"><div><h3>Stop at comfortably full</h3><p>Put the spoon down for two minutes halfway through. If you are still hungry after that, eat more vegetables.</p></div></div>
+  </div>
+  <div class="foot"><span>Eating out on a fat loss plan</span><span>Page 2 of 6</span></div>
+</section>
+
+<section class="page">
+  <div class="run"><b>Train With Vimal</b><span>Nutrition guide</span></div>
+  <div class="kick">3 · Reading an Indian menu</div>
+  <h2>The words on the menu tell you a lot</h2>
+  <p class="lead">Most Indian menus use the same words for how a dish is cooked. Learn these and you can order anywhere.</p>
+  <div class="cols">
+    <div class="col g"><h3>Pick often</h3><ul><li>Tandoori</li><li>Tikka</li><li>Grilled / roasted</li><li>Dal tadka</li><li>Chana masala</li><li>Raita, salad</li><li>Clear soup</li></ul></div>
+    <div class="col a"><h3>Sometimes</h3><ul><li>Jeera rice</li><li>Butter naan</li><li>Paneer bhurji</li><li>Kadai dishes</li><li>Biryani (half)</li><li>Dosa, uttapam</li><li>Chole bhature (share)</li></ul></div>
+    <div class="col r"><h3>Rarely</h3><ul><li>Makhani</li><li>Malai</li><li>Shahi, korma</li><li>Butter masala</li><li>Pakora, kofta</li><li>“Crispy” anything</li><li>Extra ghee on top</li></ul></div>
+  </div>
+  <div class="tip"><p><b>Ask for:</b> “less oil”, “no butter on top” and “gravy on the side”. Most kitchens are happy to do it, and it saves 100–200 kcal without changing the dish.</p></div>
+  <div class="foot"><span>Eating out on a fat loss plan</span><span>Page 3 of 6</span></div>
+</section>
+
+<section class="page">
+  <div class="run"><b>Train With Vimal</b><span>Nutrition guide</span></div>
+  <div class="kick">4 · 12 orders that fit your plan</div>
+  <h2>Order one of these and relax</h2>
+  <p>Numbers are for one person and are close enough for your log.</p>
+  <table>
+    <thead><tr><th>Order</th><th class="n">kcal</th><th class="n">Protein</th></tr></thead>
+    <tbody>
+      <tr><td>Paneer tikka (6 pcs) + 1 roti + salad</td><td class="n">520</td><td class="n">30 g</td></tr>
+      <tr><td>Dal tadka + 1 roti + raita</td><td class="n">480</td><td class="n">22 g</td></tr>
+      <tr><td>Tandoori chicken (half) + salad<small>Skip the butter on top</small></td><td class="n">450</td><td class="n">48 g</td></tr>
+      <tr><td>Grilled fish + sautéed vegetables</td><td class="n">420</td><td class="n">40 g</td></tr>
+      <tr><td>Chana masala + small jeera rice</td><td class="n">560</td><td class="n">18 g</td></tr>
+      <tr><td>Chicken tikka + mint chutney + 1 roti</td><td class="n">480</td><td class="n">42 g</td></tr>
+      <tr><td>2 egg masala omelette + 2 toast</td><td class="n">430</td><td class="n">24 g</td></tr>
+      <tr><td>Masala dosa + sambar<small>Ask for less oil, skip the extra chutney</small></td><td class="n">500</td><td class="n">12 g</td></tr>
+      <tr><td>Chicken biryani (half plate) + raita</td><td class="n">600</td><td class="n">32 g</td></tr>
+      <tr><td>Rajma + small rice + salad</td><td class="n">540</td><td class="n">20 g</td></tr>
+      <tr><td>Grilled chicken burrito bowl, no sour cream</td><td class="n">580</td><td class="n">40 g</td></tr>
+      <tr><td>Thin-crust veg pizza (3 slices) + salad</td><td class="n">620</td><td class="n">24 g</td></tr>
+    </tbody>
+  </table>
+  <div class="foot"><span>Eating out on a fat loss plan</span><span>Page 4 of 6</span></div>
+</section>
+
+<section class="page">
+  <div class="run"><b>Train With Vimal</b><span>Nutrition guide</span></div>
+  <div class="kick">5 · Drinks and desserts</div>
+  <h2>Where the hidden calories are</h2>
+  <p class="lead">Drinks and desserts can add more than the meal itself. You don’t have to skip them, just pick smart.</p>
+  <table>
+    <thead><tr><th>Drink</th><th class="n">kcal</th><th>Better swap</th></tr></thead>
+    <tbody>
+      <tr><td>Sweet lassi (glass)</td><td class="n">260</td><td>Chaas, 40 kcal</td></tr>
+      <tr><td>Cola (can)</td><td class="n">140</td><td>Diet cola or soda, 0 kcal</td></tr>
+      <tr><td>Fresh lime soda, sweet</td><td class="n">120</td><td>Fresh lime soda, salted, 10 kcal</td></tr>
+      <tr><td>Mango shake</td><td class="n">320</td><td>Whole mango slices, 100 kcal</td></tr>
+      <tr><td>Beer (pint)</td><td class="n">210</td><td>One drink, then water</td></tr>
+    </tbody>
+  </table>
+  <div class="three" style="margin-top: 9mm">
+    <div class="box"><b>Share</b><p>One dessert for the table. Three spoons give you the taste.</p></div>
+    <div class="box"><b>Pick</b><p>Rasgulla or kulfi over gulab jamun or brownie with ice cream.</p></div>
+    <div class="box"><b>Water</b><p>One glass before the meal and one with it. You’ll order less.</p></div>
+  </div>
+  <div class="foot"><span>Eating out on a fat loss plan</span><span>Page 5 of 6</span></div>
+</section>
+
+<section class="page">
+  <div class="run"><b>Train With Vimal</b><span>Nutrition guide</span></div>
+  <div class="kick">6 · Back to plan</div>
+  <h2>The next meal is a normal meal</h2>
+  <p class="lead">No skipping breakfast, no extra cardio to “burn it off”. Just go back to your plan.</p>
+  <h3>After a meal out</h3>
+  <ul class="check">
+    <li>Log the meal in the app the same night. Pick the closest dish and an honest portion.</li>
+    <li>Drink 2–3 glasses of water before bed. Salty food holds water, so the scale may jump.</li>
+    <li>Ignore the scale for 2 days. A jump after a dinner out is water, not fat.</li>
+    <li>Eat your normal planned breakfast the next morning.</li>
+    <li>Do your next workout as planned. No punishment sessions.</li>
+  </ul>
+  <div class="note"><span>V</span><p><b>From Vimal:</b> the clients who do best are not the ones who never eat out. They are the ones who eat out, enjoy it and come straight back to the plan. If a dinner out is coming up, tell your coach in your check-in and we’ll plan around it.</p></div>
+  <div class="foot"><span>Eating out on a fat loss plan</span><span>Page 6 of 6</span></div>
+</section>
+
+</body>
+</html>

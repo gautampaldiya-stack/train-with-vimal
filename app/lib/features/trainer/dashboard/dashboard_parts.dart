@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/api/api_error.dart';
 import '../../../core/icons/app_icons.dart';
@@ -109,9 +108,22 @@ Future<void> showNotesDropdown(BuildContext anchor, TrainerHomeController c, {re
 // ─────────────────────────────── Review drawer
 
 class ReviewResult {
-  const ReviewResult(this.replied);
+  const ReviewResult(this.replied, {this.profile = false});
   final bool replied;
+
+  /// "Open profile" was tapped: the caller opens it once the drawer has gone (going there while it still
+  /// animates out tears the page down under it).
+  final bool profile;
 }
+
+/// Pop returns before the exit animation ends and the closing sheet still reads its text fields, so their
+/// controllers are freed only after it has gone.
+void disposeLater(List<ChangeNotifier> items) =>
+    Future.delayed(const Duration(milliseconds: 700), () {
+      for (final i in items) {
+        i.dispose();
+      }
+    });
 
 const _quick = ['Great week, keep going!', 'Let’s talk at your next session.', 'I’ve updated your plan.'];
 
@@ -135,10 +147,7 @@ Future<ReviewResult?> showReviewDrawer(BuildContext context, TrainerHomeControll
     }
   }
 
-  void profile(BuildContext ctx) {
-    Navigator.of(ctx).pop();
-    context.go('/clients/${r.client.id}');
-  }
+  void profile(BuildContext ctx) => Navigator.of(ctx).pop(const ReviewResult(false, profile: true));
 
   Widget mainBtn(BuildContext ctx, {bool expand = false}) => ListenableBuilder(
         listenable: Listenable.merge([reply, busy]),
@@ -277,8 +286,7 @@ Future<ReviewResult?> showReviewDrawer(BuildContext context, TrainerHomeControll
             mainBtn(ctx),
           ],
   ).whenComplete(() {
-    reply.dispose();
-    busy.dispose();
+    disposeLater([reply, busy]);
   });
 }
 
@@ -490,8 +498,7 @@ Future<NewSession?> showNewSessionModal(BuildContext context, TrainerHomeControl
       ),
     ],
   ).whenComplete(() {
-    note.dispose();
-    s.dispose();
+    disposeLater([note, s]);
   });
 }
 

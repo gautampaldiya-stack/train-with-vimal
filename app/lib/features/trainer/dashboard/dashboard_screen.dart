@@ -75,7 +75,7 @@ class _TrainerDashboardScreenState extends State<TrainerDashboardScreen> {
         children: [
           _webStats(d),
           LayoutBuilder(builder: (context, box) {
-            final left = [_today(d), _need(d)], right = [_checkins(d), _week(d)];
+            final left = [_today(d), _need(d)], right = [_checkins(d), _week(d), _activity(d)];
             if (box.maxWidth < 640) return Column(spacing: 16, crossAxisAlignment: CrossAxisAlignment.stretch, children: [...left, ...right]);
             return Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 16, children: [
               Expanded(flex: 14, child: Column(spacing: 16, crossAxisAlignment: CrossAxisAlignment.stretch, children: left)),
@@ -106,6 +106,7 @@ class _TrainerDashboardScreenState extends State<TrainerDashboardScreen> {
                     _need(d),
                     _checkins(d),
                     _week(d),
+                    _activity(d),
                   ]),
                 ),
               ),
@@ -181,29 +182,37 @@ class _TrainerDashboardScreenState extends State<TrainerDashboardScreen> {
   static const _statIcons = {'clients': AppIcons.usersAlt, 'checkins': AppIcons.clipboardShort, 'workouts': AppIcons.dumbbell, 'reply': AppIcons.clock};
 
   /// `.stats`: content-wide cards (80 high, gap 10) that scroll sideways when the panel is narrow.
-  Widget _webStats(TrainerHome d) => SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(spacing: 10, children: [
+  /// `.stats`: 4 equal cards in a row (2 × 2 under 760 wide). Height follows the content (at least 80)
+  /// so the number never gets clipped.
+  Widget _webStats(TrainerHome d) => LayoutBuilder(builder: (context, box) {
+        final cols = box.maxWidth < 760 ? 2 : 4;
+        final w = (box.maxWidth - 12 * (cols - 1)) / cols;
+        return Wrap(spacing: 12, runSpacing: 12, children: [
           for (final s in d.stats)
             Container(
-              height: 80,
-              padding: const EdgeInsets.all(12),
+              width: w,
+              constraints: const BoxConstraints(minHeight: 80),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
               decoration: BoxDecoration(color: AppColors.card, borderRadius: AppRadius.all(AppRadius.card), border: Border.all(color: AppColors.line)),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 6, children: [
-                Row(mainAxisSize: MainAxisSize.min, spacing: 8, children: [
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, spacing: 8, children: [
+                Row(spacing: 8, children: [
                   IconTile(_statIcons[s.key] ?? AppIcons.info, radius: 8),
-                  Text(s.label, style: AppText.s(12.5, W.w6, color: AppColors.muted)),
+                  Expanded(child: Text(s.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted))),
                 ]),
-                Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, spacing: 10, children: [
+                Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, spacing: 10, children: [
                   Text(s.value, style: AppText.stat),
                   if (s.delta.isNotEmpty)
-                    Text(s.delta,
-                        style: AppText.s(12, W.w7, color: s.tone == 'up' ? AppColors.okText : (s.tone == 'down' ? AppColors.badText : AppColors.text))),
+                    Expanded(
+                      child: Text(s.delta,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppText.s(12, W.w7, color: s.tone == 'up' ? AppColors.okText : (s.tone == 'down' ? AppColors.badText : AppColors.text))),
+                    ),
                 ]),
               ]),
             ),
-        ]),
-      );
+        ]);
+      });
 
   /// Phone `.th-st`: one white strip of 4 cells (number 16/800, label 10.5/600) with a soft shadow.
   Widget _strip(TrainerHome d) => Container(
@@ -461,6 +470,11 @@ class _TrainerDashboardScreenState extends State<TrainerDashboardScreen> {
   Future<void> _review(TdCheckin r) async {
     final res = await showReviewDrawer(context, c, r);
     if (res == null || !mounted) return;
+    if (res.profile) {
+      await Future.delayed(const Duration(milliseconds: 260)); // let the drawer finish closing
+      if (mounted) context.go('/clients/${r.client.id}');
+      return;
+    }
     showToast(context, '${r.client.first}’s check-in reviewed',
         sub: res.replied ? 'Your reply was sent' : 'Moved out of your list', action: 'Undo', onAction: () => c.unreview(r.id).catchError(_fail));
   }
@@ -496,6 +510,45 @@ class _TrainerDashboardScreenState extends State<TrainerDashboardScreen> {
     );
   }
 
+  // ─────────────────────────────── Activity
+
+  /// What the trainer and their clients did lately (`.tp-tl` timeline): a kind dot, who + what, the
+  /// client and item under it, and when. "Show more" loads the next page in place.
+  Widget _activity(TrainerHome d) {
+    final phone = context.isPhone;
+    final rows = d.activity;
+    return AppCard(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        CardHeader('Activity', padding: _hPad, sub: 'You and your clients'),
+        if (rows.isEmpty)
+          Padding(
+            padding: EdgeInsets.fromLTRB(phone ? 16 : 20, 0, phone ? 16 : 20, 16),
+            child: Text('Nothing yet. Check-ins, workouts and sessions show up here.', style: AppText.s(13, W.w5, color: AppColors.muted)),
+          )
+        else
+          Padding(
+            padding: EdgeInsets.fromLTRB(phone ? 16 : 20, 0, phone ? 16 : 20, d.activityNext.isEmpty ? 10 : 0),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              for (final (i, a) in rows.indexed) _ActRow(a, last: i == rows.length - 1, onClient: a.client.isEmpty ? null : () => context.go('/clients/${a.client}')),
+            ]),
+          ),
+        if (d.activityNext.isNotEmpty)
+          Container(
+            margin: const EdgeInsets.only(top: 4),
+            padding: EdgeInsets.fromLTRB(phone ? 16 : 20, 8, phone ? 16 : 20, 10),
+            decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
+            child: Row(children: [
+              Text('Showing ${rows.length}', style: AppText.s(12.5, W.w5, color: AppColors.muted)),
+              const Spacer(),
+              c.loadingMore
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent))
+                  : _Link('Show more', () => c.moreActivity().catchError(_fail)),
+            ]),
+          ),
+      ]),
+    );
+  }
+
   // ─────────────────────────────── Overlays
 
   void _notes(BuildContext anchor, TrainerHome d) => showNotesDropdown(anchor, c, onOpen: (n) {
@@ -523,6 +576,77 @@ class _Av extends StatelessWidget {
   final TdPerson p;
   @override
   Widget build(BuildContext context) => AppAvatar(p.name, size: 24, colors: AppColors.avatarCode(p.color), initials: p.initials.isEmpty ? null : p.initials);
+}
+
+/// `.tp-tl-row`: 28 round kind dot with a line down to the next row, text, time on the right.
+class _ActRow extends StatelessWidget {
+  const _ActRow(this.a, {required this.last, this.onClient});
+  final TdActivity a;
+  final bool last;
+  final VoidCallback? onClient;
+
+  static const _tones = {
+    'ci': (AppColors.tlCiBg, AppColors.tlCiFg),
+    'pl': (AppColors.tlPlBg, AppColors.tlPlFg),
+    'cl': (AppColors.tlClBg, AppColors.tlClFg),
+    'ch': (AppColors.tlChBg, AppColors.tlChFg),
+  };
+  static final _icons = {
+    'checkin': AppIcons.clipboard,
+    'plan': AppIcons.edit,
+    'workout': AppIcons.dumbbell,
+    'meal': AppIcons.food,
+    'body': AppIcons.scale,
+    'session': AppIcons.calendar,
+    'client': AppIcons.usersAlt,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final (bg, fg) = _tones[a.tone] ?? (AppColors.sub, AppColors.muted);
+    return IntrinsicHeight(
+      child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
+        Column(children: [
+          const SizedBox(height: 5),
+          Container(
+            width: 28,
+            height: 28,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
+            child: AppIcon(_icons[a.kind] ?? AppIcons.bolt, size: 14, color: fg),
+          ),
+          if (!last) Expanded(child: Container(width: 1.5, margin: const EdgeInsets.only(top: 4), color: AppColors.line)),
+        ]),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(0, 9, 0, 13),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+              Text.rich(
+                TextSpan(children: [
+                  TextSpan(text: a.who, style: AppText.s(13.5, W.w6, color: AppColors.text)),
+                  TextSpan(text: ' ${a.what}'),
+                ]),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppText.s(13.5, W.w4, color: AppColors.text2),
+              ),
+              if (a.detail.isNotEmpty)
+                onClient == null
+                    ? Text(a.detail, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted))
+                    : Hover(
+                        onTap: onClient,
+                        builder: (_, h, _) => Text(a.detail,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppText.s(12.5, W.w5, color: h ? AppColors.accentText : AppColors.muted)),
+                      ),
+            ]),
+          ),
+        ),
+        Padding(padding: const EdgeInsets.only(top: 10), child: Text(a.when, style: AppText.s(12, W.w5, color: AppColors.muted))),
+      ]),
+    );
+  }
 }
 
 class _Link extends StatelessWidget {

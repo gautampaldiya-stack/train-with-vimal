@@ -205,6 +205,17 @@ class TrainerDashboardView(APIView):
         return Response(trainer_home(request.user))
 
 
+class TrainerActivityView(APIView):
+    """Next page of the dashboard's Activity card: `?before=<next>` from the previous page."""
+
+    permission_classes = [IsStaff]
+
+    def get(self, request):
+        from .trainer_home import activity
+
+        return Response(activity(request.user, before=request.query_params.get("before", "")))
+
+
 # ---------------------------------------------------------------- client home
 def _fmt_kg(v):
     return f"{v:g}" if v is not None else ""

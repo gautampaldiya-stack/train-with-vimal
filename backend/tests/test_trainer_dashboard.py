@@ -77,3 +77,35 @@ def test_feeling_low_uses_the_latest_check_in(trainer):
     # Riya had one low day earlier but her latest check-ins are 4 / 5, so she is not "Feeling low".
     d = trainer.get("/api/v1/dashboard/trainer/").json()
     assert not any(n["name"] == "Riya Sharma" and n["kind"] == "low" for n in d["need"])
+
+
+def test_activity_card_shows_only_the_trainers_clients_and_pages(trainer):
+    _, mine = _mine()
+    d = trainer.get("/api/v1/dashboard/trainer/").json()["activity"]
+    assert d["rows"] and len(d["rows"]) <= 6
+    assert all(r["client"] in mine or r["me"] or not r["client"] for r in d["rows"])
+    seen = [r["id"] for r in d["rows"]]
+    while d["next"]:
+        d = trainer.get("/api/v1/dashboard/trainer/activity/", {"before": d["next"]}).json()
+        assert all(r["client"] in mine or r["me"] or not r["client"] for r in d["rows"])
+        seen += [r["id"] for r in d["rows"]]
+    assert len(seen) == len(set(seen))  # pages never repeat a row
+
+
+def test_activity_card_shows_what_a_client_just_did(trainer, django_capture_on_commit_callbacks):
+    from apps.activity.services import log
+
+    aman, _ = _mine()
+    cp = ClientProfile.objects.filter(trainer=aman).select_related("user").first()
+    other = ClientProfile.objects.exclude(trainer=aman).select_related("user").first()
+    with django_capture_on_commit_callbacks(execute=True):  # the log is written after commit
+        log("finished a workout", "workout", actor=cp.user, target_label="Push day", client=cp.user)
+        log("finished a workout", "workout", actor=other.user, target_label="Leg day", client=other.user)
+    rows = trainer.get("/api/v1/dashboard/trainer/").json()["activity"]["rows"]
+    top = rows[0]
+    assert (top["who"], top["what"], top["detail"], top["tone"]) == (cp.user.full_name, "finished a workout", "Push day", "cl")
+    assert not any(r["client"] == str(other.user_id) for r in rows)
+
+
+def test_clients_cannot_read_trainer_activity(client_user):
+    assert client_user.get("/api/v1/dashboard/trainer/activity/").status_code == 403

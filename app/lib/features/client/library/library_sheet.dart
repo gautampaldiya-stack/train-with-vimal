@@ -228,7 +228,7 @@ class _ItemView extends StatelessWidget {
   Widget build(BuildContext context) {
     final info = [
       if (x.note.isNotEmpty) _note(),
-      if (x.description.isNotEmpty) Text(x.description, style: AppText.s(13.5, W.w4, color: AppColors.text2, h: 1.5)),
+      if (x.description.isNotEmpty) Text(x.description, style: AppText.s(14, W.w5, color: AppColors.text2, h: 1.6)),
     ];
     return Padding(
       padding: const EdgeInsets.only(bottom: 2),
@@ -241,11 +241,9 @@ class _ItemView extends StatelessWidget {
               ...info,
               if (x.kind == 'article' && x.body.isNotEmpty)
                 Container(
-                  padding: const EdgeInsets.only(top: 10),
+                  padding: const EdgeInsets.only(top: 14),
                   decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
-                    for (final p in x.body) Text(p, style: AppText.s(14, W.w4, h: 1.55)),
-                  ]),
+                  child: _ArticleBody(x.body),
                 ),
             ]),
     );
@@ -260,10 +258,47 @@ class _ItemView extends StatelessWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
               Text('From ${x.noteBy.isEmpty ? c.coach : x.noteBy}', style: AppText.s(12.5, W.w8, color: AppColors.amberDeep)),
-              Text(x.note, style: AppText.s(13.5, W.w4, h: 1.45)),
+              Text(x.note, style: AppText.s(13.5, W.w5, h: 1.5)),
             ]),
           ),
         ]),
+      );
+}
+
+/// `lb-art`: the guide's text, set for reading: 15 / 1.7, at most ~70 characters a line on wide screens.
+/// A paragraph that starts with "## " is a heading and lines that start with "- " are bullets.
+class _ArticleBody extends StatelessWidget {
+  const _ArticleBody(this.paras);
+  final List<String> paras;
+
+  static final _p = AppText.s(15, W.w5, color: AppColors.text, h: 1.7);
+
+  @override
+  Widget build(BuildContext context) => Align(
+        alignment: Alignment.topLeft,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 620),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [
+            for (final p in paras)
+              if (p.startsWith('## '))
+                Padding(padding: const EdgeInsets.only(top: 4), child: Text(p.substring(3), style: AppText.s(16.5, W.w8, h: 1.35)))
+              else if (p.split('\n').every((l) => l.startsWith('- ')))
+                Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
+                  for (final l in p.split('\n'))
+                    Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        margin: const EdgeInsets.only(top: 10),
+                        decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle),
+                      ),
+                      Expanded(child: Text(l.substring(2), style: _p)),
+                    ]),
+                ])
+              else
+                Text(p, style: _p),
+          ]),
+        ),
       );
 }
 

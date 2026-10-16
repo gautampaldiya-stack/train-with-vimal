@@ -36,6 +36,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `dashboard/admin/` | GET | AdminDashboardView |  |
 | `dashboard/dismiss/` | POST | DismissView | × on a Needs action row. |
 | `dashboard/trainer/` | GET | TrainerDashboardView | Trainer dashboard: stats, Today, Clients who need you, Check-ins to review, This week, bell list. |
+| `dashboard/trainer/activity/` | GET | TrainerActivityView | Next page of the dashboard's Activity card: `?before=<next>` from the previous page. |
 | `me/home/` | GET | ClientHomeView |  |
 
 ## automations

@@ -338,8 +338,9 @@ class YoutubeBox extends StatefulWidget {
 }
 
 class _YoutubeBoxState extends State<YoutubeBox> {
-  /// No web view on this platform (Windows / Linux desktop, or the app was hot-reloaded after adding the plugin):
-  /// show the YouTube still that opens YouTube instead of a red error box.
+  /// No web view on this platform (Windows / Linux desktop, or a web/debug run that was hot-restarted after the
+  /// YouTube plugin was added, so its web part never registered): show the YouTube still that opens YouTube
+  /// instead of a red error box. A fresh `flutter run -d chrome` registers it and the video plays in place.
   static bool get canEmbed => WebViewPlatform.instance != null;
 
   YoutubePlayerController? yt;
@@ -348,12 +349,16 @@ class _YoutubeBoxState extends State<YoutubeBox> {
   void initState() {
     super.initState();
     if (!canEmbed) return;
-    final c = YoutubePlayerController.fromVideoId(
-      videoId: youtubeId(widget.url),
-      params: const YoutubePlayerParams(showFullscreenButton: true, strictRelatedVideos: true),
-    );
-    yt = c;
-    widget.onReady?.call(c);
+    try {
+      final c = YoutubePlayerController.fromVideoId(
+        videoId: youtubeId(widget.url),
+        params: const YoutubePlayerParams(showFullscreenButton: true, strictRelatedVideos: true),
+      );
+      yt = c;
+      widget.onReady?.call(c);
+    } catch (_) {
+      yt = null; // the player could not start here: the still that opens YouTube is shown instead
+    }
   }
 
   @override

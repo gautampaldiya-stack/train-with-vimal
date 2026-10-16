@@ -231,6 +231,57 @@ def this_week(user, now):
     }
 
 
+def _when(dt, now=None):
+    local = timezone.localtime(dt)
+    days = (timezone.localdate(now or timezone.now()) - local.date()).days
+    if days == 0:
+        return f"{local:%H:%M}"
+    if days == 1:
+        return "Yesterday"
+    return f"{days} days ago" if days < 7 else dfmt(local, "%-d %b")
+
+
+ACTIVITY_ROWS = 6  # the card shows the newest few; "Show more" loads the next page with ?before=
+ACTIVITY_TONE = {"checkin": "ci", "plan": "pl", "workout": "cl", "meal": "cl", "body": "cl", "session": "ch"}
+
+
+def activity(user, before="", now=None, size=ACTIVITY_ROWS):
+    """Activity card: what the trainer and their clients did (check-ins sent, workouts, sessions, plan changes),
+    newest first, one page at a time. Keyset paging on (created_at, id) so a long log stays quick."""
+    from apps.clients.models import ClientProfile
+
+    from .models import ActivityEvent
+
+    mine = ClientProfile.objects.filter(trainer=user, removed_at__isnull=True).values("user_id")
+    qs = (ActivityEvent.objects.filter(Q(actor=user) | Q(trainer=user) | Q(client__in=mine))
+          .select_related("client", "actor").order_by("-created_at", "-id"))
+    if before:
+        at, _, pk = before.partition("|")
+        try:
+            t = timezone.datetime.fromisoformat(at)
+            qs = qs.filter(Q(created_at__lt=t) | Q(created_at=t, id__lt=pk))
+        except ValueError:
+            pass
+    rows = list(qs[:size + 1])
+    out = []
+    for e in rows[:size]:
+        me = e.actor_id == user.id
+        who = "You" if me else (e.actor_label or "System")
+        bits = []
+        if e.client_id and e.client_id != e.actor_id:
+            bits.append(e.client.full_name)
+        if e.target_label and e.target_label not in e.verb and (not e.client_id or e.target_label != e.client.full_name):
+            bits.append(e.target_label)
+        if e.change_from or e.change_to:
+            bits.append(f"{e.change_from or '–'} → {e.change_to or '–'}")
+        out.append({"id": str(e.id), "who": who, "me": me, "what": e.verb, "detail": " · ".join(bits),
+                    "kind": e.kind, "tone": ACTIVITY_TONE.get(e.kind, ""), "when": _when(e.created_at, now),
+                    "client": str(e.client_id) if e.client_id else ""})
+    more = len(rows) > size
+    last = rows[size - 1] if more else None
+    return {"rows": out, "next": f"{last.created_at.isoformat()}|{last.id}" if last else ""}
+
+
 def notices(user):
     from apps.notifications.models import Notification
 
@@ -238,10 +289,7 @@ def notices(user):
     now = timezone.now()
     out = []
     for n in qs:
-        local = timezone.localtime(n.created_at)
-        days = (timezone.localdate(now) - local.date()).days
-        when = f"{local:%H:%M}" if days == 0 else ("Yesterday" if days == 1 else f"{days} days ago" if days < 7
-                                                    else dfmt(local, "%-d %b"))
+        when = _when(n.created_at, now)
         a = n.actor
         out.append({"id": str(n.id), "title": n.title, "when": when, "read": n.read_at is not None,
                     "initials": a.initials if a else "V", "color": a.avatar_color if a else "c3",
@@ -269,6 +317,7 @@ def trainer_home(user, now=None):
         "checkins": cis,
         "checkins_total": len(waiting),
         "week": this_week(user, now),
+        "activity": activity(user, now=now),
         "notices": nts,
         "unread": sum(1 for x in nts if not x["read"]),
     }

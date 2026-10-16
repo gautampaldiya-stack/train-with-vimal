@@ -473,6 +473,9 @@ class Command(BaseCommand):
 
         riya = User.objects.get(email="riya@example.com")
         if ContentItem.objects.filter(title="Box squat: how to").exists():
+            _refresh_shipped_pdfs(ContentItem)
+            ContentItem.objects.filter(title="How to warm up for leg day", body__startswith="Start with 5").update(
+                body=LEG_WARMUP)
             return
         aman = User.objects.get(email="aman@trainwithvimal.com")
         vimal = User.objects.get(email="vimal@trainwithvimal.com")
@@ -513,11 +516,7 @@ class Command(BaseCommand):
                  share=("program", program, 40, ""), seen=True),
             dict(id="leg", kind="article", title="How to warm up for leg day", by=vimal, mins=4,
                  description="Ten minutes that make your squats feel better and keep the knees happy.",
-                 body="Start with 5 minutes of easy cardio: bike, incline walk or skipping. You want to be warm, "
-                      "not tired.\n\nOpen the hips: 10 leg swings each way, 8 hip circles and 30 seconds in a "
-                      "deep squat hold.\n\nWake up the glutes with 2 sets of 15 glute bridges and 10 banded "
-                      "side steps each way.\n\nFinish with 2 light sets of your first exercise before the "
-                      "working weight.",
+                 body=LEG_WARMUP,
                  share=("program", program, 40, ""), seen=True, done=True),
             dict(id="macro", kind="pdf", title="Macro cheat sheet", by=aman,
                  description="Protein: 1.6 to 2 g per kg of body weight. One palm of paneer, chicken, fish or "
@@ -836,11 +835,60 @@ def _figure(name, bg, fg, pose):
     return ContentFile(buf.getvalue(), name=name)
 
 
-def _pdf(slug, title, pages):
-    """A small real PDF, one page per outline entry (demo Library)."""
-    from io import BytesIO
+LEG_WARMUP = (
+    "A good warm-up takes ten minutes and makes your first working set feel like your third. Do it in this "
+    "order every leg day.\n\n"
+    "## 1. Get warm (5 minutes)\n\n"
+    "Easy cardio: bike, incline walk or skipping. You want to be warm and breathing a little faster, not tired.\n\n"
+    "## 2. Open the hips\n\n"
+    "- 10 leg swings each way, front to back and side to side\n- 8 slow hip circles each side\n"
+    "- 30 seconds in a deep squat hold, elbows pushing the knees out\n\n"
+    "## 3. Wake up the glutes\n\n"
+    "- 2 sets of 15 glute bridges, squeeze at the top\n- 10 banded side steps each way\n\n"
+    "## 4. Ramp up to your working weight\n\n"
+    "Do 2 light sets of your first exercise: one with the empty bar for 10 reps, one at about half your working "
+    "weight for 5. Then start your sets.\n\n"
+    "If your knee feels sore, stay longer in step 2 and use box squats for the day."
+)
+
+SHIPPED_PDFS = {"Eating out on a fat loss plan": "eat"}
+
+
+def _refresh_shipped_pdfs(model):
+    """Older demo databases got a plain drawn PDF: swap in the designed one and drop the old page pictures."""
+    from pathlib import Path
 
     from django.core.files.base import ContentFile
+    from django.core.files.storage import default_storage
+
+    for title, slug in SHIPPED_PDFS.items():
+        shipped = Path(__file__).resolve().parents[2] / "demo_media" / f"{slug}.pdf"
+        it = model.objects.filter(title=title, kind="pdf").first()
+        if not shipped.exists() or it is None:
+            continue
+        data = shipped.read_bytes()
+        if it.file and it.file.size == len(data):
+            continue
+        for n in range(1, (it.pages or 0) + 1):
+            name = f"content/pages/{it.id}/{n}.png"
+            if default_storage.exists(name):
+                default_storage.delete(name)
+        it.file.save(f"{slug}.pdf", ContentFile(data), save=False)
+        it.pages = None  # page pictures are drawn again on next open
+        it.save(update_fields=["file", "pages"])
+
+
+def _pdf(slug, title, pages):
+    """A real PDF for the demo Library: the designed guide shipped in apps/common/demo_media/<slug>.pdf (made
+    from <slug>.html with scripts/demo_pdf.js), else a plain one page per outline entry."""
+    from io import BytesIO
+    from pathlib import Path
+
+    from django.core.files.base import ContentFile
+
+    shipped = Path(__file__).resolve().parents[2] / "demo_media" / f"{slug}.pdf"
+    if shipped.exists():
+        return ContentFile(shipped.read_bytes(), name=f"{slug}.pdf")
     from PIL import Image, ImageDraw, ImageFont
 
     def font(n):
