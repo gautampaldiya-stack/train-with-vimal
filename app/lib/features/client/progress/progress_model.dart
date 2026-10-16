@@ -51,13 +51,61 @@ class PxWeight {
 class PxMeasure {
   PxMeasure(Map<String, dynamic> j)
     : date = _d(j['date']),
-      v = {for (final k in pxMetrics) k.$1: _nn(j[k.$1])};
+      v = {for (final e in j.entries) if (e.key != 'date' && e.value is num) e.key: (e.value as num).toDouble()};
+  PxMeasure.local(this.date, this.v);
   final DateTime date;
-  final Map<String, double?> v;
+  final Map<String, double> v;
+
+  /// The values of one measurement (two for a left / right pair); null when any is missing.
+  List<double>? of(PxMetric m) {
+    final out = [for (final k in m.keys) v[k]];
+    return out.any((x) => x == null) ? null : out.cast<double>();
+  }
 }
 
-/// key, label, unit
-const pxMetrics = [('waist', 'Waist', 'cm'), ('hips', 'Hips', 'cm'), ('chest', 'Chest', 'cm'), ('arm', 'Arm', 'cm'), ('body_fat', 'Body fat', '%')];
+/// One line of measurements: a single key, or a left / right pair shown together ("Bicep L · R").
+class PxMetric {
+  const PxMetric(this.keys, this.label, this.unit, {this.tracked = true});
+  final List<String> keys;
+  final String label, unit;
+  final bool tracked;
+  bool get pair => keys.length == 2;
+  String get key => keys.first;
+
+  /// "79.5 cm" · "28.5 · 29 cm" ([unit] false drops the unit, for tables).
+  String amt(List<double> v, {bool unit = true}) =>
+      pair ? '${pxAmt(v[0], '')} · ${pxAmt(v[1], '')}${unit ? ' ${this.unit}' : ''}'.replaceAll('  ', ' ').trim() : (unit ? pxAmt(v[0], this.unit) : pxAmt(v[0], '').trim());
+
+  /// "−1 cm" · "−1 · −0.5 cm"
+  String chg(List<double> a, List<double> b) =>
+      pair ? '${pxChg(b[0] - a[0], '').trim()} · ${pxChg(b[1] - a[1], '').trim()} $unit' : pxChg(b[0] - a[0], unit);
+
+  /// Sum of the change (sign for the colour).
+  double delta(List<double> a, List<double> b) => [for (var i = 0; i < a.length; i++) b[i] - a[i]].fold(0.0, (x, y) => x + y);
+}
+
+/// Every measurement in board order: key, label, unit. Left / right pairs are joined in [pxGroup].
+const pxMeasureKeys = [
+  ('neck', 'Neck', 'cm'), ('chest', 'Chest', 'cm'), ('abdomen', 'Abdomen (navel)', 'cm'), ('waist', 'Waist', 'cm'),
+  ('hips', 'Hips', 'cm'), ('bicep_l', 'Left bicep', 'cm'), ('bicep_r', 'Right bicep', 'cm'), ('thigh_l', 'Left thigh', 'cm'),
+  ('thigh_r', 'Right thigh', 'cm'), ('calf_l', 'Left calf', 'cm'), ('calf_r', 'Right calf', 'cm'), ('body_fat', 'Body fat', '%'),
+];
+const _defaultMeasures = ['waist', 'hips', 'chest', 'bicep_l', 'bicep_r', 'body_fat'];
+
+/// Joins `x_l` + `x_r` into one "X (L · R)" line; [keys] with their tracked flag, in board order.
+List<PxMetric> pxGroup(Map<String, bool> keys) {
+  final out = <PxMetric>[];
+  for (final (k, l, u) in pxMeasureKeys) {
+    if (!keys.containsKey(k) || k.endsWith('_r') && keys.containsKey('${k.substring(0, k.length - 2)}_l')) continue;
+    if (k.endsWith('_l') && keys.containsKey('${k.substring(0, k.length - 2)}_r')) {
+      final base = k.substring(0, k.length - 2);
+      out.add(PxMetric([k, '${base}_r'], '${base[0].toUpperCase()}${base.substring(1)} L · R', u, tracked: keys[k]! || keys['${base}_r']!));
+    } else {
+      out.add(PxMetric([k], l, u, tracked: keys[k]!));
+    }
+  }
+  return out;
+}
 
 class PxLift {
   PxLift(Map<String, dynamic> j)
@@ -157,7 +205,17 @@ class PxData {
       sets = [for (final s in (j['photo_sets'] as List? ?? const [])) PxSet((s as Map).cast<String, dynamic>())];
   final Map<String, dynamic> j;
   List<PxWeight> weights;
-  final List<PxMeasure> measures;
+  List<PxMeasure> measures;
+
+  /// The lines of the Body tab: what the coach asks for plus anything already logged (`measures` from the server).
+  List<PxMetric> get metrics {
+    final ms = j['measures'] as List?;
+    if (ms == null) return pxGroup({for (final k in _defaultMeasures) k: true});
+    return pxGroup({for (final m in ms.cast<Map>()) '${m['key']}': m['tracked'] != false});
+  }
+
+  /// Only what the coach asks for (the Log measurements sheet).
+  List<PxMetric> get tracked => metrics.where((m) => m.tracked).toList();
   final List<PxLift> lifts;
   final PxAdherence adherence;
   List<PxSet> sets;
@@ -254,6 +312,20 @@ class ProgressController extends ChangeNotifier {
         // Offline: the weigh-in stays; it can be logged again.
       }
     }
+  }
+
+  /// Log measurements sheet: merges into that day's row (null takes a key off). Shows at once, syncs later offline.
+  Future<void> logMeasures(DateTime day, Map<String, double?> values) async {
+    final d = data;
+    if (d != null) {
+      final i = d.measures.indexWhere((m) => DateUtils0.same(m.date, day));
+      final v = {...?(i >= 0 ? d.measures[i].v : null)};
+      values.forEach((k, n) => n == null ? v.remove(k) : v[k] = n);
+      final rest = [...d.measures.where((m) => !DateUtils0.same(m.date, day))];
+      d.measures = [...rest, if (v.isNotEmpty) PxMeasure.local(day, v)]..sort((a, b) => a.date.compareTo(b.date));
+      notifyListeners();
+    }
+    await Services.outbox.enqueue('POST', 'me/measurements/', {'date': ymd(day), 'values': values}, tag: 'progress:measure');
   }
 
   /// Add photos sheet: one pose into today's set (data URL, so it can wait in the outbox).

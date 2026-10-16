@@ -11,7 +11,9 @@ from .models import (
     CHOICE_TYPES,
     Answer,
     FormRequest,
+    MEASURE_KEYS,
     FormType,
+    Measurement,
     PhotoSet,
     ProgressPhoto,
     QuestionType,
@@ -50,6 +52,8 @@ def _clean_value(q, v):
             raise ValidationError({str(q.id): ["Enter a number."]})
         if q.metric == "weight" and not 20 <= n <= 400:
             raise ValidationError({str(q.id): ["Enter your weight in kg."]})
+        if q.metric in MEASURE_KEYS and not ((3 <= n <= 70) if q.metric == "body_fat" else (10 <= n <= 300)):
+            raise ValidationError({str(q.id): ["Check this number."]})
         return float(n)
     if t == QuestionType.SCALE:
         try:
@@ -163,6 +167,10 @@ def submit(client, form, answers, files=None, *, request_obj=None, submission=No
             if key in ProgressPhoto.Pose.values:
                 ProgressPhoto.objects.filter(photo_set=photo_set, pose=key).delete()
                 ProgressPhoto.objects.create(photo_set=photo_set, pose=key, image=f)
+    # Measurement answers (a question whose metric is waist, hips, …) also go on the Progress page.
+    taken = {k: metrics[k] for k in MEASURE_KEYS if metrics.get(k) is not None}
+    if taken:
+        save_measures(client, submission.date, taken)
     if "weight" in metrics:
         WeightLog.objects.update_or_create(client=client, date=submission.date,
                                            defaults={"weight_kg": Decimal(str(metrics["weight"])),
@@ -274,3 +282,23 @@ def save_photo(client, *, pose, image, label=None, day=None):
             ps.save(update_fields=["weight_kg"])
     ProgressPhoto.objects.filter(photo_set=ps, pose=pose).delete()
     return ProgressPhoto.objects.create(photo_set=ps, pose=pose, image=image)
+
+
+def save_measures(client, day, values):
+    """Merge {key: number | None} into the day's measurements. None takes a key off; an empty day is deleted."""
+    m = Measurement.objects.filter(client=client, date=day).first()
+    v = dict(m.values) if m else {}
+    for k, n in values.items():
+        if n is None:
+            v.pop(k, None)
+        else:
+            v[k] = float(n)
+    if not v:
+        if m:
+            m.delete()
+        return None
+    if m:
+        m.values = v
+        m.save(update_fields=["values"])
+        return m
+    return Measurement.objects.create(client=client, date=day, values=v)

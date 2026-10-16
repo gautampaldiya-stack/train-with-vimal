@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-16 · Body measurements — client logs any of 12, coach picks the set
+- **Pehle:** Measurements me sirf 5 fixed column (chest, waist, hips, arm, body fat) the, aur client unhe log nahi kar sakta tha; sirf seed / check-in se aate the.
+- **Ab:** `Measurement.values` ek map hai: neck, chest, abdomen, waist, hips, bicep L / R, thigh L / R, calf L / R (cm) + body fat (%). Client ke liye coach ka set `ClientProfile.measure_keys` (khali = waist, hips, chest, biceps, body fat). Progress → Body tab me `Log` → *Log measurements* sheet (date chips, har measurement ka stepper, sirf badle hue save, Undo). `POST me/measurements/` usi din ki row me merge karta hai, `null` value hatati hai. Check-in ka number answer agar measurement metric hai to wahi measurement ban jata hai. Compare table aur First day vs now naye keys dikhate hain, L / R ek line me ("28.5 · 28.5 cm"). Migration purane columns ka data copy karta hai (arm → dono biceps).
+- **Kyun:** Gautam ne measurement list ka screenshot bheja; decision card par "Client side now" chuna. Coach ka checkbox picker aur check-in form me measurement block trainer screens ke saath.
+- **Updated:** backend checkins models / serializers / services / views / progress, migrations checkins 0003 + clients 0003, seed_demo, tests/test_client_progress.py; app progress_model / screen / pages / sheets; docs/screens/behaviour.md, architecture docs · Decision D-22
+
 ### 2026-10-16 · Progress round 2, Check-ins count, Windows dates
 - **Pehle:** Windows par History khulte hi 500 (`strftime("%-I")` Windows par nahi chalta; yahi baaki session / notification texts me bhi tha). Progress / History / Photos / Compare ke tabs board jitne chaude. Progress photos me Compare neeche sticky bar me tha, "Next set due" measurements ki date se aata tha. Past check-ins me total pata nahi chalta tha aur scroll ka ishara nahi tha.
 - **Ab:** `dfmt()` helper (apps/common/utils.py) har jagah, aur ek test jo `%-` wapas aane nahi deta. Web par tabs label jitne chhote (`PxTabs.fit`), Progress me Compare tabs ke saath. Progress photos: Compare + "2 of 2 selected" upar, pose tabs ke right (phone par tabs ke saath button, neeche line). "Next set due" = last photo set + 2 hafte, us hafte ka Sunday (`next_photos`). Past check-ins header me *"20 check-ins · 8 sent · 12 missed"* (`history_total`), scrollbar dikhta hai, neeche fade + *"Scroll for older · 20 of 45 shown"*.

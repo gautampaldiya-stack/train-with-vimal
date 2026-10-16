@@ -512,3 +512,123 @@ Future<void> showHistoryDay(BuildContext context, PxDay day) {
     ]),
   );
 }
+
+// ─────────────────────────────── Log measurements
+
+class _Lm extends ChangeNotifier {
+  _Lm(this.day, this.values);
+  DateTime day;
+  final Map<String, double> values; // what each stepper shows (last value to start)
+  final touched = <String>{}; // only these are saved
+  void set(String k, double v) {
+    values[k] = v;
+    touched.add(k);
+    notifyListeners();
+  }
+
+  void pick(DateTime d) {
+    day = d;
+    notifyListeners();
+  }
+}
+
+/// Log measurements sheet (Body tab): the coach's measurements, each starting at its last value. Only the numbers
+/// that are changed are saved, so a day never gets copies of older measurements.
+Future<void> showLogMeasures(BuildContext context, ProgressController c) {
+  final d = c.data;
+  final today = c.today;
+  final metrics = d?.tracked ?? const <PxMetric>[];
+  final lastOf = <String, (double, DateTime)>{};
+  for (final m in d?.measures ?? const <PxMeasure>[]) {
+    m.v.forEach((k, v) => lastOf[k] = (v, m.date));
+  }
+  const start = {'neck': 34.0, 'chest': 90.0, 'abdomen': 85.0, 'waist': 80.0, 'hips': 98.0, 'bicep_l': 29.0, 'bicep_r': 29.0, 'thigh_l': 55.0, 'thigh_r': 55.0, 'calf_l': 36.0, 'calf_r': 36.0, 'body_fat': 25.0};
+  final s = _Lm(today, {for (final m in metrics) for (final k in m.keys) k: lastOf[k]?.$1 ?? start[k] ?? 50});
+  final days = [for (var o = 0; o < 4; o++) today.subtract(Duration(days: o))];
+  String side(String k) => k.endsWith('_l') ? 'Left' : (k.endsWith('_r') ? 'Right' : '');
+
+  Future<void> save(BuildContext ctx) async {
+    if (s.touched.isEmpty) {
+      showToast(ctx, 'Change a number first', sub: 'Tap − / + or the number to type it', kind: ToastKind.warn);
+      return;
+    }
+    final day = s.day;
+    final values = {for (final k in s.touched) k: s.values[k]};
+    final before = d?.measures.where((m) => DateUtils0.same(m.date, day)).firstOrNull?.v ?? const <String, double>{};
+    final undo = {for (final k in s.touched) k: before[k]};
+    Navigator.of(ctx).pop();
+    try {
+      await c.logMeasures(day, values);
+    } catch (e) {
+      c.load();
+      if (context.mounted) _failed(context, e);
+      return;
+    }
+    if (!context.mounted) return;
+    final names = [for (final m in metrics) if (m.keys.any(s.touched.contains)) m.label.replaceAll(' L · R', '')];
+    showToast(
+      context,
+      'Measurements saved',
+      sub: '${names.take(3).join(', ')}${names.length > 3 ? ' +${names.length - 3}' : ''} · ${pxWdm(day)}',
+      kind: ToastKind.ok,
+      action: 'Undo',
+      onAction: () => c.logMeasures(day, undo),
+    );
+  }
+
+  return showAppSheet(
+    context,
+    title: 'Log measurements',
+    sub: 'Relaxed, tape snug but not tight. Change only what you measured.',
+    webWidth: 500,
+    listen: s,
+    footerStretch: true,
+    builder: (_) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
+      pxLbl('Date'),
+      PxQuick(
+        items: [for (final (i, x) in days.indexed) i == 0 ? 'Today' : (i == 1 ? 'Yesterday' : pxWdm(x))],
+        on: days.indexWhere((x) => DateUtils0.same(x, s.day)),
+        onPick: (i) => s.pick(days[i]),
+      ),
+      for (final m in metrics)
+        Container(
+          padding: const EdgeInsets.only(top: 8),
+          decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 4, children: [
+            for (final k in m.keys)
+              Row(spacing: 10, children: [
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+                    Text(m.pair ? '${m.label.replaceAll(' L · R', '')} · ${side(k)}' : m.label,
+                        style: AppText.s(13.5, W.w7, color: s.touched.contains(k) ? AppColors.text : AppColors.text2)),
+                    Text(
+                      s.touched.contains(k)
+                          ? 'Will be saved'
+                          : (lastOf[k] == null ? 'Not measured yet' : 'Last ${pxAmt(lastOf[k]!.$1, m.unit)} · ${pxDm(lastOf[k]!.$2)}'),
+                      style: AppText.s(12, W.w4, color: s.touched.contains(k) ? AppColors.okText : AppColors.muted),
+                    ),
+                  ]),
+                ),
+                Opacity(
+                  opacity: s.touched.contains(k) ? 1 : .6,
+                  child: NumStepper(
+                    value: s.values[k]!,
+                    onChanged: (v) => s.set(k, v),
+                    label: (v) => pxAmt(v, m.unit),
+                    step: .5,
+                    min: m.unit == '%' ? 3 : 10,
+                    max: m.unit == '%' ? 70 : 300,
+                    name: m.label,
+                  ),
+                ),
+              ]),
+          ]),
+        ),
+      if (metrics.isEmpty) fdCap('Your coach has not picked any measurements yet.'),
+    ]),
+    footer: pxFooter((ctx) => [
+      CaButton('Cancel', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop()),
+      Opacity(opacity: s.touched.isEmpty ? .45 : 1, child: CaButton('Save', icon: AppIcons.check, onPressed: () => save(ctx))),
+    ]),
+  );
+}

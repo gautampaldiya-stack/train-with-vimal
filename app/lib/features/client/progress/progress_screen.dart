@@ -204,8 +204,9 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
     final weeks = now == null ? 0 : (now.date.difference(d.startDate).inDays / 7).round();
     final rows = <(String, String, String, String, bool?)>[
       if (start != null && now != null) _row('Weight', 'kg', start, now.kg),
-      for (final (k, l, u) in pxMetrics)
-        if (k != 'chest' && k != 'arm' && m0?.v[k] != null && m1?.v[k] != null && m0 != m1) _row(l, u, m0!.v[k]!, m1!.v[k]!),
+      // The board's rows: weight, waist, hips, body fat.
+      for (final m in d.metrics)
+        if (const ['waist', 'hips', 'body_fat'].contains(m.key) && m0 != m1 && m0?.of(m) != null && m1?.of(m) != null) pxMRow(m, m0!.of(m)!, m1!.of(m)!),
     ];
     return ChCard(children: [
       PxHead('First day vs now', '${pxDm(d.startDate)} → ${pxDm(now?.date ?? c.today)} · $weeks ${weeks == 1 ? 'week' : 'weeks'}'),
@@ -354,19 +355,21 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
   Widget _body(PxData d) {
     final ms = d.measures;
     final cap = 'Next measurements are due with your week ${d.nextMeasureWeek} check-in on ${pxWdm(d.nextMeasure)}.';
+    final log = CaButton('Log', kind: CaBtnKind.out, small: true, expand: false, icon: AppIcons.plus, onPressed: () => showLogMeasures(context, c));
     if (ms.isEmpty) {
       return ChCard(children: [
-        const PxHead('Body measurements', 'Measured every 2 weeks with your photo check-in'),
+        PxHead('Body measurements', 'Measured every 2 weeks with your photo check-in', action: log),
         fdCapPx('No measurements yet. $cap'),
       ]);
     }
     final rows = <Widget>[];
-    for (final (k, l, u) in pxMetrics) {
-      final pts = [for (final m in ms) if (m.v[k] != null) (m.date, m.v[k]!)];
+    for (final m in d.metrics) {
+      final pts = [for (final x in ms) if (x.of(m) != null) (x.date, x.of(m)!)];
       if (pts.isEmpty) continue;
-      final first = pts.first, last = pts.last, diff = last.$2 - first.$2;
-      final top = pts.map((p) => p.$2).reduce((a, b) => a > b ? a : b);
-      final open = _open == k;
+      final first = pts.first, last = pts.last, diff = m.delta(first.$2, last.$2);
+      double avg(List<double> v) => v.reduce((a, b) => a + b) / v.length;
+      final top = pts.map((p) => avg(p.$2)).reduce((a, b) => a > b ? a : b);
+      final open = _open == m.key;
       rows.add(Container(
         decoration: BoxDecoration(border: rows.isEmpty ? null : const Border(top: BorderSide(color: AppColors.line))),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -374,18 +377,18 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
             button: true,
             expanded: open,
             child: Hover(
-              onTap: () => setState(() => _open = open ? null : k),
+              onTap: () => setState(() => _open = open ? null : m.key),
               builder: (_, h, _) => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 child: Row(spacing: 10, children: [
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                      Text(l, style: AppText.s(14, W.w7, color: h ? AppColors.accentText : AppColors.text)),
-                      Text('From ${pxAmt(first.$2, u)} on ${pxDm(first.$1)}', style: AppText.s(12, W.w4, color: AppColors.muted)),
+                      Text(m.label, style: AppText.s(14, W.w7, color: h ? AppColors.accentText : AppColors.text)),
+                      Text('From ${m.amt(first.$2)} on ${pxDm(first.$1)}', style: AppText.s(12, W.w4, color: AppColors.muted)),
                     ]),
                   ),
-                  Text(pxAmt(last.$2, u), style: AppText.s(15, W.w8)),
-                  pxPill(pxChg(diff, u), diff < 0 ? PxTone.green : (diff > 0 ? PxTone.amber : PxTone.gray)),
+                  Text(m.amt(last.$2), style: AppText.s(15, W.w8)),
+                  pxPill(m.chg(first.$2, last.$2), diff < 0 ? PxTone.green : (diff > 0 ? PxTone.amber : PxTone.gray)),
                   AnimatedRotation(turns: open ? .5 : 0, duration: const Duration(milliseconds: 150), child: const AppIcon(AppIcons.chevronDown, size: 15, color: AppColors.muted)),
                 ]),
               ),
@@ -406,13 +409,13 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
                         child: Align(
                           alignment: Alignment.centerLeft,
                           child: FractionallySizedBox(
-                            widthFactor: top <= 0 ? 0 : (v / top).clamp(0.0, 1.0),
+                            widthFactor: top <= 0 ? 0 : (avg(v) / top).clamp(0.0, 1.0),
                             child: Container(decoration: BoxDecoration(color: i == 0 ? AppColors.accent : AppColors.pxHist, borderRadius: BorderRadius.circular(6))),
                           ),
                         ),
                       ),
                     ),
-                    SizedBox(width: 52, child: Text(pxAmt(v, u), textAlign: TextAlign.right, style: AppText.s(12, W.w7))),
+                    SizedBox(width: m.pair ? 92 : 52, child: Text(m.amt(v), textAlign: TextAlign.right, style: AppText.s(12, W.w7))),
                   ]),
               ]),
             ),
@@ -420,7 +423,7 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
       ));
     }
     return ChCard(children: [
-      const PxHead('Body measurements', 'Measured every 2 weeks with your photo check-in'),
+      PxHead('Body measurements', 'Measured every 2 weeks with your photo check-in', action: log),
       Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: rows),
       fdCapPx(cap),
     ]);
@@ -607,6 +610,12 @@ Widget pxLoading(Object? error, Future<void> Function() retry, String what) => C
           ]),
         ),
 );
+
+/// A table row for one measurement line (a pair shows "29.5 · 30", no unit, to fit the column).
+(String, String, String, String, bool?) pxMRow(PxMetric m, List<double> a, List<double> b) {
+  final d = m.delta(a, b);
+  return (m.label, m.amt(a, unit: !m.pair), m.amt(b, unit: !m.pair), m.pair ? m.chg(a, b).replaceAll(' ${m.unit}', '') : m.chg(a, b), d < 0 ? true : (d > 0 ? false : null));
+}
 
 /// `fd-cap`
 Widget fdCapPx(String t) => Text(t, style: AppText.s(12.5, W.w4, color: AppColors.muted, h: 1.45));

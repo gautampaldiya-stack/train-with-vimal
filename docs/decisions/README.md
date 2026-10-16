@@ -25,3 +25,4 @@ One file per decision. Add a new file for every new decision (next number), and 
 | [D-17](0017-train-day-tap-history-pause.md) | Train: day tap, one-exercise history, Use last time, timer stops when leaving | 2026-10-15 |
 | [D-20](0020-food-page-photo-offplan-custom.md) | Food page: meal photo with Mark as eaten, off-plan reason, custom food per serving | 2026-10-15 |
 | [D-21](0021-progress-tab.md) | Progress tab: one `me/progress/` answer, History endpoint, photos by data URL | 2026-10-16 |
+| [D-22](0022-body-measurements.md) | Body measurements: one values map, 12 keys + body fat, coach picks the set | 2026-10-16 |

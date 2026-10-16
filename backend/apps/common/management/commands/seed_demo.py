@@ -379,8 +379,8 @@ class Command(BaseCommand):
             d = start + timedelta(days=14 * i)
             if d > today:
                 break
-            Measurement.objects.create(client=riya, date=d, waist_cm=wa, hips_cm=hi, chest_cm=ch, arm_cm=ar,
-                                       body_fat_pct=bf)
+            Measurement.objects.create(client=riya, date=d, values={"waist": wa, "hips": hi, "chest": ch,
+                                                                    "bicep_l": ar, "bicep_r": ar + .5, "body_fat": bf})
         tints = [((219, 230, 252), (88, 120, 220)), ((220, 240, 228), (70, 150, 100)),
                  ((236, 228, 250), (140, 110, 210)), ((252, 236, 220), (210, 140, 70))]
         last_sunday = today - timedelta(days=today.weekday() + 1)

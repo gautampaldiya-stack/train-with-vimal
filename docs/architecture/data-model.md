@@ -273,18 +273,14 @@ A filled form. Weekly and daily check-ins are submissions too.
 Constraints: uniq_weight_day
 
 ### Measurement
-
+One day's body measurements: {key: number} for the keys in MEASURES (cm, body fat in %).
 
 | Field | Type | Notes |
 |---|---|---|
 | `id` | BigAutoField |  |
 | `client` | ForeignKey | → User; indexed |
 | `date` | DateField |  |
-| `waist_cm` | DecimalField | optional |
-| `hips_cm` | DecimalField | optional |
-| `chest_cm` | DecimalField | optional |
-| `arm_cm` | DecimalField | optional |
-| `body_fat_pct` | DecimalField | optional |
+| `values` | JSONField |  |
 | `created_at` | DateTimeField |  |
 
 Constraints: uniq_measure_day
@@ -341,6 +337,7 @@ Constraints: uniq_pose_per_set
 | `onboarding_done` | JSONField |  |
 | `onboarding_skipped_at` | DateTimeField | optional |
 | `ask_parq` | BooleanField |  |
+| `measure_keys` | JSONField |  |
 | `signup_source` | CharField | choices: web, android, ios, added |
 | `invite_link` | ForeignKey | → InviteLink; optional; indexed |
 | `invited_by` | ForeignKey | → User; optional; indexed |

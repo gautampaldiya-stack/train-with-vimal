@@ -136,15 +136,24 @@ class WeightLog(models.Model):
         constraints = [models.UniqueConstraint(fields=["client", "date"], name="uniq_weight_day")]
 
 
+# Body measurements a coach can ask for (key, label, unit). Weight is not here: it has its own weigh-ins.
+MEASURES = [
+    ("neck", "Neck", "cm"), ("chest", "Chest", "cm"), ("abdomen", "Abdomen (navel)", "cm"), ("waist", "Waist", "cm"),
+    ("hips", "Hips", "cm"), ("bicep_l", "Left bicep", "cm"), ("bicep_r", "Right bicep", "cm"),
+    ("thigh_l", "Left thigh", "cm"), ("thigh_r", "Right thigh", "cm"), ("calf_l", "Left calf", "cm"),
+    ("calf_r", "Right calf", "cm"), ("body_fat", "Body fat", "%"),
+]
+MEASURE_KEYS = [k for k, _, _ in MEASURES]
+# What a client tracks until the coach picks (ClientProfile.measure_keys).
+DEFAULT_MEASURES = ["waist", "hips", "chest", "bicep_l", "bicep_r", "body_fat"]
+
+
 class Measurement(models.Model):
+    """One day's body measurements: {key: number} for the keys in MEASURES (cm, body fat in %)."""
+
     client = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="measurements")
     date = models.DateField()
-    waist_cm = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
-    hips_cm = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
-    chest_cm = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
-    arm_cm = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
-    body_fat_pct = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True,
-                                       validators=[MaxValueValidator(70)])
+    values = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

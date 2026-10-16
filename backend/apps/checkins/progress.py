@@ -10,7 +10,7 @@ from datetime import timedelta
 
 from django.utils import timezone
 
-from .models import Measurement, PhotoSet, Submission, WeightLog
+from .models import DEFAULT_MEASURES, MEASURES, Measurement, PhotoSet, Submission, WeightLog
 from apps.common.utils import dfmt
 
 MEASURE_EVERY = 14  # days, with the photo check-in
@@ -121,6 +121,7 @@ def progress_page(client, request=None):
     last = weights[-1] if weights else None
     goal = cp.target_weight_kg
     measures = list(Measurement.objects.filter(client=client).order_by("date"))
+    tracked = set(cp.measure_keys or DEFAULT_MEASURES)
     nxt = (measures[-1].date + timedelta(days=MEASURE_EVERY)) if measures else today
     nxt = max(nxt, today)
     sunday = nxt + timedelta(days=(6 - nxt.weekday()))
@@ -137,8 +138,10 @@ def progress_page(client, request=None):
         "now": {"kg": _f(last.weight_kg), "date": last.date} if last else None,
         "goal": {"kg": _f(goal), "eta": _goal_eta(weights, goal, today)} if goal is not None else None,
         "weights": [{"id": w.id, "date": w.date, "kg": float(w.weight_kg), "source": w.source} for w in weights],
-        "measurements": [{"date": m.date, "waist": _f(m.waist_cm), "hips": _f(m.hips_cm), "chest": _f(m.chest_cm),
-                          "arm": _f(m.arm_cm), "body_fat": _f(m.body_fat_pct)} for m in measures],
+        "measurements": [{"date": m.date, **m.values} for m in measures],
+        # The measurements this client tracks (the coach's pick, else the default set) plus any already logged.
+        "measures": [{"key": k, "label": lbl, "unit": u, "tracked": k in tracked} for k, lbl, u in MEASURES
+                     if k in tracked or any(k in m.values for m in measures)],
         "next_measure": {"date": sunday, "week": week_number(client, sunday)},
         "next_photos": {"date": p_sunday, "week": week_number(client, p_sunday)},
         "lifts": _lifts(client),

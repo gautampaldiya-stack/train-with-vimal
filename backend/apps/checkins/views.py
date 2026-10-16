@@ -495,11 +495,15 @@ class MyMeasurementViewSet(MyWeightViewSet):
         return Measurement.objects.filter(client=self.request.user)
 
     def create(self, request):
+        """Log measurements sheet: adds to the day's row (a null takes that one off; an empty row is deleted)."""
         s = MeasurementSerializer(data=request.data)
         s.is_valid(raise_exception=True)
-        d = dict(s.validated_data)
-        day = d.pop("date")
-        m, _ = Measurement.objects.update_or_create(client=request.user, date=day, defaults=d)
+        day = s.validated_data["date"]
+        if day > timezone.localdate():
+            raise serializers.ValidationError({"date": ["Pick today or an earlier day."]})
+        m = services.save_measures(request.user, day, s.validated_data["values"])
+        if m is None:
+            return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(MeasurementSerializer(m).data, status=201)
 
 

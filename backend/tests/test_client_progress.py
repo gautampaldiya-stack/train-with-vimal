@@ -10,6 +10,7 @@ def test_progress_page_has_goal_measurements_lifts_and_photos(client_user):
     assert d["start"]["kg"] == 72.0 and d["goal"]["kg"] == 62.0 and d["now"]["kg"]
     assert len(d["weights"]) > 3 and {"date", "kg"} <= set(d["weights"][0])
     assert len(d["measurements"]) >= 2 and d["measurements"][0]["waist"] == 84.0
+    assert [m["key"] for m in d["measures"]][:3] == ["chest", "waist", "hips"]  # board order, default set
     assert d["next_measure"]["date"] >= timezone.localdate().isoformat()
     assert d["lifts"] and {"best", "started", "ups", "series", "note"} <= set(d["lifts"][0])
     a = d["adherence"]
@@ -70,3 +71,43 @@ def test_add_photo_as_data_url_then_replace_and_undo(client_user):
     assert client_user.delete(f"/api/v1/me/photos/?id={again['id']}").status_code == 204
     none = client_user.post("/api/v1/me/photos/", {"pose": "front"}, format="json")
     assert none.status_code == 400 and "image" in none.json()["error"]["fields"]
+
+
+def test_log_measurements_merges_the_day_and_undo_takes_them_off(client_user):
+    from apps.checkins.models import Measurement
+
+    day = timezone.localdate().isoformat()
+    Measurement.objects.filter(client__email="riya@example.com", date=day).delete()
+    url = "/api/v1/me/measurements/"
+    r = client_user.post(url, {"date": day, "values": {"waist": 78.5, "neck": 33}}, format="json")
+    assert r.status_code == 201, r.content
+    r = client_user.post(url, {"date": day, "values": {"thigh_l": 55, "thigh_r": "55.5"}}, format="json")
+    assert r.json()["values"] == {"waist": 78.5, "neck": 33.0, "thigh_l": 55.0, "thigh_r": 55.5}
+    d = client_user.get("/api/v1/me/progress/").json()
+    keys = {m["key"]: m for m in d["measures"]}
+    assert keys["neck"]["tracked"] is False and keys["waist"]["tracked"] is True  # logged ones show too
+    # Undo: nulls take them off; an empty day goes away
+    r = client_user.post(url, {"date": day, "values": {"waist": None, "neck": None, "thigh_l": None, "thigh_r": None}},
+                         format="json")
+    assert r.status_code == 204
+    assert client_user.post(url, {"date": day, "values": {"elbow": 20}}, format="json").status_code == 400
+    assert client_user.post(url, {"date": day, "values": {"waist": 5}}, format="json").status_code == 400
+    assert client_user.post(url, {"date": day, "values": {"body_fat": 90}}, format="json").status_code == 400
+    future = (timezone.localdate() + timedelta(days=1)).isoformat()
+    assert client_user.post(url, {"date": future, "values": {"waist": 80}}, format="json").status_code == 400
+
+
+def test_checkin_measurement_answer_lands_on_progress(client_user):
+    from apps.checkins.models import Form, Measurement, Question
+
+    weekly = Form.objects.get(name="Weekly check-in")
+    q = Question.objects.create(form=weekly, order=99, text="Waist (cm)", type="number", metric="waist")
+    f = client_user.get("/api/v1/me/checkins/").json()["weekly"]["form"]
+    answers = {}
+    for x in f["questions"]:
+        if x["required"]:
+            answers[x["id"]] = 68.2 if x.get("metric") == "weight" else (x["options"][0] if x.get("options") else 4)
+    answers[q.id] = 77.5
+    r = client_user.post("/api/v1/me/submissions/", {"form": f["id"], "answers": answers}, format="json")
+    assert r.status_code == 201, r.content
+    assert Measurement.objects.get(client__email="riya@example.com", date=timezone.localdate()).values["waist"] == 77.5

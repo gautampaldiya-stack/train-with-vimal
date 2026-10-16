@@ -14,7 +14,7 @@ import '../food/food_parts.dart' show fdTag;
 import '../home/home_parts.dart' show ChCard;
 import 'progress_model.dart';
 import 'progress_parts.dart';
-import 'progress_screen.dart' show fdCapPx, pxLoading;
+import 'progress_screen.dart' show fdCapPx, pxLoading, pxMRow;
 import 'progress_sheets.dart';
 
 /// The Progress sub pages (boards `ClientProgress` / `ClientProgressWeb`): History (`/progress/history`),
@@ -584,8 +584,8 @@ class _ProgressCompareScreenState extends State<ProgressCompareScreen> {
       final ma = d.measureAt(a.date), mb = d.measureAt(b.date);
       final rows = <(String, String, String, String, bool?)>[
         if (a.kg != null && b.kg != null) _row('Weight', 'kg', a.kg!, b.kg!),
-        for (final (k, l, u) in pxMetrics)
-          if (ma?.v[k] != null && mb?.v[k] != null) _row(l, u, ma!.v[k]!, mb!.v[k]!),
+        for (final m in d.metrics)
+          if (ma?.of(m) != null && mb?.of(m) != null) pxMRow(m, ma!.of(m)!, mb!.of(m)!),
       ];
       final sum = rows.isEmpty
           ? 'No measurements near these dates yet.'

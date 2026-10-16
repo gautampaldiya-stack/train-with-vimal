@@ -1196,7 +1196,7 @@ Data: `GET me/progress/` (one answer, cached for offline). Writes go through the
 
 **Tabs** `Weight` · `Body` · `Strength` + `Compare` chip (shows **First day vs now**: Weight, Waist, Hips, Body fat; `Compare photos side by side` → Compare page; fewer than 2 sets → toast *"Add a second photo set first"*).
 - **Weight:** Current, change pill (*"−3.9 kg in 6 wks"*), chart with goal line, dots (tap = selected box: Vs previous · Since start · To goal, ✕ closes). Range `4 wk` · `12 wk` (default) · `6 mo` · `All` filters on the phone, no request.
-- **Body:** Waist · Hips · Chest · Arm · Body fat, each opens its dated bars (Waist open first). Cap *"Next measurements are due with your week N check-in on Sun, 1 Nov."*
+- **Body:** the measurements this client tracks (the coach's set, default Waist · Hips · Chest · Bicep L · R · Body fat, plus any other already logged), each opens its dated bars (Waist open first); pairs show *"28.5 · 28.5 cm"*. `Log` in the card header → **Log measurements** sheet: *"Relaxed, tape snug but not tight. Change only what you measured."*, date chips Today · Yesterday · two days before, a stepper per measurement (step 0.5) starting at the last value with *"Last 79.5 cm · 15 Oct"*; only changed ones are saved. Save faded until a number changes (tap → *"Change a number first"*). Saved → toast *"Measurements saved"* · *"Waist · Fri, 16 Oct"* + Undo (D-22). Cap *"Next measurements are due with your week N check-in on Sun, 1 Nov."*
 - **Strength:** lifts with spark line, best, change; tap → Lift sheet.
 
 **Photos** — latest set's Front / Side / Back (tap → Photo set sheet; no set yet → Add photos), `All photos` → `/progress/photos`, `Add photos`, `Compare`.

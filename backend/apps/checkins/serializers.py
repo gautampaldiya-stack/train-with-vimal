@@ -7,6 +7,7 @@ from .models import (
     Answer,
     Form,
     FormRequest,
+    MEASURES,
     Measurement,
     PhotoSet,
     ProgressPhoto,
@@ -16,7 +17,7 @@ from .models import (
     WeightLog,
 )
 
-METRICS = {"", "weight", "sleep_hours", "energy", "mood", "hunger", "soreness", "waist", "steps"}
+METRICS = {"", "weight", "sleep_hours", "energy", "mood", "hunger", "soreness", "steps", *(k for k, _, _ in MEASURES)}
 
 
 class QuestionSerializer(serializers.ModelSerializer):
@@ -207,18 +208,34 @@ class WeightLogSerializer(serializers.ModelSerializer):
 
 
 class MeasurementSerializer(serializers.ModelSerializer):
+    """`values` = {key: number}; a key set to null is taken off that day. Keys are MEASURES' keys."""
+
     class Meta:
         model = Measurement
-        fields = ["id", "date", "waist_cm", "hips_cm", "chest_cm", "arm_cm", "body_fat_pct", "created_at"]
+        fields = ["id", "date", "values", "created_at"]
 
-    def validate(self, attrs):
-        if not any(attrs.get(k) is not None for k in ("waist_cm", "hips_cm", "chest_cm", "arm_cm", "body_fat_pct")):
-            raise serializers.ValidationError("Enter at least one measurement.")
-        for k in ("waist_cm", "hips_cm", "chest_cm", "arm_cm"):
-            v = attrs.get(k)
-            if v is not None and not 10 <= v <= 300:
+    def validate_values(self, v):
+        if not isinstance(v, dict):
+            raise serializers.ValidationError("Send the measurements as {name: number}.")
+        units = {k: u for k, _, u in MEASURES}
+        out = {}
+        for k, n in v.items():
+            if k not in units:
+                raise serializers.ValidationError({k: ["Not a measurement we track."]})
+            if n is None or n == "":
+                out[k] = None
+                continue
+            try:
+                n = round(float(n), 1)
+            except (TypeError, ValueError):
+                raise serializers.ValidationError({k: ["Enter a number."]})
+            lo, hi = (3, 70) if units[k] == "%" else (10, 300)
+            if not lo <= n <= hi:
                 raise serializers.ValidationError({k: ["Check this number."]})
-        return attrs
+            out[k] = n
+        if not out:
+            raise serializers.ValidationError("Enter at least one measurement.")
+        return out
 
 
 class ProgressPhotoSerializer(serializers.ModelSerializer):

@@ -118,5 +118,7 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
 - `/progress` (ClientProgress + Web), `/progress/history`, `/progress/photos`, `/progress/compare`.
   Code in `app/lib/features/client/progress/` (model, parts, sheets, screen, pages). API `me/progress/`,
   `me/history/`, `me/weights/`, `me/photos/` (data URL). Demo: `seed_demo` adds Riya's measurements and photo sets.
+- Body measurements (D-22): client logs from the Body tab (`POST me/measurements/`, merge per day). Still to do with the
+  trainer screens: the coach's measurement picker (`measure_keys`) and a measurement block in the check-in form.
 - Habits Day / Week tabs sized like the board (2026-10-16).
 - Next: More tab, then trainer / admin boards.
