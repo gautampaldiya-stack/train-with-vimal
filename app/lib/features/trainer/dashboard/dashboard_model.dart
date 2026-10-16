@@ -124,7 +124,7 @@ class TrainerHome {
   final List<TdNotice> notices;
   int unread;
 
-  /// Newest first; [activityNext] is the cursor for "Show more" ('' when there is no more).
+  /// The latest 10, newest first ([activityNext]: cursor for a later "View all").
   final List<TdActivity> activity;
   String activityNext;
 }
@@ -190,24 +190,6 @@ class TrainerHomeController extends ChangeNotifier {
   void _send(String id) {
     _pending.remove(id);
     Services.api.post('clients/$id/remind/', {}).ignore();
-  }
-
-  bool loadingMore = false;
-
-  /// Activity card "Show more": the next page under the rows already shown.
-  Future<void> moreActivity() async {
-    final d = data;
-    if (d == null || d.activityNext.isEmpty || loadingMore) return;
-    loadingMore = true;
-    notifyListeners();
-    try {
-      final r = await Services.api.get<Map>('dashboard/trainer/activity/', query: {'before': d.activityNext});
-      d.activity.addAll([for (final s in r['rows'] as List) TdActivity(s as Map)]);
-      d.activityNext = '${r['next'] ?? ''}';
-    } finally {
-      loadingMore = false;
-      notifyListeners();
-    }
   }
 
   Future<void> readAll() async {

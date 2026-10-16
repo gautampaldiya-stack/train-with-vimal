@@ -70,12 +70,11 @@ class _TrainerDashboardScreenState extends State<TrainerDashboardScreen> {
         header: PageTop(title: d.greeting, sub: d.subline, actions: [
           Builder(builder: (b) => AppIconButton(AppIcons.bell, tooltip: 'Notifications', dot: d.unread > 0, onPressed: () => _notes(b, d))),
           AppButton.primary('New session', icon: AppIcons.plus, iconOnly: compactTop(context), onPressed: () => _newSession(d)),
-          _MeAvatar(onTap: () => context.go('/me')),
         ]),
         children: [
           _webStats(d),
           LayoutBuilder(builder: (context, box) {
-            final left = [_today(d), _need(d)], right = [_checkins(d), _week(d), _activity(d)];
+            final left = [_today(d), _need(d), _week(d)], right = [_checkins(d), _activity(d)];
             if (box.maxWidth < 640) return Column(spacing: 16, crossAxisAlignment: CrossAxisAlignment.stretch, children: [...left, ...right]);
             return Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 16, children: [
               Expanded(flex: 14, child: Column(spacing: 16, crossAxisAlignment: CrossAxisAlignment.stretch, children: left)),
@@ -105,8 +104,8 @@ class _TrainerDashboardScreenState extends State<TrainerDashboardScreen> {
                     _today(d, phone: true),
                     _need(d),
                     _checkins(d),
-                    _week(d),
                     _activity(d),
+                    _week(d),
                   ]),
                 ),
               ),
@@ -527,22 +526,9 @@ class _TrainerDashboardScreenState extends State<TrainerDashboardScreen> {
           )
         else
           Padding(
-            padding: EdgeInsets.fromLTRB(phone ? 16 : 20, 0, phone ? 16 : 20, d.activityNext.isEmpty ? 10 : 0),
+            padding: EdgeInsets.fromLTRB(phone ? 16 : 20, 0, phone ? 16 : 20, 10),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               for (final (i, a) in rows.indexed) _ActRow(a, last: i == rows.length - 1, onClient: a.client.isEmpty ? null : () => context.go('/clients/${a.client}')),
-            ]),
-          ),
-        if (d.activityNext.isNotEmpty)
-          Container(
-            margin: const EdgeInsets.only(top: 4),
-            padding: EdgeInsets.fromLTRB(phone ? 16 : 20, 8, phone ? 16 : 20, 10),
-            decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
-            child: Row(children: [
-              Text('Showing ${rows.length}', style: AppText.s(12.5, W.w5, color: AppColors.muted)),
-              const Spacer(),
-              c.loadingMore
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent))
-                  : _Link('Show more', () => c.moreActivity().catchError(_fail)),
             ]),
           ),
       ]),
@@ -672,35 +658,6 @@ class _NameLink extends StatelessWidget {
       );
 }
 
-/// `.profile .pav`: 36 round, soft blue, accent initials; hover ring.
-class _MeAvatar extends StatelessWidget {
-  const _MeAvatar({required this.onTap});
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) {
-    final me = Services.session.me;
-    return Semantics(
-      label: 'My profile',
-      button: true,
-      child: Hover(
-        onTap: onTap,
-        builder: (_, h, _) => Container(
-          width: 36,
-          height: 36,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: AppColors.meAvBg,
-            shape: BoxShape.circle,
-            boxShadow: h ? const [BoxShadow(color: AppColors.accentSoft, spreadRadius: 3)] : null,
-          ),
-          child: Text(me?.initials ?? '', style: AppText.s(13, W.w8, color: AppColors.accentText)),
-        ),
-      ),
-    );
-  }
-}
-
-/// `.hh-ib`: 36 square radius 12, white 20 %, optional red dot.
 class _HeroButton extends StatelessWidget {
   const _HeroButton(this.icon, {required this.label, required this.onTap, this.dot = false});
   final AppIconData icon;

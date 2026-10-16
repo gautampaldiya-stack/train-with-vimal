@@ -920,8 +920,8 @@ class _GuideMediaState extends State<_GuideMedia> {
             ),
           ),
         ),
-      'youtube' => YoutubeBox(url: e.mediaUrl),
-      _ => YoutubeBox(url: e.youtube),
+      'youtube' => YoutubeBox(url: e.mediaUrl, openLink: false),
+      _ => YoutubeBox(url: e.youtube, openLink: false),
     };
     final source = kind.isEmpty ? 'YouTube' : 'From content library';
     return Container(
@@ -934,7 +934,11 @@ class _GuideMediaState extends State<_GuideMedia> {
           child: Row(spacing: 8, children: [
             AppIcon(kind == 'image' ? AppIcons.photo : AppIcons.video, size: 15, color: AppColors.muted),
             Expanded(child: Text(e.videoTitle.isNotEmpty ? e.videoTitle : e.name, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w7))),
-            Text(source, style: AppText.s(12.5, W.w4, color: AppColors.muted)),
+            // YouTube: the footer's right side is the "Open in YouTube" link (not a line under the player).
+            if (kind == 'youtube' || kind.isEmpty)
+              OpenInYoutube(kind.isEmpty ? e.youtube : e.mediaUrl)
+            else
+              Text(source, style: AppText.s(12.5, W.w4, color: AppColors.muted)),
           ]),
         ),
       ]),

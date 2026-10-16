@@ -942,7 +942,7 @@ Trainer login karta hai to usko **apna workspace** milta hai. Sidebar me brand k
 
 ### 3.1 Trainer dashboard — `TrainerDashboard` (built, D-30, D-31)
 
-Title time ke hisaab se — *"Good evening, Aman"*, neeche *"Friday, 16 October · 10 clients · 5 sessions today"*. Top right: bell (laal dot jab unread), `New session`, `AV` (My profile).
+Title time ke hisaab se — *"Good evening, Aman"*, neeche *"Friday, 16 October · 10 clients · 5 sessions today"*. Top right: bell (laal dot jab unread), `New session` (web par `AV` profile button nahi, Gautam; My profile sidebar me hai).
 Phone (`TrainerDashboardMobile`): blue hero status bar ke neeche tak (date · Trainer workspace, bell, `+`, `AV`, greeting, picture), uske kinare par 4 numbers ki strip.
 
 **4 stats** — `My clients` 10 / 30 (*20 spots free*; sirf active clients) · `Check-ins to review` (*"N waiting over 48 hours"* ya *"None waiting long"*) · `Workouts done` (last 7 din, *"+4% vs last week"*) · `Avg reply time` (*"Team average 2.1 h"*).
@@ -953,7 +953,9 @@ Phone (`TrainerDashboardMobile`): blue hero status bar ke neeche tak (date · Tr
 | **Clients who need you** | cap *"Only your clients"*, chips `All` · `Missed workouts` · `Not logging` · `Plan ending` · `Feeling low` (count ke saath). Ek client ek hi row (sabse bada reason). 4 rows, phir `Show N more` | `Remind` → toast *"Reminder sent to Kabir · Push and WhatsApp"* + `Undo` (Undo tak reminder ruka rehta hai), button `Reminded`. `Plan next` / `Open` / naam → client profile |
 | **Check-ins to review** | Sabse purane 5 (weekly, daily, monthly) — *"Riya Sharma · Weekly check-in"*, *"Weight 61.8 kg · energy 3/5 · knees sore"*, age badge (laal 48 h+, peela 24 h+). Count = pura queue (Check-ins page aur sidebar badge jaisa). Khali: *"All check-ins reviewed"* | Row → review drawer: 4 numbers, week ke jawab + last week, *"Riya wrote"*, photos, reply + 3 quick replies. `Open profile` · `Close` · `Mark reviewed` / `Send and mark reviewed` → toast *"Riya’s check-in reviewed · Your reply was sent / Moved out of your list"* + `Undo`. `View all` → Check-ins |
 | **This week** | `Mon 12 – Fri 16 Oct`: Sessions held, Check-ins reviewed, Plans changed, New clients | `My profile` link |
-| **Activity** (Gautam ne add karwaya, board me nahi) | *"You and your clients"*: trainer aur uske clients ne kya kiya, naya sabse upar — check-in bheja, workout khatam, session book / cancel, plan badla, reminder. Har row: kind ka gol dot (check-in blue, plan purple, client logs green, session amber), *"Tanya Arora sent Weekly check-in"*, neeche client · item, right me time (`21:28` / `Yesterday` / `3 days ago`). 6 rows; *"Showing N"* + `Show more` agle 6 laata hai (`dashboard/trainer/activity/?before=`). Sirf apne clients | client line → client profile · `Show more` |
+| **Activity** (Gautam ne add karwaya, board me nahi) | *"You and your clients"*: trainer aur uske clients ne kya kiya, naya sabse upar — check-in bheja, workout khatam, session book / cancel, plan badla, reminder. Har row: kind ka gol dot (check-in blue, plan purple, client logs green, session amber), *"Tanya Arora sent Weekly check-in"*, neeche client · item, right me time (`21:28` / `Yesterday` / `3 days ago`). Latest 10 rows, Show more nahi (Gautam). Web par right column me Check-ins ke neeche; This week left me Clients who need you ke neeche. Sirf apne clients | client line → client profile |
+
+Review drawer ki Photos: photo par click → full screen (zoom, swipe), title *"Riya’s photos"*.
 
 **Bell** — *Notifications* list (unread blue), `Mark all read`; check-in wali notice review drawer kholti hai.
 

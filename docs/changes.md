@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-16 · Trainer dashboard layout; check-in photos; Open in YouTube jagah
+- **Pehle:** This week right column me, Activity uske neeche 6 rows + Show more. Web top par New session ke paas `AV` profile button. Review drawer ki photo click nahi hoti thi. Exercise guide me "Open in YouTube" video ke neeche alag line me tha.
+- **Ab:** This week left (Clients who need you ke neeche), Activity right me Check-ins ke neeche, latest 10, Show more nahi. Web par AV button hata diya. Photo click → full screen viewer. Exercise guide card ki neeche wali line me right side "Open in YouTube" (pehle wahan "YouTube" likha tha).
+- **Kyun:** Gautam: "this week ye left me aajae... activity thoda uper... show more na ho latest 10", "image open karni ho to... view karne ka option", "AV likha hai na... hata do", "open in youtube wala thoda galat jagah hai".
+- **Updated:** app trainer/dashboard/*, core/widgets/media.dart (OpenInYoutube), client/train/train_parts.dart; backend trainer_home.py (10 rows); docs behaviour §3.1, status, D-31
+
 ### 2026-10-16 · Trainer dashboard Activity card, stats, date select; client video, PDF aur guide text
 - **Pehle:** Exercise guide / Library me YouTube box debug web par laal error deta tha. Review drawer ke andar `Open profile` par laal screen (`_dependents.isEmpty`). Trainer stats cards 80 px fixed the, number 4 px kat jata tha. New session ka Day list upar khulke screen ke bahar chala jata tha. Demo PDF sirf plain text tha, guide ka text chhota aur halka tha. Dashboard par activity ka koi card nahi tha.
 - **Ab:** YouTube player start na ho to still + "Open in YouTube" (error nahi). Drawer pehle band hota hai, phir profile khulta hai; text controllers animation ke baad free hote hain (New session modal me bhi). Stats: 4 barabar cards (patle page par 2 × 2), height content jitni. Menu jis taraf jagah ho us taraf khulta hai, screen me rehta hai, scroll hota hai, chuna hua row dikhta hai. Naya **Activity** card (trainer + uske clients, Show more). "Eating out on a fat loss plan" ab asli designed 6-page PDF; article text 15 / 1.7, headings aur bullets.

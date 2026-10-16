@@ -241,7 +241,7 @@ def _when(dt, now=None):
     return f"{days} days ago" if days < 7 else dfmt(local, "%-d %b")
 
 
-ACTIVITY_ROWS = 6  # the card shows the newest few; "Show more" loads the next page with ?before=
+ACTIVITY_ROWS = 10  # the card shows the latest 10 (Gautam); older pages: dashboard/trainer/activity/?before=
 ACTIVITY_TONE = {"checkin": "ci", "plan": "pl", "workout": "cl", "meal": "cl", "body": "cl", "session": "ch"}
 
 

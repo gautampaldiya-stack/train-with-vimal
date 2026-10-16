@@ -82,7 +82,7 @@ def test_feeling_low_uses_the_latest_check_in(trainer):
 def test_activity_card_shows_only_the_trainers_clients_and_pages(trainer):
     _, mine = _mine()
     d = trainer.get("/api/v1/dashboard/trainer/").json()["activity"]
-    assert d["rows"] and len(d["rows"]) <= 6
+    assert d["rows"] and len(d["rows"]) <= 10
     assert all(r["client"] in mine or r["me"] or not r["client"] for r in d["rows"])
     seen = [r["id"] for r in d["rows"]]
     while d["next"]:

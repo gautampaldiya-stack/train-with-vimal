@@ -8,6 +8,7 @@ import '../../../core/widgets/button.dart';
 import '../../../core/widgets/card.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/input.dart';
+import '../../../core/widgets/media.dart' show showImageViewer;
 import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/tabs.dart';
@@ -211,8 +212,16 @@ Future<ReviewResult?> showReviewDrawer(BuildContext context, TrainerHomeControll
             _SecHead('Photos', trailing: Text(photos.isEmpty ? 'No photos this time' : '${photos.length} new', style: AppText.cap)),
             if (photos.isNotEmpty)
               Wrap(spacing: 8, runSpacing: 8, children: [
-                for (final p in photos)
-                  ClipRRect(
+                for (final (i, p) in photos.indexed)
+                  Semantics(
+                    button: true,
+                    label: 'Open ${p['label']} photo',
+                    child: GestureDetector(
+                      // Tap: the photos full screen (zoom, swipe between them).
+                      onTap: () => showImageViewer(context, [for (final x in photos) '${x['image']}'], start: i, title: '$first’s photos'),
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.zoomIn,
+                        child: ClipRRect(
                     borderRadius: AppRadius.all(10),
                     child: Container(
                       width: 92,
@@ -230,6 +239,9 @@ Future<ReviewResult?> showReviewDrawer(BuildContext context, TrainerHomeControll
                           ),
                         ),
                       ]),
+                    ),
+                  ),
+                      ),
                     ),
                   ),
               ]),

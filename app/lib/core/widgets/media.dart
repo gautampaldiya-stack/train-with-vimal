@@ -328,8 +328,11 @@ String youtubeId(String url) => url.isEmpty ? '' : (YoutubePlayerController.conv
 /// A YouTube video playing right here (YouTube's own player: play, seek, full screen), with
 /// "Open in YouTube" under it for people who prefer the app.
 class YoutubeBox extends StatefulWidget {
-  const YoutubeBox({super.key, required this.url, this.onReady});
+  const YoutubeBox({super.key, required this.url, this.onReady, this.openLink = true});
   final String url;
+
+  /// "Open in YouTube" under the player; off when the parent shows the link in its own footer line.
+  final bool openLink;
 
   /// Gives the parent the controller (chapters jump with `seekTo`).
   final ValueChanged<YoutubePlayerController>? onReady;
@@ -405,21 +408,26 @@ class _YoutubeBoxState extends State<YoutubeBox> {
                 ),
         ),
       ),
-      Align(
-        alignment: Alignment.centerRight,
-        child: Semantics(
-          link: true,
-          child: Hover(
-            onTap: _open,
-            builder: (_, h, _) => Row(mainAxisSize: MainAxisSize.min, spacing: 5, children: [
-              Text('Open in YouTube', style: AppText.s(12.5, W.w7, color: h ? AppColors.accentHover : AppColors.accentText)),
-              AppIcon(AppIcons.external, size: 13, color: h ? AppColors.accentHover : AppColors.accentText),
-            ]),
-          ),
-        ),
-      ),
+      if (widget.openLink) Align(alignment: Alignment.centerRight, child: OpenInYoutube(widget.url)),
     ]);
   }
+}
+
+/// "Open in YouTube ↗" link (opens the YouTube app / site).
+class OpenInYoutube extends StatelessWidget {
+  const OpenInYoutube(this.url, {super.key});
+  final String url;
+  @override
+  Widget build(BuildContext context) => Semantics(
+        link: true,
+        child: Hover(
+          onTap: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+          builder: (_, h, _) => Row(mainAxisSize: MainAxisSize.min, spacing: 5, children: [
+            Text('Open in YouTube', style: AppText.s(12.5, W.w7, color: h ? AppColors.accentHover : AppColors.accentText)),
+            AppIcon(AppIcons.external, size: 13, color: h ? AppColors.accentHover : AppColors.accentText),
+          ]),
+        ),
+      );
 }
 
 // ─────────────────────────────── Pictures

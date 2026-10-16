@@ -4,7 +4,7 @@ Date: 2026-10-16 · Asked by Gautam
 
 ## Decision
 - The trainer dashboard gets an **Activity** card (not on the board) under This week: what the trainer and their
-  clients did, newest first, 6 rows a page with "Show more". It reads the same ActivityEvent table as the admin
+  clients did, newest first, the latest 10 (no "Show more", Gautam); web: right column under Check-ins, This week moves to the left column under Clients who need you. The `dashboard/trainer/activity/?before=` page endpoint stays for a later View all. It reads the same ActivityEvent table as the admin
   Activity log, limited to the trainer's own actions and their own clients (`trainer_home.activity`).
 - Web stat cards: 4 equal cards across the row (2 × 2 when the page is under 760 wide), height follows the content
   (min 80). Replaces the fixed 80 px content-width cards, which clipped the number by 4 px.
