@@ -95,6 +95,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     unit_length = models.CharField(max_length=2, choices=[("cm", "cm"), ("in", "in")], default="cm")
     unit_water = models.CharField(max_length=2, choices=[("l", "L"), ("oz", "oz")], default="l")
     timezone = models.CharField(max_length=40, default="Asia/Kolkata")
+    # Client More → Units & preferences, Privacy & data.
+    week_start = models.CharField(max_length=3, choices=[("mon", "Monday"), ("sun", "Sunday")], default="mon")
+    theme = models.CharField(max_length=6, choices=[("light", "Light"), ("dark", "Dark"), ("system", "Like my phone")],
+                             default="light")
+    share_photos = models.BooleanField(default=True)  # off = new progress / check-in photos stay hidden from staff
+    usage_data = models.BooleanField(default=False)  # anonymous usage data, never logs
 
     is_active = models.BooleanField(default=True)  # Django-level kill switch
     is_django_staff = models.BooleanField(default=False)  # may open /django-admin/
@@ -223,3 +229,27 @@ class OneTimeToken(TimeStampedModel):
     @property
     def is_valid(self):
         return self.used_at is None and self.expires_at > dj_tz.now()
+
+
+def report_shot_path(instance, filename):
+    return f"reports/{instance.user_id}/{uuid.uuid4().hex}.png"
+
+
+class ProblemReport(TimeStampedModel):
+    """Client More → Help & about → Report a problem. The gym team replies by email."""
+
+    class Category(models.TextChoices):
+        BROKEN = "broken", "Something is broken"
+        NUMBERS = "numbers", "Wrong numbers"
+        IDEA = "idea", "An idea"
+
+    user = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="problem_reports")
+    category = models.CharField(max_length=8, choices=Category.choices)
+    text = models.TextField(max_length=2000)
+    screenshot = models.ImageField(upload_to=report_shot_path, null=True, blank=True)
+    page = models.CharField(max_length=120, blank=True, default="")  # the screen it was sent from
+    app_version = models.CharField(max_length=20, blank=True, default="")
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]

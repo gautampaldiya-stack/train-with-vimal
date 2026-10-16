@@ -53,8 +53,8 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             "id", "email", "phone", "full_name", "first_name", "initials", "avatar_color", "avatar", "role",
             "status", "gender", "date_of_birth", "city", "email_verified", "pending_email",
-            "unit_weight", "unit_length", "unit_water", "timezone", "date_joined", "last_seen_at",
-            "deletion_requested_at", "client",
+            "unit_weight", "unit_length", "unit_water", "timezone", "week_start", "theme", "share_photos",
+            "usage_data", "date_joined", "last_seen_at", "deletion_requested_at", "client",
         ]
         read_only_fields = fields
 
@@ -76,17 +76,26 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class MeUpdateSerializer(serializers.ModelSerializer):
-    """What a person may change on their own profile. Role, status and phone are not here
-    (design: "Your mobile number is how you log in, so only Aman can change it")."""
+    """What a person may change on their own profile. Role and status are not here. The mobile number
+    can be changed from More → Edit profile (board ClientMore); during setup it is locked
+    ("only Aman can change it", board ClientJoinLink)."""
 
     avatar = serializers.ImageField(required=False, allow_null=True,
                                     validators=[validate_file_size(10)])
     email = serializers.EmailField(required=False)
+    phone = serializers.CharField(required=False, max_length=20)
 
     class Meta:
         model = User
-        fields = ["full_name", "avatar", "gender", "date_of_birth", "city", "email", "unit_weight", "unit_length",
-                  "unit_water", "timezone"]
+        fields = ["full_name", "avatar", "gender", "date_of_birth", "city", "email", "phone", "unit_weight",
+                  "unit_length", "unit_water", "timezone", "week_start", "theme", "share_photos", "usage_data"]
+
+    def validate_phone(self, v):
+        validate_phone(v)
+        v = normalize_phone(v)
+        if v != self.instance.phone and email_or_phone_taken(phone=v, exclude_id=self.instance.id):
+            raise serializers.ValidationError("Another account already uses this mobile number.")
+        return v
 
     def validate_full_name(self, v):
         v = " ".join(v.split())

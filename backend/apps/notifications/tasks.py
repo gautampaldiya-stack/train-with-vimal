@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from . import providers
 from .models import Channel, DeviceToken, Delivery, Notification, NotificationSettings
-from .services import in_quiet_hours, mark_delivery
+from .services import in_quiet_hours, mark_delivery, muted_by_prefs
 
 log = logging.getLogger("notifications")
 MAX_ATTEMPTS = 5
@@ -36,7 +36,9 @@ def deliver_rendered(notification_id, rendered, template_key, urgent=False, auto
 
 
 def _fan_out(n, rendered, template_key, urgent, automation_run_id):
-    quiet, resume_at = (False, None) if urgent else in_quiet_hours()
+    if muted_by_prefs(n.recipient, n.event):
+        return  # Coach updates / Progress switched off: the in-app row is enough
+    quiet, resume_at = (False, None) if urgent else in_quiet_hours(user=n.recipient)
     for channel, content in rendered.items():
         d = Delivery.objects.create(
             notification=n,

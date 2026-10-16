@@ -31,6 +31,10 @@ One login for everyone. Email and mobile are each unique across ALL roles
 | `unit_length` | CharField | choices: cm, in |
 | `unit_water` | CharField | choices: l, oz |
 | `timezone` | CharField |  |
+| `week_start` | CharField | choices: mon, sun |
+| `theme` | CharField | choices: light, dark, system |
+| `share_photos` | BooleanField |  |
+| `usage_data` | BooleanField |  |
 | `is_active` | BooleanField |  |
 | `is_django_staff` | BooleanField |  |
 | `date_joined` | DateTimeField | indexed |
@@ -70,6 +74,22 @@ Email verification, password reset and coach-made login links.
 | `email` | CharField |  |
 | `expires_at` | DateTimeField |  |
 | `used_at` | DateTimeField | optional |
+
+### ProblemReport
+Client More → Help & about → Report a problem. The gym team replies by email.
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | UUIDField |  |
+| `created_at` | DateTimeField | indexed |
+| `updated_at` | DateTimeField |  |
+| `user` | ForeignKey | → User; indexed |
+| `category` | CharField | choices: broken, numbers, idea |
+| `text` | TextField |  |
+| `screenshot` | FileField | optional |
+| `page` | CharField |  |
+| `app_version` | CharField |  |
+| `resolved_at` | DateTimeField | optional |
 
 ## activity
 
@@ -257,6 +277,7 @@ A filled form. Weekly and daily check-ins are submissions too.
 | `question` | ForeignKey | → Question; indexed |
 | `value` | JSONField | optional |
 | `photo` | FileField | optional |
+| `private` | BooleanField |  |
 
 ### WeightLog
 
@@ -308,6 +329,7 @@ Constraints: uniq_measure_day
 | `photo_set` | ForeignKey | → PhotoSet; indexed |
 | `pose` | CharField | choices: front, side, back |
 | `image` | FileField |  |
+| `private` | BooleanField |  |
 | `created_at` | DateTimeField |  |
 
 Constraints: uniq_pose_per_set
@@ -338,6 +360,7 @@ Constraints: uniq_pose_per_set
 | `onboarding_skipped_at` | DateTimeField | optional |
 | `ask_parq` | BooleanField |  |
 | `measure_keys` | JSONField |  |
+| `photo_every_weeks` | PositiveSmallIntegerField |  |
 | `signup_source` | CharField | choices: web, android, ios, added |
 | `invite_link` | ForeignKey | → InviteLink; optional; indexed |
 | `invited_by` | ForeignKey | → User; optional; indexed |
@@ -769,9 +792,15 @@ Client More → Reminders (saved as they change).
 | `user` | OneToOneField | → User; indexed; unique |
 | `workout` | BooleanField |  |
 | `meal` | BooleanField |  |
-| `checkin` | BooleanField |  |
+| `water` | BooleanField |  |
+| `supps` | BooleanField |  |
 | `habit` | BooleanField |  |
+| `checkin` | BooleanField |  |
 | `trainer_reply` | BooleanField |  |
+| `progress` | BooleanField |  |
+| `quiet_on` | BooleanField |  |
+| `quiet_from` | TimeField |  |
+| `quiet_to` | TimeField |  |
 | `workout_time` | TimeField |  |
 | `updated_at` | DateTimeField |  |
 

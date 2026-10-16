@@ -77,7 +77,7 @@ Future<void> showHelpSheet(BuildContext context) async {
 
 /// "Terms and privacy" — the four points, then I agree. [join] = the short version on the
 /// join / login link pages (board `ClientJoinLink`).
-Future<bool?> showTermsSheet(BuildContext context, {bool join = false}) => showAppSheet<bool>(
+Future<bool?> showTermsSheet(BuildContext context, {bool join = false, bool readOnly = false}) => showAppSheet<bool>(
       context,
       title: 'Terms and privacy',
       sub: join ? 'The short version · last updated 1 Sep 2026' : 'Last updated · 1 Sep 2026',
@@ -85,7 +85,7 @@ Future<bool?> showTermsSheet(BuildContext context, {bool join = false}) => showA
       footer: (ctx) => [
         Row(spacing: 8, children: [
           Expanded(child: CaButton('Close', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop(false))),
-          Expanded(child: CaButton('I agree', onPressed: () => Navigator.of(ctx).pop(true))),
+          if (!readOnly) Expanded(child: CaButton('I agree', onPressed: () => Navigator.of(ctx).pop(true))),
         ]),
       ],
       builder: (ctx) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [

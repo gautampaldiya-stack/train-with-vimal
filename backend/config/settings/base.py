@@ -154,6 +154,8 @@ REST_FRAMEWORK = {
         "user": env("THROTTLE_USER", default="600/min"),
         "auth": env("THROTTLE_AUTH", default="10/min"),
         "otp": env("THROTTLE_OTP", default="5/hour"),
+        "data_export": "5/day",
+        "problem_report": "20/day",
     },
     "DATETIME_FORMAT": "iso-8601",
     "COERCE_DECIMAL_TO_STRING": False,
@@ -224,7 +226,7 @@ CELERY_TASK_TIME_LIMIT = 300
 CELERY_TASK_SOFT_TIME_LIMIT = 240
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=not REDIS_URL)
-CELERY_IMPORTS = ["apps.notifications.reminders"]
+CELERY_IMPORTS = ["apps.notifications.reminders", "apps.clients.account"]
 
 _R = "apps.notifications.reminders."
 CELERY_BEAT_SCHEDULE = {
@@ -236,6 +238,9 @@ CELERY_BEAT_SCHEDULE = {
     "meal-reminders": {"task": _R + "meal_reminders", "schedule": crontab(minute="*/15")},
     "checkin-reminders": {"task": _R + "checkin_reminders", "schedule": crontab(minute=0, hour=9)},
     "habit-reminders": {"task": _R + "habit_reminders", "schedule": crontab(minute=0, hour=20)},
+    "water-reminders": {"task": _R + "water_reminders", "schedule": crontab(minute=0, hour="10-20/2")},
+    "supplement-reminders": {"task": _R + "supplement_reminders", "schedule": crontab(minute=0, hour="8,12,21,22")},
+    "purge-data-exports": {"task": "apps.clients.account.purge_data_exports", "schedule": crontab(minute=45, hour=3)},
     "onboarding-reminders": {"task": _R + "onboarding_reminders", "schedule": crontab(minute=0, hour=9)},
     # team + housekeeping
     "document-expiry": {"task": _R + "document_expiry_reminders", "schedule": crontab(minute=30, hour=8)},

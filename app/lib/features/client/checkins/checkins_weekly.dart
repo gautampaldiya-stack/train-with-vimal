@@ -11,7 +11,9 @@ import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/photo_viewer.dart';
 import '../../../core/widgets/responsive.dart';
+import '../food/food_parts.dart' show NumStepper;
 import '../home/home_model.dart' show clock, dayShort;
+import '../progress/progress_model.dart' show pxAmt, pxDm;
 import 'checkins_model.dart';
 import 'checkins_parts.dart';
 
@@ -92,6 +94,7 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
       return '$n of $all photos${miss.isEmpty ? '' : ' (${miss.join(', ')} missing)'}';
     }
     final v = _v['${q.id}'];
+    if (q.type == 'measures') return v is Map && v.isNotEmpty ? q.show(v, short: true) : null;
     if (q.metric == 'weight' && v is num) {
       final last = w.lastWeight;
       return kg(v.toDouble()) + (last != null && v < last ? ' (${kgChange(v - last)})' : '');
@@ -305,6 +308,7 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
       ];
     }
     if (q.type == 'photo') return _photosQ();
+    if (q.type == 'measures') return _measuresQ(q);
     final t = _texts[q.id] ??= TextEditingController(text: '${v ?? ''}');
     void changed() {
       _v['${q.id}'] = t.text.trim().isEmpty ? null : t.text.trim();
@@ -325,6 +329,68 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
           },
         ),
     ];
+  }
+
+  // ─────────────────────────────── Body measurements (photo weeks, D-24)
+
+  static const _startCm = {'neck': 34.0, 'chest': 90.0, 'abdomen': 85.0, 'waist': 80.0, 'hips': 98.0, 'bicep_l': 29.0, 'bicep_r': 29.0, 'thigh_l': 55.0, 'thigh_r': 55.0, 'calf_l': 36.0, 'calf_r': 36.0, 'body_fat': 25.0};
+
+  /// Every row starts at the last value; only the ones changed are sent, and they also land on Progress.
+  List<Widget> _measuresQ(CkQ q) {
+    final got = ((_v['${q.id}'] as Map?) ?? const {}).cast<String, dynamic>();
+    void put(String k, double? n) {
+      final next = {...got};
+      n == null ? next.remove(k) : next[k] = n;
+      _set(q, next.isEmpty ? null : next);
+    }
+
+    return [
+      Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        for (final (i, m) in q.measures.indexed) _measureRow(m, got, put, first: i == 0),
+      ]),
+      Text(
+        got.isEmpty ? 'Skip this step if you did not measure this week.' : '${got.length} measured · they also go on your Progress page',
+        style: AppText.s(12, W.w5, color: got.isEmpty ? AppColors.muted : AppColors.okText),
+      ),
+    ];
+  }
+
+  Widget _measureRow(Map<String, dynamic> m, Map<String, dynamic> got, void Function(String, double?) put, {required bool first}) {
+    final k = '${m['key']}', unit = '${m['unit']}';
+    final last = (m['last'] as num?)?.toDouble();
+    final lastOn = m['last_date'] == null ? null : DateTime.tryParse('${m['last_date']}');
+    final on = got.containsKey(k);
+    final v = (got[k] as num?)?.toDouble() ?? last ?? _startCm[k] ?? 50;
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(border: first ? null : const Border(top: BorderSide(color: AppColors.line))),
+      child: Row(spacing: 10, children: [
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+            Text('${m['label']}', style: AppText.s(13.5, W.w7, color: on ? AppColors.text : AppColors.text2)),
+            Hover(
+              onTap: on ? () => put(k, null) : null,
+              builder: (_, h, _) => Text(
+                on ? (h ? 'Tap to skip this one' : 'Will be saved') : (last == null ? 'Not measured yet' : 'Last ${pxAmt(last, unit)}${lastOn == null ? '' : ' · ${pxDm(lastOn)}'}'),
+                style: AppText.s(12, W.w4, color: on ? AppColors.okText : AppColors.muted),
+              ),
+            ),
+          ]),
+        ),
+        Opacity(
+          opacity: on ? 1 : .6,
+          child: NumStepper(
+            value: v,
+            onChanged: (n) => put(k, n),
+            label: (n) => pxAmt(n, unit),
+            step: .5,
+            min: unit == '%' ? 3 : 10,
+            max: unit == '%' ? 70 : 300,
+            name: '${m['label']}',
+          ),
+        ),
+      ]),
+    );
   }
 
   // ─────────────────────────────── Photos

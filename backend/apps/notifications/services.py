@@ -15,13 +15,22 @@ from .models import Channel, Delivery, MessageTemplate, Notification, Notificati
 from .rendering import context_for, render
 
 
-def in_quiet_hours(now=None):
-    cfg = NotificationSettings.load()
-    if not cfg.quiet_hours_on:
-        return False, None
-    now = timezone.localtime(now)
+# Client More → Notification settings: these switch off the push / email copy (the in-app row stays).
+COACH_EVENTS = {"checkin_reviewed", "plan_assigned", "meal_plan_assigned", "meal_plan_updated", "trainer_changed",
+                "content_shared", "form_request"}
+PROGRESS_EVENTS = {"personal_best", "milestone"}
+
+
+def muted_by_prefs(user, event):
+    """True when the person switched this kind of message off (Coach updates / Progress and personal bests)."""
+    p = getattr(user, "reminder_prefs", None) if getattr(user, "is_client", False) else None
+    if p is None:
+        return False
+    return (event in COACH_EVENTS and not p.trainer_reply) or (event in PROGRESS_EVENTS and not p.progress)
+
+
+def _window(now, start, end):
     t = now.time()
-    start, end = cfg.quiet_start, cfg.quiet_end
     quiet = (start <= t or t < end) if start > end else (start <= t < end)
     if not quiet:
         return False, None
@@ -29,6 +38,17 @@ def in_quiet_hours(now=None):
     if end_dt <= now:
         end_dt += timedelta(days=1)
     return True, end_dt
+
+
+def in_quiet_hours(now=None, user=None):
+    """The gym's quiet hours, and the person's own (More → Notification settings), whichever ends later."""
+    now = timezone.localtime(now)
+    cfg = NotificationSettings.load()
+    gym = _window(now, cfg.quiet_start, cfg.quiet_end) if cfg.quiet_hours_on else (False, None)
+    p = getattr(user, "reminder_prefs", None) if user is not None else None
+    own = _window(now, p.quiet_from, p.quiet_to) if p is not None and p.quiet_on else (False, None)
+    ends = [e for q, e in (gym, own) if q]
+    return (True, max(ends)) if ends else (False, None)
 
 
 def _serialize(n):

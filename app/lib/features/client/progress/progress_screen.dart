@@ -358,7 +358,7 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
     final log = CaButton('Log', kind: CaBtnKind.out, small: true, expand: false, icon: AppIcons.plus, onPressed: () => showLogMeasures(context, c));
     if (ms.isEmpty) {
       return ChCard(children: [
-        PxHead('Body measurements', 'Measured every 2 weeks with your photo check-in', action: log),
+        PxHead('Body measurements', d.measureEvery == 1 ? 'Measured every week with your photo check-in' : 'Measured every ${d.measureEvery} weeks with your photo check-in', action: log),
         fdCapPx('No measurements yet. $cap'),
       ]);
     }
@@ -423,7 +423,7 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
       ));
     }
     return ChCard(children: [
-      PxHead('Body measurements', 'Measured every 2 weeks with your photo check-in', action: log),
+      PxHead('Body measurements', d.measureEvery == 1 ? 'Measured every week with your photo check-in' : 'Measured every ${d.measureEvery} weeks with your photo check-in', action: log),
       Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: rows),
       fdCapPx(cap),
     ]);

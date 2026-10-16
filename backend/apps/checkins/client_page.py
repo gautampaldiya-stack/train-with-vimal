@@ -9,7 +9,7 @@ from datetime import datetime, time, timedelta
 from django.utils import timezone
 
 from .defaults import CHIPS
-from .models import Form, QuestionType, Submission, WeightLog
+from .models import MEASURE_KEYS, Form, QuestionType, Submission, WeightLog
 
 WEEKLY_DUE = time(18, 0)  # Sunday 6:00 pm
 DAILY_REMINDER = "9:00 pm"
@@ -43,14 +43,41 @@ def _chip(q):
     return t if len(t) <= 18 else t[:17].rstrip() + "…"
 
 
-def form_payload(form, coach_first):
+MEASURES_Q = -1  # the "Body measurements" step: not a stored question, its answer is {key: number}
+
+
+def measures_question(client):
+    """Photo weeks of the weekly check-in also ask the coach's measurements (D-24). One step, all optional;
+    the numbers go to Progress on submit. Each row starts from the last value logged."""
+    from .models import DEFAULT_MEASURES, MEASURES, Measurement
+
+    keys = client.client_profile.measure_keys or DEFAULT_MEASURES
+    last = {}
+    for m in Measurement.objects.filter(client=client).order_by("-date")[:60]:
+        for k, v in m.values.items():
+            last.setdefault(k, (v, m.date))
+    rows = [{"key": k, "label": lbl, "unit": u, "last": last.get(k, (None, None))[0],
+             "last_date": last.get(k, (None, None))[1]} for k, lbl, u in MEASURES if k in keys]
+    return {"id": MEASURES_Q, "text": "Body measurements", "type": "measures", "options": [], "scale_labels": [],
+            "allow_other": False, "help_text": "Relaxed, tape snug but not tight. Change only what you measured.",
+            "required": False, "metric": "", "chip": "Measurements", "measures": rows}
+
+
+def form_payload(form, coach_first, photos=True, client=None):
+    """`photos=False` on the off weeks of "photos every N weeks": the photo question is left out.
+    With `client` on a photo week, a "Body measurements" step goes in just before the photos."""
     if form is None:
         return None
-    qs = [q for q in form.questions.all() if not q.is_removed]
-    return {"id": str(form.id), "name": form.name, "type": form.type, "questions": [{
+    qs = [q for q in form.questions.all() if not q.is_removed and (photos or q.type != QuestionType.PHOTO)]
+    out = [{
         "id": q.id, "text": q.text, "type": q.type, "options": q.options, "scale_labels": q.scale_labels,
         "allow_other": q.allow_other, "help_text": q.help_text.replace("{coach}", coach_first or "your coach"),
-        "required": q.required, "metric": q.metric, "chip": _chip(q)} for q in qs]}
+        "required": q.required, "metric": q.metric, "chip": _chip(q)} for q in qs]
+    if photos and client is not None and form.type == "weekly" and \
+            not any(q.metric in MEASURE_KEYS for q in qs):
+        at = next((i for i, q in enumerate(qs) if q.type == QuestionType.PHOTO), len(out))
+        out.insert(at, measures_question(client))
+    return {"id": str(form.id), "name": form.name, "type": form.type, "questions": out}
 
 
 def _week_counts(client, monday):
@@ -100,7 +127,10 @@ def answer_photos(sub, request=None):
     from .services import photo_slots, slot_key
 
     out, n = [], {}
-    for a in sorted((a for a in sub.answers.select_related("question") if a.photo), key=lambda a: a.id):
+    staff = request is not None and not getattr(request.user, "is_client", True)
+    # Photos sent while "Share progress photos with Aman" was off stay with the client.
+    for a in sorted((a for a in sub.answers.select_related("question") if a.photo and not (staff and a.private)),
+                    key=lambda a: a.id):
         slots = photo_slots(a.question)
         i = n[a.question_id] = n.get(a.question_id, -1) + 1  # photos sent before slots had names: in order
         label = a.value if isinstance(a.value, str) and a.value else slots[min(i, len(slots) - 1)]
@@ -195,7 +225,7 @@ def page(rows, before=None, size=PAGE):
 def checkins_page(client, tab="weekly", before=None, request=None):
     from apps.clients.metrics import active_program
 
-    from .services import streak, week_number
+    from .services import next_photos_due, photo_week, streak, week_number
 
     today = timezone.localdate()
     cp = client.client_profile
@@ -244,7 +274,8 @@ def checkins_page(client, tab="weekly", before=None, request=None):
                   "last_weight": {"date": last_w.date, "kg": float(last_w.weight_kg)} if last_w else None,
                   "today_weight": float(today_w.weight_kg) if today_w else None},
         "weekly": {"week": week_number(client, today), "due_at": _due_at(sunday),
-                   "form": form_payload(weekly, coach_first),
+                   "form": form_payload(weekly, coach_first, photos=photo_week(client, today), client=client),
+                   "photos_due": next_photos_due(client, today),
                    "sent": {**this_week, **full_row(Submission.objects.get(id=this_week["id"]), request)}
                    if this_week else None,
                    "last_weight": float(prev_weekly_w) if prev_weekly_w is not None else None},

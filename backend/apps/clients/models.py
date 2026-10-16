@@ -62,6 +62,8 @@ class ClientProfile(TimeStampedModel):
     ask_parq = models.BooleanField(default=True)
     # Body measurements the coach asks this client for (keys of checkins.MEASURES); empty = the default set.
     measure_keys = models.JSONField(default=list, blank=True)
+    # Progress photos come with the weekly check-in every N weeks (the coach picks; trainer screens later).
+    photo_every_weeks = models.PositiveSmallIntegerField(default=2)
 
     signup_source = models.CharField(max_length=10, choices=SignupSource.choices, default=SignupSource.ADDED)
     invite_link = models.ForeignKey("InviteLink", null=True, blank=True, on_delete=models.SET_NULL,

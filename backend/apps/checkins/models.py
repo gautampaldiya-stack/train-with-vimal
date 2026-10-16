@@ -121,6 +121,7 @@ class Answer(models.Model):
     question = models.ForeignKey(Question, on_delete=models.PROTECT, related_name="+")
     value = models.JSONField(null=True, blank=True)  # str | number | list | bool
     photo = models.ImageField(upload_to=answer_photo_path, null=True, blank=True)
+    private = models.BooleanField(default=False)  # sent while "Share progress photos with Aman" was off
 
 
 class WeightLog(models.Model):
@@ -186,6 +187,7 @@ class ProgressPhoto(models.Model):
     photo_set = models.ForeignKey(PhotoSet, on_delete=models.CASCADE, related_name="photos")
     pose = models.CharField(max_length=5, choices=Pose.choices)
     image = models.ImageField(upload_to=progress_photo_path)
+    private = models.BooleanField(default=False)  # added while "Share progress photos with Aman" was off
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

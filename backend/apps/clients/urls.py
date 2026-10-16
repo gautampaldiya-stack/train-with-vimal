@@ -13,5 +13,9 @@ urlpatterns = [
     path("join/<str:code>/", views.JoinLinkView.as_view(), name="join-link"),
     path("me/onboarding/", views.MyOnboardingView.as_view(), name="my-onboarding"),
     path("me/trainer/", views.MyTrainerView.as_view(), name="my-trainer"),
+    path("me/account/", views.MyAccountView.as_view(), name="my-account"),
+    path("me/activity/", views.MyActivityView.as_view(), name="my-activity"),
+    path("me/data-export/", views.MyDataExportView.as_view(), name="my-data-export"),
+    path("me/report/", views.MyProblemReportView.as_view(), name="my-report"),
     *router.urls,
 ]

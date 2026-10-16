@@ -2,7 +2,7 @@ import json
 from datetime import timedelta
 
 from django.db import transaction
-from django.db.models import Count, Q
+from django.db.models import Count, Prefetch, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import mixins, serializers, status, viewsets
@@ -296,8 +296,9 @@ class ClientProgressView(APIView):
         if request.user.is_trainer and not request.user.trainer_profile.has_perm("checkins.photos"):
             photos = []
         else:
-            photos = PhotoSetSerializer(PhotoSet.objects.filter(client=client).prefetch_related("photos"),
-                                        many=True, context={"request": request}).data
+            shared = Prefetch("photos", queryset=ProgressPhoto.objects.filter(private=False))
+            photos = [s for s in PhotoSetSerializer(PhotoSet.objects.filter(client=client).prefetch_related(shared),
+                                                    many=True, context={"request": request}).data if s["photos"]]
         return Response({
             "weights": WeightLogSerializer(WeightLog.objects.filter(client=client).order_by("date"), many=True).data,
             "measurements": MeasurementSerializer(Measurement.objects.filter(client=client).order_by("date"),
@@ -479,8 +480,12 @@ class MyWeightViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, mixins.Des
         s.is_valid(raise_exception=True)
         if s.validated_data["date"] > timezone.localdate():
             raise serializers.ValidationError({"date": ["Pick today or an earlier day."]})
-        w, _ = WeightLog.objects.update_or_create(client=request.user, date=s.validated_data["date"],
+        day = s.validated_data["date"]
+        old = WeightLog.objects.filter(client=request.user, date=day).values_list("weight_kg", flat=True).first()
+        w, _ = WeightLog.objects.update_or_create(client=request.user, date=day,
                                                   defaults={"weight_kg": s.validated_data["weight_kg"]})
+        services.log_body_change(request.user, day, "your weight", {"weight": old} if old is not None else {},
+                                 {"weight": w.weight_kg})
         latest = self.get_queryset().order_by("-date").first()
         cp = request.user.client_profile
         cp.current_weight_kg = latest.weight_kg
@@ -501,7 +506,9 @@ class MyMeasurementViewSet(MyWeightViewSet):
         day = s.validated_data["date"]
         if day > timezone.localdate():
             raise serializers.ValidationError({"date": ["Pick today or an earlier day."]})
+        old = Measurement.objects.filter(client=request.user, date=day).values_list("values", flat=True).first() or {}
         m = services.save_measures(request.user, day, s.validated_data["values"])
+        services.log_body_change(request.user, day, "measurements", old, m.values if m else {})
         if m is None:
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(MeasurementSerializer(m).data, status=201)

@@ -23,6 +23,15 @@ class Me {
   bool get emailVerified => json['email_verified'] == true;
   String get pendingEmail => '${json['pending_email'] ?? ''}';
 
+  /// More → Units & preferences, Privacy & data.
+  String get unitWeight => '${json['unit_weight'] ?? 'kg'}';
+  String get unitLength => '${json['unit_length'] ?? 'cm'}';
+  String get unitWater => '${json['unit_water'] ?? 'l'}';
+  String get weekStart => '${json['week_start'] ?? 'mon'}';
+  String get theme => '${json['theme'] ?? 'light'}';
+  bool get sharePhotos => json['share_photos'] != false;
+  bool get usageData => json['usage_data'] == true;
+
   /// A client who signed up from an invite confirms the email first (board `ClientVerifyEmail`).
   bool get needsVerify => role == Role.client && (email ?? '').isNotEmpty && !emailVerified;
   Role get role => switch (json['role']) { 'admin' => Role.admin, 'trainer' => Role.trainer, _ => Role.client };
@@ -108,6 +117,15 @@ class Session extends ChangeNotifier {
     await Services.tokens.save(r['access'], r['refresh']);
     me = Me(r['user'] is Map ? (r['user'] as Map).cast<String, dynamic>() : await Services.api.get<Map<String, dynamic>>('auth/me/'));
     _afterSignIn();
+    notifyListeners();
+  }
+
+  /// Settings changed in the app (units, privacy) show at once; the server copy follows through the outbox.
+  void patchMe(Map<String, dynamic> changes) {
+    final m = me;
+    if (m == null) return;
+    me = Me({...m.json, ...changes});
+    Services.cache.write('me', me!.json);
     notifyListeners();
   }
 

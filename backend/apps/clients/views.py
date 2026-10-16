@@ -567,3 +567,82 @@ class MyTrainerView(APIView):
         from apps.trainers.serializers import public_trainer_card
 
         return Response(public_trainer_card(t, request))
+
+
+class MyAccountView(APIView):
+    """Client More tab: profile, coach card, plan rows, goal, reminders, deletion date, gym contact."""
+
+    permission_classes = [IsClient]
+
+    def get(self, request):
+        from .account import account_page
+
+        return Response(account_page(request.user, request))
+
+
+class MyActivityView(APIView):
+    """Client More → My activity: everything logged in the last 7 days, newest first, by day.
+    ?kind=All|Training|Food|Check-ins|Habits|Account. Seven days is the whole list, so no paging."""
+
+    permission_classes = [IsClient]
+    KINDS = ("All", "Training", "Food", "Check-ins", "Habits", "Account")
+
+    def get(self, request):
+        from .account import my_activity
+
+        kind = request.query_params.get("kind", "All")
+        if kind not in self.KINDS:
+            raise ValidationError({"kind": [f"Use one of: {', '.join(self.KINDS)}."]})
+        return Response(my_activity(request.user, kind))
+
+
+class MyDataExportView(APIView):
+    """Client More → Privacy & data → Download my data: a ZIP is built in the background and the link
+    is emailed (works for 7 days)."""
+
+    permission_classes = [IsClient]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "data_export"
+
+    def post(self, request):
+        from .account import send_data_export
+
+        if not request.user.email:
+            raise ValidationError({"email": ["Add an email to your profile first."]})
+        send_data_export.delay(str(request.user.id), request.build_absolute_uri("/"))
+        activity_log("asked for a copy of their data", "client", actor=request.user, client=request.user)
+        return Response({"email": request.user.email}, status=status.HTTP_202_ACCEPTED)
+
+
+class MyProblemReportView(APIView):
+    """Client More → Help & about → Report a problem. The admin gets it in the app and by email."""
+
+    permission_classes = [IsClient]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "problem_report"
+
+    def post(self, request):
+        from apps.accounts.models import ProblemReport, User
+        from apps.common.utils import data_url_file
+
+        cat = request.data.get("category")
+        text = " ".join(str(request.data.get("text") or "").split())
+        errors = {}
+        if cat not in ProblemReport.Category.values:
+            errors["category"] = ["Pick what it is about."]
+        if len(text) < 3:
+            errors["text"] = ["Tell us what happened."]
+        elif len(text) > 2000:
+            errors["text"] = ["Keep it under 2,000 characters."]
+        if errors:
+            raise ValidationError(errors)
+        shot = request.data.get("screenshot")
+        r = ProblemReport.objects.create(
+            user=request.user, category=cat, text=text, page=str(request.data.get("page") or "")[:120],
+            app_version=str(request.data.get("app_version") or "")[:20],
+            screenshot=data_url_file(shot, "screenshot", "screenshot") if shot else None)
+        admin = User.objects.filter(role=Role.ADMIN).first()
+        notify(admin, "problem_report", f"{request.user.full_name} reported a problem",
+               f"{r.get_category_display()}: {text[:200]}", data={"route": "/settings", "report": str(r.id)},
+               channels=["in_app", "email"], actor=request.user)
+        return Response({"id": str(r.id)}, status=status.HTTP_201_CREATED)

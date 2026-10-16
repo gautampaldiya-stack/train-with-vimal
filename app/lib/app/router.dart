@@ -22,6 +22,7 @@ import '../features/client/habits/habits_screen.dart';
 import '../features/client/progress/progress_pages.dart';
 import '../features/client/progress/progress_screen.dart';
 import '../features/client/home/home_screen.dart';
+import '../features/client/more/more_screen.dart';
 import '../features/client/train/train_screen.dart';
 import '../features/client/train/workout_screen.dart';
 import 'services.dart';
@@ -86,6 +87,8 @@ final Map<String, Widget Function(GoRouterState)> screens = {
         reopen: st.uri.queryParameters['reopen'],
         then: st.uri.queryParameters['then'],
       ),
+  '/more': (_) => const ClientMoreScreen(),
+  '/more/:id': (st) => ClientMoreScreen(key: ValueKey(st.uri.toString()), view: st.pathParameters['id']!),
 };
 
 final appRouter = GoRouter(
@@ -157,9 +160,9 @@ class _Holding extends StatelessWidget {
   const _Holding(this.path);
   final String path;
 
-  /// Settings (admin), My profile (trainer) and My account (client) keep a working Log out
+  /// Settings (admin) and My profile (trainer) keep a working Log out
   /// until the full pages are built.
-  static const _account = {'/settings', '/me', '/more'};
+  static const _account = {'/settings', '/me'};
 
   @override
   Widget build(BuildContext context) => StaffPage(

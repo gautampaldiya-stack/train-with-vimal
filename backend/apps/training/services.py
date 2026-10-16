@@ -445,6 +445,13 @@ def finish_workout(wl, *, effort=None, note="", duration_seconds=None, time_brea
     trainer = client.client_profile.trainer
     activity_log("finished a workout", "workout", actor=None if auto else client, target=wl, target_label=wl.name,
                  client=client, meta={"sets_done": wl.sets_done, "sets_planned": wl.sets_planned})
+    best = wl.sets.filter(is_pr=True).select_related("exercise").order_by("-weight_kg").first()
+    if best is not None:
+        from apps.notifications.services import notify
+
+        notify(client, "personal_best", "New personal best",
+               f"{best.exercise.name} {float(best.weight_kg):g} kg × {best.reps or 1}"
+               + (f" on {wl.name}" if wl.name else ""), data={"route": "/progress"})
     if trainer:
         from apps.notifications.realtime import send_to_user
 

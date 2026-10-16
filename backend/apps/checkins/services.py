@@ -1,3 +1,4 @@
+from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
@@ -102,6 +103,31 @@ def _metric_value(q, v):
     return v
 
 
+def _sunday(d):
+    return d + timedelta(days=6 - d.weekday())
+
+
+def photo_week(client, day):
+    """True when the weekly check-in of `day`'s week asks for photos: no set yet, or the last set before this week
+    is at least the coach's N weeks old (ClientProfile.photo_every_weeks, default 2)."""
+    monday = day - timedelta(days=day.weekday())
+    last = (PhotoSet.objects.filter(client=client, photos__isnull=False, date__lt=monday)
+            .order_by("-date").values_list("date", flat=True).first())
+    if last is None:
+        return True
+    n = client.client_profile.photo_every_weeks or 1
+    return _sunday(day) >= _sunday(last + timedelta(weeks=n))
+
+
+def next_photos_due(client, today=None):
+    """The Sunday the next photo set is due (Progress "Next set due", Photos page)."""
+    today = today or timezone.localdate()
+    last = (PhotoSet.objects.filter(client=client, photos__isnull=False, date__lte=today)
+            .order_by("-date").values_list("date", flat=True).first())
+    n = client.client_profile.photo_every_weeks or 1
+    return _sunday(max(last + timedelta(weeks=n), today) if last else today)
+
+
 def week_number(client, day):
     from apps.clients.metrics import active_program
 
@@ -118,13 +144,32 @@ def submit(client, form, answers, files=None, *, request_obj=None, submission=No
     `files` = {question_id: [uploaded files]} for photo questions."""
     files = files or {}
     questions = list(form.questions.filter(is_removed=False))
+    when = day or (submission.date if submission is not None else timezone.localdate())
+    # Off weeks of "photos every N weeks" do not ask for photos, so the photo question is not required then.
+    no_photos = form.type == "weekly" and not photo_week(client, when)
     cleaned, metrics = {}, {}
+    # The "Body measurements" step of photo weeks (client_page.MEASURES_Q): {key: number}, all optional.
+    taken_in = answers.get("-1", answers.get(-1)) if isinstance(answers, dict) else None
+    if taken_in:
+        if not isinstance(taken_in, dict):
+            raise ValidationError({"-1": ["Send the measurements as {name: number}."]})
+        for k, n in taken_in.items():
+            if n in (None, ""):
+                continue
+            try:
+                n = round(float(n), 1)
+            except (TypeError, ValueError):
+                raise ValidationError({"-1": [f"{k}: enter a number."]}) from None
+            if k not in MEASURE_KEYS or not ((3 <= n <= 70) if k == "body_fat" else (10 <= n <= 300)):
+                raise ValidationError({"-1": [f"{k}: that number looks off. Check it and try again."]})
+            metrics[k] = n
     for q in questions:
         v = _clean_value(q, answers.get(str(q.id), answers.get(q.id)))
         has_photo = bool(files.get(str(q.id)))
         keep_photo = submission is not None and q.type == QuestionType.PHOTO and \
             submission.answers.filter(question=q).exclude(photo="").exists()
-        if q.required and v is None and not has_photo and not keep_photo:
+        skip = no_photos and q.type == QuestionType.PHOTO
+        if q.required and v is None and not has_photo and not keep_photo and not skip:
             raise ValidationError({str(q.id): ["This question needs an answer."]})
         cleaned[q.id] = v
         mv = _metric_value(q, v)
@@ -157,7 +202,8 @@ def submit(client, form, answers, files=None, *, request_obj=None, submission=No
                 raise ValidationError({str(q.id): [f"This question asks for: {', '.join(slots)}."]})
             label = slots[keys.index(key)]
             submission.answers.filter(question=q, value=label).exclude(photo="").delete()  # a new photo for that slot
-            Answer.objects.create(submission=submission, question=q, photo=f, value=label)
+            Answer.objects.create(submission=submission, question=q, photo=f, value=label,
+                                  private=not client.share_photos)
             if photo_set is None:
                 label = f"Week {submission.week_number} check-in" if submission.week_number else form.name
                 photo_set, _ = PhotoSet.objects.get_or_create(
@@ -166,7 +212,7 @@ def submit(client, form, answers, files=None, *, request_obj=None, submission=No
             # Front, side and back also go on the Progress page, by pose.
             if key in ProgressPhoto.Pose.values:
                 ProgressPhoto.objects.filter(photo_set=photo_set, pose=key).delete()
-                ProgressPhoto.objects.create(photo_set=photo_set, pose=key, image=f)
+                ProgressPhoto.objects.create(photo_set=photo_set, pose=key, image=f, private=not client.share_photos)
     # Measurement answers (a question whose metric is waist, hips, …) also go on the Progress page.
     taken = {k: metrics[k] for k in MEASURE_KEYS if metrics.get(k) is not None}
     if taken:
@@ -281,7 +327,7 @@ def save_photo(client, *, pose, image, label=None, day=None):
             ps.weight_kg = w.weight_kg
             ps.save(update_fields=["weight_kg"])
     ProgressPhoto.objects.filter(photo_set=ps, pose=pose).delete()
-    return ProgressPhoto.objects.create(photo_set=ps, pose=pose, image=image)
+    return ProgressPhoto.objects.create(photo_set=ps, pose=pose, image=image, private=not client.share_photos)
 
 
 def save_measures(client, day, values):
@@ -302,3 +348,41 @@ def save_measures(client, day, values):
         m.save(update_fields=["values"])
         return m
     return Measurement.objects.create(client=client, date=day, values=v)
+
+
+def log_body_change(client, day, what, before, after):
+    """A weigh-in or measurement for a past day, or a change to one already logged, goes in My activity
+    (and the coach's feed) as its own line, so an edit never hides. before / after = {key: number}."""
+    from apps.common.utils import dfmt
+
+    from .models import MEASURES
+
+    today = timezone.localdate()
+    names = {k: (lbl, u) for k, lbl, u in MEASURES} | {"weight": ("Weight", "kg")}
+    changed = [k for k in after if k in before and before[k] != after[k]]
+    gone = [k for k in before if k not in after]
+    if not changed and not gone and day >= today:
+        return  # a plain log for today: it already shows as "Logged …"
+    on = dfmt(day, "%a, %-d %b")
+    edit = bool(changed or gone)
+    title = f"You {'changed' if edit else 'added'} {what} for {on}"
+
+    def n(v):
+        return f"{float(v):g}"
+
+    rows = []
+    for k in sorted(set(before) | set(after), key=lambda k: list(names).index(k) if k in names else 99):
+        lbl, u = names.get(k, (k, ""))
+        if k in changed:
+            rows.append([lbl, f"{n(before[k])} → {n(after[k])} {u}".strip()])
+        elif k in gone:
+            rows.append([lbl, f"{n(before[k])} {u} → removed".strip()])
+        elif k not in before:
+            rows.append([lbl, f"{n(after[k])} {u}".strip()])
+    if not rows:
+        return
+    rows.append(["For", on + (" (a past day)" if day < today else "")])
+    sub = ", ".join(r[0] for r in rows[:-1][:3]) + (f" +{len(rows) - 4}" if len(rows) > 4 else "")
+    activity_log(title[4:], "client", actor=client, client=client,
+                 meta={"mine": {"t": title, "s": sub, "rows": rows, "k": "Check-ins", "icon": "scale",
+                                "color": "amber", "link": "/progress", "label": "See progress"}})

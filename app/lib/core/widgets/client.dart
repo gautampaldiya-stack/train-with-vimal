@@ -462,6 +462,7 @@ class CaField extends StatefulWidget {
     this.error,
     this.obscure = false,
     this.trailing,
+    this.leading,
     this.keyboard,
     this.action,
     this.onSubmitted,
@@ -480,6 +481,9 @@ class CaField extends StatefulWidget {
   /// The main field of a page: the cursor is in it when the page opens.
   final bool autofocus;
   final Widget? trailing;
+
+  /// Text before the value, behind a thin line (`mo-pre`: "+91").
+  final String? leading;
   final TextInputType? keyboard;
   final TextInputAction? action;
   final ValueChanged<String>? onSubmitted;
@@ -534,6 +538,12 @@ class _CaFieldState extends State<CaField> {
                     : null,
           ),
           child: Row(spacing: 8, children: [
+            if (widget.leading != null)
+              Container(
+                padding: const EdgeInsets.only(right: 6),
+                decoration: const BoxDecoration(border: Border(right: BorderSide(color: AppColors.line))),
+                child: Text(widget.leading!, style: AppText.s(14.5, W.w6, color: AppColors.muted)),
+              ),
             Expanded(
               child: TextField(
                 controller: widget.controller,

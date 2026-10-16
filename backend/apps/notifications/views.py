@@ -115,6 +115,7 @@ class ReminderPreferenceView(generics.RetrieveUpdateAPIView):
         for k, v in ReminderPreference.RECOMMENDED.items():
             setattr(obj, k, v)
         obj.save()
+        obj.refresh_from_db()
         return Response(self.get_serializer(obj).data)
 
 

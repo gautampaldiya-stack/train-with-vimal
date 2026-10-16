@@ -26,3 +26,5 @@ One file per decision. Add a new file for every new decision (next number), and 
 | [D-20](0020-food-page-photo-offplan-custom.md) | Food page: meal photo with Mark as eaten, off-plan reason, custom food per serving | 2026-10-15 |
 | [D-21](0021-progress-tab.md) | Progress tab: one `me/progress/` answer, History endpoint, photos by data URL | 2026-10-16 |
 | [D-22](0022-body-measurements.md) | Body measurements: one values map, 12 keys + body fat, coach picks the set | 2026-10-16 |
+| [D-23](0023-more-tab.md) | More tab: one account answer, my activity, change lines, export, report, own quiet hours, photos every N weeks | 2026-10-16 |
+| [D-24](0024-measurements-in-checkin.md) | Body measurements asked in the photo-week check-in, saved to Progress | 2026-10-16 |

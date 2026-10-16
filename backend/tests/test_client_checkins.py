@@ -1,15 +1,23 @@
 import base64
 from datetime import date, timedelta
 
+import pytest
 from django.utils import timezone
 
 from apps.checkins.models import Form, PhotoSet, Submission
+from apps.clients.models import ClientProfile
 
 # 1x1 transparent PNG
 PNG = "data:image/png;base64," + base64.b64encode(bytes.fromhex(
     "89504e470d0a1a0a0000000d4948445200000001000000010806000000"
     "1f15c4890000000d49444154789c6360000002000154a24f5d0000000049454e44ae426082")).decode()
 
+
+
+@pytest.fixture
+def photo_week():
+    """The demo's last photo set is last week; with photos every week this week asks for them too."""
+    ClientProfile.objects.filter(user__email="riya@example.com").update(photo_every_weeks=1)
 
 def _page(c, **params):
     r = c.get("/api/v1/me/checkins/", params)
@@ -21,13 +29,14 @@ def _qid(form, text):
     return str(next(q["id"] for q in form["questions"] if q["text"] == text))
 
 
-def test_checkins_page_has_the_board_numbers(client_user):
+def test_checkins_page_has_the_board_numbers(client_user, photo_week):
     d = _page(client_user)
     assert d["coach"]["first_name"] == "Aman"
     assert d["program"]["week"] == d["weekly"]["week"]
     assert d["stats"] == {"streak": 2, "weekly_on_time": 5, "weekly_due": 6, "last_change_kg": -0.6}
     w = d["weekly"]
-    assert [q["chip"] for q in w["form"]["questions"]] == ["Weight", "Your week", "Meal plan", "3 photos", "Notes"]
+    assert [q["chip"] for q in w["form"]["questions"]] == ["Weight", "Your week", "Meal plan", "Measurements", "3 photos",
+                                                          "Notes"]
     assert "Aman" in w["form"]["questions"][2]["help_text"]
     due = timezone.localtime(timezone.datetime.fromisoformat(w["due_at"]))
     assert due.weekday() == 6 and due.hour == 18 and w["sent"] is None
@@ -85,7 +94,7 @@ def test_undo_is_refused_once_the_coach_has_it(client_user):
     assert r.status_code == 400 and Submission.objects.filter(id=sub.id).exists()
 
 
-def test_send_weekly_with_photos(client_user):
+def test_send_weekly_with_photos(client_user, photo_week):
     d = _page(client_user)
     f = d["weekly"]["form"]
     answers = {_qid(f, "Body weight (kg)"): 68.2, _qid(f, "How was your week?"): 4,
@@ -119,7 +128,7 @@ def test_checkins_page_is_client_only(trainer):
     assert trainer.get("/api/v1/me/checkins/").status_code == 403
 
 
-def test_photo_question_asks_for_named_photos(client_user):
+def test_photo_question_asks_for_named_photos(client_user, photo_week):
     from apps.checkins.models import Question
 
     d = _page(client_user)

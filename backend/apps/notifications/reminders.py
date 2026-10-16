@@ -138,6 +138,71 @@ def checkin_reminders():
     return sent
 
 
+# ---------------------------------------------------------------- water and supplements
+WATER_HOURS = (10, 12, 14, 16, 18, 20)  # "every 2 hours when you are behind"
+SUPP_TIMES = {"breakfast": 8, "morning": 8, "post_workout": None, "any": 12, "night": 21, "before_bed": 22}
+
+
+@shared_task
+def water_reminders():
+    """Every 2 hours from 10 am to 8 pm when today's water is behind the day's pace (7 am – 10 pm)."""
+    from apps.clients.metrics import active_meal_plan
+    from apps.nutrition.models import WaterLog
+
+    local = _local_now()
+    if local.hour not in WATER_HOURS or local.minute >= 15:
+        return 0
+    today = local.date()
+    sent = 0
+    for c in _active_clients():
+        if not _prefs(c).water:
+            continue
+        mp = active_meal_plan(c, today)
+        goal = mp.plan.water_ml if mp else 0
+        if not goal:
+            continue
+        had = WaterLog.objects.filter(client=c, date=today).values_list("ml", flat=True).first() or 0
+        due = goal * min(1, (local.hour - 7) / 15)
+        behind = due - had
+        if behind >= 500 and once(c, "water", local.hour, today):
+            left = f"{behind / 1000:.1f}".rstrip("0").rstrip(".")
+            notify(c, "water_reminder", "Water reminder",
+                   f"You are {left} L behind for the day at {dfmt(local, '%-I:%M %p').lower()}.",
+                   data={"route": "/habits"})
+            sent += 1
+    return sent
+
+
+@shared_task
+def supplement_reminders():
+    """At the supplement's time of day (breakfast / morning 8 am, any time noon, night 9 pm, before bed 10 pm),
+    for the ones not taken yet. Post-workout ones have no clock time, so no reminder."""
+    from apps.habits.models import SupplementAssignment, SupplementLog
+
+    local = _local_now()
+    if local.minute >= 15:
+        return 0
+    today = local.date()
+    timings = [t for t, h in SUPP_TIMES.items() if h == local.hour]
+    if not timings:
+        return 0
+    sent = 0
+    for c in _active_clients():
+        if not _prefs(c).supps:
+            continue
+        items = [i for a in SupplementAssignment.objects.filter(client=c, active=True, start_date__lte=today)
+                 .prefetch_related("plan__items") for i in a.plan.items.all()
+                 if i.timing in timings and (not i.days or today.weekday() in i.days)]
+        taken = set(SupplementLog.objects.filter(client=c, date=today).values_list("item_id", flat=True))
+        left = [i for i in items if i.id not in taken]
+        if left and once(c, "supps", local.hour, today):
+            names = " and ".join(i.name for i in left[:2]) + (f" and {len(left) - 2} more" if len(left) > 2 else "")
+            notify(c, "supplement_reminder", "Supplement time", f"{names} · tap to mark as taken.",
+                   data={"route": "/habits"})
+            sent += 1
+    return sent
+
+
 # ---------------------------------------------------------------- habits
 @shared_task
 def habit_reminders():

@@ -222,6 +222,10 @@ class CheckinsController extends ChangeNotifier {
     final m = <String, dynamic>{};
     for (final q in f.questions) {
       final v = answers['${q.id}'];
+      if (v is Map && q.type == 'measures') {
+        m.addAll(v.cast<String, dynamic>());
+        continue;
+      }
       if (v == null || q.metric.isEmpty) continue;
       m[q.metric] = q.metric == 'sleep_hours' && v is String ? double.tryParse(v.split(' ').first) : v;
     }
@@ -362,6 +366,10 @@ class CkQ {
     return l.length == 5 ? l : const ['', '', '', '', ''];
   }
 
+  /// The "Body measurements" step of photo weeks (`type == 'measures'`): one row per measurement the coach tracks,
+  /// each {key, label, unit, last, last_date}.
+  List<Map<String, dynamic>> get measures => [for (final m in (j['measures'] as List? ?? const [])) (m as Map).cast<String, dynamic>()];
+
   /// A photo question: the photos it asks for ("Front", "Side", "Back" unless the coach named them).
   List<String> get slots => options.isEmpty ? const ['Front', 'Side', 'Back'] : options;
 
@@ -378,6 +386,17 @@ class CkQ {
       return short && l.isNotEmpty ? l : '${scaleOf(v)} / 5${l.isEmpty ? '' : ' · $l'}';
     }
     if (metric == 'weight' && v is num) return kg(v.toDouble());
+    if (type == 'measures' && v is Map) {
+      if (v.isEmpty) return null;
+      final names = {for (final m in measures) m['key']: m};
+      String one(MapEntry e) {
+        final m = names[e.key];
+        final n = (e.value as num).toDouble();
+        return '${m?['label'] ?? e.key} ${n == n.roundToDouble() ? n.toInt() : n}${m?['unit'] == '%' ? '%' : ' ${m?['unit'] ?? ''}'}'.trim();
+      }
+      final all = v.entries.toList();
+      return short && all.length > 2 ? '${all.length} measured' : all.map(one).join(', ');
+    }
     if (type == 'yes_no' && v is bool) return v ? 'Yes' : 'No';
     if (v is List) return v.join(', ');
     return '$v';

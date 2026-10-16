@@ -123,7 +123,11 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `invite-links/suggest-code/` | GET | InviteLinkViewSet |  |
 | `invite-links/summary/` | GET | InviteLinkViewSet |  |
 | `join/<str:code>/` | GET, POST | JoinLinkView | Public: GET shows the invite page, POST signs up. |
+| `me/account/` | GET | MyAccountView | Client More tab: profile, coach card, plan rows, goal, reminders, deletion date, gym contact. |
+| `me/activity/` | GET | MyActivityView | Client More → My activity: everything logged in the last 7 days, newest first, by day. |
+| `me/data-export/` | POST | MyDataExportView | Client More → Privacy & data → Download my data: a ZIP is built in the background and the link |
 | `me/onboarding/` | GET, POST, DELETE | MyOnboardingView | Client Welcome / profile setup: 5 steps, each can be saved alone ("Finish later"). |
+| `me/report/` | POST | MyProblemReportView | Client More → Help & about → Report a problem. The admin gets it in the app and by email. |
 | `me/trainer/` | GET | MyTrainerView | Client More → My trainer: only the fields the trainer switched on in What clients see. |
 
 ## content

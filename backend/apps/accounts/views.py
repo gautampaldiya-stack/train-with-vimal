@@ -12,6 +12,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.activity.services import log as activity_log
+from apps.common.utils import dfmt
 from apps.common.validators import normalize_phone
 
 from . import emails
@@ -130,7 +131,10 @@ class MeView(generics.RetrieveUpdateAPIView):
     def perform_update(self, serializer):
         user = self.request.user
         new_email = serializer.validated_data.pop("email", None)
+        before = {k: getattr(user, k) for k in serializer.validated_data}
         serializer.save()
+        if user.is_client:
+            _log_account_change(user, before, new_email)
         if new_email and new_email != (user.email or ""):
             # Design: a new email is used only after its verification link is opened.
             user.pending_email = new_email
@@ -141,6 +145,39 @@ class MeView(generics.RetrieveUpdateAPIView):
     def update(self, request, *args, **kwargs):
         super().update(request, *args, **kwargs)
         return Response(UserSerializer(request.user, context={"request": request}).data)
+
+
+_PROFILE_LABELS = {"full_name": "Full name", "email": "Email", "phone": "Mobile", "city": "City",
+                   "date_of_birth": "Date of birth"}
+_PREF_LABELS = {"unit_weight": "Weight", "unit_length": "Height and measurements", "unit_water": "Water",
+                "week_start": "Week starts on", "theme": "Theme", "share_photos": "Share progress photos with coach",
+                "usage_data": "Help improve the app"}
+
+
+def _show(user, k, v):
+    if v in (None, ""):
+        return "—"
+    if isinstance(v, bool):
+        return "On" if v else "Off"
+    if k == "date_of_birth":
+        return dfmt(v, "%-d %b %Y")
+    field = user._meta.get_field(k)
+    return dict(field.choices).get(v, v) if field.choices else str(v)
+
+
+def _log_account_change(user, before, new_email):
+    """Client My activity → Account: "You updated your profile" with old → new per field."""
+    changed = {k: v for k, v in before.items() if getattr(user, k) != v}
+    if new_email and new_email != (user.email or ""):
+        changed["email"] = user.email
+    for labels, title in ((_PROFILE_LABELS, "You updated your profile"), (_PREF_LABELS, "You changed your preferences")):
+        keys = [k for k in labels if k in changed]
+        if not keys:
+            continue
+        rows = [[labels[k], f"{_show(user, k, changed[k])} → "
+                            f"{new_email if k == 'email' else _show(user, k, getattr(user, k))}"] for k in keys]
+        activity_log(title[4:].replace("your", "their"), "client", actor=user, client=user,
+                     meta={"mine": {"t": title, "s": ", ".join(labels[k] for k in keys), "rows": rows}})
 
 
 class PasswordChangeView(APIView):

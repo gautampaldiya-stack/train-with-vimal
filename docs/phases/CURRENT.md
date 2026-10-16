@@ -2,7 +2,7 @@
 
 Updated with every push, so anyone (another Claude session, local Claude Code, a developer) can pick up from here.
 
-**Last updated:** 2026-10-15 · branch `working`
+**Last updated:** 2026-10-16 · branch `working`
 
 ## Done
 - Backend complete (all modules, offline sync, seeds, tests). Runs without Docker/Redis.
@@ -122,3 +122,12 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
   trainer screens: the coach's measurement picker (`measure_keys`) and a measurement block in the check-in form.
 - Habits Day / Week tabs sized like the board (2026-10-16).
 - Next: More tab, then trainer / admin boards.
+
+## More tab (built 2026-10-16, D-23 / D-24)
+- `/more` (+ profile, notifications, activity) and web My account tabs; all sheets. Code `app/lib/features/client/more/`.
+- Backend: `me/account/`, `me/activity/`, `me/data-export/`, `me/report/`; prefs on User; own quiet hours; water and
+  supplement reminders; private photos; photos every N weeks; measurements step in photo-week check-ins.
+- After pulling: `python manage.py migrate` (accounts 0002, checkins 0004, notifications 0002, clients 0004).
+- Not built: Library page, dark theme, units / Sunday week outside More, coach pickers (trainer screens).
+- Next client board: Library (`ClientLibrary` / `ClientLibraryWeb`).
+

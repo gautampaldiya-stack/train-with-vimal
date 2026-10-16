@@ -1246,6 +1246,8 @@ Route `/checkins` (More → Check-ins). `/checkins/daily` daily form (`?edit=1` 
 
 **Weekly form** — *"Question N of 5"* + bar. Body weight stepper (*"Same as last week"* / *"−0.4 kg since last week"* green / amber up), Quick `This morning, 68.4` · `Last week, 68.9`. Scale (1–5 big), single choice (radio rows), photos (Front / Side / Back slots: tap → Take a photo / Choose from gallery on the phone, gallery on web; tap again → removed + Undo; *No photos this week* checkbox; cap *"Same spot, same light, in the morning. Only Aman sees your photos."*), text (box + *Tap to add* chips). `Back` (faded on Q1) · `Next` / `Skip` (optional, empty) / `Review` (last). Required empty → *"Pick an answer to continue — This question is required"*. Review: *"Check your answers"*, each answer with `Edit`, *Not answered · required* in red, *Skipped* grey; `Send to Aman`. Sent → toast *"Week 7 check-in sent — Aman usually replies within a day"* (`star`) + Undo; card *"Week 7 check-in sent"* with every question (long question above its answer), Weight + Change, photo thumbnails (tap → full size), `Back to check-ins`. Back arrow = save and exit → *"Draft saved — 2 of 5 answered · finish by Sun, 18 Oct, 6:00 pm"*.
 
+**Photo weeks** (D-23, D-24) — the weekly form asks for photos only every N weeks (coach's `photo_every_weeks`, default 2); other weeks have no photo question. Photo weeks also have a **Body measurements** step before the photos: the coach's measurements with steppers starting at the last value (*"Last 79.5 cm · 15 Oct"*), all optional, *"Skip this step if you did not measure this week."*; changed ones show *"Will be saved"* and go to Progress on send.
+
 **Both forms** — the top bar and progress stay fixed; only the questions scroll. Photo question: the coach names the photos it asks for in the question's options (e.g. `Meal`, `Label`; 1–6); none named = `Front` / `Side` / `Back`. Review shows small thumbnails under the photo answer. Returning to the list or Home shows the new state at once (they reload when the outbox syncs; a queued check-in and the weekly draft are shared by every check-ins page).
 
 **Past check-ins** — card has a fixed height (phone 60% of the screen, 320–520 px; web 560 px) and the rows scroll inside it; tabs `Weekly` · `Daily`. Weekly rows *"Week 6 — Sun, 11 Oct · 68.9 kg · 2 photos"* with pill `Sent` (blue clock, waiting) / `Replied` (reply shown under: *Aman: …*) / `Reviewed` / `Missed` (*"Sun, 27 Sep · not sent"*). Daily rows *"Wed, 14 Oct — 7.5 h sleep · energy Good · “Felt strong today”"* `Sent` / `Replied` / `Missed` (*"Not sent · reminder went at 9:00 pm"*). More rows load at the end of the list. Header line under the title counts the whole list: *"20 check-ins · 8 sent · 12 missed"*; while rows are below, the scrollbar shows, the bottom fades and *"Scroll for older · 20 of 45 shown"* sits under the list (Gautam 2026-10-16). Empty: *"No check-ins here yet."*
@@ -1264,25 +1266,19 @@ Snack list jaisa content: `Roasted chana · 45 g — 165 kcal`, `Sprouts chaat �
 
 ---
 
-### 4.11 More — `ClientMore`
+### 4.11 More — `ClientMore` / `ClientMoreWeb` (built 2026-10-16, D-23)
 
-Tabs `Overview` · `Notifications` (unread count ke saath) · `My activity`.
+Routes `/more`, `/more/profile`, `/more/notifications`, `/more/activity`. Data `GET me/account/` (cached offline). Web title *My account*, tabs `Overview` · `Notifications · N` · `My activity`.
 
-**Overview**:
-- **Profile** — naam, email, mobile. `Edit` → drawer. Email badalne pe cap *"A new email is used only after you open the verification link we send to it."*, buttons `Resend link` · `Cancel change` · `Verify now (demo)`.
-- **Your plan** — current plan, next check-in pill `Due Sun`. Cap *"Questions about your plan? Add them to your weekly check-in or ask Aman at your next session."* Buttons `Add to calendar` · `Open check-ins`.
-- **My trainer** — `AV` Aman Verma card, `Details` → wahi fields jo trainer ne `What clients see` me on kiye.
-- **Reminders** — cap *"Your choices are saved as you change them. Reminders on your phone arrive in the Train With Vimal app."* Toggles: `Workout reminders` (*"1 hour before your session or planned workout"*) · `Meal reminders` (*"At each meal time"*) · check-in · habit · trainer reply. `Reset to recommended` · `Done`.
-- **Units** — `Weight` (kg / lb) · `Height and measurements` (cm / in) · `Water` (L / oz). `Preview` ke saath. Cap *"Aman still sees your numbers in the units he uses."*
-- **Privacy** — `Who can see your data`.
-- **Help** — `Common questions` (FAQ, jaise *"How do I change my workout or meal plan?"* → *"Your plan is set by Aman. Tell him what you want changed in your weekly check-in, or talk to him at your next session."*), `Send report`.
-- **About** — `What is it about?` → §4.12.
-- **Account** — `Delete account` → confirm sheet `Keep my account` / `Delete my account`; delete ke baad `Cancel deletion` dikhta hai. `Log out` → confirm *"Everything you logged is saved. You need your password to log in again."* → `Log out`.
-- Footer `Train With Vimal · Version 1.0.0`.
+**Overview** — profile card (avatar, naam, *"Coach Aman · Profile & activity"* → Profile). Coach card (*"Your trainer since …"*, Next session, Weekly check-in *"Every Sunday, 6:00 pm · next Sun, 18 Oct"*, `Details` → sheet with `Add to calendar` (Google Calendar) · `Open check-ins`). YOUR PLAN: Habits & supplements (*"Steps, water, sleep · whey, D3, magnesium"*), Check-ins (`Due Sun`), Nutrition overview (→ `/food`), Library (→ `/library`, not built). ACCOUNT: Notifications, Notification settings, Units & preferences, Privacy & data, My activity, Help & about. `Log out` (confirm). Footer *"Train With Vimal · Version 1.0.0"*. Deletion pending → red banner with `Cancel deletion`.
 
-**Notifications** — tabs `All` / `Unread · N`. Row jaise *"Aman replied to your check-in — Week 6: 'Knee looks better. Keep box squats on Saturday and push steps to 9,000.'"* (2 h ago). Row pe `Mark as unread` · `Delete`. Upar `Mark all read`.
+**Profile** — Email, Mobile, City, Date of birth, Height, Coach, Program, Plan dates; Goal card (bar, Start / Now / Goal, lost since start, weeks done, check-ins sent). `Edit` → sheet: name, email (new email waits for its link: `Resend link` · `Cancel change`), mobile (+91, must be free), city, DOB; saved → toast + Undo.
 
-**My activity** — din-wise (`Today · Fri, 9 Oct`, `Yesterday · Thu, 8 Oct`, …) sab kuch jo client ne kiya.
+**Sheets** — *Notification settings*: Workout, Meal, Water, Supplement, Habit, Check-in, Coach updates, Progress and personal bests (each toggle saves at once + Undo), Quiet hours (from / to ±30 min), `Reset to recommended` · `Done`. *Units & preferences*: weight kg / lb, length cm / in, water L / oz, week starts Mon / Sun, theme, preview, Save + Undo. *Privacy & data*: who sees what, Share progress photos with Aman (off = new photos stay with you), Help improve the app, `Download my data` (ZIP link by email), `Delete account` → sheet (type DELETE, 14 days to change your mind). *Help & about*: FAQ, Report a problem (Broken · Wrong numbers · Idea, text, attach a screenshot of the page), Gym front desk (call), Terms / Privacy (read only), version.
+
+**Notifications** — tabs `All` / `Unread · N`, `Mark all read` (+ Undo), gear → Notification settings. Row → sheet: `Mark as unread`, `Delete` (+ Undo), link button. More rows load on scroll.
+
+**My activity** — *"Only you can see this · last 7 days"*, chips All · Training · Food · Check-ins · Habits · Account, grouped by day (*"Today · Fri, 16 Oct"* + count). Row → sheet with its rows and a link. A past-day or changed weight / measurement adds a line under today: *"You changed measurements for Tue, 13 Oct"* with *"Chest 92 → 91.5 cm"*; a late log shows *"Logged on Fri, 16 Oct"* (Gautam 2026-10-16).
 
 ---
 

@@ -149,13 +149,21 @@ class ReminderPreference(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="reminder_prefs")
     workout = models.BooleanField(default=True)  # 1 hour before the session or planned workout
     meal = models.BooleanField(default=True)  # at each meal time
+    water = models.BooleanField(default=True)  # every 2 hours when behind
+    supps = models.BooleanField(default=True)  # supplements at their time of day
+    habit = models.BooleanField(default=False)  # steps and sleep nudges in the evening
     checkin = models.BooleanField(default=True)
-    habit = models.BooleanField(default=True)
-    trainer_reply = models.BooleanField(default=True)
+    trainer_reply = models.BooleanField(default=True)  # "Coach updates": replies and plan changes (push)
+    progress = models.BooleanField(default=True)  # personal bests, streaks, milestones (push)
+    quiet_on = models.BooleanField(default=True)  # the person's own quiet hours: pushes wait until they end
+    quiet_from = models.TimeField(default="22:00")
+    quiet_to = models.TimeField(default="07:00")
     workout_time = models.TimeField(default="07:00")  # used when a workout has no session time
     updated_at = models.DateTimeField(auto_now=True)
 
-    RECOMMENDED = dict(workout=True, meal=True, checkin=True, habit=True, trainer_reply=True)
+    # Board ClientMore "Reset to recommended": everything on but habit nudges, quiet 10 pm – 7 am.
+    RECOMMENDED = dict(workout=True, meal=True, water=True, supps=True, habit=False, checkin=True, trainer_reply=True,
+                       progress=True, quiet_on=True, quiet_from="22:00", quiet_to="07:00")
 
 
 class StaffNotificationPreference(models.Model):

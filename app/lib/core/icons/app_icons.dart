@@ -111,4 +111,13 @@ abstract final class AppIcons {
   static const pause = Ic.i07c5c5;
   static const restart = Ic.id3785d;
   static const video = Ic.i379873;
+  // Client More (board ClientMore)
+  static const gear = Ic.i21fee3;
+  static const ruler = Ic.i55367c;
+  static const shield = Ic.idc2ade;
+  static const pulse = Ic.i02c7a2;
+  static const help = Ic.i02c933;
+  static const scale = Ic.i9c63ed;
+  static const downloadAlt = Ic.i535d22;
+  static const file = Ic.ibada39;
 }

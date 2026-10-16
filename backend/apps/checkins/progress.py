@@ -13,7 +13,6 @@ from django.utils import timezone
 from .models import DEFAULT_MEASURES, MEASURES, Measurement, PhotoSet, Submission, WeightLog
 from apps.common.utils import dfmt
 
-MEASURE_EVERY = 14  # days, with the photo check-in
 HISTORY_RANGES = {"week": 7, "month": 30, "3months": 91}
 HISTORY_TYPES = ("workout", "meal", "checkin", "weight")
 
@@ -122,16 +121,12 @@ def progress_page(client, request=None):
     goal = cp.target_weight_kg
     measures = list(Measurement.objects.filter(client=client).order_by("date"))
     tracked = set(cp.measure_keys or DEFAULT_MEASURES)
-    nxt = (measures[-1].date + timedelta(days=MEASURE_EVERY)) if measures else today
-    nxt = max(nxt, today)
-    sunday = nxt + timedelta(days=(6 - nxt.weekday()))
-    from .services import week_number
+    from .services import next_photos_due, week_number
 
     sets = PhotoSet.objects.filter(client=client).prefetch_related("photos").order_by("date", "created_at")
-    # Photos page "Next set due": 2 weeks after the last set that has a photo, on that week's Sunday (check-in day).
-    last_set = PhotoSet.objects.filter(client=client, photos__isnull=False).order_by("-date").values_list("date", flat=True).first()
-    pn = max(last_set + timedelta(days=MEASURE_EVERY), today) if last_set else today
-    p_sunday = pn + timedelta(days=(6 - pn.weekday()))
+    # Photos page "Next set due": the coach's N weeks (default 2) after the last set, on that week's Sunday,
+    # the same week the weekly check-in asks for photos.
+    p_sunday = next_photos_due(client, today)
     return {
         "start": {"kg": _f(cp.start_weight_kg if cp.start_weight_kg is not None else getattr(first, "weight_kg", None)),
                   "date": first.date if first else (cp.start_date or client.date_joined.date())},
@@ -142,7 +137,9 @@ def progress_page(client, request=None):
         # The measurements this client tracks (the coach's pick, else the default set) plus any already logged.
         "measures": [{"key": k, "label": lbl, "unit": u, "tracked": k in tracked} for k, lbl, u in MEASURES
                      if k in tracked or any(k in m.values for m in measures)],
-        "next_measure": {"date": sunday, "week": week_number(client, sunday)},
+        # Measurements are asked with the photo check-in (D-24), so they fall due the same Sunday.
+        "next_measure": {"date": p_sunday, "week": week_number(client, p_sunday),
+                         "every_weeks": cp.photo_every_weeks},
         "next_photos": {"date": p_sunday, "week": week_number(client, p_sunday)},
         "lifts": _lifts(client),
         "adherence": _adherence(client, today),

@@ -360,7 +360,10 @@ class ClientHomeView(APIView):
         if weekly:
             due = (last_weekly.date + timedelta(days=7)) if last_weekly else today
             qs = Question.objects.filter(form=weekly, is_removed=False)
-            photos = qs.filter(type="photo").count()
+            # Photos only in the weeks they are due ("photos every N weeks").
+            from apps.checkins.services import photo_week
+
+            photos = qs.filter(type="photo").count() if photo_week(u, max(due, today)) else 0
             coming.append({"kind": "checkin", "title": "Weekly check-in", "date": max(due, today),
                            "questions": qs.exclude(type="photo").count(), "photos": photos})
         if pa:
