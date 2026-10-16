@@ -137,23 +137,23 @@ class _ClientHabitsScreenState extends State<ClientHabitsScreen> {
     Widget tab(String l, bool on, VoidCallback tap) => Hover(
           onTap: tap,
           builder: (_, h, _) => Container(
-            height: 34,
+            height: 32,
             constraints: BoxConstraints(minWidth: web ? 110 : 0),
             alignment: Alignment.center,
             padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: BoxDecoration(
               color: on ? AppColors.white : null,
-              borderRadius: BorderRadius.circular(7),
+              borderRadius: BorderRadius.circular(6),
               boxShadow: on ? const [BoxShadow(color: AppColors.shadowSoft, blurRadius: 2, offset: Offset(0, 1)), BoxShadow(color: AppColors.line, spreadRadius: 1)] : null,
             ),
-            child: Text(l, style: AppText.s(13.5, W.w6, color: on || h ? AppColors.text : AppColors.text2)),
+            child: Text(l, style: AppText.s(13, W.w6, color: on || h ? AppColors.text : AppColors.text2)),
           ),
         );
     final tabs = [tab('Day', !_week, () => setState(() => _week = false)), tab('Week', _week, () => setState(() => _week = true))];
     return Container(
       padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(10)),
-      child: Row(mainAxisSize: web ? MainAxisSize.min : MainAxisSize.max, children: [for (final t in tabs) web ? t : Expanded(child: t)]),
+      decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(8)),
+      child: Row(mainAxisSize: web ? MainAxisSize.min : MainAxisSize.max, spacing: 4, children: [for (final t in tabs) web ? t : Expanded(child: t)]),
     );
   }
 

@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-16 · Habits — Day / Week tabs chhote
+- **Pehle:** Habits & supplements ke Day / Week tabs 34 px oonche, 13.5 px text, tabs ke beech gap nahi.
+- **Ab:** Board jaisa: 32 px oonche, 13 px text, 4 px gap, track radius 8, tab radius 6 (web par har tab 110 px).
+- **Kyun:** Gautam: "habit and supplement me ye tab thoda chota karo".
+- **Updated:** app/lib/features/client/habits/habits_screen.dart
+
 ---
 
 ### 2026-10-16 · Log food — "Other time" in Add to
