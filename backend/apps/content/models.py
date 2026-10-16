@@ -41,6 +41,10 @@ class ContentItem(SoftDeleteModel):
     file_size = models.PositiveBigIntegerField(null=True, blank=True)
     resolution = models.CharField(max_length=20, blank=True, default="")
     share_everyone = models.BooleanField(default=False)
+    # Video chapters [[seconds, "Title"], …] and a PDF's page outline [["Page title", "One line"], …]: the client
+    # Library shows them (board ClientLibrary).
+    chapters = models.JSONField(default=list, blank=True)
+    outline = models.JSONField(default=list, blank=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
 
     class Meta:
@@ -51,9 +55,19 @@ class ContentItem(SoftDeleteModel):
 
 
 class ContentShare(models.Model):
+    class Source(models.TextChoices):
+        COACH = "coach", "Assigned by the coach"
+        PROGRAM = "program", "From the program"
+        MEAL_PLAN = "meal_plan", "From the meal plan"
+
     item = models.ForeignKey(ContentItem, on_delete=models.CASCADE, related_name="shares")
     client = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="shared_content")
     shared_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+    # "Note from Aman" on this client's copy, and where it came from ("Assigned by Aman · 28 Sep",
+    # "From Fat Loss Phase 1", "From your meal plan").
+    note = models.CharField(max_length=500, blank=True, default="")
+    source = models.CharField(max_length=10, choices=Source.choices, default=Source.COACH)
+    source_label = models.CharField(max_length=120, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

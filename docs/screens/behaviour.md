@@ -1256,21 +1256,28 @@ Route `/checkins` (More → Check-ins). `/checkins/daily` daily form (`?edit=1` 
 
 ---
 
-### 4.10 Library — `ClientLibrary`
+### 4.10 Library — `ClientLibrary` / `ClientLibraryWeb` (built 2026-10-16, D-26)
 
-Trainer ne jo content share kiya. Filters: `All` · `Videos` · `PDFs` · `Images` · `Articles` · `Saved`. Pills `New` (blue) aur `Done` (green).
+Everything the client can read or watch: what the coach shared (with an optional note), what came with the program or meal plan, and what Vimal shared with all clients. Route `/library`; `/library/<id>` opens that item (the *"New in your library: …"* notification links there).
 
-Item kholne pe — video player / PDF viewer (`Chapters` list) / image (`Save image`) / article. `Download` button. `Show all content`. Jo trainer ne bheja uspe `AV` avatar.
-
-Snack list jaisa content: `Roasted chana · 45 g — 165 kcal`, `Sprouts chaat · 1 plate — 180 kcal`, `Makhana · 30 g — 105 kcal`, `Greek yogurt · 150 g — 110 kcal`.
-
----
+- **Header:** back, *Library*, *"Videos, PDFs and guides from Aman"*. Progress card *"3 of 8 done"* with a bar and *"2 new from Aman"* / *"All caught up"*.
+- **Search** *"Search videos, PDFs and articles"* (title, description, text and the coach note) with Try chips `squat` · `eating out` · `protein` · `check-in`. Filters `All` · `Videos` · `PDFs` · `Images` · `Articles` · `Saved` (web shows counts). Line *"Everything Aman shared with you · 8"* or the filter / search name. Unread items first, then newest.
+- **Row / card:** tone box with the kind icon (videos show length), title (blue dot when new), *"PDF · 6 pages · by Vimal Singh"*, where it came from (*"Assigned by Aman · 1 Oct"*, *"From Fat loss · 8 weeks"*, *"From your meal plan"*, *"For all clients · 30 Mar"*), *"Note from Aman"*, `New` or `✓ Done` pill, bookmark (toast *"Saved for later"* / *"Removed from saved"* + Undo).
+- **Web:** grid of cards (3 / 2 / 1 across by width), right column with the progress card and **Notes from Aman** (every note, newest first).
+- **Empty:** no match → *"Nothing found"* / *"Try another word or another type."* with `Show everything`; Saved empty → *"Nothing saved yet"* / *"Open an item and tap Save for later. It will show up here."* The search box has an × to clear it.
+- **Item sheet** (opening marks it read): title, *"Video · 3:05 · Assigned by Aman · 28 Sep"*.
+  - Video: player in the item's tone (188 high, 260 on web), label *Tap to play* / *Playing · <chapter>* / *Paused · …* / *Finished · tap to watch again*, progress bar with times, **CHAPTERS** (tap = jump there and play). Watching to the end marks it done (toast *"Video finished · marked as done"* + Undo). No file → YouTube link or *"Video not uploaded yet"*.
+  - PDF: page card (file name, page heading and text from the coach's outline), `‹ Page 1 of 6 ›`, `Download` (opens the file).
+  - Image: the picture on a green box, *"PNG image · 1 page"*, `Save image`.
+  - Article: the text under a line.
+  - Coach note box *"From Aman"* with avatar, then the description.
+  - Footer `Save for later` / `Saved` and `Mark as done` / `Done · undo`. Toasts *"Marked as done · <title> · 4 of 8 done"*, *"All caught up!"* when the last one is done, *"Marked as not done"*, each with Undo. Save / done go through the offline outbox.
 
 ### 4.11 More — `ClientMore` / `ClientMoreWeb` (built 2026-10-16, D-23)
 
 Routes `/more`, `/more/profile`, `/more/notifications`, `/more/activity`. Data `GET me/account/` (cached offline). Web title *My account* (no bell; the Notifications tab is there), tabs `Overview` · `Notifications · N` · `My activity`. On Notifications and My activity the header, tabs and filters stay put and only the list scrolls (phone and web, Gautam).
 
-**Overview** — profile card (avatar, naam, *"Coach Aman · Profile & activity"* → Profile). Coach card (*"Your trainer since …"*, Next session, Daily check-in *"Every day · reminder at 9:00 pm"* / *"sent today"*, Weekly check-in *"Every Sunday, 6:00 pm · next Sun, 18 Oct"*, `Details` → sheet with next session, training days, daily / weekly check-in, reply time, program, meal plan, plan end, and `Add to calendar` (puts the next session in Google Calendar)). Plan dates = the program's start date to start + weeks − 1 day (or the end date the coach set). Web My account has no Your plan card (the sidebar has those pages, Gautam). YOUR PLAN: Habits & supplements (*"Steps, water, sleep · whey, D3, magnesium"*), Check-ins (`Due Sun`), Nutrition overview (→ `/food`), Library (→ `/library`, not built). ACCOUNT: Notifications, Notification settings, Units & preferences, Privacy & data, My activity, Help & about. `Log out` (confirm). Footer *"Train With Vimal · Version 1.0.0"*. Deletion pending → red banner with `Cancel deletion`.
+**Overview** — profile card (avatar, naam, *"Coach Aman · Profile & activity"* → Profile). Coach card (*"Your trainer since …"*, Next session, Daily check-in *"Every day · reminder at 9:00 pm"* / *"sent today"*, Weekly check-in *"Every Sunday, 6:00 pm · next Sun, 18 Oct"*, `Details` → sheet with next session, training days, daily / weekly check-in, reply time, program, meal plan, plan end, and `Add to calendar` (puts the next session in Google Calendar)). Plan dates = the program's start date to start + weeks − 1 day (or the end date the coach set). Web My account has no Your plan card (the sidebar has those pages, Gautam). YOUR PLAN: Habits & supplements (*"Steps, water, sleep · whey, D3, magnesium"*), Check-ins (`Due Sun`), Nutrition overview (→ `/food`), Library (→ `/library`). ACCOUNT: Notifications, Notification settings, Units & preferences, Privacy & data, My activity, Help & about. `Log out` (confirm). Footer *"Train With Vimal · Version 1.0.0"*. Deletion pending → red banner with `Cancel deletion`.
 
 **Profile** — Email, Mobile, City, Date of birth, Height, Coach, Program, Plan dates; Goal card (bar, Start / Now / Goal, lost since start, weeks done, check-ins sent). `Edit` → sheet: name, email (new email waits for its link: `Resend link` · `Cancel change`), mobile (+91, must be free), city, height (cm, 100–250), DOB; saved → toast + Undo.
 

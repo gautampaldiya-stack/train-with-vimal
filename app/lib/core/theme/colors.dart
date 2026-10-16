@@ -124,6 +124,8 @@ abstract final class AppColors {
   static const pxGoal = Color(0xFF16A34A); // goal line on the weight chart
   static const pxPoseBg = Color(0xE0FFFFFF); // pose label on a photo
   static const moAvBg = Color(0xFFFFE4D6), moAvText = Color(0xFF9A3412); // More: the client's own avatar
+  static const lbPlayShadow = Color(0x29171717); // Library video play button (0 4 16 / .16)
+  static const lbImgBg = Color(0xFFF3FAF5), lbImgLine = Color(0xFFCFE9D9); // Library image box (lb-img)
   static const moBan = Color(0xFFFFF8E6); // "Account deletion on …" banner (border amberLine, text amberDeep)
   static const moSwOff = Color(0xFFD9D9D4); // switch track off
   static const moBadBox = Color(0xFFFFFAFA), moBadLine = Color(0xFFF3C6C7); // Delete my account box

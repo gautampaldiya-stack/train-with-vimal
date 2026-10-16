@@ -143,9 +143,9 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `content/<pk>/assign/` | GET, POST | ContentViewSet |  |
 | `content/<pk>/detail/` | GET | ContentViewSet |  |
 | `content/<pk>/restore/` | POST | ContentViewSet |  |
-| `me/library/` | GET | MyLibraryViewSet | Client Library: shared with me or with everyone. Filters: kind, saved. |
-| `me/library/<pk>/` | GET | MyLibraryViewSet | Client Library: shared with me or with everyone. Filters: kind, saved. |
-| `me/library/<pk>/progress/` | POST | MyLibraryViewSet | Client Library: shared with me or with everyone. Filters: kind, saved. |
+| `me/library/` | GET | MyLibraryViewSet | Client Library: shared with me, with everyone, or with my program / meal plan. |
+| `me/library/<pk>/` | GET | MyLibraryViewSet | Client Library: shared with me, with everyone, or with my program / meal plan. |
+| `me/library/<pk>/progress/` | POST | MyLibraryViewSet | Client Library: shared with me, with everyone, or with my program / meal plan. |
 
 ## gym
 

@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-16 · Library — client ka Library page bana
+- **Pehle:** `/library` ka page nahi tha; More aur sidebar ka Library link khali page par jata tha. Coach share ke saath note nahi likh sakta tha.
+- **Ab:** Library page phone + web board jaisa: progress, search, filters, New / Done / Saved, coach ke notes. Item kholne par video (chapters, end par done), PDF (pages, Download), image (Save image), article. Save for later aur Mark as done offline outbox se, Undo ke saath. Coach share me note de sakta hai, aur share program / meal plan se aaya bhi dikh sakta hai.
+- **Kyun:** Gautam: "ab aage ka karo ache se" — agla client board Library tha.
+- **Updated:** backend content (models + migration 0002, library.py, views), common/media.py (dev video seek), seed_demo, tests/test_client_library.py; app features/client/library, router, video_player; docs behaviour §4.10, status, CURRENT, memory · Decision D-26
+
 ### 2026-10-16 · Tabs — har width par chhote (label jitne)
 - **Pehle:** Grey tab bars (My account ke All / Unread, Food ke My plan / Food log aur All / Recent / My foods, Progress ke Weight / Body / Strength, History ranges, photo poses) phone par aur kuch web par bhi poori width me faile rehte the.
 - **Ab:** Ye sab tab bars har width (390 se 1440) par label jitne chhote, left me. `MoTabs`, `PxTabs`, `TwoTabs` ka default ab compact hai.

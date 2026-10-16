@@ -66,6 +66,7 @@ class Command(BaseCommand):
             self.riya_train()
             self.riya_checkins()
             self.riya_progress()
+            self.riya_library()
         self.stdout.write(self.style.SUCCESS(f"Demo ready. Log in with any demo email and {PASSWORD}"))
         self.stdout.write("Demo links (the reset link works for 15 minutes; run seed_demo again for new ones):")
         for line in self.demo_links():
@@ -397,6 +398,113 @@ class Command(BaseCommand):
                 ProgressPhoto.objects.create(photo_set=ps, pose=pose,
                                              image=_figure(f"{pose}.jpg", *tints[i % len(tints)], pose))
 
+    def riya_library(self):
+        """Library board: eight items (2 videos, 3 PDFs, 1 image, 2 articles) shared four ways: by Aman with a
+        note, with the program, with the meal plan, and for all clients. Videos, PDFs and the image are small real
+        files made here (videos need ffmpeg; without it they have no file and the app says so)."""
+        from apps.accounts.models import User
+        from apps.content.models import ContentItem, ContentShare, ContentView
+
+        riya = User.objects.get(email="riya@example.com")
+        if ContentItem.objects.filter(title="Box squat: how to").exists():
+            return
+        aman = User.objects.get(email="aman@trainwithvimal.com")
+        vimal = User.objects.get(email="vimal@trainwithvimal.com")
+        sahil = User.objects.get(email="sahil@trainwithvimal.com")
+        today = timezone.localdate()
+        program, plan = "Fat loss · 8 weeks", "your meal plan"
+        snacks = [("Roasted chana · 45 g", "165 kcal"), ("Sprouts chaat · 1 plate", "180 kcal"),
+                  ("Makhana · 30 g", "105 kcal"), ("Greek yogurt · 150 g", "110 kcal"),
+                  ("Apple + 10 almonds", "165 kcal"), ("Moong chilla · 1", "150 kcal"),
+                  ("Paneer tikka · 60 g", "170 kcal"), ("Chaas + chana · 20 g", "140 kcal"),
+                  ("Fruit chaat · 1 bowl", "120 kcal"), ("Corn chaat · 1 bowl", "150 kcal")]
+        items = [
+            dict(id="box", kind="video", title="Box squat: how to", by=aman, dur=185,
+                 description="How to set the box height, sit back with control and stand up without bouncing. "
+                             "Good for squatting with a sore knee.",
+                 chapters=[[0, "Setting the box height"], [48, "Sitting back"], [115, "Driving up"],
+                           [150, "Common mistakes"]],
+                 share=("coach", "", 18, "Use box squats on Saturday until the knee feels fine. Sit back to the "
+                                         "box, pause for a second, then drive up."), seen=True),
+            dict(id="eat", kind="pdf", title="Eating out on a fat loss plan", by=vimal,
+                 description="Pick grilled over fried, ask for dressing on the side, and start with a protein. "
+                             "Here are 12 orders that fit your plan.",
+                 outline=[["Eating out is fine", "One meal out does not undo a week. Plan it, enjoy it, log it."],
+                          ["Rules of thumb", "Protein first, grilled over fried, sauces on the side."],
+                          ["Reading an Indian menu", "Tandoori, tikka and dal are safe picks. Watch for makhani "
+                                                     "and malai."],
+                          ["12 orders that fit your plan", "Paneer tikka, dal tadka with 1 roti, grilled fish "
+                                                           "with salad and more."],
+                          ["Drinks and desserts", "Chaas or fresh lime soda without sugar. Share one dessert."],
+                          ["Back to plan", "Log it honestly and go back to your plan at the next meal."]],
+                 share=("coach", "", 15, "Read this before Saturday’s family dinner. Page 4 has orders that fit "
+                                         "your plan."), seen=False),
+            dict(id="upa", kind="video", title="Upper A walkthrough", by=vimal, dur=380,
+                 description="Every exercise of Upper A, with the setup and the one cue that matters most for "
+                             "each.",
+                 chapters=[[0, "Warm-up sets"], [100, "Bench press"], [210, "Rows and pulldowns"],
+                           [310, "Arms finisher"]],
+                 share=("program", program, 40, ""), seen=True),
+            dict(id="leg", kind="article", title="How to warm up for leg day", by=vimal, mins=4,
+                 description="Ten minutes that make your squats feel better and keep the knees happy.",
+                 body="Start with 5 minutes of easy cardio: bike, incline walk or skipping. You want to be warm, "
+                      "not tired.\n\nOpen the hips: 10 leg swings each way, 8 hip circles and 30 seconds in a "
+                      "deep squat hold.\n\nWake up the glutes with 2 sets of 15 glute bridges and 10 banded "
+                      "side steps each way.\n\nFinish with 2 light sets of your first exercise before the "
+                      "working weight.",
+                 share=("program", program, 40, ""), seen=True, done=True),
+            dict(id="macro", kind="pdf", title="Macro cheat sheet", by=aman,
+                 description="Protein: 1.6 to 2 g per kg of body weight. One palm of paneer, chicken, fish or "
+                             "tofu is about 25 g.",
+                 outline=[["Your daily targets", "1,800 kcal · 112 g protein · 200 g carbs · 60 g fat."],
+                          ["Protein in common foods", "Paneer 100 g: 18 g · Tofu 100 g: 15 g · Greek yogurt "
+                                                      "150 g: 15 g."]],
+                 share=("coach", "", 66, "Keep this handy for grocery runs. Your targets: 112 g protein, 200 g "
+                                         "carbs, 60 g fat."), seen=True, saved=True),
+            dict(id="snacks", kind="image", title="10 veg snacks under 200 kcal", by=sahil,
+                 description="Quick vegetarian snacks with their calories. All of them fit your evening snack.",
+                 tiles=snacks,
+                 share=("meal_plan", plan, 30, "Pick from this list for your 5 pm snack when you are bored of "
+                                               "sprouts."), seen=False),
+            dict(id="welcome", kind="article", title="Welcome to Train With Vimal", by=vimal, mins=2,
+                 description="How the app works, how to log, and how to reach your coach.",
+                 body="Your coach builds your training and meal plan. You will find both in the app every day."
+                      "\n\nLog your workouts and food as you go. It takes a few seconds and helps your coach "
+                      "adjust your plan.\n\nEvery Sunday you send a weekly check-in. Your coach replies within "
+                      "a day.",
+                 everyone=True, seen=True, done=True),
+            dict(id="checkins", kind="pdf", title="How check-ins work", by=vimal,
+                 description="Daily check-ins take 30 seconds. Weekly check-ins go to your coach every Sunday.",
+                 outline=[["Daily check-in", "Sleep, energy, hunger and steps. 30 seconds a day."],
+                          ["Weekly check-in", "Weight, how the week went and, every 2 weeks, photos and "
+                                              "measurements."],
+                          ["Progress photos", "Front, side and back, same light and same time of day."]],
+                 everyone=True, seen=True, done=True),
+        ]
+        for x in items:
+            it = ContentItem(kind=x["kind"], title=x["title"], description=x["description"], created_by=x["by"],
+                             share_everyone=x.get("everyone", False), chapters=x.get("chapters", []),
+                             outline=x.get("outline", []), body=x.get("body", ""), read_minutes=x.get("mins"),
+                             duration_seconds=x.get("dur"), pages=len(x["outline"]) if "outline" in x else None)
+            if x["kind"] == "pdf":
+                it.file = _pdf(x["id"], x["title"], x["outline"])
+            elif x["kind"] == "image":
+                it.file = _snack_card(x["title"], x["tiles"])
+            elif x["kind"] == "video":
+                it.file = _video(x["id"], x["dur"])
+            it.save()
+            if x.get("everyone"):
+                ContentItem.objects.filter(id=it.id).update(created_at=timezone.now() - timedelta(days=200))
+            if "share" in x:
+                src, label, ago, note = x["share"]
+                sh = ContentShare.objects.create(item=it, client=riya, shared_by=aman,
+                                                 note=note, source=src, source_label=label)
+                ContentShare.objects.filter(id=sh.id).update(created_at=timezone.now() - timedelta(days=ago))
+            if x.get("seen"):
+                ContentView.objects.create(item=it, user=riya, finished=x.get("done", False),
+                                           saved=x.get("saved", False), progress=100 if x.get("done") else 0)
+        del today
+
     def riya_checkins(self):
         """Check-ins board: six weekly check-ins (one missed, one waiting for Aman, two with a reply) and the
         last 10 days of daily check-ins (two missed, one with a reply). Today's daily one is still due."""
@@ -514,3 +622,88 @@ def _figure(name, bg, fg, pose):
     buf = BytesIO()
     im.save(buf, "JPEG", quality=82)
     return ContentFile(buf.getvalue(), name=name)
+
+
+def _pdf(slug, title, pages):
+    """A small real PDF, one page per outline entry (demo Library)."""
+    from io import BytesIO
+
+    from django.core.files.base import ContentFile
+    from PIL import Image, ImageDraw, ImageFont
+
+    def font(n):
+        for name in ("DejaVuSans.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "arial.ttf"):
+            try:
+                return ImageFont.truetype(name, n)
+            except OSError:
+                continue
+        return ImageFont.load_default()
+
+    out = []
+    for i, (head, text) in enumerate(pages):
+        im = Image.new("RGB", (595, 842), "white")
+        d = ImageDraw.Draw(im)
+        d.text((56, 56), title, fill=(110, 110, 110), font=font(14))
+        d.text((56, 110), head, fill=(20, 20, 20), font=font(28))
+        y, line = 170, ""
+        for w in text.split():
+            if d.textlength(line + " " + w, font=font(17)) > 480:
+                d.text((56, y), line.strip(), fill=(50, 50, 50), font=font(17))
+                y, line = y + 28, ""
+            line += " " + w
+        d.text((56, y), line.strip(), fill=(50, 50, 50), font=font(17))
+        d.text((56, 790), f"Train With Vimal · page {i + 1} of {len(pages)}", fill=(150, 150, 150), font=font(12))
+        out.append(im)
+    buf = BytesIO()
+    out[0].save(buf, "PDF", save_all=True, append_images=out[1:], resolution=72)
+    return ContentFile(buf.getvalue(), name=f"{slug}.pdf")
+
+
+def _snack_card(title, tiles):
+    from io import BytesIO
+
+    from django.core.files.base import ContentFile
+    from PIL import Image, ImageDraw, ImageFont
+
+    try:
+        f1 = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 30)
+        f2 = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 22)
+    except OSError:
+        f1 = f2 = ImageFont.load_default()
+    im = Image.new("RGB", (900, 1100), (232, 245, 236))
+    d = ImageDraw.Draw(im)
+    d.text((50, 50), title, fill=(20, 80, 45), font=f1)
+    for i, (n, k) in enumerate(tiles):
+        x, y = 50 + (i % 2) * 410, 130 + (i // 2) * 185
+        d.rounded_rectangle([x, y, x + 390, y + 165], radius=22, fill="white")
+        d.text((x + 24, y + 40), n, fill=(30, 30, 30), font=f2)
+        d.text((x + 24, y + 90), k, fill=(30, 120, 70), font=f2)
+    buf = BytesIO()
+    im.save(buf, "PNG")
+    return ContentFile(buf.getvalue(), name="snacks.png")
+
+
+def _video(slug, seconds):
+    """A small silent MP4 of the right length (needs ffmpeg; None without it)."""
+    import os
+    import shutil
+    import subprocess
+    import tempfile
+
+    from django.core.files.base import ContentFile
+
+    if not shutil.which("ffmpeg"):
+        return None
+    with tempfile.TemporaryDirectory() as tmp:
+        out = f"{tmp}/{slug}.mp4"
+        font = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+        text = (f",drawtext=fontfile={font}:text='Train With Vimal · demo video':fontcolor=0x8a6d3b:fontsize=26"
+                f":x=(w-tw)/2:y=h/2-40,drawtext=fontfile={font}:text='%{{pts\\:hms}}':fontcolor=0x8a6d3b"
+                f":fontsize=22:x=(w-tw)/2:y=h/2+10") if os.path.exists(font) else ""
+        cmd = ["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", f"color=c=0xFFF1DE:s=640x360:r=5:d={seconds}",
+               "-vf", "format=yuv420p" + text, "-c:v", "libx264", "-preset", "veryfast", "-crf", "30",
+               "-movflags", "+faststart", out]
+        if subprocess.run(cmd, check=False).returncode != 0:
+            return None
+        with open(out, "rb") as fh:
+            return ContentFile(fh.read(), name=f"{slug}.mp4")

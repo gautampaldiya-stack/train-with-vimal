@@ -29,3 +29,4 @@ One file per decision. Add a new file for every new decision (next number), and 
 | [D-23](0023-more-tab.md) | More tab: one account answer, my activity, change lines, export, report, own quiet hours, photos every N weeks | 2026-10-16 |
 | [D-24](0024-measurements-in-checkin.md) | Body measurements asked in the photo-week check-in, saved to Progress | 2026-10-16 |
 | [D-25](0025-measurements-once-per-period.md) | Measurements: one entry per period, no date chips, edits change it | 2026-10-16 |
+| [D-26](0026-client-library.md) | Client Library: notes and sources on shares, New / Done / Saved per client, in-app video | 2026-10-16 |

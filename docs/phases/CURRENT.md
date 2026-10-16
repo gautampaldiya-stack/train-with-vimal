@@ -128,6 +128,13 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
 - Backend: `me/account/`, `me/activity/`, `me/data-export/`, `me/report/`; prefs on User; own quiet hours; water and
   supplement reminders; private photos; photos every N weeks; measurements step in photo-week check-ins.
 - After pulling: `python manage.py migrate` (accounts 0002, checkins 0004, notifications 0002, clients 0004).
-- Not built: Library page, dark theme, units / Sunday week outside More, coach pickers (trainer screens).
-- Next client board: Library (`ClientLibrary` / `ClientLibraryWeb`).
+- Not built: dark theme, units / Sunday week outside More, coach pickers (trainer screens).
+
+## Library (built 2026-10-16, D-26)
+- `/library` and `/library/<id>`; item sheet for video, PDF, image and article. Code `app/lib/features/client/library/`.
+- Backend: `apps/content/library.py`, `me/library/` list / detail / progress; share notes and sources.
+- After pulling: `python manage.py migrate` (content 0002) and `seed_demo` (demo PDFs, image and videos; videos need
+  ffmpeg, else they show "Video not uploaded yet").
+- Not built: in-app PDF renderer, saving images to the phone gallery.
+- Next client boards: About (`ClientAbout`), Profile (`ClientProfile`).
 

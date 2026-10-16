@@ -54,7 +54,7 @@ class ContentSerializer(serializers.ModelSerializer):
         model = ContentItem
         fields = ["id", "kind", "title", "category", "category_name", "description", "file", "file_url",
                   "youtube_url", "cover", "cover_url", "body", "read_minutes", "duration_seconds", "pages",
-                  "file_size", "resolution", "share_everyone", "shared_count", "added_by", "usage", "created_at",
+                  "file_size", "resolution", "share_everyone", "chapters", "outline", "shared_count", "added_by", "usage", "created_at",
                   "updated_at"]
         read_only_fields = ["file_size"]
         extra_kwargs = {"file": {"write_only": True, "required": False},
@@ -238,7 +238,11 @@ class ClientContentView(mixins.ListModelMixin, viewsets.GenericViewSet):
     def create(self, request, client_pk=None):
         client = self._client()
         item = get_object_or_404(ContentItem, id=request.data.get("item"))
-        ContentShare.objects.get_or_create(item=item, client=client, defaults={"shared_by": request.user})
+        share, made = ContentShare.objects.get_or_create(
+            item=item, client=client, defaults={"shared_by": request.user, "note": (request.data.get("note") or "")[:500]})
+        if not made and "note" in request.data:  # sharing again changes the note
+            share.note = (request.data.get("note") or "")[:500]
+            share.save(update_fields=["note"])
         notify(client, "content_shared", f"New in your library: {item.title}", "", actor=request.user,
                data={"route": f"/library/{item.id}"})
         return Response(ContentSerializer(item, context={"request": request}).data, status=201)
@@ -250,38 +254,46 @@ class ClientContentView(mixins.ListModelMixin, viewsets.GenericViewSet):
 
 
 class MyLibraryViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
-    """Client Library: shared with me or with everyone. Filters: kind, saved."""
+    """Client Library: shared with me, with everyone, or with my program / meal plan.
+    `?kind=all|video|pdf|image|article|saved&q=` — rows, counts per filter, done / new totals, coach notes."""
 
     permission_classes = [IsClient]
     serializer_class = ContentSerializer
 
     def get_queryset(self):
-        u = self.request.user
-        mine = ContentView.objects.filter(item=OuterRef("pk"), user=u)
-        qs = (ContentItem.objects.filter(Q(share_everyone=True) | Q(shares__client=u)).distinct()
-              .select_related("category", "created_by")
-              .annotate(opened=Exists(mine), done=Exists(mine.filter(finished=True)),
-                        is_saved=Exists(mine.filter(saved=True))))
-        k = self.request.query_params.get("kind")
-        if k == "saved":
-            qs = qs.filter(is_saved=True)
-        elif k:
-            qs = qs.filter(kind=k)
-        return qs
+        from .library import visible
+
+        return visible(self.request.user)
 
     def list(self, request, *args, **kwargs):
-        page = self.paginate_queryset(self.filter_queryset(self.get_queryset()))
-        data = [{**ContentSerializer(i, context={"request": request}).data, "new": not i.opened, "done": i.done,
-                 "saved": i.is_saved} for i in page]
-        return self.get_paginated_response(data)
+        from .library import FILTERS, library
+
+        kind = request.query_params.get("kind") or "all"
+        if kind not in FILTERS:
+            raise serializers.ValidationError({"kind": [f"Use one of: {', '.join(FILTERS)}."]})
+        data = library(request.user, kind=kind, q=request.query_params.get("q", "")[:80], request=request)
+        # One client's library is small (what the coach shared); the page size keeps a long one in check.
+        limit = 60
+        try:
+            offset = max(0, int(request.query_params.get("offset", 0)))
+        except ValueError:
+            offset = 0
+        rows = data.pop("results")
+        data.update({"count": len(rows), "results": rows[offset:offset + limit],
+                     "next_offset": offset + limit if offset + limit < len(rows) else None})
+        return Response(data)
 
     def retrieve(self, request, pk=None):
+        from .library import item_page
+
         item = get_object_or_404(self.get_queryset(), pk=pk)
-        ContentView.objects.get_or_create(item=item, user=request.user)
-        return Response(ContentSerializer(item, context={"request": request}).data)
+        page = item_page(request.user, item, request)
+        ContentView.objects.get_or_create(item=item, user=request.user)  # opened: no longer New
+        return Response(page)
 
     @action(detail=True, methods=["post"])
     def progress(self, request, pk=None):
+        """{"progress": 0-100} · {"saved": bool} · {"finished": bool} (Mark as done / Done · undo)."""
         item = get_object_or_404(self.get_queryset(), pk=pk)
         v, _ = ContentView.objects.get_or_create(item=item, user=request.user)
         if "progress" in request.data:
@@ -291,7 +303,9 @@ class MyLibraryViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewset
                 pass
         if "saved" in request.data:
             v.saved = bool(request.data["saved"])
-        if request.data.get("finished") or v.progress >= 95:
+        if "finished" in request.data:
+            v.finished = bool(request.data["finished"])
+        elif v.progress >= 95:
             v.finished = True
         v.save()
         return Response({"progress": v.progress, "finished": v.finished, "saved": v.saved})

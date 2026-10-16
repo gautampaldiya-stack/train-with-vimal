@@ -35,4 +35,6 @@ urlpatterns = [
 ]
 
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    from apps.common.media import serve_media
+
+    urlpatterns += static(settings.MEDIA_URL, view=serve_media, document_root=settings.MEDIA_ROOT)

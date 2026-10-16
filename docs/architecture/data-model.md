@@ -492,6 +492,8 @@ Constraints: uniq_idempotency_key
 | `file_size` | PositiveBigIntegerField | optional |
 | `resolution` | CharField |  |
 | `share_everyone` | BooleanField |  |
+| `chapters` | JSONField |  |
+| `outline` | JSONField |  |
 | `created_by` | ForeignKey | → User; optional; indexed |
 
 ### ContentShare
@@ -503,6 +505,9 @@ Constraints: uniq_idempotency_key
 | `item` | ForeignKey | → ContentItem; indexed |
 | `client` | ForeignKey | → User; indexed |
 | `shared_by` | ForeignKey | → User; optional; indexed |
+| `note` | CharField |  |
+| `source` | CharField | choices: coach, program, meal_plan |
+| `source_label` | CharField |  |
 | `created_at` | DateTimeField |  |
 
 Constraints: uniq_content_share

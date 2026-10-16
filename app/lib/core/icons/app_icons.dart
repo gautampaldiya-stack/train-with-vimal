@@ -120,4 +120,7 @@ abstract final class AppIcons {
   static const scale = Ic.i9c63ed;
   static const downloadAlt = Ic.i535d22;
   static const file = Ic.ibada39;
+  // Client Library (board ClientLibrary)
+  static const bookmark = Ic.i5d68f8;
+  static const downloadLine = Ic.i78fb3d;
 }

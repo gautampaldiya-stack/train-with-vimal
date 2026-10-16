@@ -22,6 +22,7 @@ import '../features/client/habits/habits_screen.dart';
 import '../features/client/progress/progress_pages.dart';
 import '../features/client/progress/progress_screen.dart';
 import '../features/client/home/home_screen.dart';
+import '../features/client/library/library_screen.dart';
 import '../features/client/more/more_screen.dart';
 import '../features/client/train/train_screen.dart';
 import '../features/client/train/workout_screen.dart';
@@ -87,6 +88,8 @@ final Map<String, Widget Function(GoRouterState)> screens = {
         reopen: st.uri.queryParameters['reopen'],
         then: st.uri.queryParameters['then'],
       ),
+  '/library': (_) => const ClientLibraryScreen(),
+  '/library/:id': (st) => ClientLibraryScreen(key: ValueKey(st.uri.toString()), id: st.pathParameters['id']),
   '/more': (_) => const ClientMoreScreen(),
   '/more/:id': (st) => ClientMoreScreen(key: ValueKey(st.uri.toString()), view: st.pathParameters['id']!),
 };
