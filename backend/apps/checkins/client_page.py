@@ -85,7 +85,7 @@ def form_payload(form, coach_first, photos=True, client=None):
 
 def _week_counts(client, monday):
     """Workouts done / planned and the share of planned meals logged, Monday to Sunday."""
-    from apps.clients.metrics import active_meal_plan, active_program, planned_workout_days
+    from apps.clients.metrics import active_meal_plan, active_program, planned_meals, planned_workout_days
     from apps.nutrition.models import MealDayState
     from apps.training.models import WorkoutLog
 
@@ -97,8 +97,7 @@ def _week_counts(client, monday):
     mp = active_meal_plan(client, end)
     meals = None
     if mp:
-        days = max(0, (end - max(monday, mp.start_date)).days + 1)
-        want = mp.plan.meals.count() * days
+        want = planned_meals(mp, monday, end)
         if want:
             got = MealDayState.objects.filter(client=client, date__range=(monday, end),
                                               status=MealDayState.Status.LOGGED).count()

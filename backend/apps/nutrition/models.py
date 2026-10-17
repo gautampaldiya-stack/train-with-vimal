@@ -164,6 +164,13 @@ class MealItem(models.Model):
     quantity = models.DecimalField(max_digits=7, decimal_places=2, validators=[MinValueValidator(Decimal("0.01"))])
     unit = models.ForeignKey(FoodUnit, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")  # null = g
     order = models.PositiveSmallIntegerField(default=0)
+    # Swaps the client may eat instead of this food, for this item only (so a client's copy has its own):
+    # [{"food": "<food id>", "quantity": 1.5, "unit": <FoodUnit id> | null (= grams)}]. null = never set: the food's
+    # library swaps (Food.swaps) apply. A client copy seeds it from Food.swaps when it is made (see `item_swaps`).
+    alternatives = models.JSONField(null=True, blank=True, default=None)
+    # In a client's copy: the master item this one was copied from (null = added for the client). Gives the
+    # editor's "Was: Moong dal (cooked), 1 katori · 150 g" line.
+    origin = models.ForeignKey("self", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
 
     class Meta:
         ordering = ["order"]

@@ -3,6 +3,7 @@ from decimal import Decimal
 from rest_framework import serializers
 
 from .models import FOOD_GROUPS, Diet, Food, FoodLogEntry, FoodUnit, Meal, MealItem, MealOption, MealPlan
+from .swaps import amount_label, match_percent, resolve, same_kcal_grams  # noqa: F401
 
 UNIT_SUGGESTIONS = [("1 tsp", 5), ("1 tbsp", 15), ("1 katori", 150), ("1 cup", 200), ("1 glass", 250),
                     ("1 bowl", 100), ("1 plate", 200), ("1 piece", 30), ("1 slice", 30), ("1 scoop", 30),
@@ -143,38 +144,56 @@ class FoodPickSerializer(serializers.ModelSerializer):
         return {"id": u.id, "name": u.name, "grams": u.grams} if u else {"id": None, "name": "g", "grams": 1}
 
 
-def match_percent(a, b):
-    """'Match = how close protein, carbs and fat are, per calorie.'"""
-    def split(f):
-        kcal = float(4 * f.protein + 4 * f.carbs + 9 * f.fat) or 1.0
-        return (4 * float(f.protein) / kcal, 4 * float(f.carbs) / kcal, 9 * float(f.fat) / kcal)
-
-    sa, sb = split(a), split(b)
-    diff = sum(abs(x - y) for x, y in zip(sa, sb)) / 2  # 0..1
-    return max(0, round(100 * (1 - diff)))
-
-
-def same_kcal_grams(original, original_grams, alt):
-    """'Amounts give the same calories as 60 g.'"""
-    kcal = float(original.kcal) * float(original_grams) / 100
-    if not alt.kcal:
-        return None
-    return round(kcal * 100 / float(alt.kcal))
-
-
 # ---------------------------------------------------------------- meal plans
+class SwapInSerializer(serializers.Serializer):
+    """One swap of a planned food, as the editor sends it."""
+
+    food = serializers.PrimaryKeyRelatedField(queryset=Food.objects.filter(owner_client__isnull=True))
+    quantity = serializers.DecimalField(max_digits=7, decimal_places=2, min_value=Decimal("0.01"),
+                                        max_value=Decimal("5000"))
+    unit = serializers.PrimaryKeyRelatedField(queryset=FoodUnit.objects.all(), required=False, allow_null=True)
+
+    def validate(self, attrs):
+        u = attrs.get("unit")
+        if u is not None and u.food_id != attrs["food"].id:
+            raise serializers.ValidationError({"unit": [f"{u.name} is not a unit of {attrs['food'].name}."]})
+        return attrs
+
+
 class MealItemSerializer(serializers.ModelSerializer):
+    """`swaps`: the foods the client may eat instead (this item's own list, else the food's library swaps), each
+    with its amount, kcal / P / C / F and match %. Send `swaps` to replace the list; leave it out to keep it.
+    `was` (a client's copy only): what the master has here when this food differs, e.g. "Moong dal (cooked),
+    1 katori · 150 g", or "not in the master"; null when it is the same."""
+
     id = serializers.IntegerField(required=False)
     food_detail = FoodPickSerializer(source="food", read_only=True)
     grams = serializers.DecimalField(max_digits=9, decimal_places=2, read_only=True)
     macros = serializers.SerializerMethodField()
+    swaps = SwapInSerializer(many=True, required=False, write_only=True)
+    was = serializers.SerializerMethodField()
 
     class Meta:
         model = MealItem
-        fields = ["id", "food", "food_detail", "quantity", "unit", "grams", "macros"]
+        fields = ["id", "food", "food_detail", "quantity", "unit", "grams", "macros", "swaps", "was"]
 
     def get_macros(self, obj):
         return obj.macros()
+
+    def get_was(self, obj):
+        if not self.context.get("copy"):
+            return None
+        o = obj.origin
+        if o is None:
+            return "not in the master"
+        if o.food_id == obj.food_id and o.quantity == obj.quantity and o.unit_id == obj.unit_id:
+            return None
+        return f"{o.food.name}, {amount_label(o.quantity, o.unit)}"
+
+    def to_representation(self, obj):
+        data = super().to_representation(obj)
+        data["swaps"] = resolve(obj, self.context.setdefault("_foods", {}))
+        return data
 
 
 class MealOptionSerializer(serializers.ModelSerializer):

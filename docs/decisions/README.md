@@ -39,4 +39,5 @@ One file per decision. Add a new file for every new decision (next number), and 
 | [D-34](0034-trainer-client-profile.md) | Trainer client profile: 9 tabs, plan / meal / supplement / habit assign, logs, history, forms copies | 2026-10-17 |
 | [D-35](0035-trainer-checkins.md) | Trainer Check-ins page: list + review panel, daily check-in view, better / worse colours | 2026-10-17 |
 | [D-36](0036-onboarding-coaching-form.md) | Onboarding = the gym's coaching form in 9 steps; answers are profile fields, edited in Edit profile, shown in About | 2026-10-17 |
+| [D-37](0037-per-client-swaps-and-supplements.md) | Food swaps per meal item (client copy), supplements get a client copy, adherence counts the followed plan | 2026-10-17 |
 | [D-31](0031-trainer-activity-and-fixes.md) | Trainer Activity card, stat cards fill the row, menus fit the screen, readable guides | 2026-10-16 |

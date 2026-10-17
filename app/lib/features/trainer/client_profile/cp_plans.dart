@@ -21,6 +21,7 @@ import 'cp_plans_edit.dart';
 import 'cp_plans_meal_edit.dart';
 import 'cp_plans_model.dart';
 import 'cp_plans_parts.dart';
+import 'cp_plans_supp_edit.dart';
 
 export 'cp_plans_assign.dart' show showAssignPlan;
 
@@ -48,6 +49,9 @@ class _CpPlansTabState extends State<CpPlansTab> {
 
   /// Meal plan editor open (`Edit for X`: the client's own copy, one weekday at a time).
   bool _mealEdit = false;
+
+  /// Supplements editor open for this assignment row (`Edit for X`: the client's own copy).
+  Map? _suppEdit;
 
   @override
   void initState() {
@@ -109,6 +113,17 @@ class _CpPlansTabState extends State<CpPlansTab> {
                 _mealEdit = false;
                 if (day != null) _mday = day;
               }),
+            );
+          }
+          if (_suppEdit != null) {
+            return SupplementEditor(
+              key: ValueKey('supp${_suppEdit!['id']}'),
+              c: c,
+              a: _suppEdit!,
+              onClose: (saved) {
+                setState(() => _suppEdit = null);
+                if (saved) d.reload();
+              },
             );
           }
           final phone = context.isPhone;
@@ -489,9 +504,11 @@ class _CpPlansTabState extends State<CpPlansTab> {
             _planHead(
               title: '${a['plan_name']}',
               info: ['Since ${cpDm(a['start_date'])}', '${(a['items'] as List).length} items', if ('${a['note'] ?? ''}'.isNotEmpty) '${a['note']}'].join(' · '),
-              edited: false,
-              tip: 'The plan comes from the library. ${c.first} ticks each one in the app and keeps ${pronoun(c)} own stock count.',
+              edited: a['custom'] == true,
+              tip: 'Changes here apply only to ${c.first}. The master supplement plan in the library stays the same. ${c.first} ticks each one in the app and keeps ${pronoun(c)} own stock count.',
+              onEdit: () => setState(() => _suppEdit = a),
               menu: _menu(
+                reset: a['custom'] == true ? () => _resetSupps(a) : null,
                 openMaster: () => _openMaster('/habits'),
                 end: () => _confirmEnd('${a['plan_name']}', 'clients/${c.id}/supplement-plans/${a['id']}/end/'),
               ),
@@ -513,6 +530,16 @@ class _CpPlansTabState extends State<CpPlansTab> {
           ]),
         ),
     ], side);
+  }
+
+  Future<void> _resetSupps(Map a) async {
+    final ok = await confirmAction(context,
+        title: 'Reset to master?',
+        body: 'Every change made for ${c.first} in ${a['plan_name']} goes away. ${c.first} takes the master supplements "${a['master_name'] ?? a['plan_name']}" again. Ticks stay.',
+        confirm: 'Reset to master',
+        danger: true,
+        icon: AppIcons.reset);
+    if (ok) await _post('clients/${c.id}/supplement-plans/${a['id']}/reset/', ok: '${c.first} follows the master again', sub: '${a['master_name'] ?? a['plan_name']}');
   }
 
   // ─────────────────────────────── Habits

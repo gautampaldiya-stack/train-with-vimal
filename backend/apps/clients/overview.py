@@ -58,11 +58,11 @@ def current_plans(user):
     mp = metrics.active_meal_plan(user)
     if mp:
         out["meal_plan"] = {"id": str(mp.id), "name": mp.plan.name, "kcal": mp.plan.kcal_target,
-                            "meals": mp.plan.meals.count(), "diet": mp.plan.get_diet_display(),
+                            "meals": metrics.meals_per_day(mp, today), "diet": mp.plan.get_diet_display(),
                             "edited": bool(mp.version_note), "plan": str(mp.plan_id)}
-    sa = SupplementAssignment.objects.filter(client=user, active=True).select_related("plan").first()
+    sa = SupplementAssignment.objects.filter(client=user, active=True).select_related("plan", "custom_plan").first()
     if sa:
-        items = list(sa.plan.items.values_list("name", flat=True))
+        items = list(sa.followed.items.values_list("name", flat=True))
         out["supplements"] = {"id": str(sa.id), "name": sa.plan.name, "count": len(items), "items": items}
     habits = list(HabitAssignment.objects.filter(client=user, active=True).select_related("habit"))
     if habits:

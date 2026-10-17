@@ -143,11 +143,15 @@ def _meals(client, start, end):
 
     mps = list(MealPlanAssignment.objects.filter(client=client, start_date__lte=end)
                .filter(Q(end_date__isnull=True) | Q(end_date__gte=start)).select_related("plan").order_by("start_date"))
+    from apps.clients.metrics import meals_by_weekday
+    from apps.nutrition.models import meals_on
+
     mp = mps[-1] if mps else None
-    plan = mp.plan if mp else None
+    plan = mp.followed if mp else None  # the client's own copy, else the master
     today = timezone.localdate()
     days = [d for d in days_desc(start, min(end, today - timedelta(days=1)), client)]
-    n_meals = plan.meals.count() if plan else 0
+    per_weekday = meals_by_weekday(mp) if mp else {w: 0 for w in range(7)}
+    n_meals = max(per_weekday.values())
     logged = dict(MealDayState.objects.filter(client=client, status="logged", date__range=(start, end))
                   .values("date").annotate(n=Count("id")).values_list("date", "n"))
     food_days = set(FoodLogEntry.objects.filter(client=client, date__range=(start, end)).values_list("date", flat=True))
@@ -159,13 +163,21 @@ def _meals(client, start, end):
         t = by_day.get(d)
         if t and target and t["kcal"] > target * 1.05:
             over += 1
-        elif n_meals and logged.get(d, 0) >= n_meals:
+        elif per_weekday[d.weekday()] and logged.get(d, 0) >= per_weekday[d.weekday()]:
             on_plan += 1
     per_meal = []
     if plan:
+        # Days each meal is planned on: a weekday's own meals only that weekday, every-day meals on the others.
+        planned_on = {}
+        for d in days:
+            for mid in meals_on(plan, d.weekday()).values_list("id", flat=True):
+                planned_on.setdefault(mid, []).append(d)
         for m in plan.meals.all():
-            n = MealDayState.objects.filter(client=client, status="logged", meal=m, date__range=(start, end)).count()
-            per_meal.append({"name": m.name, "pct": _pct(min(n, len(days)), len(days))})
+            mdays = planned_on.get(m.id, [])
+            if not mdays:
+                continue
+            n = MealDayState.objects.filter(client=client, status="logged", meal=m, date__in=mdays).count()
+            per_meal.append({"name": m.name, "pct": _pct(min(n, len(mdays)), len(mdays))})
 
     def avg(k):
         return round(sum(t[k] for t in tot) / len(tot)) if tot else None
@@ -228,8 +240,9 @@ def _supps(client, start, end):
     days = days_desc(start, min(end, timezone.localdate() - timedelta(days=1)), client)
     out, took = [], Counter()
     n = 0
-    for sa in SupplementAssignment.objects.filter(client=client, start_date__lte=end).select_related("plan"):
-        for it in sa.plan.items.all():
+    for sa in SupplementAssignment.objects.filter(client=client, start_date__lte=end).select_related("plan",
+                                                                                                     "custom_plan"):
+        for it in sa.followed.items.all():
             due = [d for d in days if d >= sa.start_date and (not it.days or d.weekday() in it.days)]
             done = set(SupplementLog.objects.filter(client=client, item=it, date__in=due).values_list("date", flat=True))
             for d in done:

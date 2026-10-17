@@ -21,7 +21,7 @@ from apps.common.mixins import SoftDeleteViewMixin
 from apps.common.permissions import HasTrainerPermission, IsClient, IsStaff
 from apps.common.utils import data_url_file, sync_day, sync_time
 
-from . import importer, services
+from . import importer, services, swaps
 from .models import (
     FOOD_GROUPS,
     Diet,
@@ -43,13 +43,13 @@ from .serializers import (
     FoodLogSerializer,
     FoodPickSerializer,
     FoodSerializer,
+    FoodUnitSerializer,
     LogFoodSerializer,
     MealPlanCardSerializer,
     MealPlanDetailSerializer,
     MealStructureSerializer,
-    match_percent,
-    same_kcal_grams,
 )
+from .swaps import amount_label, match_percent, same_kcal_amount, same_kcal_grams
 
 
 def _staff_or_404(user, client_id):
@@ -137,19 +137,63 @@ class FoodViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
 
     @action(detail=True, url_path="swap-options")
     def swap_options(self, request, pk=None):
-        """'Add alternative' list: same group (or all), top 6 by match %."""
+        """'Add alternative' → Pick an alternative: same group (or `scope=all`), best match % first (top 8).
+        `grams`: how much of this food is planned; each row gets the amount giving the same calories (`quantity`
+        in `unit`, its default unit, else grams). `client_diet`: only foods that fit that diet. `exclude`: food ids
+        already picked (comma separated)."""
         food = self.get_object()
-        qs = Food.objects.filter(owner_client__isnull=True).exclude(id=food.id)
-        if request.query_params.get("scope", "group") == "group":
+        p = request.query_params
+        qs = (Food.objects.filter(owner_client__isnull=True).exclude(id=food.id)
+              .select_related("default_unit").prefetch_related("units"))
+        if p.get("scope", "group") == "group":
             qs = qs.filter(group=food.group)
-        grams = request.query_params.get("grams") or 100
+        fits = {"veg": ["veg", "vegan"], "egg": ["veg", "vegan", "egg"],
+                "vegan": ["vegan"]}.get(p.get("client_diet", ""))
+        if fits:
+            qs = qs.filter(diet__in=fits)
+        skip = [x for x in p.get("exclude", "").split(",") if x]
+        if skip:
+            try:
+                qs = qs.exclude(id__in=skip)
+            except Exception:
+                pass
         try:
-            grams = float(grams)
+            grams = float(p.get("grams") or 100)
         except ValueError:
-            grams = 100
-        scored = sorted(((match_percent(food, f), f) for f in qs[:500]), key=lambda t: -t[0])[:6]
-        return Response([{**FoodPickSerializer(f).data, "match": m, "same_kcal_grams": same_kcal_grams(food, grams, f)}
-                         for m, f in scored])
+            grams = 100.0
+        kcal = float(food.kcal) * grams / 100
+        rows = []
+        for m, f in sorted(((match_percent(food, f), f) for f in qs[:500]), key=lambda t: (-t[0], t[1].name)):
+            q, u = same_kcal_amount(kcal, f)
+            g = q * float(u.grams) if u else q
+            if g > 1000 or (u is not None and q > 10):  # nobody eats 22 cups of black coffee instead
+                continue
+            if len(rows) == 8:
+                break
+            rows.append({**FoodPickSerializer(f).data, "match": m, "same_kcal_grams": same_kcal_grams(food, grams, f),
+                         "quantity": q, "unit": u.id if u else None, "unit_name": u.name if u else "g",
+                         "amount": amount_label(q, u), "grams": round(g, 1), "macros": f.per_grams(Decimal(str(g)))})
+        return Response(rows)
+
+    @action(detail=True, methods=["post"], url_path="units")
+    def add_unit(self, request, pk=None):
+        """'+ Add a unit in the food library' (meal editor's unit menu): {name, grams} → the new FoodUnit.
+        Open to anyone who may edit foods or meal plans."""
+        u = request.user
+        if u.is_trainer and not (u.trainer_profile.has_perm("nutrition.foods")
+                                 or u.trainer_profile.has_perm("nutrition.meal_plans")):
+            raise PermissionDenied("Your access does not include foods. Ask Vimal for more access.")
+        food = self.get_object()
+        s = FoodUnitSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+        name, grams = s.validated_data["name"], s.validated_data["grams"]
+        if food.units.filter(name__iexact=name).exists():
+            raise serializers.ValidationError({"name": [f"{food.name} already has {name}."]})
+        if food.units.count() >= 12:
+            raise serializers.ValidationError({"name": ["Up to 12 units."]})
+        unit = FoodUnit.objects.create(food=food, name=name, grams=grams)
+        activity_log("added a unit to a food", "plan", actor=u, target=food, target_label=f"{food.name} · {name}")
+        return Response({"id": unit.id, "name": unit.name, "grams": unit.grams}, status=201)
 
     # -------- Excel import
     @action(detail=False, methods=["post"], url_path="import/check", parser_classes=[MultiPartParser, FormParser])
@@ -395,8 +439,10 @@ class ClientMealPlanViewSet(viewsets.ViewSet):
     def _meals(self, a):
         plan = (MealPlan.all_objects.filter(id=a.followed.id)
                 .prefetch_related("meals__options__items__food__units", "meals__options__items__unit",
-                                  "meals__options__items__food__default_unit").get())
-        return {**MealPlanDetailSerializer(plan).data, "id": a.plan_id, "copy": a.custom_plan_id,
+                                  "meals__options__items__food__default_unit",
+                                  "meals__options__items__origin__food", "meals__options__items__origin__unit").get())
+        data = MealPlanDetailSerializer(plan, context={"copy": a.custom_plan_id is not None}).data
+        return {**data, "id": a.plan_id, "copy": a.custom_plan_id,
                 "custom": a.custom_plan_id is not None,
                 "own_days": sorted({m.weekday for m in plan.meals.all() if m.weekday is not None})}
 
@@ -533,10 +579,16 @@ class MyMealActionView(APIView):
                 st.swaps.pop(str(item.id), None)
             else:
                 alt = get_object_or_404(Food, id=alt_id)
-                approved = item.food.swaps.filter(id=alt.id).exists()
-                if not approved and not plan.allow_search_any:
+                # the item's own swaps (a client's copy has its own), else the food's library swaps
+                own = next((r for r in swaps.item_swaps(item) if str(r.get("food")) == str(alt.id)), None)
+                if own is None and not plan.allow_search_any:
                     raise PermissionDenied("Pick one of the approved swaps.")
-                grams = same_kcal_grams(item.food, services._grams(item, st.portions.get(str(item.id))), alt)
+                eaten = services._grams(item, st.portions.get(str(item.id)))
+                grams = same_kcal_grams(item.food, eaten, alt)
+                if own is not None:  # the coach's amount, scaled to today's portion
+                    unit = FoodUnit.objects.filter(id=own.get("unit"), food=alt).first() if own.get("unit") else None
+                    g = Decimal(str(own.get("quantity") or 1)) * (unit.grams if unit else Decimal(1))
+                    grams = round(float(g * eaten / item.grams)) if item.grams else round(float(g))
                 st.swaps[str(item.id)] = {"food": str(alt.id), "grams": grams}
                 activity_log(f"swapped a food at {meal.name.lower()}", "meal", actor=request.user,
                              client=request.user, target_label=meal.name,
@@ -577,8 +629,9 @@ class MySwapOptionsView(APIView):
         item = get_object_or_404(MealItem.objects.select_related("food", "unit"), id=item_id,
                                  option__meal__plan=mp.followed if mp else None)
         grams = services._grams(item)
-        rows = [{**FoodPickSerializer(f).data, "match": match_percent(item.food, f),
-                 "grams": same_kcal_grams(item.food, grams, f)} for f in item.food.swaps.all()]
+        # the item's own swaps (a client's copy has its own), else the food's library swaps
+        rows = [{**r["food_detail"], "match": r["match"], "grams": r["grams"], "quantity": r["quantity"],
+                 "unit_name": r["unit_name"], "amount": r["amount"]} for r in swaps.resolve(item)]
         return Response({"planned": {**FoodPickSerializer(item.food).data, "grams": float(grams)},
                          "options": sorted(rows, key=lambda r: -r["match"]),
                          "can_search_any": mp.followed.allow_search_any})

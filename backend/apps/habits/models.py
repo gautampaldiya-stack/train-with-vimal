@@ -96,6 +96,10 @@ class SupplementPlan(SoftDeleteModel):
     name = models.CharField(max_length=80)
     note = models.CharField(max_length=300, blank=True, default="")
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+    # Client profile → Plans → Supplements → Edit for X makes a copy only for that client (is_master=False), kept
+    # on SupplementAssignment.custom_plan and pointing back at its master. The library only lists masters.
+    is_master = models.BooleanField(default=True, db_index=True)
+    master = models.ForeignKey("self", null=True, blank=True, on_delete=models.SET_NULL, related_name="copies")
 
     class Meta:
         ordering = ["name"]
@@ -131,9 +135,17 @@ class SupplementAssignment(TimeStampedModel):
     start_date = models.DateField(default=timezone.localdate)
     active = models.BooleanField(default=True, db_index=True)
     assigned_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+    # This client's own copy of the plan (Edit for X). Empty = the client follows the master as it is.
+    custom_plan = models.ForeignKey(SupplementPlan, null=True, blank=True, on_delete=models.SET_NULL,
+                                    related_name="custom_assignments")
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["plan", "client"], name="uniq_supp_client")]
+
+    @property
+    def followed(self):
+        """The plan the client actually takes: their own copy, else the master."""
+        return self.custom_plan or self.plan
 
 
 class SupplementLog(models.Model):

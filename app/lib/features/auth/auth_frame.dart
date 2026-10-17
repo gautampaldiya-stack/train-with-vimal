@@ -266,13 +266,12 @@ class _Legal extends StatelessWidget {
 }
 
 class _BrandHead extends StatelessWidget {
-  const _BrandHead({this.onBlue = false});
-  final bool onBlue;
+  const _BrandHead();
   @override
   Widget build(BuildContext context) => Row(spacing: 12, children: [
         // The soft panels show the logo without the white ring (`wl-brand.soft img.wl-logo`).
-        AppLogo(size: 44, ring: onBlue),
-        Text('Train With Vimal', style: AppText.s(17, W.w8, color: onBlue ? AppColors.white : AppColors.text)),
+        const AppLogo(size: 44, ring: false),
+        Text('Train With Vimal', style: AppText.s(17, W.w8)),
       ]);
 }
 
@@ -352,58 +351,90 @@ class _Centered extends StatelessWidget {
       );
 }
 
+/// Setup steps panel: the soft side panel the other account pages use. Logo, title and the bottom card stay put;
+/// only the step list scrolls when the window is short.
 class _StepsPanel extends StatelessWidget {
   const _StepsPanel(this.s);
   final BrandSteps s;
 
   @override
   Widget build(BuildContext context) => Container(
+        color: AppColors.brandSoft,
         padding: _panelPad(context),
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(begin: Alignment(-0.34, -1), end: Alignment(0.34, 1), colors: [AppColors.accent, AppColors.accentHover]),
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 28, children: [
-          const _BrandHead(onBlue: true),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 22, children: [
+          const Align(alignment: Alignment.centerLeft, child: _BrandHead()),
+          Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
+            Opacity(opacity: .75, child: Text('SET UP YOUR PROFILE', style: AppText.s(11.5, W.w8, ls: 1.38))),
+            BalancedText('Help ${s.coachFirst} build your plan', style: AppText.s(32, W.w8, ls: -0.64, h: 1.12)),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: Text('${s.titles.length} short steps, about 10 minutes. Fill every detail carefully: your plans are made from it. You can stop and finish later.',
+                  style: AppText.s(15, W.w4, color: AppColors.muted, h: 1.5)),
+            ),
+          ]),
           Expanded(
-            child: _Centered(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 12, children: [
-                Opacity(opacity: .75, child: Text('SET UP YOUR PROFILE', style: AppText.s(11.5, W.w8, color: AppColors.white, ls: 1.38))),
-                BalancedText('Help ${s.coachFirst} build your plan', style: AppText.s(38, W.w8, color: AppColors.white, ls: -0.76, h: 1.12)),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 400),
-                  child: Opacity(
-                    opacity: .85,
-                    child: Text('${s.titles.length} short steps, about 10 minutes. Fill every detail carefully: your plans are made from it. You can stop and finish later.', style: AppText.s(15, W.w4, color: AppColors.white, h: 1.5)),
+            // Soft fade at both ends so a cut-off row reads as "more above/below", not a clipped edge.
+            child: ShaderMask(
+              blendMode: BlendMode.dstIn,
+              shaderCallback: (r) => const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.transparent, Colors.black, Colors.black, Colors.transparent],
+                stops: [0, .06, .94, 1],
+              ).createShader(r),
+              child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 4, children: [
+                for (var i = 0; i < s.titles.length; i++)
+                  _KeepVisible(
+                    on: s.current == i,
+                    child: _StepButton(n: i + 1, title: s.titles[i], sub: s.subs[i], done: s.done.contains(i), cur: s.current == i, onTap: () => s.onTap(i)),
                   ),
-                ),
-                // `wl-bs`: 4 apart, 14 below the line above.
                 Padding(
-                  padding: const EdgeInsets.only(top: 14),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 4, children: [
-                    for (var i = 0; i < s.titles.length; i++)
-                      _StepButton(n: i + 1, title: s.titles[i], sub: s.subs[i], done: s.done.contains(i), cur: s.current == i, onTap: () => s.onTap(i)),
-                  ]),
+                  padding: const EdgeInsets.only(top: 8, left: 12),
+                  child: Text('${s.done.length} of ${s.titles.length} done', style: AppText.s(12.5, W.w7, color: AppColors.muted)),
                 ),
-                Opacity(opacity: .8, child: Text('${s.done.length} of ${s.titles.length} done', style: AppText.s(12.5, W.w7, color: AppColors.white))),
               ]),
             ),
+            ),
           ),
-          // `wl-bq`: who sees the answers.
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-            decoration: BoxDecoration(color: AppColors.white.withValues(alpha: .12), borderRadius: BorderRadius.circular(14)),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 6, children: [
-              Text('Only you and your coach see your answers.', style: AppText.s(14, W.w8, color: AppColors.white, h: 1.5)),
-              Opacity(
-                opacity: .78,
-                child: Text('${s.coachFirst[0].toUpperCase()}${s.coachFirst.substring(1)} uses them to set your training, calories and exercise swaps.',
-                    style: AppText.s(12.5, W.w4, color: AppColors.white, h: 1.5)),
-              ),
-            ]),
-          ),
+          _HelpCard('Only you and your coach see your answers.',
+              '${s.coachFirst[0].toUpperCase()}${s.coachFirst.substring(1)} uses them to set your training, calories and exercise swaps.'),
         ]),
       );
+}
+
+/// Scrolls the step list so the current step shows (a short window hides the last steps otherwise).
+class _KeepVisible extends StatefulWidget {
+  const _KeepVisible({required this.on, required this.child});
+  final bool on;
+  final Widget child;
+  @override
+  State<_KeepVisible> createState() => _KeepVisibleState();
+}
+
+class _KeepVisibleState extends State<_KeepVisible> {
+  @override
+  void initState() {
+    super.initState();
+    _show();
+  }
+
+  @override
+  void didUpdateWidget(_KeepVisible old) {
+    super.didUpdateWidget(old);
+    if (widget.on && !old.on) _show();
+  }
+
+  void _show() {
+    if (!widget.on) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Scrollable.ensureVisible(context, alignment: .5, duration: const Duration(milliseconds: 200));
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 class _StepButton extends StatelessWidget {
@@ -419,8 +450,9 @@ class _StepButton extends StatelessWidget {
         builder: (_, h, _) => Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           decoration: BoxDecoration(
-            color: cur ? AppColors.white.withValues(alpha: .18) : (h ? AppColors.white.withValues(alpha: .10) : null),
+            color: cur ? AppColors.white : (h ? AppColors.white.withValues(alpha: .5) : null),
             borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: cur ? AppColors.line : Colors.transparent),
           ),
           child: Row(spacing: 12, children: [
             Container(
@@ -429,17 +461,17 @@ class _StepButton extends StatelessWidget {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: done ? AppColors.white : null,
-                border: Border.all(color: done || cur ? AppColors.white : AppColors.white.withValues(alpha: .5), width: 2),
+                color: done ? AppColors.accent : null,
+                border: Border.all(color: done || cur ? AppColors.accent : AppColors.line2, width: 2),
               ),
               child: done
-                  ? const AppIcon(AppIcons.check, size: 14, color: AppColors.accent, stroke: 3)
-                  : Text('$n', style: AppText.s(12.5, W.w8, color: AppColors.white)),
+                  ? const AppIcon(AppIcons.check, size: 14, color: AppColors.white, stroke: 3)
+                  : Text('$n', style: AppText.s(12.5, W.w8, color: cur ? AppColors.accent : AppColors.muted)),
             ),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                Text(title, style: AppText.s(14, W.w8, color: AppColors.white)),
-                Opacity(opacity: .78, child: Text(sub, style: AppText.s(12.5, W.w4, color: AppColors.white))),
+                Text(title, style: AppText.s(14, W.w8)),
+                Text(sub, style: AppText.s(12.5, W.w4, color: AppColors.muted)),
               ]),
             ),
           ]),

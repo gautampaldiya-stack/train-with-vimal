@@ -5,6 +5,7 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
 **Last updated:** 2026-10-17 · branch `working`
 
 ## Done
+- 2026-10-17 round 3 (D-37): meal editor Portion and swaps (per-client swaps), supplement client copies, adherence from the followed plan, compact pickers, Forms photos, setup panel light. Next: Trainer Calendar, then My profile (TrainerMe) — in progress.
 - Backend complete (all modules, offline sync, seeds, tests). Runs without Docker/Redis.
 - Docs split per topic (decisions, rulebooks, prd, phases, architecture).
 - Flutter foundation (phase 4): theme tokens, all board icons, shared widgets (`lib/core/widgets`),

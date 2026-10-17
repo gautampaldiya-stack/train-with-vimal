@@ -10,6 +10,7 @@ import '../../../core/widgets/button.dart';
 import '../../../core/widgets/card.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/overlays.dart';
+import '../../../core/widgets/photo_viewer.dart';
 import '../../../core/widgets/responsive.dart';
 import 'cp_common.dart';
 import 'cp_content_drawers.dart';
@@ -43,6 +44,25 @@ class _CpFormsTabState extends State<CpFormsTab> {
   String? edKey, edForm, edName;
   CpSendOpts? edOpts;
   int _seen = -1;
+  bool _side = false; // the answers card sits beside the list (tablet / desktop)
+  final _answersScroll = ScrollController();
+  final _cardKey = GlobalKey();
+  double _cardTop = 300; // the answers card's top in the window, measured after the first layout
+
+  void _measureTop() {
+    final box = _cardKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize || !mounted) return;
+    // Measured where the page is not scrolled: the card's top plus how far the page has moved.
+    final pos = Scrollable.maybeOf(context)?.position;
+    final top = box.localToGlobal(Offset.zero).dy + (pos?.pixels ?? 0);
+    if ((top - _cardTop).abs() > 1) setState(() => _cardTop = top);
+  }
+
+  @override
+  void dispose() {
+    _answersScroll.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -187,8 +207,8 @@ class _CpFormsTabState extends State<CpFormsTab> {
         edOpts = null;
       });
 
-  Future<void> _print(String title, String cap, List<(String, List<(String, String)>)> sections) async {
-    final where = await printForm(title: title, cap: cap, sections: sections);
+  Future<void> _print(String title, String cap, List<(String, List<(String, String)>)> sections, [List<(String, String)> photos = const []]) async {
+    final where = await printForm(title: title, cap: cap, sections: sections, photos: photos);
     if (where != null && mounted) showToast(context, 'Saved for printing', sub: where);
   }
 
@@ -219,9 +239,10 @@ class _CpFormsTabState extends State<CpFormsTab> {
       );
     }
     return LayoutBuilder(builder: (context, b) {
+      _side = b.maxWidth >= 760;
       final list = _list(context);
       final card = _card(context);
-      if (b.maxWidth < 760) return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: context.isPhone ? 14 : 16, children: [list, card]);
+      if (!_side) return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: context.isPhone ? 14 : 16, children: [list, card]);
       return Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 16, children: [SizedBox(width: 340, child: list), Expanded(child: card)]);
     });
   }
@@ -291,21 +312,54 @@ class _CpFormsTabState extends State<CpFormsTab> {
     return _questions(context, d);
   }
 
-  // `.cp-qsec` / `.cp-qa`: OVER line, then question (grey) and answer (bold); stacked on a phone.
-  Widget _answers(String title, String cap, List<(String, List<(String, String)>)> sections) => AppCard(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          CardHeader(title, sub: cap, action: CpLink('Print', onTap: () => _print(title, cap, sections))),
-          for (final (t, qa) in sections)
-            Padding(
-              padding: EdgeInsets.fromLTRB(context.isPhone ? 16 : 20, 4, context.isPhone ? 16 : 20, 12),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                Padding(padding: const EdgeInsets.only(top: 6, bottom: 4), child: Text(t.toUpperCase(), style: AppText.over)),
-                if (qa.isEmpty) Text('No answers.', style: AppText.sub),
-                for (final (i, (q, a)) in qa.indexed) _qa(q, a, last: i == qa.length - 1),
-              ]),
-            ),
+  // `.cp-qsec` / `.cp-qa`: OVER line, then question (grey) and answer (bold); stacked on a phone. Beside the list
+  // (tablet / desktop) the card keeps to the window's height and its answers scroll inside it, so the page stays
+  // put; on a phone the page scrolls. [photos] = the onboarding's start photos (label, url).
+  Widget _answers(String title, String cap, List<(String, List<(String, String)>)> sections,
+      {List<(String, String)> photos = const [], int photosIn = -1}) {
+    final pad = context.isPhone ? 16.0 : 20.0;
+    final at = photos.isEmpty ? -1 : (photosIn < 0 ? sections.length - 1 : photosIn);
+    final body = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      for (final (si, (t, qa)) in sections.indexed)
+        Padding(
+          padding: EdgeInsets.fromLTRB(pad, 4, pad, 12),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Padding(padding: const EdgeInsets.only(top: 6, bottom: 4), child: Text(t.toUpperCase(), style: AppText.over)),
+            if (qa.isEmpty && si != at) Text('No answers.', style: AppText.sub),
+            for (final (i, (q, a)) in qa.indexed) _qa(q, a, last: i == qa.length - 1 && si != at),
+            // The start photos, as thumbnails that open the photo viewer.
+            if (si == at)
+              Padding(
+                padding: const EdgeInsets.only(top: 9),
+                child: context.isPhone
+                    ? Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 8, children: [
+                        Text('Start photos', style: AppText.s(13.5, W.w6, color: AppColors.muted)),
+                        photoThumbs(photos, size: 84),
+                      ])
+                    : Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 16, children: [
+                        Expanded(flex: 10, child: Text('Start photos', style: AppText.s(13.5, W.w6, color: AppColors.muted))),
+                        Expanded(flex: 12, child: Align(alignment: Alignment.centerLeft, child: photoThumbs(photos, size: 84))),
+                      ]),
+              ),
+          ]),
+        ),
+    ]);
+    final head = CardHeader(title, sub: cap, action: CpLink('Print', onTap: () => _print(title, cap, sections, photos)));
+    final side = !context.isPhone && _side;
+    if (!side) return AppCard(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [head, body]));
+    final maxH = (MediaQuery.sizeOf(context).height - _cardTop - 24).clamp(360.0, double.infinity);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measureTop());
+    return AppCard(
+      key: _cardKey,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxH),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          head,
+          Flexible(child: Scrollbar(controller: _answersScroll, child: SingleChildScrollView(controller: _answersScroll, child: body))),
         ]),
-      );
+      ),
+    );
+  }
 
   Widget _qa(String q, String a, {required bool last}) {
     final qs = AppText.s(13.5, W.w6, color: AppColors.muted), as = AppText.s(13.5, W.w7);
@@ -324,15 +378,25 @@ class _CpFormsTabState extends State<CpFormsTab> {
   /// The onboarding questionnaire: her answers as the server reads them from her profile (D-36), so Edit profile
   /// changes show here, in the onboarding form's words; extra questions the admin added come last.
   Widget _onboarding(Map r) {
-    final sections = [
-      for (final s in (r['sections'] as List? ?? const []))
-        ('${s['title']}', [for (final x in (s['rows'] as List? ?? const [])) ('${x['q']}', '${x['a']}')]),
-    ];
+    final photos = cpParse(r['filled_at']) == null
+        ? const <(String, String)>[]
+        : [for (final p in (r['photos'] as List? ?? const [])) ('${(p as Map)['label']}', '${p['url']}')];
+    var photosIn = -1;
+    final sections = <(String, List<(String, String)>)>[];
+    for (final s in (r['sections'] as List? ?? const [])) {
+      final rows = (s['rows'] as List? ?? const []);
+      final isPhoto = [for (final x in rows) '${x['key']}'.startsWith('photo_')];
+      if (photos.isNotEmpty && isPhoto.contains(true)) photosIn = sections.length;
+      sections.add(('${s['title']}', [
+        for (final (i, x) in rows.indexed)
+          if (photos.isEmpty || !isPhoto[i]) ('${x['q']}', '${x['a']}'),
+      ]));
+    }
     final filled = cpParse(r['filled_at']);
     final cap = filled == null
         ? '${c.first} has not finished it yet · ${r['sub']}'
         : 'Filled by ${c.first} on ${DateFormat('d MMM yyyy').format(filled)} · edits change ${cpHer(c)} profile too';
-    return _answers('Onboarding questionnaire', cap, sections);
+    return _answers('Onboarding questionnaire', cap, sections, photos: photos, photosIn: photosIn);
   }
 
   // A form she gets (waiting / recurring / scheduled): badges, caption, Edit for Riya + ⋯, the questions.

@@ -191,7 +191,7 @@ def supplement_reminders():
         if not _prefs(c).supps:
             continue
         items = [i for a in SupplementAssignment.objects.filter(client=c, active=True, start_date__lte=today)
-                 .prefetch_related("plan__items") for i in a.plan.items.all()
+                 .prefetch_related("plan__items", "custom_plan__items") for i in a.followed.items.all()
                  if i.timing in timings and (not i.days or today.weekday() in i.days)]
         taken = set(SupplementLog.objects.filter(client=c, date=today).values_list("item_id", flat=True))
         left = [i for i in items if i.id not in taken]

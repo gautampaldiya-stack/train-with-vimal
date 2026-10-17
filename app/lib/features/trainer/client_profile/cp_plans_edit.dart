@@ -313,7 +313,7 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
       Wrap(alignment: WrapAlignment.spaceBetween, runSpacing: 10, spacing: 8, children: [
         AppButton('Back to plan', icon: AppIcons.chevronLeft, onPressed: _cancel),
-        Row(mainAxisSize: MainAxisSize.min, spacing: 8, children: acts),
+        Wrap(spacing: 8, runSpacing: 8, children: acts),
       ]),
       head,
       if (widget.dup) _dupBar(context),
@@ -418,16 +418,17 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
           child: Wrap(alignment: WrapAlignment.spaceBetween, crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 8, children: [
-            Row(mainAxisSize: MainAxisSize.min, spacing: 8, children: [
-              SizedBox(
-                width: 200,
-                child: _Cell(
+            Row(mainAxisSize: context.isPhone ? MainAxisSize.max : MainAxisSize.min, spacing: 8, children: [
+              // Phone: the name takes what is left beside the 140 px select (200 + 140 would overflow at 360).
+              () {
+                final cell = _Cell(
                   key: ValueKey('name$sel$_gen'),
                   value: '${day['name'] ?? ''}',
                   placeholder: rest ? 'Rest' : 'Day name',
                   onChanged: (v) => _change(() => day['name'] = v),
-                ),
-              ),
+                );
+                return context.isPhone ? Expanded(child: cell) : SizedBox(width: 200, child: cell);
+              }(),
               SizedBox(
                 width: 140,
                 child: AppSelect(rest ? 'Rest' : 'Workout', entries: [
@@ -495,8 +496,14 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
 
   /// One exercise of the day (`.cp-exl` row): drag handle, tag, name and what changed, its numbers in even
   /// columns (sets × reps, RPE, tempo, rest, load), the note, and Swap / Edit / Remove.
-  Widget _exRow(int i, Map e, (String, bool) tag, String? was, {required Key key}) {
-    final phone = context.isPhone;
+  Widget _exRow(int i, Map e, (String, bool) tag, String? was, {required Key key}) => LayoutBuilder(
+        key: key,
+        // Narrow day card (phone, or tablet / small desktop next to the 230 day list): actions beside the name and
+        // the numbers at their own width, wrapping when they must. Wide: even columns.
+        builder: (context, k) => _exRowIn(i, e, tag, was, phone: context.isPhone || k.maxWidth < 640),
+      );
+
+  Widget _exRowIn(int i, Map e, (String, bool) tag, String? was, {required bool phone}) {
     final note = '${e['note'] ?? ''}'.trim();
     Widget stat(String l, String v, double w) => SizedBox(
           width: phone ? null : w,
@@ -526,7 +533,6 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
       if (e['edited'] == true && was == null) Text('Edited in the program', style: AppText.cap),
     ]);
     return Material(
-      key: key,
       color: AppColors.card,
       child: Hover(
         onTap: () => _editExercise(i),
@@ -545,7 +551,9 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
                 if (phone) Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: name), acts]) else name,
-                phone ? Wrap(spacing: 16, runSpacing: 8, children: stats) : Row(spacing: 14, children: stats),
+                // A Wrap, not a Row: at mid widths (side nav + 230 day list) the five columns need 396 px and
+                // the name column can be narrower, so the last ones (Load, then Rest) drop to a second line.
+                Wrap(spacing: phone ? 16 : 14, runSpacing: 8, children: stats),
                 if (note.isNotEmpty)
                   Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 6, children: [
                     const Padding(padding: EdgeInsets.only(top: 2), child: AppIcon(AppIcons.info, size: 13, color: AppColors.muted)),
@@ -717,6 +725,7 @@ Future<List<Map>?> showExercisePicker(BuildContext context,
     title: title,
     sub: sub,
     icon: AppIcons.dumbbell,
+    fixedBody: true,
     builder: (ctx) => FutureBuilder<List<Map>>(
       future: all,
       builder: (ctx, snap) {
@@ -727,9 +736,39 @@ Future<List<Map>?> showExercisePicker(BuildContext context,
           listenable: Listenable.merge([picked, mus, q]),
           builder: (ctx, _) {
             final rows = list.where((x) => (mus.value.isEmpty || x['muscle_group'] == mus.value) && (q.value.isEmpty || '${x['name']}'.toLowerCase().contains(q.value))).toList();
-            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
-              const SizedBox(height: 4),
+            Widget row(int i) {
+              final x = rows[i];
+              final on2 = have.contains('${x['id']}');
+              final on = picked.value.any((p) => p['id'] == x['id']);
+              return Hover(
+                onTap: on2 ? null : () => picked.value = single ? [x] : (on ? picked.value.where((p) => p['id'] != x['id']).toList() : [...picked.value, x]),
+                builder: (_, h, _) => Opacity(
+                  opacity: on2 ? .55 : 1,
+                  child: Padding(
+                    // `.pb-pkr`, tightened: 8px rows with a 1px line between them.
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(spacing: 12, children: [
+                      single ? AppRadio(selected: on) : AppCheckbox(value: on),
+                      MediaTile(tone: i, size: 40),
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+                          Text('${x['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7, color: h && !on2 ? AppColors.accentText : AppColors.text)),
+                          Text(['${x['primary_muscle'] ?? ''}'.ifEmpty('${x['muscle_group']}'), '${x['level'] ?? ''}'.capFirst].where((s) => s.isNotEmpty).join(' · '),
+                              maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.text2)),
+                        ]),
+                      ),
+                      on2 ? const AppBadge('On this day', tone: Tone.info, plain: true) : Text('${x['equipment'] ?? ''}'.capFirst, style: AppText.cap),
+                    ]),
+                  ),
+                ),
+              );
+            }
+
+            // `.pb-pk`: search, muscle tabs and the hint stay put (`.pb-pkh`); only the list scrolls (`.pb-pklist`).
+            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              const SizedBox(height: 14),
               AppSearchField(controller: search, placeholder: 'Search exercises', onChanged: (v) => q.value = v.trim().toLowerCase()),
+              const SizedBox(height: 8),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(spacing: 6, children: [
@@ -737,29 +776,21 @@ Future<List<Map>?> showExercisePicker(BuildContext context,
                     FilterChipX(l, selected: mus.value == k, count: k.isEmpty ? list.length : list.where((x) => x['muscle_group'] == k).length, onTap: () => mus.value = k),
                 ]),
               ),
-              if (single) Text('Pick one exercise. Sets, reps and rest stay the same.', style: AppText.cap),
-              if (need == 2) Text('Pick 2 exercises. They are done back to back.', style: AppText.cap),
-              if (rows.isEmpty) const EmptyState('No exercises match'),
-              for (final (i, x) in rows.indexed)
-                () {
-                  final on2 = have.contains('${x['id']}');
-                  final on = picked.value.any((p) => p['id'] == x['id']);
-                  return Opacity(
-                    opacity: on2 ? .55 : 1,
-                    child: AppRow(
-                      leading: Row(mainAxisSize: MainAxisSize.min, spacing: 10, children: [
-                        single ? AppRadio(selected: on) : AppCheckbox(value: on),
-                        MediaTile(tone: i, size: 44),
-                      ]),
-                      title: '${x['name']}',
-                      sub: ['${x['primary_muscle'] ?? ''}'.ifEmpty('${x['muscle_group']}'), '${x['level'] ?? ''}'.capFirst].where((s) => s.isNotEmpty).join(' · '),
-                      trailing: on2 ? const AppBadge('On this day', tone: Tone.info, plain: true) : Text('${x['equipment'] ?? ''}'.capFirst, style: AppText.cap),
-                      onTap: on2
-                          ? null
-                          : () => picked.value = single ? [x] : (on ? picked.value.where((p) => p['id'] != x['id']).toList() : [...picked.value, x]),
-                    ),
-                  );
-                }(),
+              if (single || need == 2) ...[
+                const SizedBox(height: 6),
+                Text(single ? 'Pick one exercise. Sets, reps and rest stay the same.' : 'Pick 2 exercises. They are done back to back.', style: AppText.cap),
+              ],
+              const SizedBox(height: 4),
+              Expanded(
+                child: rows.isEmpty
+                    ? const Align(alignment: Alignment.topCenter, child: EmptyState('No exercises match'))
+                    : ListView.separated(
+                        padding: const EdgeInsets.only(top: 2, bottom: 12),
+                        itemCount: rows.length,
+                        separatorBuilder: (_, _) => const Divider1(),
+                        itemBuilder: (_, i) => row(i),
+                      ),
+              ),
             ]);
           },
         );

@@ -69,7 +69,7 @@ LOWER_BETTER = {"hunger", "soreness", "stress"}
 def _daily_view(sub):
     """A daily check-in: that day's sleep, energy, workout and steps on top; the other answers with the previous
     daily check-in's answer beside them; water and planned meals for that day."""
-    from apps.clients.metrics import active_meal_plan, active_program, program_day_for
+    from apps.clients.metrics import active_meal_plan, active_program, meals_per_day, program_day_for
     from apps.habits.models import HabitLog
     from apps.nutrition.models import MealDayState, WaterLog
     from apps.training.models import WorkoutLog
@@ -131,10 +131,11 @@ def _daily_view(sub):
         rows.append(("Water", f"{water / 1000:g} L", f"last {pwater / 1000:g} L" if pwater else "", _trend(water, pwater)))
     mp = active_meal_plan(c, d)
     if mp:
-        per_day = mp.plan.meals.count()
+        per_day = meals_per_day(mp, d)  # the client's own copy, that weekday's meals
+        prev_day = meals_per_day(mp, d - timedelta(days=1))
         n = MealDayState.objects.filter(client=c, date=d, status="logged").count()
         pn = MealDayState.objects.filter(client=c, date=d - timedelta(days=1), status="logged").count()
-        rows.append(("Meals on plan", f"{min(n, per_day)} of {per_day}", f"last {min(pn, per_day)} of {per_day}", _trend(n, pn)))
+        rows.append(("Meals on plan", f"{min(n, per_day)} of {per_day}", f"last {min(pn, prev_day)} of {prev_day}", _trend(n, pn)))
 
     note = ""
     for ans in sub.answers.select_related("question"):
@@ -149,7 +150,7 @@ def _daily_view(sub):
 def review_view(sub):
     if sub.form_type == "daily":
         return _daily_view(sub)
-    from apps.clients.metrics import active_meal_plan, active_program, planned_workout_days
+    from apps.clients.metrics import active_meal_plan, active_program, planned_meals, planned_workout_days
     from apps.nutrition.models import MealDayState
     from apps.training.models import WorkoutLog
 
@@ -168,9 +169,7 @@ def review_view(sub):
     mp = active_meal_plan(c, b)
     meals = 0
     if mp:
-        per_day = mp.plan.meals.count()
-        days = max(0, (b - max(a, mp.start_date)).days + 1)
-        meals_planned = per_day * days
+        meals_planned = planned_meals(mp, a, b)
         logged = MealDayState.objects.filter(client=c, date__range=(a, b), status="logged").count()
         meals = round(100 * min(logged, meals_planned) / meals_planned) if meals_planned else None
     kpis = [("Weight", _kg(w)),

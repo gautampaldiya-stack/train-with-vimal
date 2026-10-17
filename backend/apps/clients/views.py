@@ -556,7 +556,7 @@ class MyOnboardingView(APIView):
         kept = save_step(user, step, clean)
         cp.onboarding = {**(cp.onboarding or {}), step: kept}
         client_done = set(cp.client_steps_done)
-        staff_done = set(cp.onboarding_done or [])
+        staff_done = set(cp.onboarding_done or []) | {"account"}  # signed in and filling the form: the account exists
         for staff_key, needs in STAFF_STEP_FROM_CLIENT.items():
             if all(k in client_done for k in needs):
                 staff_done.add(staff_key)

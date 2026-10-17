@@ -113,7 +113,7 @@ def account_page(client, request=None):
     habits = [_short_habit(a.habit) for a in HabitAssignment.objects.filter(client=client, active=True)
               .select_related("habit").order_by("created_at")]
     supps = [_short_supp(i.name) for a in SupplementAssignment.objects.filter(client=client, active=True)
-             .prefetch_related("plan__items") for i in a.plan.items.all()]
+             .prefetch_related("plan__items", "custom_plan__items") for i in a.followed.items.all()]
 
     gym = GymSettings.load()
     prefs = ReminderPreference.objects.get_or_create(user=client)[0]

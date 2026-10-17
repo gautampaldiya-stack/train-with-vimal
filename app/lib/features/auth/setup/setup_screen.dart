@@ -242,7 +242,7 @@ class _SetupScreenState extends State<SetupScreen> {
       case 'choice' when f.options.every((o) => o.$3 != null) && f.options.length <= 3:
         return [
           q,
-          CaSeg(options: [for (final o in f.options) (o.$2, o.$3!)], index: f.options.indexWhere((o) => o.$1 == st.v[f.key]), onPick: (i) => st.set(f.key, f.options[i].$1)),
+          _Seg(options: [for (final o in f.options) (o.$2, o.$3!)], index: f.options.indexWhere((o) => o.$1 == st.v[f.key]), onPick: (i) => st.set(f.key, f.options[i].$1)),
           _err(f.key),
         ];
       case 'choice' when f.options.every((o) => o.$3 != null):
@@ -258,7 +258,7 @@ class _SetupScreenState extends State<SetupScreen> {
         return [
           q,
           if (f.key == 'diet_type') _diets(f) else _pick(f, [...f.options, ('\u0000other', f.other ?? 'Other', null)]),
-          if (open) _Input(controller: _c(f.key), hint: f.key == 'smoking' ? 'How many a day?' : (f.key == 'food_allergies' ? 'Which foods?' : 'Write your answer'), maxLength: f.maxLen, autofocus: true),
+          if (open) _Input(controller: _c(f.key), hint: _otherHints[f.key] ?? 'Write your answer', maxLength: f.maxLen, autofocus: true),
           _err(f.key),
         ];
       case 'multi':
@@ -324,10 +324,20 @@ class _SetupScreenState extends State<SetupScreen> {
       case 'agree':
         return [_terms(), CaCheckRow(on: st.v[f.key] == true, onTap: () => st.set(f.key, st.v[f.key] != true), title: st.agreeText.isEmpty ? f.label : st.agreeText), _err(f.key)];
       case 'long':
-        return [q, _Input(controller: _c(f.key), lines: 3, maxLength: f.maxLen, hint: f.help.startsWith('Write None') ? 'Write None if there is nothing' : null), _err(f.key)];
+        return [q, _Input(controller: _c(f.key), lines: 3, maxLength: f.maxLen, hint: _hint(f)), _err(f.key)];
       default: // text
-        return [_Input(label: f.label, req: f.required, help: f.help, controller: _c(f.key), maxLength: f.maxLen, error: st.errors[f.key])];
+        return [_Input(label: f.label, req: f.required, help: f.help, controller: _c(f.key), maxLength: f.maxLen, hint: _hint(f), error: st.errors[f.key])];
     }
+  }
+
+  /// Placeholder of a field's box: an example answer, so the client sees the kind of answer wanted.
+  String? _hint(SetupField f) {
+    final h = _hints[f.key];
+    if (h != null) return h;
+    if (f.kind == 'measure') return 'e.g. 40';
+    if (f.help.startsWith('For example:')) return 'e.g. ${f.help.substring(12).trim()}';
+    if (f.help.startsWith('Write None')) return 'Write None if there is nothing';
+    return f.kind == 'num' ? null : 'Write your answer';
   }
 
   /// Single pick as chips; the `\u0000other` chip opens the client's own words.
@@ -432,6 +442,7 @@ class _SetupScreenState extends State<SetupScreen> {
             controller: _c(f.key),
             keyboard: const TextInputType.numberWithOptions(decimal: true),
             trailing: unit(f),
+            hint: _hint(f),
             error: st.errors[f.key],
           ),
       ]),
@@ -509,12 +520,116 @@ class _SetupScreenState extends State<SetupScreen> {
                   st.changed();
                 },
               ),
-            'number' => _Input(controller: _c('q${q.id}'), keyboard: const TextInputType.numberWithOptions(decimal: true)),
-            _ => _Input(controller: _c('q${q.id}'), lines: q.type == 'long' ? 3 : 1),
+            'number' => _Input(controller: _c('q${q.id}'), keyboard: const TextInputType.numberWithOptions(decimal: true), hint: 'e.g. 3'),
+            _ => _Input(controller: _c('q${q.id}'), lines: q.type == 'long' ? 3 : 1, hint: 'Write your answer'),
           },
           _err('q${q.id}'),
         ],
       ];
+}
+
+/// Example answers shown as placeholders in the setup boxes.
+const _hints = <String, String>{
+  'goal_detail': 'e.g. a wedding in March, lose belly fat',
+  'weight_kg': 'e.g. 72.5',
+  'height_cm': 'e.g. 170',
+  'target_weight_kg': 'e.g. 65',
+  'current_exercise': 'e.g. walking 30 min, 3 days a week',
+  'health_notes': 'e.g. lower back pain when I bend, or None',
+  'past_injuries': 'e.g. ankle sprain in 2022, or None',
+  'surgeries': 'e.g. knee surgery in 2019, or None',
+  'addictions': 'e.g. alcohol on weekends, or None',
+  'digestive_issues': 'e.g. bloating after milk, or None',
+  'stresses': 'e.g. work deadlines, poor sleep, family',
+  'common_foods': 'e.g. roti, dal, rice, tea with sugar',
+  'meal_breakfast': 'e.g. 2 parathas with curd and tea',
+  'meal_mid_morning': 'e.g. 1 apple, or None',
+  'meal_lunch': 'e.g. 3 roti, dal, sabzi and salad',
+  'meal_pre_workout': 'e.g. 1 banana and black coffee, or None',
+  'meal_post_workout': 'e.g. whey shake, or None',
+  'meal_evening': 'e.g. tea and 2 biscuits',
+  'meal_dinner': 'e.g. rice, dal and chicken curry',
+  'supplements_detail': 'e.g. whey protein daily after workout, for protein',
+  'supplement_brands': 'e.g. Optimum Nutrition, MuscleBlaze',
+  'medicines_detail': 'e.g. thyroid tablet every morning, for 2 years',
+  'onboarding_note': 'e.g. I travel every second week',
+  'measure_neck': 'e.g. 36',
+  'measure_bicep_l': 'e.g. 32',
+  'measure_bicep_r': 'e.g. 32',
+  'measure_chest': 'e.g. 96',
+  'measure_abdomen': 'e.g. 88',
+  'measure_waist': 'e.g. 84',
+  'measure_hips': 'e.g. 98',
+  'measure_thigh_l': 'e.g. 56',
+  'measure_thigh_r': 'e.g. 56',
+  'measure_calf_l': 'e.g. 37',
+  'measure_calf_r': 'e.g. 37',
+};
+
+/// Placeholders of the "Other" box that opens under a pick.
+const _otherHints = <String, String>{
+  'enrolled_for': 'e.g. 4 months',
+  'workout_place': 'e.g. my building’s gym',
+  'workout_time': 'e.g. 6:30 am, before work',
+  'diet_type': 'e.g. pescatarian, Jain',
+  'food_allergies': 'Which foods? e.g. peanuts, prawns',
+  'smoking': 'How many a day? e.g. 5',
+  'open_to_supplements': 'Tell us more',
+};
+
+/// `wl-seg` (twv.css): a grey track of 2–3 tiles, a bold 13 px title over an 11 px grey line; the picked tile is
+/// white with a soft ring and its title turns blue. Taller tiles and a clear picked state (Gautam, round 3).
+class _Seg extends StatelessWidget {
+  const _Seg({required this.options, required this.index, required this.onPick});
+  final List<(String, String)> options;
+  final int index;
+  final ValueChanged<int> onPick;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(12)),
+        child: IntrinsicHeight(
+          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 4, children: [
+            for (var i = 0; i < options.length; i++)
+              Expanded(
+                child: Semantics(
+                  button: true,
+                  selected: i == index,
+                  child: Hover(
+                    onTap: () => onPick(i),
+                    builder: (_, h, _) {
+                      final on = i == index;
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 120),
+                        constraints: const BoxConstraints(minHeight: 52),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
+                        decoration: BoxDecoration(
+                          color: on ? AppColors.card : (h ? AppColors.outlineHover : null),
+                          borderRadius: BorderRadius.circular(9),
+                          border: Border.all(color: on ? AppColors.accent : AppColors.sub, width: 1.2),
+                          boxShadow: on ? const [BoxShadow(color: AppColors.shadowSoft, blurRadius: 2, offset: Offset(0, 1))] : null,
+                        ),
+                        child: Column(mainAxisAlignment: MainAxisAlignment.center, spacing: 2, children: [
+                          Text(options[i].$1,
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppText.s(13, W.w7, color: on ? AppColors.accentText : AppColors.text2)),
+                          Text(options[i].$2,
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppText.s(11, W.w5, color: AppColors.muted, h: 1.3)),
+                        ]),
+                      );
+                    },
+                  ),
+                ),
+              ),
+          ]),
+        ),
+      );
 }
 
 /// `wl-q` with a red mark on required questions and the form's help line.
@@ -616,7 +731,7 @@ class _InputState extends State<_Input> {
                     inputFormatters: [...inputRules(widget.keyboard), if (widget.maxLength != null) LengthLimitingTextInputFormatter(widget.maxLength)],
                     cursorColor: AppColors.accent,
                     style: AppText.s(14.5, W.w6, h: multi ? 1.45 : null),
-                    decoration: InputDecoration.collapsed(hintText: widget.hint, hintStyle: AppText.s(14.5, W.w5, color: AppColors.muted)),
+                    decoration: InputDecoration.collapsed(hintText: widget.hint, hintStyle: AppText.s(14.5, W.w4, color: AppColors.muted)),
                   ),
                 ),
               ),

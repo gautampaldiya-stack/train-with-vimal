@@ -299,7 +299,16 @@ def _status(req_or_sub, form):
     return "done", "Done"
 
 
-def rows(client):
+def _start_photos(client, request):
+    """The onboarding's start photos (front / side / back) shown with the completed questionnaire's answers."""
+    from apps.clients.onboarding import start_photos
+
+    got = start_photos(client, request)
+    return [{"pose": pose, "label": label, "url": got[pose]}
+            for pose, label in (("front", "Front"), ("side", "Side"), ("back", "Back")) if got.get(pose)]
+
+
+def rows(client, request=None):
     """Left list, newest first after the onboarding questionnaire and the weekly check-in."""
     cp = client.client_profile
     out = []
@@ -315,7 +324,8 @@ def rows(client):
         out.append({"key": "onboarding", "kind": "onboarding", "name": "Onboarding questionnaire",
                     "status": "done" if done else "waiting", "status_label": "Done" if done else "Waiting",
                     "sub": (f"Filled {_d(filled)} · {steps} parts" if done else f"{steps} of {total} parts filled"),
-                    "icon": "form", "filled_at": filled if done else None, "sections": answer_sections(client)})
+                    "icon": "form", "filled_at": filled if done else None, "sections": answer_sections(client),
+                    "photos": _start_photos(client, request) if done else []})
     one_off = Q(schedule__isnull=True) | Q(schedule__repeat=FormSchedule.Repeat.ONCE)
     reqs = list(FormRequest.objects.filter(one_off, client=client).select_related("form")
                 .prefetch_related("form__questions").order_by("-created_at")[:60])
@@ -589,7 +599,7 @@ class ClientFormsView(APIView):
 
     def get(self, request, client_pk):
         client = _client(request.user, client_pk)
-        return Response({"sent": rows(client), "can_send": can_send(client), "first": _first(client)})
+        return Response({"sent": rows(client, request), "can_send": can_send(client), "first": _first(client)})
 
     def post(self, request, client_pk):
         client = _client(request.user, client_pk)

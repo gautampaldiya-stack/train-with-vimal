@@ -27,7 +27,7 @@ from .models import (
     SupplementPlan,
     SupplementStock,
 )
-from .serializers import QUICK_ADD, HabitSerializer, SupplementPlanSerializer
+from .serializers import QUICK_ADD, HabitSerializer, SupplementItemSerializer, SupplementPlanSerializer
 from apps.common.utils import dfmt
 
 
@@ -131,7 +131,7 @@ class SupplementPlanViewSet(_StaffWrite, SoftDeleteViewMixin, viewsets.ModelView
     http_method_names = ["get", "post", "patch", "delete"]
 
     def get_queryset(self):
-        return SupplementPlan.objects.annotate(
+        return SupplementPlan.objects.filter(is_master=True).annotate(  # client copies never show in the library
             n_clients=Count("assignments", filter=Q(assignments__active=True))).prefetch_related("items")
 
     def perform_create(self, serializer):
@@ -249,9 +249,11 @@ class ClientSupplementPlansViewSet(_ClientSlot):
 
     @staticmethod
     def row(a):
-        p = a.plan
+        """`plan` is the master's id; `items` what the client takes (their copy, else the master)."""
+        p = a.followed
         stocks = {s.item_id: s for s in SupplementStock.objects.filter(client=a.client, item__plan=p)}
-        return {"id": a.id, "plan": p.id, "plan_name": p.name, "note": p.note, "start_date": a.start_date,
+        return {"id": a.id, "plan": a.plan_id, "plan_name": p.name, "note": p.note, "start_date": a.start_date,
+                "custom": a.custom_plan_id is not None, "copy": a.custom_plan_id, "master_name": a.plan.name,
                 "ended_on": a.updated_at.date() if not a.active else None, "active": a.active,
                 "assigned_by": a.assigned_by.full_name if a.assigned_by else None,
                 "items": [{"id": i.id, "name": i.name, "dose": i.dose, "how": i.how, "timing": i.timing,
@@ -262,10 +264,95 @@ class ClientSupplementPlansViewSet(_ClientSlot):
     def create(self, request, client_pk=None):
         self._check_write(request)
         client = self._client()
-        plan = SupplementPlan.objects.filter(id=request.data.get("plan")).first()
+        plan = SupplementPlan.objects.filter(id=request.data.get("plan"), is_master=True).first()
         if plan is None:
             raise serializers.ValidationError({"plan": ["Pick a supplement plan."]})
         return self._assign(request, client, [plan], "a supplement plan")
+
+    def _mine(self, pk):
+        return get_object_or_404(SupplementAssignment.objects.select_related("plan", "custom_plan", "client"),
+                                 id=pk, client=self._client(), active=True)
+
+    @action(detail=True, methods=["put"])
+    def items(self, request, client_pk=None, pk=None):
+        """Supplements → Edit for X → Save {items: [{id?, name, dose, how, timing, days, with_food}]}. The first
+        save makes the client's own copy of the plan; the master and other clients stay the same. Item ids are
+        those of the plan the client follows now (the master's on the first save)."""
+        self._check_write(request)
+        a = self._mine(pk)
+        s = SupplementItemSerializer(data=request.data.get("items"), many=True)
+        s.is_valid(raise_exception=True)
+        with transaction.atomic():
+            copy, ids = _supp_copy(a, actor=request.user)
+            items = [{**d, "id": ids.get(d.get("id"), d.get("id"))} for d in s.validated_data]
+            SupplementPlanSerializer()._save_items(copy, items)
+            # "Stock at home" per row: {quantity, unit}; null clears it. Rows without the key keep theirs.
+            for it, raw in zip(copy.items.order_by("order"), request.data.get("items") or []):
+                if not isinstance(raw, dict) or "stock" not in raw:
+                    continue
+                st = raw.get("stock")
+                if st in (None, "") or st.get("quantity") in (None, ""):
+                    SupplementStock.objects.filter(client=a.client, item=it).delete()
+                    continue
+                try:
+                    q = int(st.get("quantity"))
+                except (TypeError, ValueError):
+                    q = -1
+                if not 0 <= q <= 10000:
+                    raise serializers.ValidationError({"stock": [f"Check the stock of {it.name}."]})
+                SupplementStock.objects.update_or_create(item=it, client=a.client, defaults={
+                    "quantity": q, "unit": (str(st.get("unit") or "") or "tablets")[:20]})
+        activity_log("changed supplements for one client", "plan", actor=request.user, target=a.client,
+                     target_label=a.plan.name, client=a.client)
+        from apps.notifications.realtime import send_to_user
+
+        transaction.on_commit(lambda: send_to_user(a.client_id, "plan_changed", {"kind": "supplement"}))
+        a.refresh_from_db()
+        return Response(self.row(a))
+
+    @action(detail=True, methods=["post"])
+    def reset(self, request, client_pk=None, pk=None):
+        """Reset to master: the client takes the master plan again. Ticks and stock move back to the master's
+        supplement of the same name."""
+        self._check_write(request)
+        a = self._mine(pk)
+        if a.custom_plan_id:
+            with transaction.atomic():
+                by_name = {i.name.strip().lower(): i.id for i in a.plan.items.all()}
+                _move_supp_rows(a.client, {i.id: by_name[i.name.strip().lower()] for i in a.custom_plan.items.all()
+                                           if i.name.strip().lower() in by_name})
+                a.custom_plan = None
+                a.save(update_fields=["custom_plan", "updated_at"])
+            activity_log("reset supplements to the master", "plan", actor=request.user, target=a.client,
+                         target_label=a.plan.name, client=a.client)
+        return Response(self.row(a))
+
+
+def _move_supp_rows(client, ids):
+    """Moves this client's ticks and stock from one plan's supplements to another's ({old item id: new})."""
+    for old, new in ids.items():
+        taken = set(SupplementLog.objects.filter(client=client, item_id=new).values_list("date", flat=True))
+        SupplementLog.objects.filter(client=client, item_id=old).exclude(date__in=taken).update(item_id=new)
+        if not SupplementStock.objects.filter(client=client, item_id=new).exists():
+            SupplementStock.objects.filter(client=client, item_id=old).update(item_id=new)
+
+
+def _supp_copy(a, *, actor):
+    """The client's own copy of their supplement plan, made on the first edit. Returns (copy, {master item id:
+    copy item id}); the map is empty when the copy already exists."""
+    if a.custom_plan_id:
+        return a.custom_plan, {}
+    src = a.plan
+    copy = SupplementPlan.objects.create(name=src.name, note=src.note, is_master=False, master=src,
+                                         created_by=actor)
+    ids = {}
+    for i in src.items.all():
+        ids[i.id] = SupplementItem.objects.create(plan=copy, name=i.name, dose=i.dose, how=i.how, timing=i.timing,
+                                                  days=i.days, with_food=i.with_food, order=i.order).id
+    _move_supp_rows(a.client, ids)
+    a.custom_plan = copy
+    a.save(update_fields=["custom_plan", "updated_at"])
+    return copy, ids
 
 
 class ClientHabitPlansViewSet(_ClientSlot):
@@ -439,12 +526,12 @@ def habits_day(client, day):
                      else "today" if d == today else "part" if n else "missed"})
     supps = []
     s_done = s_due = 0
-    for sa in SupplementAssignment.objects.filter(client=client, active=True).select_related("plan",
+    for sa in SupplementAssignment.objects.filter(client=client, active=True).select_related("plan", "custom_plan",
                                                                                               "assigned_by"):
         took = {(lg.item_id, lg.date): lg for lg in SupplementLog.objects.filter(
-            client=client, item__plan=sa.plan, date__range=(min(start, ws), max(day, week[-1])))}
-        stocks = {s.item_id: s for s in SupplementStock.objects.filter(client=client, item__plan=sa.plan)}
-        for it in sa.plan.items.all():
+            client=client, item__plan=sa.followed, date__range=(min(start, ws), max(day, week[-1])))}
+        stocks = {s.item_id: s for s in SupplementStock.objects.filter(client=client, item__plan=sa.followed)}
+        for it in sa.followed.items.all():
             is_due = lambda d: d >= sa.start_date and (not it.days or d.weekday() in it.days)  # noqa: E731
             due = not it.days or day.weekday() in it.days
             lg = took.get((it.id, day))
@@ -532,11 +619,11 @@ def staff_log(client, kind, params):
                          lambda d, h=h: logs.get((h.id, d)),
                          lambda lg: bool(lg and lg.done), sub, lambda lg: _clock(lg.updated_at) if lg else ""))
     else:
-        for sa in (SupplementAssignment.objects.filter(client=client, active=True).select_related("plan")
-                   .order_by("created_at")):
+        for sa in (SupplementAssignment.objects.filter(client=client, active=True)
+                   .select_related("plan", "custom_plan").order_by("created_at")):
             took = {(lg.item_id, lg.date): lg for lg in SupplementLog.objects.filter(
-                client=client, item__plan=sa.plan, date__range=(start, end))}
-            for it in sa.plan.items.all():
+                client=client, item__plan=sa.followed, date__range=(start, end))}
+            for it in sa.followed.items.all():
                 line = " · ".join(x for x in (it.dose, it.get_timing_display().lower() if it.timing != "any" else "")
                                   if x)
                 cols.append((str(it.id), it.name,
@@ -618,8 +705,10 @@ class MySupplementView(APIView):
     permission_classes = [IsClient]
 
     def _item(self, request, item_id):
-        return get_object_or_404(SupplementItem, id=item_id, plan__assignments__client=request.user,
-                                 plan__assignments__active=True)
+        # Only a supplement of a plan the client takes now: their own copy, else the master.
+        plans = [a.custom_plan_id or a.plan_id
+                 for a in SupplementAssignment.objects.filter(client=request.user, active=True)]
+        return get_object_or_404(SupplementItem, id=item_id, plan_id__in=plans)
 
     def post(self, request, item_id):
         it = self._item(request, item_id)

@@ -9,6 +9,7 @@ from rest_framework.exceptions import ValidationError
 from apps.activity.services import log as activity_log
 from apps.notifications.services import notify
 
+from . import swaps
 from .models import (
     Food,
     FoodLogEntry,
@@ -71,6 +72,10 @@ def _sync_set(plan, meals, meals_data, weekday):
                     raise ValidationError({"unit": [f"{unit.name} is not a unit of {item.food.name}."]})
                 item.unit = unit
                 item.order = ii
+                if "swaps" in idata:
+                    item.alternatives = swaps.clean(item.food, idata["swaps"])
+                elif item.pk is None and not plan.is_master:
+                    item.alternatives = swaps.seed_from_food(item)  # a food added to a client's copy
                 item.save()
                 keep_items.add(item.id)
             opt.items.exclude(id__in=keep_items).delete()
@@ -91,7 +96,8 @@ def duplicate_plan(src, *, actor):
         for o in m.options.all():
             no = MealOption.objects.create(meal=nm, name=o.name, is_default=o.is_default, order=o.order)
             MealItem.objects.bulk_create([MealItem(option=no, food_id=i.food_id, quantity=i.quantity,
-                                                   unit_id=i.unit_id, order=i.order) for i in o.items.all()])
+                                                   unit_id=i.unit_id, order=i.order, alternatives=i.alternatives)
+                                          for i in o.items.all()])
     return dst
 
 
@@ -246,9 +252,10 @@ def log_food(client, *, meal_name, food=None, quantity=1, unit=None, name="", kc
     if food is not None:
         grams = Decimal(str(quantity)) * (unit.grams if unit else Decimal(1))
         m = food.per_grams(grams)
-        planned_ids = set(MealItem.objects.filter(option__meal__plan=mp.plan).values_list("food_id", flat=True)) \
+        # the plan the client follows: their own copy, else the master
+        planned_ids = set(MealItem.objects.filter(option__meal__plan=mp.followed).values_list("food_id", flat=True)) \
             if mp else set()
-        if mp and not mp.plan.allow_off_plan and food.id not in planned_ids:
+        if mp and not mp.followed.allow_off_plan and food.id not in planned_ids:
             raise ValidationError("Your plan does not allow food outside it. Tell your coach in your check-in.")
         return FoodLogEntry.objects.create(
             client=client, date=day, meal_name=meal_name, food=food, name=food.name, quantity=quantity,
@@ -400,7 +407,7 @@ def day_view(client, day, request=None):
                 items.append({"item": it.id, "food": e.food_id, "name": e.name, "quantity": float(e.quantity),
                               "unit": e.unit_name, "grams": float(e.grams), "kcal": e.kcal,
                               "protein": float(e.protein), "carbs": float(e.carbs), "fat": float(e.fat),
-                              "swapped_from": e.swapped_from, "swaps": it.food.swaps.count(),
+                              "swapped_from": e.swapped_from, "swaps": len(swaps.item_swaps(it)),
                               "planned_quantity": float(it.quantity)})
             meals.append({
                 "id": meal.id, "name": meal.name, "time": meal.time, "kcal_target": meal.kcal_target, "pill": pill,
@@ -487,11 +494,13 @@ def end_client_plan(a, *, actor):
 
 
 # ---------------------------------------------------------------- one client's own copy (Plans → Edit for X)
-def _clone_meals(meals, dst, weekday="keep"):
+def _clone_meals(meals, dst, weekday="keep", from_master=False):
     """Copy `meals` (options and items too) into plan `dst`. weekday "keep" keeps each meal's own weekday.
+    [from_master]: making a client's copy: each item remembers its master item (`origin`, for "Was: …") and gets
+    its own swaps, seeded from the food's library swaps when the master item has none of its own.
     Returns the (meal, option, item) id maps old → new."""
     mm, om, im = {}, {}, {}
-    for m in meals.prefetch_related("options__items"):
+    for m in meals.prefetch_related("options__items__food__swaps__default_unit", "options__items__unit"):
         nm = Meal.objects.create(plan=dst, name=m.name, time=m.time, kcal_target=m.kcal_target, order=m.order,
                                  weekday=m.weekday if weekday == "keep" else weekday)
         mm[m.id] = nm.id
@@ -499,8 +508,10 @@ def _clone_meals(meals, dst, weekday="keep"):
             no = MealOption.objects.create(meal=nm, name=o.name, is_default=o.is_default, order=o.order)
             om[o.id] = no.id
             for i in o.items.all():
-                im[i.id] = MealItem.objects.create(option=no, food_id=i.food_id, quantity=i.quantity,
-                                                   unit_id=i.unit_id, order=i.order).id
+                im[i.id] = MealItem.objects.create(
+                    option=no, food_id=i.food_id, quantity=i.quantity, unit_id=i.unit_id, order=i.order,
+                    alternatives=swaps.item_swaps(i) if from_master else i.alternatives,
+                    origin_id=i.id if from_master else i.origin_id).id
     return mm, om, im
 
 
@@ -575,7 +586,7 @@ def client_copy(a, *, actor):
         published_at=src.published_at, allow_swaps=src.allow_swaps, allow_search_any=src.allow_search_any,
         allow_switch_options=src.allow_switch_options, allow_off_plan=src.allow_off_plan, is_master=False,
         master=src, created_by=actor)
-    maps = _clone_meals(src.meals.all(), copy)
+    maps = _clone_meals(src.meals.all(), copy, from_master=True)
     a.custom_plan = copy
     a.save(update_fields=["custom_plan", "updated_at"])
     if a.status == "active":

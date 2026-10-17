@@ -22,7 +22,35 @@ def active_meal_plan(client, on=None):
 
     on = on or timezone.localdate()
     return (MealPlanAssignment.objects.filter(client=client, status="active", start_date__lte=on)
-            .select_related("plan").order_by("-start_date").first())
+            .select_related("plan", "custom_plan").order_by("-start_date").first())
+
+
+def meals_by_weekday(mp):
+    """{weekday: number of meals planned that day} for the plan the client follows (their own copy, else the
+    master), counting a weekday's own meals when the copy has them (`meals_on`)."""
+    from apps.nutrition.models import meals_on
+
+    if mp is None:
+        return {w: 0 for w in range(7)}
+    plan = mp.followed
+    return {w: meals_on(plan, w).count() for w in range(7)}
+
+
+def meals_per_day(mp, day):
+    """Meals planned on `day` for the assignment `mp` (0 when none)."""
+    return meals_by_weekday(mp)[day.weekday()] if mp else 0
+
+
+def planned_meals(mp, start, end):
+    """Meals planned in [start, end] for the assignment `mp`, from its start date on."""
+    if mp is None:
+        return 0
+    per = meals_by_weekday(mp)
+    total, d = 0, max(start, mp.start_date)
+    while d <= end:
+        total += per[d.weekday()]
+        d += timedelta(days=1)
+    return total
 
 
 def program_day_for(assignment, day):
@@ -69,9 +97,7 @@ def adherence(client, days=7, end=None):
     done_w = WorkoutLog.objects.filter(client=client, status=WorkoutLog.Status.COMPLETED, date__range=(start, end))
     done_w = min(done_w.values("date").distinct().count(), len(planned_w))
     mp = active_meal_plan(client, end)
-    meals_per_day = mp.plan.meals.count() if mp else 0
-    meal_days = max(0, (end - max(start, mp.start_date)).days + 1) if mp else 0
-    planned_m = meals_per_day * meal_days
+    planned_m = planned_meals(mp, start, end)
     done_m = MealDayState.objects.filter(client=client, date__range=(start, end),
                                          status=MealDayState.Status.LOGGED).count() if mp else 0
     planned = len(planned_w) + planned_m
@@ -96,7 +122,7 @@ def last_7_days(client, end=None):
     done_w = set(WorkoutLog.objects.filter(client=client, status=WorkoutLog.Status.COMPLETED,
                                            date__range=(start, end)).values_list("date", flat=True))
     mp = active_meal_plan(client, end)
-    n_meals = mp.plan.meals.count() if mp else 0
+    per_weekday = meals_by_weekday(mp)
     meals = dict(MealDayState.objects.filter(client=client, date__range=(start, end), status="logged")
                  .values("date").annotate(n=Count("id")).values_list("date", "n"))
     checkins = set(Submission.objects.filter(client=client, form_type="daily", date__range=(start, end))
@@ -120,6 +146,7 @@ def last_7_days(client, end=None):
     d = start
     while d <= end:
         m = meals.get(d, 0)
+        n_meals = per_weekday[d.weekday()]
         h = habits.get(d, 0)
         cols.append({
             "date": d,

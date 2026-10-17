@@ -716,6 +716,8 @@ Constraints: uniq_habit_log
 | `name` | CharField |  |
 | `note` | CharField |  |
 | `created_by` | ForeignKey | → User; optional; indexed |
+| `is_master` | BooleanField | indexed |
+| `master` | ForeignKey | → SupplementPlan; optional; indexed |
 
 ### SupplementItem
 
@@ -745,6 +747,7 @@ Constraints: uniq_habit_log
 | `start_date` | DateField |  |
 | `active` | BooleanField | indexed |
 | `assigned_by` | ForeignKey | → User; optional; indexed |
+| `custom_plan` | ForeignKey | → SupplementPlan; optional; indexed |
 
 Constraints: uniq_supp_client
 
@@ -1026,6 +1029,8 @@ Constraints: uniq_food_unit_name
 | `quantity` | DecimalField |  |
 | `unit` | ForeignKey | → FoodUnit; optional; indexed |
 | `order` | PositiveSmallIntegerField |  |
+| `alternatives` | JSONField | optional |
+| `origin` | ForeignKey | → MealItem; optional; indexed |
 
 ### MealPlanAssignment
 
@@ -1185,6 +1190,7 @@ A trainer (Vimal, the owner, also has one so he can coach his own clients).
 | `permissions` | JSONField |  |
 | `visibility` | JSONField |  |
 | `is_owner` | BooleanField |  |
+| `notify` | JSONField |  |
 
 ### TrainerDocument
 

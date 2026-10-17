@@ -184,6 +184,8 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `clients/<client_pk>[0-9a-f-]+)/habit-plan/<pk>/end/` | POST | ClientHabitPlansViewSet |  |
 | `clients/<client_pk>[0-9a-f-]+)/supplement-plans/` | GET, POST | ClientSupplementPlansViewSet |  |
 | `clients/<client_pk>[0-9a-f-]+)/supplement-plans/<pk>/end/` | POST | ClientSupplementPlansViewSet |  |
+| `clients/<client_pk>[0-9a-f-]+)/supplement-plans/<pk>/items/` | PUT | ClientSupplementPlansViewSet |  |
+| `clients/<client_pk>[0-9a-f-]+)/supplement-plans/<pk>/reset/` | POST | ClientSupplementPlansViewSet |  |
 | `clients/<uuid:client_pk>/habits/` | GET | ClientHabitsView | Client profile → Logs → Habits / Supplements (staff, read only). |
 | `habits/` | GET, POST | HabitViewSet |  |
 | `habits/<pk>/` | GET, PUT, PATCH, DELETE | HabitViewSet |  |
@@ -239,6 +241,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `foods/<pk>/duplicate/` | POST | FoodViewSet | Food library (staff). Clients search foods through /me/foods/. |
 | `foods/<pk>/restore/` | POST | FoodViewSet | Food library (staff). Clients search foods through /me/foods/. |
 | `foods/<pk>/swap-options/` | GET | FoodViewSet | Food library (staff). Clients search foods through /me/foods/. |
+| `foods/<pk>/units/` | POST | FoodViewSet | Food library (staff). Clients search foods through /me/foods/. |
 | `foods/<pk>/used-in/` | GET | FoodViewSet | Food library (staff). Clients search foods through /me/foods/. |
 | `foods/counts/` | GET | FoodViewSet | Food library (staff). Clients search foods through /me/foods/. |
 | `foods/import/<job_id>[0-9a-f-]+)/run/` | POST | FoodViewSet | Food library (staff). Clients search foods through /me/foods/. |
@@ -306,6 +309,9 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `trainers/<trainer_pk>me|[0-9a-f-]+)/documents/<pk>/verify/` | POST | TrainerDocumentViewSet | Documents tab. Admin manages any trainer's documents; a trainer uploads and sees their own |
 | `trainers/export/` | GET | TrainerViewSet | Admin → Trainers. Trainers can read the team list (for "Move to another trainer"). |
 | `trainers/me/` | GET, PATCH | TrainerMeView | Trainer → Me: own profile, stats, read-only access, visibility. |
+| `trainers/me/activity/` | GET | MyActivityView | My activity: what this trainer did in the app, newest first, plus a "Logged in" row per login. |
+| `trainers/me/devices/` | GET | MyDevicesView | Account → Where you are logged in: this device first, then the rest by last use; 5 a page. |
+| `trainers/me/notifications/` | GET, PUT, PATCH | MyNotificationsView | Account → Notifications ("Push to your phone and email"). |
 | `trainers/me/visibility/` | GET, PUT | TrainerMeVisibilityView |  |
 | `trainers/summary/` | GET | TrainerViewSet | Admin → Trainers. Trainers can read the team list (for "Move to another trainer"). |
 | `trainers/with-space/` | GET | TrainerViewSet | Admin → Trainers. Trainers can read the team list (for "Move to another trainer"). |

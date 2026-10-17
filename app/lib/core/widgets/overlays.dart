@@ -247,9 +247,12 @@ Future<T?> showAppDrawer<T>(
   List<Widget> Function(BuildContext)? footer,
   Widget? headerAction,
   AppIconData? icon,
+  bool fixedBody = false,
 }) {
+  // [fixedBody]: the body does not scroll as a whole. It gets a bounded height, so a builder can keep a
+  // header (search, tabs) fixed and scroll only its list (`Expanded(ListView)`), as `.pb-pk` boards do.
   if (context.isPhone) {
-    return showAppSheet<T>(context, title: title, sub: sub, builder: builder, footer: footer, tall: true);
+    return showAppSheet<T>(context, title: title, sub: sub, builder: builder, footer: footer, tall: true, fixedBody: fixedBody);
   }
   return showGeneralDialog<T>(
     context: context,
@@ -286,7 +289,11 @@ Future<T?> showAppDrawer<T>(
                 AppIconButton(AppIcons.close, tooltip: 'Close', ghost: true, small: true, onPressed: () => Navigator.of(ctx).pop()),
               ]),
             ),
-            Expanded(child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), child: builder(ctx))),
+            Expanded(
+              child: fixedBody
+                  ? Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: builder(ctx))
+                  : SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), child: builder(ctx)),
+            ),
             if (footer != null)
               Container(
                 padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
@@ -315,6 +322,7 @@ Future<T?> showAppSheet<T>(
   Listenable? listen,
   String Function()? titleOf,
   String Function()? subOf,
+  bool fixedBody = false,
 }) {
   // A sheet whose content moves (Newer / Older) passes [listen] and reads its title from [titleOf] / [subOf].
   Widget header(BuildContext ctx) {
@@ -339,7 +347,11 @@ Future<T?> showAppSheet<T>(
   Widget content(BuildContext ctx, {required bool phone}) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         if (phone) Center(child: Container(width: 38, height: 4, margin: const EdgeInsets.fromLTRB(0, 8, 0, 2), decoration: BoxDecoration(color: AppColors.grab, borderRadius: AppRadius.all(4)))),
         header(ctx),
-        Flexible(child: SingleChildScrollView(padding: const EdgeInsets.symmetric(horizontal: 16), child: builder(ctx))),
+        Flexible(
+          child: fixedBody
+              ? Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: builder(ctx))
+              : SingleChildScrollView(padding: const EdgeInsets.symmetric(horizontal: 16), child: builder(ctx)),
+        ),
         if (footer != null)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),

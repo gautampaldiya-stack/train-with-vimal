@@ -247,8 +247,18 @@ Widget _workout(CpController c, Map r, Map d, _Nav nav) {
 // ─────────────────────────────── Meals
 
 /// Amount column: quantity × the serving unit. "2" of "1 piece" → "2 pieces", "1.5" of "100 g" → "150 g",
-/// "2" of "1 katori" → "2 katori", "150" of "g" → "150 g".
-String _qty(Map e) => cpAmount((e['quantity'] as num?)?.toDouble() ?? double.tryParse('${e['quantity']}') ?? 0, '${e['unit'] ?? ''}');
+/// "2" of "1 katori" → "2 katori", "150" of "g" → "150 g". A unit other than grams also shows its weight:
+/// "2 pieces (50 g)", "1 cup (240 g)"; grams alone stay "60 g".
+String _qty(Map e) {
+  final q = (e['quantity'] as num?)?.toDouble() ?? double.tryParse('${e['quantity']}') ?? 0;
+  final unit = '${e['unit'] ?? ''}';
+  final amount = cpAmount(q, unit);
+  final g = (e['grams'] as num?)?.toDouble() ?? double.tryParse('${e['grams'] ?? ''}');
+  final inGrams = RegExp(r'^(\d+(?:\.\d+)?\s*)?g$', caseSensitive: false).hasMatch(unit.trim()) || unit.trim().isEmpty;
+  if (g == null || g <= 0 || inGrams) return amount;
+  final gs = g >= 10 ? cpNum(g) : cpOne(g);
+  return '$amount ($gs g)';
+}
 
 String cpAmount(double q, String unit) {
   var u = unit.trim();
