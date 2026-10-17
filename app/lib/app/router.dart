@@ -27,6 +27,8 @@ import '../features/client/more/about_screen.dart';
 import '../features/client/more/more_screen.dart';
 import '../features/client/train/train_screen.dart';
 import '../features/client/train/workout_screen.dart';
+import '../features/trainer/checkins/tc_screen.dart';
+import '../features/trainer/client_profile/cp_screen.dart';
 import '../features/trainer/clients/clients_screen.dart';
 import '../features/trainer/dashboard/dashboard_screen.dart';
 import 'services.dart';
@@ -103,6 +105,9 @@ final Map<String, Widget Function(GoRouterState)> screens = {
 final Map<String, Widget Function(GoRouterState)> trainerScreens = {
   '/dashboard': (_) => const TrainerDashboardScreen(),
   '/clients': (_) => const TrainerClientsScreen(),
+  '/checkins': (_) => const TrainerCheckinsScreen(),
+  '/checkins/:id': (st) => TrainerCheckinsScreen(id: st.pathParameters['id']),
+  '/clients/:id': (st) => TrainerClientProfileScreen(key: ValueKey(st.uri.toString()), id: st.pathParameters['id']!, tab: st.uri.queryParameters['tab']),
 };
 
 final appRouter = GoRouter(

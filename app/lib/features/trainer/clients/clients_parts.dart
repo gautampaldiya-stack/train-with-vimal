@@ -30,13 +30,18 @@ class _EditState extends ChangeNotifier {
 
 /// "Edit details" (row ⋯ menu): the board's client drawer sections — Must have, Good to have, Goal and body —
 /// filled from `GET clients/<id>/`, saved with `PATCH clients/<id>/`. Returns true when saved.
-Future<bool?> showEditClientDrawer(BuildContext context, MyClientsController c, McRow r) {
-  final first = r.name.split(' ').first;
+Future<bool?> showEditClientDrawer(BuildContext context, MyClientsController c, McRow r) =>
+    showClientDetailsDrawer(context, id: r.id, clientName: r.name, load: () => c.detail(r.id), onSave: (data) => c.save(r.id, data));
+
+/// The same drawer for any screen (Client profile → Edit profile): [load] gives `clients/<id>/`, [save] PATCHes.
+Future<bool?> showClientDetailsDrawer(BuildContext context,
+    {required String id, required String clientName, required Future<Map> Function() load, required Future<void> Function(Map<String, dynamic>) onSave, String title = 'Edit details'}) {
+  final first = clientName.split(' ').first;
   final s = _EditState();
   final name = TextEditingController(), phone = TextEditingController(), email = TextEditingController();
   final city = TextEditingController(), goalW = TextEditingController();
   final height = TextEditingController(), weight = TextEditingController(), notes = TextEditingController();
-  final detail = c.detail(r.id).then((d) {
+  final detail = load().then((d) {
     String num(Object? v) => v == null ? '' : '${double.tryParse('$v')?.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '') ?? v}';
     final p = (d['profile'] as Map?) ?? const {};
     name.text = '${d['full_name'] ?? ''}';
@@ -76,7 +81,7 @@ Future<bool?> showEditClientDrawer(BuildContext context, MyClientsController c, 
     if (errs.isNotEmpty) return;
     s.set(() => s.busy = true);
     try {
-      await c.save(r.id, {
+      await onSave({
         'full_name': name.text.trim(),
         'phone': '+91$digits',
         'email': email.text.trim(),
@@ -123,8 +128,8 @@ Future<bool?> showEditClientDrawer(BuildContext context, MyClientsController c, 
 
   return showAppDrawer<bool>(
     context,
-    title: 'Edit details',
-    sub: '${r.name} · changes show in their app straight away',
+    title: title,
+    sub: '$clientName · changes show in their app straight away',
     icon: AppIcons.edit,
     builder: (ctx) => FutureBuilder<Map>(
       future: detail,

@@ -239,11 +239,27 @@ class AssignmentSerializer(serializers.ModelSerializer):
     weeks = serializers.IntegerField(source="effective_program.weeks", read_only=True)
     custom = serializers.SerializerMethodField()
     client = serializers.SerializerMethodField()
+    master_name = serializers.CharField(source="program.name", read_only=True)
+    days_per_week = serializers.IntegerField(source="effective_program.days_per_week", read_only=True)
+    assigned_by = serializers.SerializerMethodField()
+    week = serializers.SerializerMethodField()
 
     class Meta:
         model = ProgramAssignment
         fields = ["id", "client", "program", "custom_program", "program_name", "weeks", "custom", "start_date",
-                  "end_date", "status", "created_at"]
+                  "end_date", "status", "created_at", "master_name", "days_per_week", "assigned_by", "week"]
+
+    def get_assigned_by(self, obj):
+        return obj.assigned_by.full_name if obj.assigned_by_id and obj.assigned_by else None
+
+    def get_week(self, obj):
+        """Week of the plan the client is on today (1-based, capped at the plan length); None before it starts."""
+        from django.utils import timezone
+
+        today = timezone.localdate()
+        if obj.start_date > today:
+            return None
+        return min((today - obj.start_date).days // 7 + 1, obj.effective_program.weeks)
 
     def get_custom(self, obj):
         return obj.custom_program_id is not None

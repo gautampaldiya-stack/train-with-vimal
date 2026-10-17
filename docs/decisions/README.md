@@ -36,4 +36,6 @@ One file per decision. Add a new file for every new decision (next number), and 
 | [D-30](0030-trainer-dashboard.md) | Trainer dashboard; one check-in queue so trainer, admin and client numbers match | 2026-10-16 |
 | [D-32](0032-trainer-my-clients.md) | Trainer My clients: Next check-in rule, export selected, Edit details, no AV | 2026-10-16 |
 | [D-33](0033-input-rules-filter-menu-titles.md) | Fields take only their type (phone, number, kg, email); filter side menu; Export off; tab titles + favicon | 2026-10-16 |
+| [D-34](0034-trainer-client-profile.md) | Trainer client profile: 9 tabs, plan / meal / supplement / habit assign, logs, history, forms copies | 2026-10-17 |
+| [D-35](0035-trainer-checkins.md) | Trainer Check-ins page: list + review panel, daily check-in view, better / worse colours | 2026-10-17 |
 | [D-31](0031-trainer-activity-and-fixes.md) | Trainer Activity card, stat cards fill the row, menus fit the screen, readable guides | 2026-10-16 |

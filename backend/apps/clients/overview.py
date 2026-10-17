@@ -116,5 +116,35 @@ def client_overview(user, request):
             "weekly_form": weekly_form.name if weekly_form else None,
             "last_form_sent": {"form": last_request.form.name, "at": last_request.created_at,
                                "filled": bool(last_request.filled_at)} if last_request else None,
+            **checkins_schedule(user),
         },
+    }
+
+
+def checkins_schedule(user):
+    """Overview → "Check-ins and schedule": daily (reminder time, sent this week), weekly (Sunday; waiting for
+    review / sent / due), measurements and photos (every N weeks, D-24). Same rules as the client's Check-ins page."""
+    from apps.checkins.client_page import DAILY_REMINDER
+    from apps.checkins.models import Measurement, PhotoSet, Submission
+    from apps.checkins.services import measure_entry, next_measure_due, next_photos_due
+
+    today = timezone.localdate()
+    monday = today - timedelta(days=today.weekday())
+    sunday = monday + timedelta(days=6)
+    subs = Submission.objects.filter(client=user)
+    daily = subs.filter(form_type="daily", date__range=(monday, today)).values("date").distinct().count()
+    waiting = subs.filter(form_type="weekly", reviewed_at__isnull=True).order_by("-created_at").first()
+    this_week = subs.filter(form_type="weekly", date__range=(monday, sunday)).exists()
+    n = user.client_profile.photo_every_weeks or 1
+    last_m = Measurement.objects.filter(client=user).order_by("-date").values_list("date", flat=True).first()
+    last_p = (PhotoSet.objects.filter(client=user, photos__isnull=False).order_by("-date")
+              .values_list("date", flat=True).first())
+    return {
+        "daily": {"time": DAILY_REMINDER, "sent": daily, "days": today.weekday() + 1},
+        "weekly": {"next": sunday + timedelta(days=7) if this_week else sunday, "sent_this_week": this_week,
+                   "waiting_week": waiting.week_number if waiting else None,
+                   "waiting_id": str(waiting.id) if waiting else None},
+        "measurements": {"every_weeks": n, "last": last_m, "next": next_measure_due(user, today),
+                         "due": measure_entry(user, today) is None},
+        "photos": {"every_weeks": n, "last": last_p, "next": next_photos_due(user, today)},
     }

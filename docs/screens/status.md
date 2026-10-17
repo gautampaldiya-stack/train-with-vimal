@@ -61,10 +61,10 @@ Status: **Done** (built and checked in a browser against the board, phone and de
 |---|---|---|
 | TrainerCalendar | Not started |  |
 | TrainerCalendarMobile | Not started |  |
-| TrainerCheckins | Not started |  |
-| TrainerCheckinsMobile | Not started |  |
-| TrainerClientProfile | Not started |  |
-| TrainerClientProfileMobile | Not started |  |
+| TrainerCheckins | Done | Tabs + counts, search, type chips with counts, rows (age red after 48 h, ✓ Replied), Show more, review panel (numbers with green / red, answers vs last time, note, photos, reply + quick replies, Mark reviewed + Undo, Mark as not reviewed), ‹ › and Open profile. Sidebar count. Checked 1440 on 2026-10-17 (D-35). |
+| TrainerCheckinsMobile | Done | List, tap opens the check-in in the same card (`/checkins/<id>`), ‹ back. Checked 390 on 2026-10-17. |
+| TrainerClientProfile | Done | All 9 tabs (D-34). Checked 1440 on 2026-10-17. Not built (no data): target date, health over time, form-check video, device name, supplement stock history, body map. Open master plan / Open in library go to pages not built yet (Programs, Content library). |
+| TrainerClientProfileMobile | Done | Header, 4-column stats, scrolling tabs, every tab stacks to one column. Checked 390 on 2026-10-17. |
 | TrainerClients | Done | Tabs + counts, search, Filter (4 groups with side submenu like the board, Clear filters), Export and select boxes off for now (Gautam, D-33; code commented), table, row ⋯ (View profile, Edit details drawer), pager 8 a page, sideways scroll when narrow (as board). No AV top right (Gautam). Add client / Invite link drawers have no button on the board, not built for trainers. Checked 1280, 1440 on 2026-10-16. View profile opens `/clients/<id>` (TrainerClientProfile not built yet). Rechecked 390, 1280, 1440 on 2026-10-16 (filter submenu, DOB picker). |
 | TrainerClientsMobile | Done | One line per client (avatar, name, goal, badge, ⋯), icon Filter / Export, Edit details as a tall sheet, pager. Checked 390. |
 | TrainerDashboard | Done | Stats, Today (Done, ⋯ menu, cancel + Undo), Clients who need you (chips, Remind + Undo, Show more), Check-ins to review + review drawer (reply, quick replies, Undo), This week (left column), Activity card (latest 10, D-31), review drawer photos open full screen, no AV button on web, bell dropdown, New session modal (Day / Time list fits on screen and scrolls). Numbers match Check-ins page, My profile and the admin Trainers table (D-30). Checked 600, 768, 900, 1024, 1280, 1440 on 2026-10-16. Open client profile / Plan next / Open go to `/clients/<id>` (TrainerClientProfile not built yet; review drawer Open profile now opens it after the drawer closes). Rechecked 390, 1280 on 2026-10-16 (stats cards, Activity, Day list). |

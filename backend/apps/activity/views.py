@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Count, Q
 from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
@@ -26,7 +27,19 @@ class ActivityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         qs = ActivityEvent.objects.select_related("client")
         user = self.request.user
         if user.is_trainer and not user.trainer_profile.has_perm("clients.view_all"):
-            qs = qs.filter(Q(trainer=user) | Q(actor=user))
+            mine = Q(trainer=user) | Q(actor=user)
+            client = self.request.query_params.get("client")
+            if client:
+                # Client profile → Activity: a trainer sees everything about their own client, also rows from
+                # before they took the client over (those carry the old trainer).
+                from apps.clients.services import visible_clients
+
+                try:
+                    if visible_clients(user).filter(id=client).exists():
+                        mine = Q(client_id=client)
+                except (ValueError, DjangoValidationError):
+                    pass
+            qs = qs.filter(mine)
         return qs
 
     @action(detail=False)
@@ -38,6 +51,16 @@ class ActivityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         for r in rows:
             data[r["kind"]] = r["n"]
         data["all"] = sum(data.values())
+        if request.query_params.get("by_day"):
+            # Client profile → Activity day headers ("Today · 3"): rows per local day under every filter, kind too.
+            from django.db.models.functions import TruncDate
+            from django.utils import timezone
+
+            kind = request.query_params.get("kind")
+            dq = qs.filter(kind=kind) if kind else qs
+            rows = (dq.annotate(d=TruncDate("created_at", tzinfo=timezone.get_current_timezone()))
+                    .values("d").annotate(n=Count("id")))
+            data["days"] = {str(r["d"]): r["n"] for r in rows}
         return Response(data)
 
     @action(detail=False)

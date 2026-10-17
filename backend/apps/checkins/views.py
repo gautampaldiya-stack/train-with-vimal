@@ -75,7 +75,9 @@ class FormViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
                 raise PermissionDenied("Your access does not include editing forms. Ask Vimal for more access.")
 
     def get_queryset(self):
-        qs = Form.objects.annotate(n_questions=Count("questions", filter=Q(questions__is_removed=False)))
+        # A client's own copies (Client profile → Forms) are not library forms.
+        qs = Form.objects.exclude(status=Form.Status.CLIENT).annotate(
+            n_questions=Count("questions", filter=Q(questions__is_removed=False)))
         p = self.request.query_params
         if self.action == "list":
             qs = qs.filter(status="archived") if p.get("tab") == "archived" else qs.exclude(status="archived")
@@ -98,7 +100,7 @@ class FormViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
 
     @action(detail=False)
     def counts(self, request):
-        qs = Form.objects.exclude(status="archived")
+        qs = Form.objects.exclude(status__in=["archived", Form.Status.CLIENT])
         by = dict(qs.values_list("type").annotate(n=Count("id")))
         return Response({"all": qs.count(), "archived": Form.objects.filter(status="archived").count(), **by})
 
@@ -201,7 +203,8 @@ class CheckinReviewViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, vie
               .select_related("client", "form", "reviewed_by")
               .annotate(n_photos=Count("answers", filter=~Q(answers__photo="") & Q(answers__photo__isnull=False))))
         p = self.request.query_params
-        tab = p.get("tab", "to_review")
+        # The tab only narrows the list; opening one (or reviewing it) works from any tab.
+        tab = p.get("tab", "to_review") if self.action == "list" else "all"
         if tab == "to_review":
             qs = qs.filter(reviewed_at__isnull=True, form_type__in=REVIEW_TYPES)
         elif tab == "reviewed":
@@ -213,6 +216,8 @@ class CheckinReviewViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, vie
             qs = qs.filter(form_type="survey")
         if p.get("client"):
             qs = qs.filter(client_id=p["client"])
+        if p.get("search"):
+            qs = qs.filter(client__full_name__icontains=p["search"].strip()[:60])
         if self.action == "retrieve":
             qs = qs.prefetch_related("answers__question")
         return qs
@@ -224,11 +229,22 @@ class CheckinReviewViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, vie
     def counts(self, request):
         base = staff_submissions(request.user).filter(form_type__in=REVIEW_TYPES)
         waiting = review_queue(request.user)
+        reviewed = base.filter(reviewed_at__isnull=False)
+
+        def kinds(qs):
+            """Check-ins page type chips: All types · Weekly · Daily · Monthly, for one tab."""
+            by = dict(qs.values_list("form_type").annotate(n=Count("id")))
+            return {"all": sum(by.values()), "weekly": by.get("weekly", 0), "daily": by.get("daily", 0),
+                    "monthly": by.get("survey", 0)}
+
+        oldest = waiting.order_by("created_at").values_list("created_at", flat=True).first()
         return Response({
             "to_review": waiting.count(),
             "over_48h": waiting.filter(created_at__lt=timezone.now() - timedelta(hours=48)).count(),
-            "reviewed": base.filter(reviewed_at__isnull=False).count(),
+            "reviewed": reviewed.count(),
             "all": base.count(),
+            "oldest": oldest,
+            "kinds": {"to_review": kinds(waiting), "reviewed": kinds(reviewed), "all": kinds(base)},
         })
 
     def retrieve(self, request, *args, **kwargs):
@@ -263,25 +279,7 @@ class CheckinReviewViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, vie
         return Response(SubmissionRowSerializer(sub).data)
 
 
-class ClientFormsView(APIView):
-    """Client profile → Forms tab: sent forms (Filled / Waiting) + Send a form."""
-
-    permission_classes = [IsStaff]
-
-    def get(self, request, client_pk):
-        client = _client_or_404(request.user, client_pk)
-        rows = FormRequest.objects.filter(client=client).select_related("form").order_by("-created_at")
-        sendable = Form.objects.filter(status="published").annotate(n=Count("questions", filter=Q(questions__is_removed=False)))
-        return Response({
-            "sent": FormRequestSerializer(rows, many=True).data,
-            "can_send": [{"id": str(f.id), "name": f.name, "type": f.type, "questions": f.n} for f in sendable],
-        })
-
-    def post(self, request, client_pk):
-        client = _client_or_404(request.user, client_pk)
-        form = get_object_or_404(Form, id=request.data.get("form"), status="published")
-        req = services.send_form(client, form, actor=request.user)
-        return Response(FormRequestSerializer(req).data, status=201)
+# Client profile → Forms tab: see client_forms.py.
 
 
 class ClientProgressView(APIView):
@@ -297,12 +295,37 @@ class ClientProgressView(APIView):
             shared = Prefetch("photos", queryset=ProgressPhoto.objects.filter(private=False))
             photos = [s for s in PhotoSetSerializer(PhotoSet.objects.filter(client=client).prefetch_related(shared),
                                                     many=True, context={"request": request}).data if s["photos"]]
+        from .staff_logs import progress_extras
+
         return Response({
             "weights": WeightLogSerializer(WeightLog.objects.filter(client=client).order_by("date"), many=True).data,
             "measurements": MeasurementSerializer(Measurement.objects.filter(client=client).order_by("date"),
                                                   many=True).data,
             "photo_sets": photos,
+            "photos_hidden": not photos and request.user.is_trainer and
+            not request.user.trainer_profile.has_perm("checkins.photos"),
+            **progress_extras(client),  # goal, start, measures, lifts (personal bests)
         })
+
+
+class ClientCheckinLogView(APIView):
+    """Client profile → Logs → Daily / Weekly check-ins (staff): `?kind=daily|weekly&range=&page=`. One row per
+    day (daily) or per Sunday (weekly) of the range, the ones never sent included. Open one with `checkins/<id>/`."""
+
+    permission_classes = [IsStaff]
+
+    def get(self, request, client_pk):
+        from apps.clients.metrics import resolve_range
+
+        from .staff_logs import daily_rows, weekly_rows
+
+        client = _client_or_404(request.user, client_pk)
+        start, end = resolve_range(request.query_params, client)
+        kind = request.query_params.get("kind", "daily")
+        if kind not in ("daily", "weekly"):
+            raise serializers.ValidationError({"kind": ["Use daily or weekly."]})
+        rows = daily_rows if kind == "daily" else weekly_rows
+        return Response(rows(client, start, end, request.query_params, request))
 
 
 # ---------------------------------------------------------------- client app

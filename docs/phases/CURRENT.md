@@ -2,7 +2,7 @@
 
 Updated with every push, so anyone (another Claude session, local Claude Code, a developer) can pick up from here.
 
-**Last updated:** 2026-10-16 · branch `working`
+**Last updated:** 2026-10-17 · branch `working`
 
 ## Done
 - Backend complete (all modules, offline sync, seeds, tests). Runs without Docker/Redis.
@@ -166,5 +166,7 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
   Sunday). Log in as aman@trainwithvimal.com / Demo@1234.
 - My clients (D-32): `app/lib/features/trainer/clients/`; API `clients/` (+ `counts/`, `export/?ids=`). Next
   check-in rule in `apps/clients/serializers.next_checkin` (filter in `filters.py` uses the same rule).
-- Next trainer boards: TrainerClientProfile, TrainerCheckins, TrainerCalendar, TrainerMe,
-  TrainerMoreMobile, TrainerProfile, Trainers. Then admin.
+- Client profile (D-34, 2026-10-17): `app/lib/features/trainer/client_profile/` (`cp_model` controller, `cp_common` shared
+  pieces, one file per tab + drawers). Check-ins (D-35): `app/lib/features/trainer/checkins/`.
+- Next trainer boards: TrainerCalendar, TrainerMe, TrainerMoreMobile, then the library pages the profile links to
+  (Programs, Content library), TrainerProfile, Trainers. Then admin.

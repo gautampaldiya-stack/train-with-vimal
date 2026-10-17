@@ -225,6 +225,16 @@ def page(rows, before=None, size=PAGE):
     return rows[:size], len(rows) > size
 
 
+def client_weekly_form(client):
+    """Her own copy of the weekly check-in when the coach edited it for her (None after "Stop sending"),
+    else the library's weekly check-in."""
+    own = (Form.objects.filter(type="weekly", status=Form.Status.CLIENT, client=client)
+           .prefetch_related("questions").order_by("-created_at").first())
+    if own is not None:
+        return own if own.sending else None
+    return Form.objects.filter(type="weekly", status="published").prefetch_related("questions").first()
+
+
 def checkins_page(client, tab="weekly", before=None, request=None):
     from apps.clients.metrics import active_program
 
@@ -234,7 +244,7 @@ def checkins_page(client, tab="weekly", before=None, request=None):
     cp = client.client_profile
     coach = cp.trainer
     coach_first = coach.first_name if coach else ""
-    weekly = Form.objects.filter(type="weekly", status="published").prefetch_related("questions").first()
+    weekly = client_weekly_form(client)
     daily = Form.objects.filter(type="daily", status="published").prefetch_related("questions").first()
 
     w_rows = weekly_rows(client)

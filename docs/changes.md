@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-17 · Trainer — Client profile (9 tabs) aur Check-ins
+- **Pehle:** My clients / dashboard se "View profile" holding page kholta tha. Check-ins page nahi tha. Daily check-in ka review weekly jaisa dikhta tha (Weight, Change…). Notes ka Undo kisi bhi client ka note wapas la sakta tha (id se).
+- **Ab:** Trainer Client profile ke saare 9 tab board jaise (Overview, Plans + assign + workout editor, Logs + Compare plans, Progress, History, Content, Forms + client copy, Activity, Notes). Check-ins page: list + review panel, phone par alag page. Daily check-in par Sleep / Energy / Workout / Steps; har number hara (behtar) / laal (kharab). Sidebar Check-ins count. Notes restore sirf usi client ke notes me. Tab title ab build ke beech nahi badalta (console error gaya).
+- **Kyun:** Gautam: "ache se cleint profile me pura kar dena .. ye ho jane ke baad checkins wala start kar dena".
+- **Updated:** app features/trainer/client_profile/*, features/trainer/checkins/*, app/router.dart, app/app.dart, core/theme/colors.dart; backend clients (history, logs, overview, views), checkins (review, views, client forms, staff logs, tasks), nutrition, habits, training, content, activity, common/mixins; tests; docs behaviour §3.3 §3.6, status · Decisions D-34, D-35
+
 ### 2026-10-16 · Fields sirf sahi type lein; Filter side menu; Export band; tab title + favicon
 - **Pehle:** Mobile, kg, cm jaise fields me letters bhi type ho jaate the. Edit details me Date of birth haath se `DD / MM / YYYY` likhna padta tha. My clients Filter me group par click karke doosra menu usi jagah khulta tha. Export aur select boxes the. Browser tab me hamesha "twv" aur Flutter ka default favicon.
 - **Ab:** Poore app me field apne keyboard type se input leta hai (`core/util/input_rules.dart`): phone = sirf 10 digit, number = sirf digit, decimal (kg, cm) = digit + ek `.` aur 2 decimal, email = bina space. Save par Mobile 10 digit (6–9) aur Email format check — Edit details, Edit profile (client), Join. Join me Mobile ke aage `+91`. DOB date picker se. Filter board jaisa: row par value + `›`, options side me. Export + checkbox comment kar diye. Tab title page ka naam ("My clients · Train With Vimal"), favicon aur app icons TWV logo se.

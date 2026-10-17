@@ -431,3 +431,99 @@ def day_view(client, day, request=None):
         "water": {"ml": water.ml if water else 0, "goal_ml": plan.water_ml if plan else 3000},
         "week": week,
     }
+
+
+# ---------------------------------------------------------------- one client's meal plans (client profile → Plans)
+@transaction.atomic
+def assign_plan_to_client(client, plan, *, actor, start_date=None, notify_client=True):
+    """Client profile → Assign a meal plan. From today: the current plan ends today and moves to history.
+    A later date: the plan waits as Up next and replaces the current one on that day (see `roll_meal_plans`)."""
+    today = timezone.localdate()
+    if plan is None or plan.deleted_at is not None:
+        raise ValidationError({"plan": ["Pick a meal plan."]})
+    if start_date and start_date > today + timedelta(days=92):
+        raise ValidationError({"start_date": ["Pick a date up to 3 months ahead."]})
+    later = bool(start_date and start_date > today)
+    if later:
+        MealPlanAssignment.objects.filter(client=client, status="up_next").update(status="ended", end_date=today)
+    else:
+        MealPlanAssignment.objects.filter(client=client, status="active").update(status="ended", end_date=today)
+    a = MealPlanAssignment.objects.create(client=client, plan=plan, start_date=start_date if later else today,
+                                          status="up_next" if later else "active", assigned_by=actor)
+    activity_log("assigned a meal plan", "plan", actor=actor, target=client, target_label=plan.name, client=client)
+    if notify_client and not later and plan.status == MealPlan.Status.PUBLISHED:
+        notify(client, "meal_plan_assigned", f"New meal plan: {plan.name}", "Open Food to see today's meals.",
+               actor=actor, data={"route": "/food"})
+    return a
+
+
+def end_client_plan(a, *, actor):
+    a.status = "ended"
+    a.end_date = timezone.localdate()
+    a.save(update_fields=["status", "end_date", "updated_at"])
+    activity_log("ended a meal plan", "plan", actor=actor, target=a.client, target_label=a.plan.name, client=a.client)
+
+
+def roll_meal_plans(today=None):
+    """Daily: an Up next meal plan whose day has come replaces the current one. Returns how many started."""
+    today = today or timezone.localdate()
+    n = 0
+    for a in MealPlanAssignment.objects.filter(status="up_next", start_date__lte=today).select_related("client", "plan"):
+        MealPlanAssignment.objects.filter(client=a.client, status="active").update(status="ended",
+                                                                                  end_date=today - timedelta(days=1))
+        a.status = "active"
+        a.save(update_fields=["status", "updated_at"])
+        notify(a.client, "meal_plan_assigned", f"New meal plan: {a.plan.name}", "It starts today.",
+               data={"route": "/food"})
+        n += 1
+    return n
+
+
+def staff_food_log(client, params):
+    """Client profile → Logs → Meals table: one row per day of the range, newest first, with the day's
+    totals, meals logged of the plan's meals, and On plan / Over / Partly / Missed."""
+    from apps.clients.logs import days_desc, page_of
+    from apps.clients.metrics import resolve_range
+
+    start, end = resolve_range(params, client)
+    today = timezone.localdate()
+    days = days_desc(start, end, client)
+    mps = list(MealPlanAssignment.objects.filter(client=client, start_date__lte=end)
+               .select_related("plan").order_by("-start_date"))
+
+    def plan_on(d):
+        return next((m.plan for m in mps if m.start_date <= d and (m.end_date is None or m.end_date >= d)), None)
+
+    logged = dict(MealDayState.objects.filter(client=client, date__range=(start, end), status=MealDayState.Status.LOGGED)
+                  .values_list("date").annotate(n=Count("id")))
+    sums = {r["date"]: r for r in FoodLogEntry.objects.filter(client=client, date__range=(start, end))
+            .values("date").annotate(kcal=Sum("kcal"), protein=Sum("protein"), carbs=Sum("carbs"), fat=Sum("fat"))}
+    n_meals = {}
+    rows = []
+    for d in days:
+        plan = plan_on(d)
+        if plan is not None and plan.id not in n_meals:
+            n_meals[plan.id] = plan.meals.count()
+        meals = n_meals.get(plan.id, 0) if plan else 0
+        t = sums.get(d) or {}
+        kcal = int(t.get("kcal") or 0)
+        n = logged.get(d, 0)
+        if not plan and not t:
+            continue
+        target = plan.kcal_target if plan else None
+        if target and kcal > target * 1.05:
+            st = "over"
+        elif meals and n >= meals:
+            st = "on_plan"
+        elif n or kcal:
+            st = "today" if d == today else ("partly" if meals else "logged")
+        else:
+            st = "today" if d == today else "missed"
+        rows.append({"date": d, "kcal": kcal, "protein": float(t.get("protein") or 0), "carbs": float(t.get("carbs") or 0),
+                     "fat": float(t.get("fat") or 0), "meals_logged": n, "meals": meals, "kcal_target": target,
+                     "status": st})
+    cur = plan_on(min(end, today)) or (mps[0].plan if mps else None)
+    out = page_of(rows, params)
+    out["target"] = {"kcal": cur.kcal_target, "protein": cur.protein_g, "carbs": cur.carbs_g, "fat": cur.fat_g} \
+        if cur else None
+    return out

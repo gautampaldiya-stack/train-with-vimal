@@ -22,12 +22,20 @@ class Form(SoftDeleteModel):
         DRAFT = "draft", "Draft"
         PUBLISHED = "published", "Published"
         ARCHIVED = "archived", "Archived"
+        # One client's own copy (Client profile → Forms: "Edit … for Riya" / "Duplicate and edit"). Never in the
+        # forms library and never sent to anyone else; `master` is the library form it came from.
+        CLIENT = "client", "Client copy"
 
     name = models.CharField(max_length=120)
     type = models.CharField(max_length=12, choices=FormType.choices, db_index=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT, db_index=True)
     is_parq = models.BooleanField(default=False)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+    client = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.CASCADE,
+                               related_name="own_forms")
+    master = models.ForeignKey("self", null=True, blank=True, on_delete=models.SET_NULL, related_name="copies")
+    # A client's weekly check-in copy with this off = "Stop sending" (her app shows no weekly check-in).
+    sending = models.BooleanField(default=True)
 
     class Meta:
         ordering = ["-updated_at"]
@@ -65,6 +73,8 @@ class Question(models.Model):
     metric = models.CharField(max_length=20, blank=True, default="")
     # Deleted from the builder but already answered: hidden from the form, old answers stay readable.
     is_removed = models.BooleanField(default=False)
+    # On a client's copy: the master question it was copied from ("Added for Riya" / "Was: required").
+    copied_from = models.ForeignKey("self", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
 
     class Meta:
         ordering = ["order"]
@@ -81,6 +91,11 @@ class FormRequest(TimeStampedModel):
                                        on_delete=models.SET_NULL, related_name="+")
     due_at = models.DateTimeField(null=True, blank=True)
     filled_at = models.DateTimeField(null=True, blank=True)
+    # "Remind her if she does not answer": one reminder 24 h after sending; "Remind again" by hand.
+    auto_remind = models.BooleanField(default=False)
+    reminded_at = models.DateTimeField(null=True, blank=True)
+    schedule = models.ForeignKey("FormSchedule", null=True, blank=True, on_delete=models.SET_NULL,
+                                 related_name="requests")
 
     class Meta:
         indexes = [models.Index(fields=["client", "filled_at"])]
@@ -192,3 +207,27 @@ class ProgressPhoto(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["photo_set", "pose"], name="uniq_pose_per_set")]
+
+
+class FormSchedule(TimeStampedModel):
+    """Send a form to one client later or again and again (Client profile → Send a form → When). The beat task
+    `send_scheduled_forms` sends each one when `next_at` comes."""
+
+    class Repeat(models.TextChoices):
+        ONCE = "once", "Once"
+        WEEK = "week", "Every week"
+        MONTH = "month", "Every month"
+
+    client = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="form_schedules")
+    form = models.ForeignKey(Form, on_delete=models.CASCADE, related_name="schedules")
+    repeat = models.CharField(max_length=6, choices=Repeat.choices, default=Repeat.ONCE)
+    weekday = models.PositiveSmallIntegerField(default=6)  # 0 = Monday … 6 = Sunday
+    month_day = models.PositiveSmallIntegerField(default=1)
+    time = models.TimeField(default="18:00")
+    until = models.DateField(null=True, blank=True)
+    channels = models.JSONField(default=list, blank=True)
+    answer_days = models.PositiveSmallIntegerField(default=2)
+    auto_remind = models.BooleanField(default=True)
+    next_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")

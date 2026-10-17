@@ -339,6 +339,54 @@ class MealPlanViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
         return Response(status=204)
 
 
+class ClientMealPlanViewSet(viewsets.ViewSet):
+    """Client profile → Plans → Meal plan slot: current, Up next and history; assign one plan; end it."""
+
+    permission_classes = [IsStaff]
+
+    def _client(self):
+        return _staff_or_404(self.request.user, self.kwargs["client_pk"])
+
+    def _check_write(self, request):
+        if request.user.is_trainer and not request.user.trainer_profile.has_perm("nutrition.meal_plans"):
+            raise PermissionDenied("Your access does not include meal plans. Ask Vimal for more access.")
+
+    @staticmethod
+    def row(a):
+        p = a.plan
+        return {"id": a.id, "plan": p.id, "plan_name": p.name, "diet": p.diet, "diet_label": p.get_diet_display(),
+                "kcal": p.kcal_target, "protein_g": p.protein_g, "carbs_g": p.carbs_g, "fat_g": p.fat_g,
+                "meals": p.meals.count(), "version_note": a.version_note, "custom": bool(a.version_note),
+                "start_date": a.start_date, "end_date": a.end_date, "status": a.status,
+                "assigned_by": a.assigned_by.full_name if a.assigned_by else None}
+
+    def list(self, request, client_pk=None):
+        rows = list(MealPlanAssignment.objects.filter(client=self._client()).select_related("plan", "assigned_by")
+                    .order_by("-start_date", "-created_at"))
+        return Response({k: [self.row(a) for a in rows if a.status == s]
+                         for k, s in (("current", "active"), ("up_next", "up_next"), ("history", "ended"))})
+
+    def create(self, request, client_pk=None):
+        self._check_write(request)
+        client = self._client()
+        plan = MealPlan.objects.filter(id=request.data.get("plan")).first()
+        start = parse_date(str(request.data.get("start_date") or ""))
+        a = services.assign_plan_to_client(client, plan, actor=request.user, start_date=start,
+                                           notify_client=request.data.get("notify", True) is not False)
+        return Response(self.row(a), status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"])
+    def end(self, request, client_pk=None, pk=None):
+        self._check_write(request)
+        a = get_object_or_404(MealPlanAssignment.objects.select_related("plan", "client"), id=pk,
+                              client=self._client(), status__in=["active", "up_next"])
+        if a.status == "up_next":  # not started yet: nothing to keep in history
+            a.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        services.end_client_plan(a, actor=request.user)
+        return Response(self.row(a))
+
+
 class FoodPickerView(APIView):
     """Builder → Add food: team foods first, grouped."""
 
@@ -358,7 +406,7 @@ class FoodPickerView(APIView):
 
 # ---------------------------------------------------------------- client food (staff view)
 class ClientFoodLogView(APIView):
-    """Client profile → Logs → Meals: one day, or a date range summary."""
+    """Client profile → Logs → Meals: one day (`?date=`), or one page of days (`?range=&page=`)."""
 
     permission_classes = [IsStaff, HasTrainerPermission]
     required_permission = "nutrition.food_logs"
@@ -367,15 +415,8 @@ class ClientFoodLogView(APIView):
         client = _staff_or_404(request.user, client_pk)
         day = parse_date(request.query_params.get("date") or "")
         if day:
-            return Response(services.day_view(client, day))
-        end = timezone.localdate()
-        start = end - timedelta(days=29)
-        rows = []
-        d = end
-        while d >= start:
-            rows.append({"date": d, **services.totals(client, d)})
-            d -= timedelta(days=1)
-        return Response(rows)
+            return Response(services.day_view(client, day, request))
+        return Response(services.staff_food_log(client, request.query_params))
 
 
 # ---------------------------------------------------------------- client app
@@ -408,6 +449,7 @@ class MyMealActionView(APIView):
             photo = request.data.get("photo")  # optional: a picture of the meal, as a data URL (works offline)
             services.mark_eaten(request.user, meal, day,
                                 photo=data_url_file(photo, f"meal-{meal.id}") if photo else None)
+            _log_meal(request.user, meal, day, f"logged {meal.name.lower()}")
         elif op in ("unlog", "unskip"):
             services.unmark(request.user, meal, day)
         elif op == "photo":
@@ -423,6 +465,8 @@ class MyMealActionView(APIView):
             st.save(update_fields=["photo", "updated_at"])
         elif op == "skip":
             services.skip(request.user, meal, day)
+            activity_log(f"skipped {meal.name.lower()}", "meal", actor=request.user, client=request.user,
+                         target_label=meal.name)
         elif op == "portions":
             st, _ = MealDayState.objects.get_or_create(client=request.user, date=day, meal=meal)
             portions = request.data.get("portions") or {}
@@ -454,6 +498,9 @@ class MyMealActionView(APIView):
                     raise PermissionDenied("Pick one of the approved swaps.")
                 grams = same_kcal_grams(item.food, services._grams(item, st.portions.get(str(item.id))), alt)
                 st.swaps[str(item.id)] = {"food": str(alt.id), "grams": grams}
+                activity_log(f"swapped a food at {meal.name.lower()}", "meal", actor=request.user,
+                             client=request.user, target_label=meal.name,
+                             change=(item.food.name, f"{alt.name} {grams:g} g" if grams else alt.name))
             st.save(update_fields=["swaps", "updated_at"])
             if st.status == "logged":
                 services.unmark(request.user, meal, day)
@@ -469,6 +516,15 @@ class MyMealActionView(APIView):
         else:
             raise serializers.ValidationError("Unknown action.")
         return Response(services.day_view(request.user, day, request))
+
+
+def _log_meal(client, meal, day, verb):
+    """Client profile → Activity: "Riya logged lunch · Paneer bowl, 480 kcal"."""
+    rows = list(FoodLogEntry.objects.filter(client=client, date=day, meal=meal).values_list("name", "kcal"))
+    note = ", ".join(n for n, _ in rows[:3]) + (f" +{len(rows) - 3}" if len(rows) > 3 else "")
+    kcal = sum(k for _, k in rows)
+    activity_log(verb, "meal", actor=client, client=client, target_label=meal.name,
+                 meta={"note": ", ".join(x for x in (note, f"{kcal} kcal" if rows else "") if x)})
 
 
 class MySwapOptionsView(APIView):
@@ -511,6 +567,9 @@ class MyFoodLogViewSet(mixins.CreateModelMixin, mixins.DestroyModelMixin, viewse
         if request.data.get("logged_at"):
             e.logged_at = sync_time(request.data["logged_at"])
             e.save(update_fields=["logged_at"])
+        activity_log(f"logged a food at {e.meal_name.lower()}" if e.meal_name else "logged a food", "meal",
+                     actor=request.user, client=request.user, target_label=e.name,
+                     meta={"note": f"{e.name}, {e.kcal} kcal" + (" · off plan" if e.source == "off_plan" else "")})
         return Response(FoodLogSerializer(e).data, status=201)
 
     def destroy(self, request, pk=None):

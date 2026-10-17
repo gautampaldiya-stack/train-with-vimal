@@ -314,12 +314,15 @@ class PxTable extends StatelessWidget {
 
 /// `px-chart`: weight line with its area, the goal line, y labels and tappable dots.
 class PxWeightChart extends StatelessWidget {
-  const PxWeightChart({super.key, required this.points, required this.goal, required this.selected, required this.onPick, this.height = 156});
+  const PxWeightChart({super.key, required this.points, required this.goal, required this.selected, required this.onPick, this.height = 156, this.dots = true});
   final List<PxWeight> points;
   final double? goal;
   final DateTime? selected;
   final ValueChanged<PxWeight> onPick;
   final double height;
+
+  /// Tappable dots on each weigh-in (off on the trainer Overview's small trend, as on the board).
+  final bool dots;
 
   @override
   Widget build(BuildContext context) {
@@ -370,9 +373,10 @@ class PxWeightChart extends StatelessWidget {
                     child: Text('Goal ${pxAmt(goal!, 'kgs')}', style: AppText.s(10.5, W.w7, color: AppColors.okText)),
                   ),
                 ),
-              for (final (i, p) in points.indexed)
-                Positioned(
-                  left: xp(p.date) * w - 11,
+              if (dots)
+                for (final (i, p) in points.indexed)
+                  Positioned(
+                    left: xp(p.date) * w - 11,
                   top: yp(p.kg) * h - 11,
                   child: _Dot(
                     on: selected != null && DateUtils.isSameDay(selected, p.date),

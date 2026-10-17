@@ -276,7 +276,7 @@ class AutomationViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
             for i, s in enumerate(st["steps"]):
                 cfg = dict(s["config"])
                 if s["kind"] == "form" and cfg.get("form_name"):
-                    f = Form.objects.filter(name=cfg["form_name"]).first()
+                    f = Form.objects.filter(name=cfg["form_name"]).exclude(status="client").first()
                     cfg["form"] = str(f.id) if f else ""
                 Step.objects.create(automation=a, kind=s["kind"], config=cfg, order=i)
         return Response(AutomationSerializer(self.get_queryset().get(id=a.id)).data, status=201)

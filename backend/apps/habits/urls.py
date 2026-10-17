@@ -6,6 +6,10 @@ from . import views
 router = DefaultRouter()
 router.register("habits", views.HabitViewSet, basename="habit")
 router.register("supplement-plans", views.SupplementPlanViewSet, basename="supplement-plan")
+router.register(r"clients/(?P<client_pk>[0-9a-f-]+)/supplement-plans", views.ClientSupplementPlansViewSet,
+                basename="client-supplement-plan")
+router.register(r"clients/(?P<client_pk>[0-9a-f-]+)/habit-plan", views.ClientHabitPlansViewSet,
+                basename="client-habit-plan")
 
 urlpatterns = [
     path("clients/<uuid:client_pk>/habits/", views.ClientHabitsView.as_view(), name="client-habits"),

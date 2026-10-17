@@ -61,6 +61,9 @@ class ContentShare(models.Model):
         COACH = "coach", "Assigned by the coach"
         PROGRAM = "program", "From the program"
         MEAL_PLAN = "meal_plan", "From the meal plan"
+        # Not a share: an "Everyone" item hidden for this client, or its "how long" / reminder (Client profile →
+        # Content tab). The reason she sees it stays "Everyone".
+        EVERYONE = "everyone", "Everyone (settings for this client)"
 
     item = models.ForeignKey(ContentItem, on_delete=models.CASCADE, related_name="shares")
     client = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="shared_content")
@@ -71,6 +74,11 @@ class ContentShare(models.Model):
     source = models.CharField(max_length=10, choices=Source.choices, default=Source.COACH)
     source_label = models.CharField(max_length=120, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
+    # "Remove / Hide for Riya" keeps the row so Undo brings it back as it was; hidden rows are not in her Library.
+    hidden = models.BooleanField(default=False)
+    # "How long she keeps it": the last day she sees it (empty = always). "Until the plan ends" stores its end day.
+    expires_on = models.DateField(null=True, blank=True)
+    reminded_at = models.DateTimeField(null=True, blank=True)  # "Remind her to open it"
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["item", "client"], name="uniq_content_share")]

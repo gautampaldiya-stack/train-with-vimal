@@ -8,6 +8,7 @@ router.register("foods", views.FoodViewSet, basename="food")
 router.register("meal-plans", views.MealPlanViewSet, basename="meal-plan")
 router.register("me/food-log", views.MyFoodLogViewSet, basename="my-food-log")
 router.register("me/foods", views.MyFoodSearchViewSet, basename="my-foods")
+router.register(r"clients/(?P<client_pk>[0-9a-f-]+)/meal-plans", views.ClientMealPlanViewSet, basename="client-meal-plan")
 
 urlpatterns = [
     path("food-picker/", views.FoodPickerView.as_view(), name="food-picker"),

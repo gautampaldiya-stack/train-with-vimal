@@ -310,8 +310,10 @@ def nightly_client_stats():
 # ---------------------------------------------------------------- housekeeping
 @shared_task
 def roll_plans():
+    from apps.nutrition.services import roll_meal_plans
     from apps.training.services import roll_assignments
 
+    roll_meal_plans()
     return roll_assignments()
 
 

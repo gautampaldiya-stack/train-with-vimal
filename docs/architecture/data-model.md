@@ -210,9 +210,12 @@ Tasks card on the trainer dashboard (from automations or added by hand).
 | `deleted_at` | DateTimeField | optional; indexed |
 | `name` | CharField |  |
 | `type` | CharField | choices: onboarding, weekly, daily, survey, waiver; indexed |
-| `status` | CharField | choices: draft, published, archived; indexed |
+| `status` | CharField | choices: draft, published, archived, client; indexed |
 | `is_parq` | BooleanField |  |
 | `created_by` | ForeignKey | → User; optional; indexed |
+| `client` | ForeignKey | → User; optional; indexed |
+| `master` | ForeignKey | → Form; optional; indexed |
+| `sending` | BooleanField |  |
 
 ### Question
 
@@ -231,6 +234,7 @@ Tasks card on the trainer dashboard (from automations or added by hand).
 | `required` | BooleanField |  |
 | `metric` | CharField |  |
 | `is_removed` | BooleanField |  |
+| `copied_from` | ForeignKey | → Question; optional; indexed |
 
 ### FormRequest
 A form sent to a client (by hand, or by an automation). Client profile → Forms tab.
@@ -246,6 +250,9 @@ A form sent to a client (by hand, or by an automation). Client profile → Forms
 | `automation_run` | ForeignKey | → AutomationRun; optional; indexed |
 | `due_at` | DateTimeField | optional |
 | `filled_at` | DateTimeField | optional |
+| `auto_remind` | BooleanField |  |
+| `reminded_at` | DateTimeField | optional |
+| `schedule` | ForeignKey | → FormSchedule; optional; indexed |
 
 ### Submission
 A filled form. Weekly and daily check-ins are submissions too.
@@ -333,6 +340,28 @@ Constraints: uniq_measure_day
 | `created_at` | DateTimeField |  |
 
 Constraints: uniq_pose_per_set
+
+### FormSchedule
+Send a form to one client later or again and again (Client profile → Send a form → When). The beat task
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | UUIDField |  |
+| `created_at` | DateTimeField | indexed |
+| `updated_at` | DateTimeField |  |
+| `client` | ForeignKey | → User; indexed |
+| `form` | ForeignKey | → Form; indexed |
+| `repeat` | CharField | choices: once, week, month |
+| `weekday` | PositiveSmallIntegerField |  |
+| `month_day` | PositiveSmallIntegerField |  |
+| `time` | TimeField |  |
+| `until` | DateField | optional |
+| `channels` | JSONField |  |
+| `answer_days` | PositiveSmallIntegerField |  |
+| `auto_remind` | BooleanField |  |
+| `next_at` | DateTimeField | optional; indexed |
+| `active` | BooleanField |  |
+| `created_by` | ForeignKey | → User; optional; indexed |
 
 ## clients
 
@@ -507,9 +536,12 @@ Constraints: uniq_idempotency_key
 | `client` | ForeignKey | → User; indexed |
 | `shared_by` | ForeignKey | → User; optional; indexed |
 | `note` | CharField |  |
-| `source` | CharField | choices: coach, program, meal_plan |
+| `source` | CharField | choices: coach, program, meal_plan, everyone |
 | `source_label` | CharField |  |
 | `created_at` | DateTimeField |  |
+| `hidden` | BooleanField |  |
+| `expires_on` | DateField | optional |
+| `reminded_at` | DateTimeField | optional |
 
 Constraints: uniq_content_share
 

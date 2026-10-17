@@ -47,11 +47,17 @@ def _set_clients(model, field, obj, ids, actor, label):
                 row.start_date = timezone.localdate()
                 row.save(update_fields=["active", "start_date", "updated_at"])
         model.objects.filter(**{field: obj}, client_id__in=removed).update(active=False)
-    if added:
-        from django.contrib.auth import get_user_model
+    from django.contrib.auth import get_user_model
 
+    if added:
         clients = list(get_user_model().objects.filter(id__in=added))
         notify(clients, "plan_assigned", f"New in your plan: {label}", "", actor=actor, data={"route": "/habits"})
+        verb = "added a habit" if model is HabitAssignment else "assigned supplements"
+        for c in clients:
+            activity_log(verb, "plan", actor=actor, target=c, target_label=label, client=c)
+    for c in get_user_model().objects.filter(id__in=removed) if removed else []:
+        activity_log("removed a habit" if model is HabitAssignment else "removed supplements", "plan", actor=actor,
+                     target=c, target_label=label, client=c)
     return len(added), len(removed)
 
 
@@ -153,6 +159,134 @@ class SupplementPlanViewSet(_StaffWrite, SoftDeleteViewMixin, viewsets.ModelView
         added, removed = _set_clients(SupplementAssignment, "plan", p, request.data.get("clients") or [],
                                       request.user, p.name)
         return Response({"added": added, "removed": removed})
+
+
+# ---------------------------------------------------------------- one client's supplements and habits
+class _ClientSlot(viewsets.ViewSet):
+    """Client profile → Plans → Supplements / Habits slot: current, Up next (starts later) and history;
+    assign for one client; end one. `when`: `next` (runs next to the current ones), `now` (replaces them),
+    `date` (starts on `start_date`, up to 3 months ahead)."""
+
+    permission_classes = [IsStaff]
+    model = None
+    field = ""
+    write_permission = ""
+
+    def _client(self):
+        try:
+            return get_visible_client(self.request.user, self.kwargs["client_pk"])
+        except Exception:
+            from django.http import Http404
+
+            raise Http404
+
+    def _check_write(self, request):
+        if request.user.is_trainer and not request.user.trainer_profile.has_perm(self.write_permission):
+            raise PermissionDenied("Your access does not include this. Ask Vimal for more access.")
+
+    def _start(self, request):
+        today = timezone.localdate()
+        when = request.data.get("when") or "next"
+        if when not in ("next", "now", "date"):
+            raise serializers.ValidationError({"when": ["Pick when it starts."]})
+        if when != "date":
+            return when, today
+        start = parse_date(str(request.data.get("start_date") or ""))
+        if not start or start < today or start > today + timedelta(days=92):
+            raise serializers.ValidationError({"start_date": ["Pick a date from today up to 3 months ahead."]})
+        return when, start
+
+    def _rows(self, client):
+        today = timezone.localdate()
+        rows = list(self.model.objects.filter(client=client).select_related(self.field, "assigned_by")
+                    .order_by("-start_date", "-created_at"))
+        return {"current": [self.row(a) for a in rows if a.active and a.start_date <= today],
+                "up_next": [self.row(a) for a in rows if a.active and a.start_date > today],
+                "history": [self.row(a) for a in rows if not a.active]}
+
+    def list(self, request, client_pk=None):
+        return Response(self._rows(self._client()))
+
+    def _assign(self, request, client, objs, label):
+        when, start = self._start(request)
+        with transaction.atomic():
+            if when == "now":
+                self.model.objects.filter(client=client, active=True).exclude(**{f"{self.field}__in": objs}) \
+                    .update(active=False, updated_at=timezone.now())
+            for o in objs:
+                row, created = self.model.objects.get_or_create(**{self.field: o}, client=client,
+                                                                defaults={"assigned_by": request.user,
+                                                                          "start_date": start})
+                if not created:
+                    row.active, row.start_date, row.assigned_by = True, start, request.user
+                    row.save(update_fields=["active", "start_date", "assigned_by", "updated_at"])
+        activity_log(f"assigned {label}", "plan", actor=request.user, target=client,
+                     target_label=", ".join(getattr(o, "name", "") for o in objs), client=client)
+        if request.data.get("notify", True) is not False:
+            notify(client, "plan_assigned", f"New in your plan: {objs[0].name}" if len(objs) == 1
+                   else f"{len(objs)} new habits in your plan", "", actor=request.user, data={"route": "/habits"})
+        return Response(self._rows(client), status=201)
+
+    @action(detail=True, methods=["post"])
+    def end(self, request, client_pk=None, pk=None):
+        self._check_write(request)
+        client = self._client()
+        a = get_object_or_404(self.model.objects.select_related(self.field), id=pk, client=client, active=True)
+        if a.start_date > timezone.localdate():  # not started yet: nothing to keep in history
+            a.delete()
+            return Response(self._rows(client))
+        a.active = False
+        a.save(update_fields=["active", "updated_at"])
+        activity_log("ended a plan", "plan", actor=request.user, target=client,
+                     target_label=getattr(a, self.field).name, client=client)
+        return Response(self._rows(client))
+
+
+class ClientSupplementPlansViewSet(_ClientSlot):
+    model = SupplementAssignment
+    field = "plan"
+    write_permission = "nutrition.supplements"
+
+    @staticmethod
+    def row(a):
+        p = a.plan
+        stocks = {s.item_id: s for s in SupplementStock.objects.filter(client=a.client, item__plan=p)}
+        return {"id": a.id, "plan": p.id, "plan_name": p.name, "note": p.note, "start_date": a.start_date,
+                "ended_on": a.updated_at.date() if not a.active else None, "active": a.active,
+                "assigned_by": a.assigned_by.full_name if a.assigned_by else None,
+                "items": [{"id": i.id, "name": i.name, "dose": i.dose, "how": i.how, "timing": i.timing,
+                           "timing_label": i.get_timing_display(), "days": i.days, "with_food": i.with_food,
+                           "stock": {"quantity": stocks[i.id].quantity, "unit": stocks[i.id].unit}
+                           if i.id in stocks else None} for i in p.items.all()]}
+
+    def create(self, request, client_pk=None):
+        self._check_write(request)
+        client = self._client()
+        plan = SupplementPlan.objects.filter(id=request.data.get("plan")).first()
+        if plan is None:
+            raise serializers.ValidationError({"plan": ["Pick a supplement plan."]})
+        return self._assign(request, client, [plan], "a supplement plan")
+
+
+class ClientHabitPlansViewSet(_ClientSlot):
+    model = HabitAssignment
+    field = "habit"
+    write_permission = "nutrition.meal_plans"
+
+    @staticmethod
+    def row(a):
+        return {"id": a.id, "habit": HabitSerializer(a.habit).data, "start_date": a.start_date, "active": a.active,
+                "ended_on": a.updated_at.date() if not a.active else None,
+                "assigned_by": a.assigned_by.full_name if a.assigned_by else None}
+
+    def create(self, request, client_pk=None):
+        self._check_write(request)
+        client = self._client()
+        ids = request.data.get("habits")
+        habits = list(Habit.objects.filter(id__in=ids)) if isinstance(ids, list) and ids else []
+        if not habits:
+            raise serializers.ValidationError({"habits": ["Pick at least one habit."]})
+        return self._assign(request, client, habits, "habits")
 
 
 # ---------------------------------------------------------------- shared day view
@@ -308,8 +442,76 @@ class ClientHabitsView(APIView):
             from django.http import Http404
 
             raise Http404
+        kind = request.query_params.get("kind")
+        if kind in ("habits", "supps"):
+            return Response(staff_log(client, kind, request.query_params))
         day = parse_date(request.query_params.get("date") or "") or timezone.localdate()
         return Response(habits_day(client, day))
+
+
+def _clock(t):
+    return dfmt(timezone.localtime(t), "%-I:%M %p").lower() if t else ""
+
+
+def staff_log(client, kind, params):
+    """Client profile → Logs → Habits / Supplements: one column per habit (or supplement), one row per day of
+    the range, newest first. Each cell is true (done), false (not done) or null (not due that day); each row
+    also carries the drawer's list (name, what was logged, when it was ticked)."""
+    from apps.clients.logs import days_desc, page_of
+    from apps.clients.metrics import resolve_range
+
+    start, end = resolve_range(params, client)
+    days = days_desc(start, end, client)
+    today = timezone.localdate()
+    cols = []  # (key, name, sub(log), due(d), done(d), when(d))
+    if kind == "habits":
+        assigns = list(HabitAssignment.objects.filter(client=client, active=True).select_related("habit")
+                       .order_by("created_at"))
+        logs = {(lg.habit_id, lg.date): lg for lg in HabitLog.objects.filter(
+            client=client, date__range=(start, end), habit__in=[a.habit for a in assigns])}
+        for a in assigns:
+            h = a.habit
+
+            def sub(lg, h=h):
+                if lg is None or not lg.value:
+                    return ""
+                if h.unit.strip().lower() == "min" and lg.value >= 60:
+                    return f"{lg.value // 60} h {lg.value % 60} min" if lg.value % 60 else f"{lg.value // 60} h"
+                return f"{lg.value:,} {h.unit}".strip()
+
+            cols.append((str(h.id), h.name,
+                         lambda d, h=h, a=a: d >= a.start_date and h.is_due_on(d),
+                         lambda d, h=h: logs.get((h.id, d)),
+                         lambda lg: bool(lg and lg.done), sub, lambda lg: _clock(lg.updated_at) if lg else ""))
+    else:
+        for sa in (SupplementAssignment.objects.filter(client=client, active=True).select_related("plan")
+                   .order_by("created_at")):
+            took = {(lg.item_id, lg.date): lg for lg in SupplementLog.objects.filter(
+                client=client, item__plan=sa.plan, date__range=(start, end))}
+            for it in sa.plan.items.all():
+                line = " · ".join(x for x in (it.dose, it.get_timing_display().lower() if it.timing != "any" else "")
+                                  if x)
+                cols.append((str(it.id), it.name,
+                             lambda d, it=it, sa=sa: d >= sa.start_date and (not it.days or d.weekday() in it.days),
+                             lambda d, it=it, took=took: took.get((it.id, d)),
+                             lambda lg: lg is not None, lambda lg, line=line: line,
+                             lambda lg: _clock(lg.taken_at) if lg else ""))
+    rows = []
+    for d in days:
+        cells, items = {}, []
+        for key, name, due, get, ok, sub, when in cols:
+            lg = get(d)
+            if not due(d) and not ok(lg):
+                cells[key] = None
+                continue
+            cells[key] = ok(lg)
+            items.append({"id": key, "name": name, "sub": sub(lg), "done": ok(lg),
+                          "when": when(lg) if ok(lg) else ("Not yet" if d == today else "Not ticked")})
+        rows.append({"date": d, "cells": cells, "done": sum(1 for i in items if i["done"]), "due": len(items),
+                     "items": items})
+    out = page_of(rows, params)
+    out["columns"] = [{"id": c[0], "name": c[1]} for c in cols]
+    return out
 
 
 # ---------------------------------------------------------------- client app

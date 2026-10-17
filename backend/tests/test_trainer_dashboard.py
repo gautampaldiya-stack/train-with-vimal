@@ -51,10 +51,14 @@ def test_next_session_says_how_long_until_it_starts(db):
 
 def test_checkin_detail_carries_the_review_view(trainer):
     d = trainer.get("/api/v1/dashboard/trainer/").json()
-    sub = trainer.get(f"/api/v1/checkins/{d['checkins'][0]['id']}/").json()
+    row = d["checkins"][0]
+    sub = trainer.get(f"/api/v1/checkins/{row['id']}/").json()
     rv = sub["review"]
-    assert [k["label"] for k in rv["kpis"]] == ["Weight", "Change", "Workouts", "Meals on plan"]
-    assert rv["rows"] and rv["line"] == d["checkins"][0]["line"]
+    # Weekly / monthly show the week; a daily check-in shows that day (D-35).
+    want = ["Sleep", "Energy", "Workout", "Steps"] if sub["form_type"] == "daily" else \
+        ["Weight", "Change", "Workouts", "Meals on plan"]
+    assert [k["label"] for k in rv["kpis"]] == want
+    assert rv["rows"] and rv["line"] == row["line"]
 
 
 def test_each_client_shows_once_in_who_needs_you(trainer):

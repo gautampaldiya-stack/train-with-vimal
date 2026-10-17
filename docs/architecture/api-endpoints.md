@@ -68,7 +68,12 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `checkins/<pk>/review/` | POST | CheckinReviewViewSet | Trainer → Check-ins, dashboard 'Check-ins to review', client profile → Logs → check-ins. |
 | `checkins/<pk>/unreview/` | POST | CheckinReviewViewSet | Trainer → Check-ins, dashboard 'Check-ins to review', client profile → Logs → check-ins. |
 | `checkins/counts/` | GET | CheckinReviewViewSet | Trainer → Check-ins, dashboard 'Check-ins to review', client profile → Logs → check-ins. |
-| `clients/<uuid:client_pk>/forms/` | GET, POST | ClientFormsView | Client profile → Forms tab: sent forms (Filled / Waiting) + Send a form. |
+| `clients/<uuid:client_pk>/checkins/` | GET | ClientCheckinLogView | Client profile → Logs → Daily / Weekly check-ins (staff): `?kind=daily/weekly&range=&page=`. One row per |
+| `clients/<uuid:client_pk>/forms/` | GET, POST | ClientFormsView | GET: the tab's list (`sent`) and the library forms to send (`can_send`). |
+| `clients/<uuid:client_pk>/forms/<str:key>/` | GET, POST | ClientFormView | One form of the list: GET the card; POST an action: remind · send_now · stop · start · reset. |
+| `clients/<uuid:client_pk>/forms/<str:key>/<str:act>/` | GET, POST | ClientFormView | One form of the list: GET the card; POST an action: remind · send_now · stop · start · reset. |
+| `clients/<uuid:client_pk>/forms/<str:key>/questions/` | GET, PUT | ClientFormQuestionsView | The per-client editor ("Edit Weekly check-in for Riya"): GET the questions of her copy (or of the master |
+| `clients/<uuid:client_pk>/forms/duplicate/` | POST | ClientFormDuplicateView | Duplicate and edit → Send copy: a new form only for her {source: list key / form: library id, name, |
 | `clients/<uuid:client_pk>/progress/` | GET | ClientProgressView | Client profile → Progress tab (staff): weights, measurements, photo sets. |
 | `forms/` | GET, POST | FormViewSet |  |
 | `forms/<pk>/` | GET, PUT, PATCH, DELETE | FormViewSet |  |
@@ -109,12 +114,16 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `clients/<client_pk>[0-9a-f-]+)/notes/<pk>/restore/` | POST | ClientNoteViewSet | /clients/<client_id>/notes/ — staff-only notes. |
 | `clients/<pk>/` | GET, PUT, PATCH, DELETE | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
 | `clients/<pk>/change-trainer/` | POST | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
+| `clients/<pk>/history/` | GET | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
 | `clients/<pk>/overview/` | GET | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
 | `clients/<pk>/pause/` | POST | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
 | `clients/<pk>/remind/` | POST | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
 | `clients/<pk>/restore/` | POST | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
 | `clients/<pk>/resume/` | POST | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
 | `clients/<pk>/stats/` | GET | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
+| `clients/<uuid:client_pk>/logs/comment/` | POST | ClientLogCommentView | POST clients/<id>/logs/comment/ {about: workout/meals, date, text}: the client gets it in the app. |
+| `clients/<uuid:client_pk>/logs/compare/` | GET | ClientLogCompareView | GET clients/<id>/logs/compare/?a=<assignment>&b=<assignment> → both plan periods side by side. |
+| `clients/<uuid:client_pk>/logs/summary/` | GET | ClientLogSummaryView | GET clients/<id>/logs/summary/?range= → {from, to, workouts, meals, checkins}. |
 | `clients/counts/` | GET | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
 | `clients/export/` | GET | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
 | `clients/remind-at-risk/` | POST | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
@@ -135,8 +144,12 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 
 | Path | Methods | View | Notes |
 |---|---|---|---|
-| `clients/<client_pk>[0-9a-f-]+)/content/` | GET, POST | ClientContentView | Client profile → Content tab: share / unshare. |
-| `clients/<client_pk>[0-9a-f-]+)/content/<pk>/unshare/` | POST | ClientContentView | Client profile → Content tab: share / unshare. |
+| `clients/<client_pk>[0-9a-f-]+)/content/` | GET, POST | ClientContentView | Client profile → Content tab: what she sees and why (`?why=all/assigned/plan/everyone&q=&page=`), Assign |
+| `clients/<client_pk>[0-9a-f-]+)/content/<pk>[0-9a-f-]+)/remind/` | POST | ClientContentView | Client profile → Content tab: what she sees and why (`?why=all/assigned/plan/everyone&q=&page=`), Assign |
+| `clients/<client_pk>[0-9a-f-]+)/content/<pk>[0-9a-f-]+)/restore/` | POST | ClientContentView | Client profile → Content tab: what she sees and why (`?why=all/assigned/plan/everyone&q=&page=`), Assign |
+| `clients/<client_pk>[0-9a-f-]+)/content/<pk>[0-9a-f-]+)/unshare/` | POST | ClientContentView | Client profile → Content tab: what she sees and why (`?why=all/assigned/plan/everyone&q=&page=`), Assign |
+| `clients/<client_pk>[0-9a-f-]+)/content/<pk>[0-9a-f-]+)/until/` | POST | ClientContentView | Client profile → Content tab: what she sees and why (`?why=all/assigned/plan/everyone&q=&page=`), Assign |
+| `clients/<client_pk>[0-9a-f-]+)/content/library/` | GET | ClientContentView | Client profile → Content tab: what she sees and why (`?why=all/assigned/plan/everyone&q=&page=`), Assign |
 | `content-categories/` | GET, POST | CategoryViewSet |  |
 | `content-categories/<pk>/` | GET, PUT, PATCH, DELETE | CategoryViewSet |  |
 | `content/` | GET, POST | ContentViewSet |  |
@@ -166,6 +179,10 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 
 | Path | Methods | View | Notes |
 |---|---|---|---|
+| `clients/<client_pk>[0-9a-f-]+)/habit-plan/` | GET, POST | ClientHabitPlansViewSet |  |
+| `clients/<client_pk>[0-9a-f-]+)/habit-plan/<pk>/end/` | POST | ClientHabitPlansViewSet |  |
+| `clients/<client_pk>[0-9a-f-]+)/supplement-plans/` | GET, POST | ClientSupplementPlansViewSet |  |
+| `clients/<client_pk>[0-9a-f-]+)/supplement-plans/<pk>/end/` | POST | ClientSupplementPlansViewSet |  |
 | `clients/<uuid:client_pk>/habits/` | GET | ClientHabitsView | Client profile → Logs → Habits / Supplements (staff, read only). |
 | `habits/` | GET, POST | HabitViewSet |  |
 | `habits/<pk>/` | GET, PUT, PATCH, DELETE | HabitViewSet |  |
@@ -209,7 +226,9 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 
 | Path | Methods | View | Notes |
 |---|---|---|---|
-| `clients/<uuid:client_pk>/food/` | GET | ClientFoodLogView | Client profile → Logs → Meals: one day, or a date range summary. |
+| `clients/<client_pk>[0-9a-f-]+)/meal-plans/` | GET, POST | ClientMealPlanViewSet | Client profile → Plans → Meal plan slot: current, Up next and history; assign one plan; end it. |
+| `clients/<client_pk>[0-9a-f-]+)/meal-plans/<pk>/end/` | POST | ClientMealPlanViewSet | Client profile → Plans → Meal plan slot: current, Up next and history; assign one plan; end it. |
+| `clients/<uuid:client_pk>/food/` | GET | ClientFoodLogView | Client profile → Logs → Meals: one day (`?date=`), or one page of days (`?range=&page=`). |
 | `food-picker/` | GET | FoodPickerView | Builder → Add food: team foods first, grouped. |
 | `foods/` | GET, POST | FoodViewSet | Food library (staff). Clients search foods through /me/foods/. |
 | `foods/<pk>/` | GET, PUT, PATCH, DELETE | FoodViewSet | Food library (staff). Clients search foods through /me/foods/. |

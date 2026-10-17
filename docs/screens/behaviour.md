@@ -978,13 +978,23 @@ Board me Add client aur Invite link drawers hain par unhe kholne ka button board
 
 ---
 
-### 3.3 Check-ins — `TrainerCheckins`
+### 3.3 Check-ins — `TrainerCheckins` (built, D-35)
 
-Title **Check-ins**. Tabs `To review` · `Reviewed` · `All`. Kind filter: `All types` · `Weekly` · `Daily` · `Monthly`.
+Title **Check-ins**, subline *"4 to review · oldest from 2 d ago"* (sab ho gaye to *"All check-ins reviewed"*). Sirf trainer ke apne clients (`staff_submissions` → `visible_clients`).
 
-Row: client + kind + summary (*"Weight 61.8 kg · energy 3/5 · knees sore"*) + submitted time (`Tue 6 Oct, 7:40 pm`) + plan (`Fat Loss Phase 1 · week 6`).
+**Web (900+)**: ek card me do hisse — left 360 wide list, right khula check-in. **Phone**: list; row par tap → `/checkins/<id>` usi card me check-in khulta hai, `‹` se wapas list (wahi tab, type, rows).
 
-Kholne pe detail panel — saare answers, progress photos, aur `Compare with last time` toggle (cap *"Compared with last time"*) jo pichhli check-in ke saath side-by-side dikhata hai. Reply box + wahi 3 quick replies. Buttons `Open profile`, `Mark as not reviewed`. Review pe toast + `Undo`.
+**List**: tabs `To review` (count) · `Reviewed` · `All`; search *"Search client"* (naam, 300 ms baad); type chips `All types` · `Weekly` · `Daily` · `Monthly` har ek par us tab ka count (`checkins/counts/` → `kinds`). Row: avatar · naam · age (`2 d` / `6 h` / `12 min`, 48 ghante se purana laal) · kind (`Weekly check-in`) · summary (*"Weight 61.8 kg · energy 3/5 · knees sore"*) ya reviewed par ✓ *"Replied: …"*. Naye pehle, 30 ek baar me, `Show more` (cursor). Khali: *"All caught up"* / *"New check-ins show up here as clients send them."*; filter / search par *"Nothing here"* / *"Try another type."*. Kuch select nahi: *"Pick a check-in"* / *"Its answers show here."*.
+
+**Khula check-in**: avatar + naam (profile link) · *"Weekly check-in · sent Tue 6 Oct, 7:40 pm · Fat Loss Phase 1 · week 6"* · `‹` `›` (list me upar / neeche) · `Open profile` (`/clients/<id>`).
+- 4 numbers: weekly / monthly → `Weight` · `Change` · `Workouts` · `Meals on plan`; daily → `Sleep` · `Energy` · `Workout` · `Steps`. Behtar hua to hara, kharab to laal (Change: goal weight ki taraf gaya to hara).
+- **Answers** *"Compared with last time"*: har jawab ke saath pichhli baar ka (`last 4`, `same`), hara / laal usi rule se (hunger, soreness, stress kam = behtar).
+- *"Riya wrote"* box, **Photos** (*"3 photos · click to open"*, full screen viewer).
+- **Your reply** (ⓘ *"The client gets your reply in the app with their check-in. To change their plan, open their profile."*): box *"Write a short reply for Riya…"* + 3 quick replies (`Great week, keep going!` · `Let’s talk at your next session.` · `I’ve updated your plan.`). Draft check-ins badalne par bhi rehta hai.
+- Neeche *"3 more to review after this"* + `Mark reviewed` (reply likha ho to `Send and mark reviewed`). Toast *"Riya’s check-in reviewed"* + `Undo`; To review me agla apne aap khulta hai (phone par list par wapas).
+- Reviewed: hara box *"Reviewed Tue 6 Oct, 8:10 pm"* + reply + `Mark as not reviewed` (wapas To review me).
+
+Dashboard ka review drawer, sidebar count aur yeh page ek hi `checkins/counts/` aur `review/` API use karte hain, isliye numbers same rehte hain.
 
 ---
 
@@ -1028,12 +1038,21 @@ Admin ke trainer profile se **farq**:
 
 ---
 
-### 3.6 Client profile (trainer view) — `TrainerClientProfile`
+### 3.6 Client profile (trainer view) — `TrainerClientProfile` (built, D-34)
 
-Bilkul §2.23 jaisa hi screen, wahi 9 tabs aur wahi cards. Farq sirf itna:
-- Breadcrumb `My clients / Riya Sharma`.
-- Jo kaam trainer ke access me nahi hain (gym template edit karna, trainer badalna) wo menu me nahi aate.
-- `Change trainer` option 3-dot me nahi hota.
+`/clients/<id>?tab=overview|plans|logs|progress|history|content|forms|activity|notes`. Breadcrumb `My clients / Riya Sharma`. Header: avatar, naam, status badge, *"Fat loss · 62 kg goal · Your client since 3 Sep · Active 6 h ago"*; `Edit profile` (Edit details drawer), `Assign plan ▾` (Workout plan · Meal plan · Supplement plan · Habit plan → assign drawer), `⋯` (Edit profile details · Assign a plan · Send check-in reminder · Full history). 4 stats: Adherence, Weight, Workouts, Check-ins. Phone: stats ek card me 4 column, tabs side me scroll.
+
+- **Overview** — About Riya (onboarding se), Weight trend (`Open progress`), Last 7 days, Latest note, Needs attention (row → us tab), Coaching, Current plans (→ Plans), Check-ins and schedule.
+- **Plans** — `Workout` · `Meal plan` · `Supplements` · `Habits` + `Assign new plan`. Current plan card (`Current`, `Edited for Riya`, `Edit for Riya`, ⋯ Duplicate and edit · Replace · Reset to master (confirm) · Open master plan · End this plan (confirm)), Up next (`Change` / `Choose next plan`), Plan history (5, `Show all`). Workout: din ki strip, exercise rows (A1/A2, `Changed for Riya`), row → exercise drawer. Assign drawer: plan chuno → preview → *When does it start* (After current ends · Next to current · Replace current · Pick a date) → options (`Edit Riya's copy before she sees it`, `Tell Riya in the app`) → `Assign plan`. Editor me Save Riya ki apni copy banata hai; ek din badla to aage ke har hafte ka wahi din badalta hai.
+- **Logs** — `Workouts` · `Meals` · `Daily check-ins` · `Weekly check-ins` · `Habits` · `Supplements`, range picker (Last 7 / 30 / 90 days, ya koi plan; Progress ke saath shared), summary line, table (phone: blocks), 10 ek page. Row → drawer (Previous / Next), coach comment (Riya ko app me milta hai), check-in par review + Undo. `Compare plans` → A vs B.
+- **Progress** — change cards (Weight, Waist, Body fat, sabse badhi lift), weight chart, Measurements (Show all), Progress photos (viewer: Front/Side/Back, Compare two dates), All photos drawer, Personal bests.
+- **History** — 4 summary cards, Plans over time (Now / Completed / Replaced / Up next, Today line), Journey month-wise (chips, `Export` CSV, `Show earlier months`), About her journey, Health over time.
+- **Content** — chips (All · Assigned to Riya · From her plans · Everyone), `Assign content` drawer, table, row → Preview, ⋯ (Preview · Change how long · Remind her to open it · Open in library · Remove / Hide + Undo).
+- **Forms** — Onboarding answers (`Print`), Weekly check-in (`Edit for Riya` = uski copy, ⋯ Duplicate and edit · Send now · Reset to master · Stop sending / Start sending again), `Send a form` drawer (Once ya Repeats, remind after 24 h).
+- **Activity** — range (Today … All time), chips with counts, din-wise rows (old → new), `Show more`.
+- **Notes** — note likho + `Mark as a flag`, flagged upar amber box me, ⋯ Edit / Delete (+ Undo) sirf likhne wala ya admin.
+
+Jo kaam trainer ke access me nahi (gym template edit, trainer badalna) wo menu me nahi.
 
 ---
 

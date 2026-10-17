@@ -91,9 +91,13 @@ class ClientViewSet(viewsets.ModelViewSet):
         user = self.get_object()
         s = ClientUpdateSerializer(user, data=request.data, partial=True)
         s.is_valid(raise_exception=True)
+        from .history import goal_snapshot, log_goal_changes
+
+        before = goal_snapshot(user)
         s.save()
         activity_log("edited client details", "client", actor=request.user, target=user,
                      target_label=user.full_name, client=user)
+        log_goal_changes(user, before, request.user)  # History → "Goal weight changed"
         return Response(ClientDetailSerializer(user, context={"request": request}).data)
 
     def destroy(self, request, *args, **kwargs):
@@ -240,6 +244,16 @@ class ClientViewSet(viewsets.ModelViewSet):
 
         return Response(client_stats(self.get_object()))
 
+    @action(detail=True)
+    def history(self, request, pk=None):
+        """Client profile → History tab. ?months=4 (Show earlier months adds more) · ?export=csv for Export."""
+        from .history import client_history, history_csv
+
+        user = self.get_object()
+        if request.query_params.get("export") == "csv":
+            return history_csv(user)
+        return Response(client_history(user, request.query_params))
+
 
 class ClientNoteViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
     """/clients/<client_id>/notes/ — staff-only notes."""
@@ -251,7 +265,12 @@ class ClientNoteViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
         return services.get_visible_client(self.request.user, self.kwargs["client_pk"])
 
     def get_queryset(self):
-        return ClientNote.objects.filter(client=self._client()).select_related("author")
+        # Notes tab: flagged notes on top (the amber box), then newest first.
+        return ClientNote.objects.filter(client=self._client()).select_related("author").order_by(
+            "-is_flag", "-created_at")
+
+    def restore_queryset(self):
+        return ClientNote.all_objects.filter(client=self._client())
 
     def perform_create(self, serializer):
         client = self._client()
@@ -264,6 +283,13 @@ class ClientNoteViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
 
             raise PermissionDenied("Only the person who wrote a note can edit it.")
         serializer.save()
+
+    def perform_destroy(self, instance):
+        if instance.author_id != self.request.user.id and not self.request.user.is_admin:
+            from rest_framework.exceptions import PermissionDenied
+
+            raise PermissionDenied("Only the person who wrote a note can delete it.")
+        instance.soft_delete()
 
 
 # ---------------------------------------------------------------- invite links

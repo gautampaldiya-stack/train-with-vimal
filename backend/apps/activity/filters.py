@@ -5,7 +5,7 @@ from django.utils import timezone
 
 from .models import ActivityEvent
 
-RANGES = {"today": 0, "7d": 7, "30d": 30, "3m": 92}
+RANGES = {"today": 0, "7d": 7, "30d": 30, "3m": 92}  # anything else (e.g. "all") = no date limit
 
 
 class ActivityFilter(django_filters.FilterSet):

@@ -165,6 +165,20 @@ abstract final class AppColors {
     return avatars[(i - 1).clamp(0, avatars.length - 1)];
   }
 
+  // Client profile → Plans: `.media` exercise tiles t1–t4 (gradient from, to) and the icon on them.
+  static const mediaTiles = [
+    (Color(0xFFE8EDF7), Color(0xFFD3DCEC)),
+    (Color(0xFFEEF0E8), Color(0xFFDADFCF)),
+    (Color(0xFFF3ECE6), Color(0xFFE4D6CA)),
+    (Color(0xFFECE9F4), Color(0xFFD8D2E8)),
+  ];
+  static const mediaFg = Color(0x47171717);
+  static const changedLine = Color(0xFF9DB8F5), changedBg = Color(0xFFF6F9FF); // `.cp-ci.ch` changed for one client
+  // Client profile → History (`.hg-*` plans chart, `.hs-*` journey) and Activity (`.tp-tl-ic.k-pk` plan rows).
+  static const tlPkBg = Color(0xFFFCE7F3), tlPkFg = Color(0xFFBE185D);
+  static const hgDone = Color(0xFFDCEBDF), hgOld = Color(0xFFEDEDE8), hgGrid = Color(0xFFEFEFEA), hgToday = Color(0xFFDC2626);
+  static const hsDotRing = Color(0xFFE2E2DC), hsCheck = Color(0xFF7C3AED);
+
   static (Color, Color) avatarFor(String name) {
     var h = 0;
     for (final c in name.codeUnits) {

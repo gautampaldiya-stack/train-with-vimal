@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Count, Exists, OuterRef, Q
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import mixins, serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -18,6 +19,10 @@ from apps.notifications.services import notify
 from .models import Category, ContentItem, ContentShare, ContentView
 
 User = get_user_model()
+
+# A share the client really has: not removed for her, not an "Everyone" settings row.
+LIVE = Q(hidden=False) & ~Q(source=ContentShare.Source.EVERYONE)
+LIVE_SHARE = Q(shares__hidden=False) & ~Q(shares__source=ContentShare.Source.EVERYONE)
 
 LIMITS_MB = {"pdf": 25, "image": 10, "video": 500}
 EXT = {"pdf": {"pdf"}, "image": set(IMAGE_EXTENSIONS), "video": {"mp4", "mov", "m4v", "webm"}}
@@ -132,7 +137,7 @@ class ContentViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = ContentItem.objects.select_related("category", "created_by").annotate(
-            n_shares=Count("shares", distinct=True), n_exercises=Count("exercises", distinct=True))
+            n_shares=Count("shares", distinct=True, filter=LIVE_SHARE), n_exercises=Count("exercises", distinct=True))
         p = self.request.query_params
         if p.get("kind"):
             qs = qs.filter(kind=p["kind"])
@@ -157,7 +162,7 @@ class ContentViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
     def detail(self, request, pk=None):
         """Detail drawer: shared with, used in, stats."""
         item = self.get_object()
-        shares = ContentShare.objects.filter(item=item).select_related("client")[:50]
+        shares = ContentShare.objects.filter(item=item).filter(LIVE).select_related("client")[:50]
         views = ContentView.objects.filter(item=item)
         opened = views.count()
         finished = views.filter(finished=True).count()
@@ -183,7 +188,7 @@ class ContentViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
         item = self.get_object()
         visible = visible_clients(request.user).filter(status__in=["active", "paused"])
         if request.method == "GET":
-            has = set(ContentShare.objects.filter(item=item).values_list("client_id", flat=True))
+            has = set(ContentShare.objects.filter(item=item).filter(LIVE).values_list("client_id", flat=True))
             return Response({"everyone": item.share_everyone,
                              "clients": [{"id": str(u.id), "full_name": u.full_name, "initials": u.initials,
                                           "avatar_color": u.avatar_color, "has_it": u.id in has} for u in visible]})
@@ -196,10 +201,13 @@ class ContentViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
             item.share_everyone = everyone
             item.save(update_fields=["share_everyone", "updated_at"])
             vis_ids = {str(i) for i in visible.values_list("id", flat=True)}
-            current = {str(c) for c in ContentShare.objects.filter(item=item, client_id__in=vis_ids)
+            current = {str(c) for c in ContentShare.objects.filter(item=item, client_id__in=vis_ids).filter(LIVE)
                        .values_list("client_id", flat=True)}
             add = [i for i in ids - current if i in vis_ids]
             rem = [i for i in current - ids if i in vis_ids]
+            # a row kept from "Remove for <client>" or an Everyone setting becomes a fresh share
+            ContentShare.objects.filter(item=item, client_id__in=add).update(
+                hidden=False, source=ContentShare.Source.COACH, shared_by=request.user, expires_on=None)
             ContentShare.objects.bulk_create([ContentShare(item=item, client_id=i, shared_by=request.user)
                                               for i in add], ignore_conflicts=True)
             ContentShare.objects.filter(item=item, client_id__in=rem).delete()
@@ -220,11 +228,15 @@ class CategoryViewSet(viewsets.ModelViewSet):
         return Category.objects.annotate(n=Count("items", filter=Q(items__deleted_at__isnull=True)))
 
 
-class ClientContentView(mixins.ListModelMixin, viewsets.GenericViewSet):
-    """Client profile → Content tab: share / unshare."""
+class ClientContentView(viewsets.GenericViewSet):
+    """Client profile → Content tab: what she sees and why (`?why=all|assigned|plan|everyone&q=&page=`), Assign
+    content (`POST {items, until, date, note, tell}`), and per row Remove / Hide for her (`unshare`, Undo =
+    `restore`), Remind her to open it (`remind`) and Change how long (`until`). The drawer's library list is
+    `library/?kind=all|video|guide&q=&offset=`."""
 
     permission_classes = [IsStaff]
     serializer_class = ContentSerializer
+    lookup_value_regex = "[0-9a-f-]+"
 
     def _client(self):
         try:
@@ -235,24 +247,148 @@ class ClientContentView(mixins.ListModelMixin, viewsets.GenericViewSet):
             raise Http404
 
     def get_queryset(self):
-        return ContentItem.objects.filter(shares__client=self._client()).select_related("category")
+        from .library import visible
+
+        return visible(self._client())
+
+    def list(self, request, client_pk=None):
+        from .client_tab import WHY, plan_end, rows
+
+        client = self._client()
+        p = request.query_params
+        why = p.get("why") or "all"
+        if why not in ("all", *WHY):
+            raise serializers.ValidationError({"why": ["Use all, assigned, plan or everyone."]})
+        every = rows(client, request)
+        q = (p.get("q") or "").strip().lower()[:80]
+        shown = [r for r in every if (why == "all" or r["why"] == why) and (not q or q in r["title"].lower())]
+        try:
+            size = max(1, min(100, int(p.get("page_size", 25))))
+            page = max(1, int(p.get("page", 1)))
+        except ValueError:
+            size, page = 25, 1
+        return Response({
+            "count": len(shown), "page": page, "page_size": size,
+            "counts": {"all": len(every), **{w: sum(r["why"] == w for r in every) for w in WHY}},
+            "plan": plan_end(client),
+            "results": shown[(page - 1) * size:page * size],
+        })
+
+    @action(detail=False)
+    def library(self, request, client_pk=None):
+        from .client_tab import PICK_KINDS, library_page
+
+        kind = request.query_params.get("kind") or "all"
+        if kind not in PICK_KINDS:
+            raise serializers.ValidationError({"kind": ["Use all, video or guide."]})
+        try:
+            offset = max(0, int(request.query_params.get("offset", 0)))
+        except ValueError:
+            offset = 0
+        return Response(library_page(self._client(), kind=kind, q=request.query_params.get("q", ""),
+                                     offset=offset, request=request))
 
     def create(self, request, client_pk=None):
+        """Assign content: one item (`item`) or several (`items`). What she has already is left as it is,
+        except that sharing again changes the note and how long."""
+        from .client_tab import expires_from
+
         client = self._client()
-        item = get_object_or_404(ContentItem, id=request.data.get("item"))
-        share, made = ContentShare.objects.get_or_create(
-            item=item, client=client, defaults={"shared_by": request.user, "note": (request.data.get("note") or "")[:500]})
-        if not made and "note" in request.data:  # sharing again changes the note
-            share.note = (request.data.get("note") or "")[:500]
-            share.save(update_fields=["note"])
-        notify(client, "content_shared", f"New in your library: {item.title}", "", actor=request.user,
-               data={"route": f"/library/{item.id}"})
-        return Response(ContentSerializer(item, context={"request": request}).data, status=201)
+        ids = request.data.get("items") or ([request.data["item"]] if request.data.get("item") else [])
+        items = list(ContentItem.objects.filter(id__in=[str(i) for i in ids][:50]))
+        if not items:
+            raise serializers.ValidationError({"items": ["Pick at least one item."]})
+        ends = expires_from(request.data, client) if "until" in request.data else None
+        note = (request.data.get("note") or "")[:500]
+        added = []
+        with transaction.atomic():
+            for item in items:
+                share = ContentShare.objects.filter(item=item, client=client).first()
+                if share is None:
+                    share = ContentShare.objects.create(item=item, client=client, shared_by=request.user, note=note,
+                                                        expires_on=ends)
+                    added.append(item)
+                    continue
+                if share.hidden or share.source == ContentShare.Source.EVERYONE:
+                    share.hidden, share.source, share.shared_by = False, ContentShare.Source.COACH, request.user
+                    added.append(item)
+                if "note" in request.data:
+                    share.note = note
+                if "until" in request.data:
+                    share.expires_on = ends
+                share.save()
+        if added and request.data.get("tell", True) not in (False, "false", "0"):
+            title = (f"New in your library: {added[0].title}" if len(added) == 1
+                     else f"{len(added)} new items in your library")
+            notify(client, "content_shared", title, note[:140], actor=request.user,
+                   data={"route": f"/library/{added[0].id}" if len(added) == 1 else "/library"})
+        if added:
+            activity_log(f"shared {len(added)} item{'s' if len(added) != 1 else ''}", "content",
+                         actor=request.user, client=client, target_label=added[0].title)
+        return Response({"added": len(added), "items": [str(i.id) for i in added]}, status=201)
+
+    def _share(self, pk, client):
+        item = get_object_or_404(ContentItem, id=pk)
+        share = ContentShare.objects.filter(item=item, client=client).first()
+        return item, share
 
     @action(detail=True, methods=["post"])
     def unshare(self, request, client_pk=None, pk=None):
-        ContentShare.objects.filter(item_id=pk, client=self._client()).delete()
+        """Remove for her (assigned) / Hide for her (from a plan or everyone). The row is kept for Undo."""
+        client = self._client()
+        item, share = self._share(pk, client)
+        if share is None:
+            if not item.share_everyone:
+                return Response(status=204)
+            share = ContentShare(item=item, client=client, source=ContentShare.Source.EVERYONE)
+        share.hidden = True
+        share.save()
         return Response(status=204)
+
+    @action(detail=True, methods=["post"])
+    def restore(self, request, client_pk=None, pk=None):
+        """Undo of Remove / Hide."""
+        client = self._client()
+        item, share = self._share(pk, client)
+        if share is None or not share.hidden:
+            return Response({"error": {"code": "not_found", "message": "Nothing to restore."}}, status=404)
+        if share.source == ContentShare.Source.EVERYONE and not share.expires_on and not share.reminded_at:
+            share.delete()
+        else:
+            share.hidden = False
+            share.save(update_fields=["hidden"])
+        return Response(status=204)
+
+    @action(detail=True, methods=["post"])
+    def remind(self, request, client_pk=None, pk=None):
+        """Remind her to open it: a push with the title."""
+        client = self._client()
+        item, share = self._share(pk, client)
+        if not self.get_queryset().filter(id=item.id).exists():
+            raise serializers.ValidationError(f"{client.full_name} does not have this item now.")
+        if share is None:
+            share = ContentShare(item=item, client=client, source=ContentShare.Source.EVERYONE)
+        share.reminded_at = timezone.now()
+        share.save()
+        coach = request.user.first_name or "Your coach"
+        notify(client, "content_reminder", f"{coach} asked you to open: {item.title}", item.description[:140],
+               actor=request.user, data={"route": f"/library/{item.id}"})
+        return Response({"reminded_at": share.reminded_at})
+
+    @action(detail=True, methods=["post"])
+    def until(self, request, client_pk=None, pk=None):
+        """Change how long she keeps it: {"until": "always" | "plan" | "date", "date"}."""
+        from .client_tab import expires_from, until_label
+
+        client = self._client()
+        item, share = self._share(pk, client)
+        if not self.get_queryset().filter(id=item.id).exists():
+            raise serializers.ValidationError(f"{client.full_name} does not have this item now.")
+        if share is None:
+            share = ContentShare(item=item, client=client, source=ContentShare.Source.EVERYONE)
+        share.expires_on = expires_from(request.data, client)
+        share.save()
+        return Response({"until": share.expires_on, "until_label": until_label(share)})
 
 
 class MyLibraryViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
@@ -290,7 +426,12 @@ class MyLibraryViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewset
 
         item = get_object_or_404(self.get_queryset(), pk=pk)
         page = item_page(request.user, item, request)
-        ContentView.objects.get_or_create(item=item, user=request.user)  # opened: no longer New
+        _, first = ContentView.objects.get_or_create(item=item, user=request.user)  # opened: no longer New
+        if first:
+            verb = {"video": "watched a video", "pdf": "opened a PDF", "image": "opened an image"}.get(
+                item.kind, "read an article")
+            activity_log(verb, "content", actor=request.user, client=request.user, target=item,
+                         target_label=item.title)
         return Response(page)
 
     @action(detail=True, methods=["post"])

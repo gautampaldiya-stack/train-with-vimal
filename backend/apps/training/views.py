@@ -371,7 +371,7 @@ class ClientProgramViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
     def get_queryset(self):
         return ProgramAssignment.objects.filter(client=self._client()).select_related(
-            "program", "custom_program", "client")
+            "program", "custom_program", "client", "assigned_by")
 
     def list(self, request, *args, **kwargs):
         qs = list(self.get_queryset())
@@ -393,7 +393,8 @@ class ClientProgramViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         from django.utils.dateparse import parse_date
 
         a = services.assign_program(client, program, actor=request.user, when=when,
-                                    start_date=parse_date(start) if start else None)
+                                    start_date=parse_date(start) if start else None,
+                                    notify_client=request.data.get("notify", True) is not False)
         return Response(AssignmentSerializer(a).data, status=status.HTTP_201_CREATED)
 
     def _get(self, pk):
@@ -425,17 +426,21 @@ class ClientProgramViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         a = self._get(pk)
         name = (request.data.get("name") or f"{a.effective_program.name} (copy)").strip()[:120]
         also_master = bool(request.data.get("save_to_library"))
+        # "Starts": after the current plan ends (Up next) or now (replaces it).
+        when = request.data.get("when", "now")
+        if when not in ("now", "after_current"):
+            raise serializers.ValidationError({"when": ["Pick when it starts."]})
         with transaction.atomic():
             if also_master:
                 if request.user.is_trainer and not request.user.trainer_profile.has_perm("training.use_templates"):
                     raise PermissionDenied("Ask Vimal to save new master plans.")
                 master = services.duplicate_program(a.effective_program, actor=request.user, name=name)
-                new_a = services.assign_program(a.client, master, actor=request.user)
+                new_a = services.assign_program(a.client, master, actor=request.user, when=when)
             else:
                 master = a.program
                 copy = services.duplicate_program(a.effective_program, actor=request.user, name=name,
                                                   as_master=False, master=a.program)
-                new_a = services.assign_program(a.client, master, actor=request.user)
+                new_a = services.assign_program(a.client, master, actor=request.user, when=when)
                 new_a.custom_program = copy
                 new_a.save(update_fields=["custom_program"])
         return Response(AssignmentSerializer(new_a).data, status=status.HTTP_201_CREATED)
@@ -454,6 +459,11 @@ class ClientProgramViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     @action(detail=True, methods=["post"])
     def end(self, request, client_pk=None, pk=None):
         a = self._get(pk)
+        if a.status == "up_next":  # Up next taken off before it starts: nothing to keep in history
+            if a.custom_program_id:
+                a.custom_program.soft_delete()
+            a.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
         services.end_assignment(a, actor=request.user)
         return Response(AssignmentSerializer(a).data)
 
@@ -491,6 +501,48 @@ class ClientWorkoutLogViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, 
 
     def get_serializer_class(self):
         return WorkoutLogSerializer if self.action == "retrieve" else WorkoutRowSerializer
+
+    def list(self, request, *args, **kwargs):
+        """Workout log table: `?range=` (7d / 30d / 90d / 6m / start / plan:<id> / custom), `?page=`. Done and
+        partly-done workouts, plus planned days that passed with nothing logged (status missed, no id)."""
+        from apps.clients.logs import page_of
+        from apps.clients.metrics import planned_workout_days, program_day_for, resolve_range
+
+        qs = self.get_queryset()  # 404 for a client this person may not see
+        client = get_visible_client(request.user, self.kwargs["client_pk"])
+        start, end = resolve_range(request.query_params, client)
+        today = timezone.localdate()
+        rows = []
+        logs = list(qs.filter(date__range=(start, end)))
+        for w in logs:
+            sets = [x for x in w.sets.all() if not x.is_warmup]
+            done = w.status == "completed"
+            rows.append({
+                "id": str(w.id), "date": w.date, "name": w.name, "started_at": w.started_at,
+                "status": ("partly" if w.sets_planned and w.sets_done < w.sets_planned else "done") if done
+                else "in_progress",
+                "sets_done": w.sets_done, "sets_planned": w.sets_planned,
+                "volume": round(sum(x.volume for x in sets)), "duration_seconds": w.duration_seconds,
+                "effort": w.effort, "exercises": len({x.exercise_id for x in sets if x.done}),
+            })
+        logged = {w.date for w in logs}
+        for pa in ProgramAssignment.objects.filter(client=client, start_date__lte=end).filter(
+                Q(end_date__isnull=True) | Q(end_date__gte=start)).select_related("program", "custom_program"):
+            last = min(end, pa.end_date or end, today - timedelta(days=1))
+            for d in planned_workout_days(pa, max(start, pa.start_date), last):
+                if d in logged:
+                    continue
+                pd = program_day_for(pa, d)
+                logged.add(d)
+                rows.append({
+                    "id": None, "date": d, "name": (pd.name if pd else "") or "Workout", "status": "missed",
+                    "sets_done": 0, "sets_planned": 0, "volume": 0, "duration_seconds": 0, "effort": None,
+                    "planned": [e.exercise.name for e in pd.exercises.select_related("exercise")] if pd else [],
+                })
+        rows.sort(key=lambda r: (r["date"], str(r.get("started_at") or "")), reverse=True)
+        for r in rows:
+            r.pop("started_at", None)
+        return Response(page_of(rows, request.query_params))
 
 
 # ---------------------------------------------------------------- client app

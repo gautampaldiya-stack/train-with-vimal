@@ -64,7 +64,7 @@ def _initials(user):
 
 def source_line(item, share):
     """Assigned by Aman · 28 Sep · From Fat Loss Phase 1 · From your meal plan · For all clients · 12 Jan."""
-    if share is None:
+    if share is None or share.source == ContentShare.Source.EVERYONE:
         return f"For all clients · {dfmt(timezone.localtime(item.created_at), '%-d %b')}"
     if share.source == ContentShare.Source.PROGRAM:
         return f"From {share.source_label}" if share.source_label else "From your program"
@@ -75,7 +75,12 @@ def source_line(item, share):
 
 
 def visible(client):
-    return ContentItem.objects.filter(Q(share_everyone=True) | Q(shares__client=client)).distinct()
+    """Shared with everyone or with her, minus what the coach removed / hid for her and what ran out
+    ("How long she keeps it")."""
+    gone = ContentShare.objects.filter(client=client).filter(
+        Q(hidden=True) | Q(expires_on__lt=timezone.localdate())).values("item_id")
+    return (ContentItem.objects.filter(Q(share_everyone=True) | Q(shares__client=client, shares__hidden=False))
+            .exclude(id__in=gone).distinct())
 
 
 def _row(item, share, view):

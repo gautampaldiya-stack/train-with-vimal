@@ -1,7 +1,7 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from . import views
+from . import logs_views, views
 
 router = DefaultRouter()
 router.register("clients", views.ClientViewSet, basename="client")
@@ -17,5 +17,8 @@ urlpatterns = [
     path("me/activity/", views.MyActivityView.as_view(), name="my-activity"),
     path("me/data-export/", views.MyDataExportView.as_view(), name="my-data-export"),
     path("me/report/", views.MyProblemReportView.as_view(), name="my-report"),
+    path("clients/<uuid:client_pk>/logs/summary/", logs_views.ClientLogSummaryView.as_view(), name="client-log-summary"),
+    path("clients/<uuid:client_pk>/logs/compare/", logs_views.ClientLogCompareView.as_view(), name="client-log-compare"),
+    path("clients/<uuid:client_pk>/logs/comment/", logs_views.ClientLogCommentView.as_view(), name="client-log-comment"),
     *router.urls,
 ]

@@ -10,10 +10,13 @@ class SoftDeleteViewMixin:
     def perform_destroy(self, instance):
         instance.soft_delete()
 
+    def restore_queryset(self):
+        """Rows Undo may bring back; nested views narrow it to their parent (e.g. one client's notes)."""
+        return self.get_queryset().model.all_objects.all()
+
     @action(detail=True, methods=["post"])
-    def restore(self, request, pk=None):
-        model = self.get_queryset().model
-        obj = model.all_objects.filter(pk=pk, deleted_at__isnull=False).first()
+    def restore(self, request, pk=None, **kwargs):
+        obj = self.restore_queryset().filter(pk=pk, deleted_at__isnull=False).first()
         if obj is None:
             return Response({"error": {"code": "not_found", "message": "Nothing to restore."}}, status=404)
         self.check_object_permissions(request, obj)

@@ -374,6 +374,25 @@ def save_measures(client, day, values):
     return Measurement.objects.create(client=client, date=day, values=v)
 
 
+def _log_plain_body(client, day, what, after):
+    """Coach's feed (client profile → Activity, kind Body): "Riya logged body weight · 72.3 kg → 71.6 kg"
+    (from the weigh-in before), or "Riya added measurements · Waist 84 cm, Hips 101 cm"."""
+    from .models import MEASURES
+
+    if "weight" in after:
+        prev = (WeightLog.objects.filter(client=client, date__lt=day).order_by("-date")
+                .values_list("weight_kg", flat=True).first())
+        now = f"{float(after['weight']):g} kg"
+        activity_log("logged body weight", "body", actor=client, client=client, target_label=now,
+                     change=(f"{float(prev):g} kg", now) if prev is not None else None)
+        return
+    names = {k: (lbl, u) for k, lbl, u in MEASURES}
+    parts = [f"{names[k][0]} {float(v):g} {names[k][1]}" for k, v in after.items() if k in names and v is not None]
+    if parts:
+        activity_log("added measurements", "body", actor=client, client=client,
+                     meta={"note": ", ".join(parts[:3]) + (f" +{len(parts) - 3}" if len(parts) > 3 else "")})
+
+
 def log_body_change(client, day, what, before, after):
     """A weigh-in or measurement for a past day, or a change to one already logged, goes in My activity
     (and the coach's feed) as its own line, so an edit never hides. before / after = {key: number}."""
@@ -386,7 +405,8 @@ def log_body_change(client, day, what, before, after):
     changed = [k for k in after if k in before and before[k] != after[k]]
     gone = [k for k in before if k not in after]
     if not changed and not gone and day >= today:
-        return  # a plain log for today: it already shows as "Logged …"
+        _log_plain_body(client, day, what, after)
+        return  # a plain log for today: it already shows as "Logged …" in My activity
     on = dfmt(day, "%a, %-d %b")
     edit = bool(changed or gone)
     title = f"You {'changed' if edit else 'added'} {what} for {on}"
@@ -407,6 +427,6 @@ def log_body_change(client, day, what, before, after):
         return
     rows.append(["For", on + (" (a past day)" if day < today else "")])
     sub = ", ".join(r[0] for r in rows[:-1][:3]) + (f" +{len(rows) - 4}" if len(rows) > 4 else "")
-    activity_log(title[4:], "client", actor=client, client=client,
-                 meta={"mine": {"t": title, "s": sub, "rows": rows, "k": "Check-ins", "icon": "scale",
+    activity_log(title[4:].replace("your", "their"), "body", actor=client, client=client,
+                 meta={"note": sub, "mine": {"t": title, "s": sub, "rows": rows, "k": "Check-ins", "icon": "scale",
                                 "color": "amber", "link": "/progress", "label": "See progress"}})
