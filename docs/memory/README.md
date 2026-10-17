@@ -37,3 +37,4 @@ Things a new person (or a new Claude session) must know. Update when Gautam deci
 - Gautam (2026-10-16): trainer dashboard gets an Activity card (trainer + their clients, Show more), stat cards fill the row, demo PDF is a real designed guide, guides are set for reading (D-31).
 - Gautam (2026-10-16): every field takes only its type (mobile 10 digits, numbers, kg/cm decimals, email) and checks on save; dates are picked, not typed; My clients Export + checkboxes off for now (commented); filter = side submenu; tab title = page name; TWV favicon (D-33).
 - Gautam (2026-10-17): trainer Client profile built with all 9 tabs and the Check-ins page (D-34, D-35). Daily check-ins are reviewed as that day (sleep, energy, workout, steps); green = better, red = worse.
+- Gautam (2026-10-17): onboarding = his coaching Google Form, the whole form (D-36). Answers are profile fields; trainer edits them in Edit profile; About shows them; no mock data; age from date of birth.

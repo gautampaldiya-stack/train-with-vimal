@@ -90,18 +90,18 @@ def workout_reminders():
 # ---------------------------------------------------------------- meals
 @shared_task
 def meal_reminders():
-    from apps.nutrition.models import MealDayState, MealPlanAssignment
+    from apps.nutrition.models import MealDayState, MealPlanAssignment, meals_on
 
     local = _local_now()
     today = local.date()
     sent = 0
     rows = (MealPlanAssignment.objects.filter(status="active", start_date__lte=today, client__status="active",
                                               plan__status="published")
-            .select_related("client__reminder_prefs", "plan").prefetch_related("plan__meals"))
+            .select_related("client__reminder_prefs", "plan", "custom_plan"))
     for a in rows:
         if not _prefs(a.client).meal:
             continue
-        for m in a.plan.meals.all():
+        for m in meals_on(a.followed, today.weekday()):  # the client's own copy and that weekday's meals
             at = timezone.make_aware(datetime.combine(today, m.time))
             if not (at <= local < at + WINDOW):
                 continue

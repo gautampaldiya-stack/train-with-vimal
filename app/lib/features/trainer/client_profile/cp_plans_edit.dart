@@ -22,8 +22,9 @@ import 'cp_plans_parts.dart';
 
 /// Workout plan editor for one client (`pe.workout`): `Edit X for Y` (saves Y's own copy through
 /// `custom-structure`) or `New plan for Y: copy of X` (`new-from` + name, start, `Also save to the library`).
-/// Left: the 7 days of the current week (blue dot = changed). Right: day name, Workout / Rest, the exercise table
-/// (drag to reorder, sets, reps, RPE, tempo, rest, load, note, swap, remove), `Add exercise` · `Add superset`.
+/// Left: the 7 days of the current week (blue dot = changed). Right: day name, Workout / Rest, the day's exercises
+/// with their numbers and note (drag to reorder; Swap · Edit (a drawer, Previous / Next) · Remove),
+/// `Add exercise` · `Add superset`, the coach note for the day.
 /// A changed day is copied to the same weekday of every later week of the plan.
 class WorkoutEditor extends StatefulWidget {
   const WorkoutEditor({super.key, required this.d, required this.dup, required this.onClose, this.startDay});
@@ -47,11 +48,15 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
   bool lib = false, busy = false;
   int _gen = 0; // bumps field keys after swap / reorder
 
+  /// Bumped on every change so the exercise edit drawer (its own route) redraws too.
+  final _rev = ValueNotifier(0);
+
   String get first => d.c.first;
 
   @override
   void dispose() {
     name.dispose();
+    _rev.dispose();
     super.dispose();
   }
 
@@ -74,10 +79,13 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
 
   List get _ex => (_day(sel)['exercises'] ??= []) as List;
 
-  void _change(VoidCallback f) => setState(() {
-        f();
-        touched.add(sel);
-      });
+  void _change(VoidCallback f) {
+    setState(() {
+      f();
+      touched.add(sel);
+    });
+    _rev.value++;
+  }
 
   // ─────────────────────────────── save
 
@@ -432,7 +440,7 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
                 ]),
               ),
             ]),
-            Text(rest ? 'No exercises' : '${ex.length} exercises · drag to reorder', style: AppText.cap),
+            Text(rest ? 'No exercises' : '${ex.length} exercises · drag to reorder · tap one to edit it', style: AppText.cap),
           ]),
         ),
         if (rest)
@@ -444,27 +452,19 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
             ]),
           )
         else ...[
-          LayoutBuilder(
-            builder: (context, b) => SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                  width: b.maxWidth < 760 ? 760 : b.maxWidth,
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    _headRow(),
-                    ReorderableListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      buildDefaultDragHandles: false,
-                      itemCount: ex.length,
-                      onReorderItem: (o, n) => _change(() {
-                        final x = _ex.removeAt(o);
-                        _ex.insert(n, x);
-                        _gen++;
-                      }),
-                      itemBuilder: (ctx, i) => _exRow(i, ex[i], tags[i], diff.exercise(week, sel, i, ex[i]), key: ValueKey('r$i$_gen')),
-                    ),
-                  ]),
-                ),
+          Container(
+            decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
+            child: ReorderableListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              buildDefaultDragHandles: false,
+              itemCount: ex.length,
+              onReorderItem: (o, n) => _change(() {
+                final x = _ex.removeAt(o);
+                _ex.insert(n, x);
+                _gen++;
+              }),
+              itemBuilder: (ctx, i) => _exRow(i, ex[i], tags[i], diff.exercise(week, sel, i, ex[i]), key: ValueKey('r$i$_gen')),
             ),
           ),
           if (ex.isEmpty) const PdEmpty('No exercises yet. Add the first one.'),
@@ -484,6 +484,7 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
               key: ValueKey('note$sel$_gen'),
               value: '${day['rest_note'] ?? ''}',
               placeholder: rest ? 'Walk 8,000 steps and stretch for 10 minutes' : 'Shown to $first above the workout',
+              lines: 4,
               onChanged: (v) => _change(() => day['rest_note'] = v),
             ),
           ]),
@@ -492,63 +493,140 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
     );
   }
 
-  static const _cols = [28.0, 0.0, 60.0, 82.0, 52.0, 72.0, 72.0, 80.0, 72.0]; // 0 = flexible exercise column
-
-  Widget _headRow() => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: const BoxDecoration(color: AppColors.tableHeadDt, border: Border.symmetric(horizontal: BorderSide(color: AppColors.line))),
-        child: Row(spacing: 8, children: [
-          for (final (i, l) in ['', 'Exercise', 'Sets', 'Reps', 'RPE', 'Tempo', 'Rest', 'Load', ''].indexed)
-            _cols[i] == 0
-                ? Expanded(child: Text(l.toUpperCase(), style: AppText.over))
-                : SizedBox(width: _cols[i], child: Text(l.toUpperCase(), style: AppText.over)),
-        ]),
-      );
-
+  /// One exercise of the day (`.cp-exl` row): drag handle, tag, name and what changed, its numbers in even
+  /// columns (sets × reps, RPE, tempo, rest, load), the note, and Swap / Edit / Remove.
   Widget _exRow(int i, Map e, (String, bool) tag, String? was, {required Key key}) {
-    Widget cell(String field, String v, double w, ValueChanged<String> on, {String ph = '–'}) =>
-        SizedBox(width: w, child: _Cell(key: ValueKey('$field$i$_gen'), value: v, placeholder: ph, onChanged: (x) => _change(() => on(x))));
-    return Container(
+    final phone = context.isPhone;
+    final note = '${e['note'] ?? ''}'.trim();
+    Widget stat(String l, String v, double w) => SizedBox(
+          width: phone ? null : w,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+            Text(l, style: AppText.s(11, W.w6, color: AppColors.muted)),
+            Text(v.isEmpty ? '–' : v, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w7, color: v.isEmpty ? AppColors.muted : AppColors.text, tabular: true)),
+          ]),
+        );
+    final stats = [
+      stat('Sets × reps', '${e['sets'] ?? '–'} × ${'${e['reps'] ?? ''}'.ifEmpty('–')}', 92),
+      stat('RPE', '${e['rpe'] ?? ''}', 44),
+      stat('Tempo', '${e['tempo'] ?? ''}', 64),
+      stat('Rest', restText(e['rest_seconds']), 76),
+      stat('Load', loadText(e), 64),
+    ];
+    final acts = Row(mainAxisSize: MainAxisSize.min, spacing: 2, children: [
+      AppIconButton(AppIcons.swap, tooltip: 'Swap exercise', ghost: true, small: true, onPressed: () => _pick(swap: i)),
+      AppIconButton(AppIcons.edit, tooltip: 'Edit', ghost: true, small: true, onPressed: () => _editExercise(i)),
+      AppIconButton(AppIcons.trash, tooltip: 'Remove', ghost: true, small: true, onPressed: () => _remove(i)),
+    ]);
+    final name = Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+      Row(spacing: 6, children: [
+        Flexible(child: Text(exName(e), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
+        if (was != null) Container(width: 7, height: 7, decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle)),
+      ]),
+      if (was != null) Text(was, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.cap),
+      if (e['edited'] == true && was == null) Text('Edited in the program', style: AppText.cap),
+    ]);
+    return Material(
       key: key,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: const BoxDecoration(color: AppColors.card, border: Border(bottom: BorderSide(color: AppColors.line))),
-      child: Row(spacing: 8, children: [
-        SizedBox(
-          width: _cols[0],
-          child: ReorderableDragStartListener(
-            index: i,
-            child: const MouseRegion(cursor: SystemMouseCursors.grab, child: AppIcon(AppIcons.drag, size: 16, color: AppColors.chevron)),
-          ),
-        ),
-        Expanded(
-          child: Row(spacing: 8, children: [
+      color: AppColors.card,
+      child: Hover(
+        onTap: () => _editExercise(i),
+        builder: (_, h, _) => Container(
+          padding: const EdgeInsets.fromLTRB(10, 10, 8, 10),
+          decoration: BoxDecoration(color: h ? AppColors.outlineHover : null, border: const Border(bottom: BorderSide(color: AppColors.line))),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 3),
+              child: ReorderableDragStartListener(
+                index: i,
+                child: const MouseRegion(cursor: SystemMouseCursors.grab, child: AppIcon(AppIcons.drag, size: 16, color: AppColors.chevron)),
+              ),
+            ),
             numTag(tag),
-            if (was != null) Container(width: 7, height: 7, decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle)),
             Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 3, children: [
-                Text(exName(e), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
-                if (e['edited'] == true) Text('Edited in the program', style: AppText.cap),
-                if (was != null) Text(was, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.cap),
-                _Cell(key: ValueKey('note$i$_gen'), value: '${e['note'] ?? ''}', placeholder: 'Add a note', onChanged: (x) => _change(() => e['note'] = x)),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
+                if (phone) Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: name), acts]) else name,
+                phone ? Wrap(spacing: 16, runSpacing: 8, children: stats) : Row(spacing: 14, children: stats),
+                if (note.isNotEmpty)
+                  Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 6, children: [
+                    const Padding(padding: EdgeInsets.only(top: 2), child: AppIcon(AppIcons.info, size: 13, color: AppColors.muted)),
+                    Expanded(child: Text(note, style: AppText.s(12.5, W.w5, color: AppColors.text2, h: 1.45))),
+                  ]),
               ]),
             ),
+            if (!phone) acts,
           ]),
         ),
-        cell('sets', '${e['sets'] ?? ''}', _cols[2], (x) => e['sets'] = int.tryParse(x.trim()) ?? 0),
-        cell('reps', '${e['reps'] ?? ''}', _cols[3], (x) => e['reps'] = x.trim()),
-        cell('rpe', '${e['rpe'] ?? ''}', _cols[4], (x) => e['rpe'] = int.tryParse(x.trim())),
-        cell('tempo', '${e['tempo'] ?? ''}', _cols[5], (x) => e['tempo'] = x.trim()),
-        cell('rest', restText(e['rest_seconds']), _cols[6], (x) => e['rest_seconds'] = parseRest(x)),
-        cell('load', loadText(e), _cols[7], (x) => e['target_weight_kg'] = parseKg(x)),
-        SizedBox(
-          width: _cols[8],
-          child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-            AppIconButton(AppIcons.swap, tooltip: 'Swap exercise', ghost: true, small: true, onPressed: () => _pick(swap: i)),
-            AppIconButton(AppIcons.trash, tooltip: 'Remove', ghost: true, small: true, onPressed: () => _remove(i)),
-          ]),
-        ),
-      ]),
+      ),
     );
+  }
+
+  /// Edit drawer for one exercise of the day: sets, reps, RPE, tempo, rest, load, note. Previous / Next walk the
+  /// day's exercises; every change shows in the list at once (only for this client).
+  Future<void> _editExercise(int start) {
+    final i = ValueNotifier(start);
+    Widget field(String label, Widget f) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [Text(label, style: AppText.label), f]);
+    Widget two(BuildContext ctx, Widget a, Widget b) => ctx.isPhone
+        ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [a, b])
+        : Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 12, children: [Expanded(child: a), Expanded(child: b)]);
+    void go(int by) => i.value = (i.value + by + _ex.length) % _ex.length;
+    return showAppDrawer(
+      context,
+      title: 'Edit exercise',
+      sub: '${weekdayFull[sel]} · only for $first',
+      icon: AppIcons.dumbbell,
+      headerAction: ValueListenableBuilder(
+        valueListenable: i,
+        builder: (_, n, _) => Row(mainAxisSize: MainAxisSize.min, children: [
+          AppIconButton(AppIcons.chevronLeft, tooltip: 'Previous', ghost: true, small: true, onPressed: _ex.length < 2 ? null : () => go(-1)),
+          AppIconButton(AppIcons.chevronRight, tooltip: 'Next', ghost: true, small: true, onPressed: _ex.length < 2 ? null : () => go(1)),
+        ]),
+      ),
+      builder: (ctx) => ListenableBuilder(
+        listenable: Listenable.merge([i, _rev]),
+        builder: (ctx, _) {
+          final n = i.value;
+          if (n >= _ex.length) return const SizedBox();
+          final e = _ex[n] as Map;
+          final tag = tagsOf(exercisesOf(_day(sel)))[n];
+          Widget cell(String k, String v, ValueChanged<String> on, {String ph = '–', TextInputType? kb}) =>
+              _Cell(key: ValueKey('ed$k$n$_gen'), value: v, placeholder: ph, height: 36, keyboard: kb, onChanged: (x) => _change(() => on(x)));
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [
+            const SizedBox(height: 2),
+            Row(spacing: 10, children: [
+              numTag(tag),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+                  Text(exName(e), style: AppText.s(15, W.w8)),
+                  Text('Exercise ${n + 1} of ${_ex.length}${'${e['superset_group'] ?? ''}'.isEmpty ? '' : ' · superset ${e['superset_group']}'}', style: AppText.cap),
+                ]),
+              ),
+              AppButton('Swap', icon: AppIcons.swap, size: BtnSize.sm, onPressed: () => _pick(swap: n)),
+            ]),
+            two(ctx, field('Sets', cell('sets', '${e['sets'] ?? ''}', (x) => e['sets'] = int.tryParse(x.trim()) ?? 0, ph: '3', kb: TextInputType.number)),
+                field('Reps', cell('reps', '${e['reps'] ?? ''}', (x) => e['reps'] = x.trim(), ph: '8–10'))),
+            two(ctx, field('RPE (1–10)', cell('rpe', '${e['rpe'] ?? ''}', (x) => e['rpe'] = int.tryParse(x.trim()), kb: TextInputType.number)),
+                field('Tempo', cell('tempo', '${e['tempo'] ?? ''}', (x) => e['tempo'] = x.trim(), ph: '3-1-1'))),
+            two(ctx, field('Rest', cell('rest', restText(e['rest_seconds']), (x) => e['rest_seconds'] = parseRest(x), ph: '90 s or 2 min')),
+                field('Load', cell('load', loadText(e), (x) => e['target_weight_kg'] = parseKg(x), ph: 'kg, or empty for body weight'))),
+            field('Note for $first', _Cell(key: ValueKey('ednote$n$_gen'), value: '${e['note'] ?? ''}', placeholder: 'Two warm-up sets first, slow on the way down…', lines: 3, onChanged: (x) => _change(() => e['note'] = x))),
+            Text('Rest up to 5 min. Changes carry to the later weeks when you save.', style: AppText.cap),
+          ]);
+        },
+      ),
+      footer: (ctx) => [
+        if (ctx.isPhone) ...[
+          AppButton('Previous', icon: AppIcons.chevronLeft, onPressed: _ex.length < 2 ? null : () => go(-1)),
+          AppButton('Next', trailingIcon: AppIcons.chevronRight, onPressed: _ex.length < 2 ? null : () => go(1)),
+        ] else
+          Expanded(
+            child: ValueListenableBuilder(
+              valueListenable: i,
+              builder: (_, n, _) => Text(n < _ex.length ? 'Exercise ${n + 1} of ${_ex.length} · only for $first' : '', style: AppText.cap),
+            ),
+          ),
+        AppButton.primary('Done', icon: AppIcons.check, onPressed: () => Navigator.of(ctx).pop()),
+      ],
+    ).whenComplete(() => disposeLater([i]));
   }
 }
 
@@ -568,9 +646,14 @@ String? parseKg(String s) {
 
 /// `.cp-ci`: a small input box that keeps its own text and reports each change.
 class _Cell extends StatefulWidget {
-  const _Cell({super.key, required this.value, required this.onChanged, this.placeholder = ''});
+  const _Cell({super.key, required this.value, required this.onChanged, this.placeholder = '', this.lines = 1, this.height = 32, this.keyboard});
   final String value, placeholder;
   final ValueChanged<String> onChanged;
+
+  /// More than 1: a text area that many lines tall (the day's coach note).
+  final int lines;
+  final double height;
+  final TextInputType? keyboard;
   @override
   State<_Cell> createState() => _CellState();
 }
@@ -584,7 +667,9 @@ class _CellState extends State<_Cell> {
   }
 
   @override
-  Widget build(BuildContext context) => AppTextField(controller: t, placeholder: widget.placeholder, height: 32, fontSize: 13, onChanged: widget.onChanged);
+  Widget build(BuildContext context) => widget.lines > 1
+      ? AppTextField(controller: t, placeholder: widget.placeholder, maxLines: widget.lines, minLines: widget.lines, fontSize: 13, onChanged: widget.onChanged)
+      : AppTextField(controller: t, placeholder: widget.placeholder, height: widget.height, fontSize: 13, keyboard: widget.keyboard, onChanged: widget.onChanged);
 }
 
 class _AddBtn extends StatelessWidget {

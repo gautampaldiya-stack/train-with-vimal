@@ -74,6 +74,8 @@ def client_overview(user, request):
     from apps.checkins.models import Form, FormRequest
     from apps.scheduling.models import Session
 
+    from .onboarding import about_items
+
     cp = user.client_profile
     start, end = metrics.resolve_range(request.query_params, user)
     series = metrics.weight_series(user, start, end)
@@ -98,6 +100,8 @@ def client_overview(user, request):
             "start_date": cp.start_date,
             "onboarding": cp.onboarding,
             "health_notes": cp.health_notes,
+            # The About card: onboarding answers as the coach reads them (Edit profile changes them).
+            "items": about_items(user),
             "package": {"name": cp.package_name, "ends_on": cp.package_ends_on} if cp.package_name else None,
         },
         "weight_trend": {"range": {"from": start, "to": end}, "points": series, "change": change,

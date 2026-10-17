@@ -373,7 +373,7 @@ class _StepsPanel extends StatelessWidget {
                   constraints: const BoxConstraints(maxWidth: 400),
                   child: Opacity(
                     opacity: .85,
-                    child: Text('Five short steps, about three minutes. You can stop and finish later.', style: AppText.s(15, W.w4, color: AppColors.white, h: 1.5)),
+                    child: Text('${s.titles.length} short steps, about 10 minutes. Fill every detail carefully: your plans are made from it. You can stop and finish later.', style: AppText.s(15, W.w4, color: AppColors.white, h: 1.5)),
                   ),
                 ),
                 // `wl-bs`: 4 apart, 14 below the line above.

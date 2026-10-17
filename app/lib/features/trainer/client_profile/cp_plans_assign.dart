@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../app/services.dart';
 import '../../../core/api/api_error.dart';
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
-import '../../../core/widgets/badge.dart';
 import '../../../core/widgets/button.dart';
 import '../../../core/widgets/card.dart';
 import '../../../core/widgets/hover.dart';
@@ -55,9 +55,9 @@ Future<void> showAssignPlan(BuildContext context, CpController c, String slot, {
               _options(ctx, s),
             ],
           ),
-          if (s.picked.isNotEmpty) _sec('Preview', children: [_preview(s)]),
+          if (s.previewId != null) _sec(s.picked.isEmpty ? 'Preview · current plan' : 'Preview', children: [_preview(ctx, s)]),
           _sec('2. When does it start?', children: [
-            SegmentedTabs<String>(items: [for (final (k, l, _) in s.modes) TabItem(k, l)], value: s.when, onChanged: s.setWhen, expand: true),
+            fitTabsLeft(SegmentedTabs<String>(items: [for (final (k, l, _) in s.modes) TabItem(k, l)], value: s.when, onChanged: s.setWhen)),
             Text(s.modes.firstWhere((m) => m.$1 == s.when).$3, style: AppText.s(12.5, W.w5, color: AppColors.muted)),
             _two(
               ctx,
@@ -137,7 +137,9 @@ Widget _switch(String t, String s, bool v, ValueChanged<bool> on) => Hover(
       ]),
     );
 
-/// The plan list (`.dr-opts.joined`): radio (checkbox for habits), name + `Current` / tip badges, sub, clients.
+/// The plan list (`.dr-opts.joined`, list v2): rows with a line between and no gaps, radio (checkbox for habits),
+/// name + `Current` / `Suggested` / level badges, grey line, clients on the right. About 6 rows tall, then it
+/// scrolls inside.
 Widget _options(BuildContext ctx, _Assign s) {
   final list = s.visible;
   if (list.isEmpty) {
@@ -146,48 +148,119 @@ Widget _options(BuildContext ctx, _Assign s) {
       child: EmptyState(s.all.isEmpty ? 'Nothing in the library yet' : 'No plans match', sub: s.all.isEmpty ? 'Add one in the library first.' : 'Try another search or clear the filters.'),
     );
   }
-  return Container(
-    decoration: BoxDecoration(borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: AppColors.line2)),
-    child: Column(children: [
-      for (final (i, p) in list.indexed)
-        () {
-          final id = '${p['id']}';
-          final on = s.picked.contains(id);
-          final cur = s.isCurrent(id);
-          return Hover(
-            onTap: cur ? null : () => s.toggle(id),
-            builder: (_, h, _) => Opacity(
-              opacity: cur ? .6 : 1,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: on ? AppColors.pickBg : (h && !cur ? AppColors.outlineHover : null),
-                  border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line)),
-                ),
-                child: Row(spacing: 12, children: [
-                  s.multi ? AppCheckbox(value: on || cur, size: 18) : AppRadio(selected: on),
-                  Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-                      Wrap(spacing: 6, runSpacing: 2, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                        Text(s.name(p), style: AppText.s(13.5, W.w7)),
-                        if (cur) const AppBadge('Current', plain: true),
-                        if (s.tip(p) != null) AppBadge(s.tip(p)!, tone: Tone.info, plain: true),
-                      ]),
-                      Text(s.sub(p), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted)),
-                    ]),
-                  ),
-                  if (p['client_count'] != null) Text('${p['client_count']} clients', style: AppText.cap),
+  return PickList(children: [
+    for (final p in list)
+      () {
+        final id = '${p['id']}';
+        final cur = s.isCurrent(id);
+        return PickRow(
+          title: s.name(p),
+          sub: s.sub(p),
+          badges: [if (cur) const OptBadge('Current'), if (s.tip(p) != null) OptBadge(s.tip(p)!, tone: Tone.info)],
+          end: p['client_count'] == null ? null : '${p['client_count']} clients',
+          on: s.picked.contains(id),
+          multi: s.multi,
+          disabled: cur,
+          // The current plan cannot be picked again; tapping it shows its preview.
+          onTap: cur ? (s.multi ? null : () => s.set(() => s.picked = {})) : () => s.toggle(id),
+        );
+      }(),
+  ]);
+}
+
+/// `.dr-opts.joined` v2 box: rows with a line between, ~6 rows tall, scrolls inside when longer.
+class PickList extends StatefulWidget {
+  const PickList({super.key, required this.children, this.maxHeight = 6 * 58});
+  final List<Widget> children;
+  final double maxHeight;
+  @override
+  State<PickList> createState() => _PickListState();
+}
+
+class _PickListState extends State<PickList> {
+  final _sc = ScrollController();
+
+  @override
+  void dispose() {
+    _sc.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      for (final (i, w) in widget.children.indexed)
+        Container(decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line))), child: w),
+    ]);
+    if (widget.children.length <= 6) return rows;
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: widget.maxHeight),
+      child: Scrollbar(
+        controller: _sc,
+        thumbVisibility: true,
+        child: SingleChildScrollView(controller: _sc, padding: const EdgeInsets.only(right: 12), child: rows),
+      ),
+    );
+  }
+}
+
+/// `.dr-opt .t .badge`: a plain badge 20 high, 11 px.
+class OptBadge extends StatelessWidget {
+  const OptBadge(this.label, {super.key, this.tone = Tone.neutral});
+  final String label;
+  final Tone tone;
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 20,
+        padding: const EdgeInsets.symmetric(horizontal: 7),
+        decoration: BoxDecoration(color: tone.bg, borderRadius: AppRadius.all(AppRadius.badge)),
+        // widthFactor 1: the badge hugs its text (alignment alone would stretch it in a Wrap).
+        child: Center(widthFactor: 1, child: Text(label, style: AppText.s(11, W.w7, color: tone.fg))),
+      );
+}
+
+/// `.dr-opt.sm` in a joined list: radio / check, title + badges, grey line, number on the right. The picked row
+/// shows only in the radio; hover turns the title blue; `.dis` (the current plan) is greyed with a grey radio.
+class PickRow extends StatelessWidget {
+  const PickRow({super.key, required this.title, required this.sub, this.badges = const [], this.end, required this.on, this.multi = false, this.disabled = false, this.onTap});
+  final String title, sub;
+  final List<Widget> badges;
+  final String? end;
+  final bool on, multi, disabled;
+  final VoidCallback? onTap;
+  @override
+  Widget build(BuildContext context) => Hover(
+        onTap: onTap,
+        builder: (_, h, _) => Opacity(
+          opacity: disabled ? .6 : 1,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Row(spacing: 12, children: [
+              if (multi)
+                AppCheckbox(value: on || disabled, size: 18)
+              else if (disabled)
+                Container(width: 18, height: 18, decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.sub, border: Border.all(color: AppColors.line2, width: 1.5)))
+              else
+                AppRadio(selected: on),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+                  Wrap(spacing: 8, runSpacing: 2, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                    Text(title, style: AppText.s(13.5, W.w7, color: h && !disabled ? AppColors.accentText : AppColors.text)),
+                    ...badges,
+                  ]),
+                  Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.text2)),
                 ]),
               ),
-            ),
-          );
-        }(),
-    ]),
-  );
+              if (end != null) Text(end!, style: AppText.s(12, W.w6, color: AppColors.muted)),
+            ]),
+          ),
+        ),
+      );
 }
 
 /// Preview (`.pvw`): name, note, `Open in library`, the 3–4 numbers, each week / each day, what changes vs now.
-Widget _preview(_Assign s) => FutureBuilder<_Pv>(
+Widget _preview(BuildContext dctx, _Assign s) => FutureBuilder<_Pv>(
+      key: ValueKey(s.previewId),
       future: s.preview(),
       builder: (ctx, snap) {
         final pv = snap.data;
@@ -204,6 +277,12 @@ Widget _preview(_Assign s) => FutureBuilder<_Pv>(
                         if (pv.note.isNotEmpty) Text(pv.note, style: AppText.s(12.5, W.w5, color: AppColors.muted)),
                       ]),
                     ),
+                    if (s.libraryRoute != null)
+                      AppButton('Open in library', kind: BtnKind.text, icon: AppIcons.external, size: BtnSize.sm, onPressed: () {
+                        final r = s.libraryRoute!, router = GoRouter.of(dctx);
+                        Navigator.of(dctx).pop();
+                        router.go(r);
+                      }),
                   ]),
                   Container(
                     padding: const EdgeInsets.only(bottom: 10),
@@ -333,7 +412,9 @@ class _Assign extends ChangeNotifier {
       if (replace && modes.any((m) => m.$1 == 'now')) when = 'now';
       if (next && current.isNotEmpty) when = modes.any((m) => m.$1 == 'next') && slot == 'workout' ? 'next' : 'date';
       _syncStart();
-      final first = visible.where((p) => !isCurrent('${p['id']}')).firstOrNull;
+      // The board starts on the Suggested plan; without one nothing is picked and the preview shows the current
+      // plan.
+      final first = visible.where((p) => tip(p) == 'Suggested').firstOrNull;
       if (first != null && !multi) picked = {'${first['id']}'};
     } on ApiError catch (e) {
       error = e.message;
@@ -356,7 +437,23 @@ class _Assign extends ChangeNotifier {
         };
 
   String name(Map p) => '${p['name']}';
-  String? tip(Map p) => slot == 'meal' && p['status'] != 'published' ? 'Draft' : null;
+
+  /// The client's level from onboarding (beginner / intermediate / advanced), '' when not known.
+  String get _level => '${c.profile['experience'] ?? ''}'.toLowerCase();
+
+  /// The first library program at the client's level (not the current one) is `Suggested`; others at that
+  /// level `Fits her level`.
+  String? get _suggested => slot != 'workout' || _level.isEmpty
+      ? null
+      : all.where((p) => p['level'] == _level && !isCurrent('${p['id']}')).map((p) => '${p['id']}').firstOrNull;
+
+  String? tip(Map p) => switch (slot) {
+        'meal' => p['status'] != 'published' ? 'Draft' : null,
+        'workout' when isCurrent('${p['id']}') => null,
+        'workout' when '${p['id']}' == _suggested => 'Suggested',
+        'workout' when _level.isNotEmpty && p['level'] == _level => 'Fits ${pronoun(c)} level',
+        _ => null,
+      };
   String sub(Map p) => switch (slot) {
         'meal' => [
             '${const {'veg': 'Veg', 'egg': 'Eggetarian', 'nonveg': 'Non-veg', 'vegan': 'Vegan'}[p['diet']] ?? p['diet']}',
@@ -365,12 +462,13 @@ class _Assign extends ChangeNotifier {
           ].join(' · '),
         'supplements' => [for (final i in (p['items'] as List?) ?? const []) '${i['name']}'].join(', ').ifEmpty('No items yet'),
         'habits' => '${p['frequency_label']}${'${p['why'] ?? ''}'.isEmpty ? '' : ' · ${p['why']}'}',
-        _ => ['${p['weeks']} weeks', '${p['days_per_week']} days a week', if ('${p['goal_line'] ?? ''}'.isNotEmpty) '${p['goal_line']}'].join(' · '),
+        _ => ['${p['weeks']} weeks', '${p['days_per_week']} days a week', '${p['level_label'] ?? ''}'.ifEmpty('Any level')].join(' · '),
       };
 
   // ── filter + search
   List<(String, List<(String, String)>)> get filters => switch (slot) {
         'workout' => [
+            ('Level', [('', 'All'), ('beginner', 'Beginner'), ('intermediate', 'Intermediate'), ('advanced', 'Advanced'), ('any', 'Any level')]),
             ('Days a week', [('', 'Any'), ('2', '2'), ('3', '3'), ('4', '4'), ('5', '5'), ('6', '6')]),
           ],
         'meal' => [
@@ -392,6 +490,8 @@ class _Assign extends ChangeNotifier {
 
   List<Map> get visible => all.where((p) {
         if (query.isNotEmpty && !'${p['name']}'.toLowerCase().contains(query)) return false;
+        final level = filter['Level'] ?? '';
+        if (level.isNotEmpty && '${p['level'] ?? 'any'}' != level) return false;
         final days = filter['Days a week'] ?? '';
         if (days.isNotEmpty && '${p['days_per_week']}' != days) return false;
         final diet = filter['Diet'] ?? '';
@@ -415,6 +515,25 @@ class _Assign extends ChangeNotifier {
       });
 
   Map? get _sel => all.where((p) => picked.contains('${p['id']}')).firstOrNull;
+
+  /// What the preview shows: the picked plan, else the current one (its library row, or what the client row
+  /// carries when the master left the library).
+  Map? get _pv {
+    if (picked.isNotEmpty) return multi ? const {} : _sel;
+    final a = current.firstOrNull;
+    if (a == null) return null;
+    final id = _curId(a);
+    return all.where((p) => '${p['id']}' == id).firstOrNull ?? {'id': id, 'name': curName, 'items': a['items'] ?? const []};
+  }
+
+  String? get previewId => _pv == null ? null : (picked.isEmpty ? 'cur' : picked.join(','));
+
+  /// Library page of the previewed plan (`Open in library`).
+  String? get libraryRoute {
+    final p = _pv;
+    if (p == null) return null;
+    return switch (slot) { 'meal' => '/meal-plans/${p['id']}', 'workout' => '/programs/${p['id']}', _ => '/habits' };
+  }
 
   // ── when
   DateTime? get _curEnd => slot == 'workout' && current.isNotEmpty ? planEnd(current.first) : null;
@@ -483,8 +602,11 @@ class _Assign extends ChangeNotifier {
   // ── preview
   Future<_Pv> preview() async {
     final f = NumberFormat.decimalPattern('en_IN');
+    final isCur = picked.isEmpty; // the current plan: nothing to compare
     if (multi) {
-      final hs = all.where((p) => picked.contains('${p['id']}')).toList();
+      final hs = isCur
+          ? [for (final a in current) a['habit'] as Map]
+          : all.where((p) => picked.contains('${p['id']}')).toList();
       return _Pv(hs.length == 1 ? '${hs.first['name']}' : '${hs.length} habits', 'Checked by ${c.first} in the app', [
         ('Habits', '${hs.length}'),
         ('Length', 'Ongoing'),
@@ -492,16 +614,17 @@ class _Assign extends ChangeNotifier {
       ], 'Each day', [
         for (final h in hs) ('${h['frequency_label']}', '${h['name']}', h['kind'] == 'counter' ? '${f.format(h['target'] ?? 0)} ${h['unit']}' : 'yes / no', false),
       ], [
-        if (current.isNotEmpty) when == 'now' ? 'Replaces the ${current.length} habits ${c.first} has now' : 'Runs next to the ${current.length} habits ${c.first} has now',
+        if (current.isNotEmpty && !isCur)
+          when == 'now' ? 'Replaces the ${current.length} habits ${c.first} has now' : 'Runs next to the ${current.length} habits ${c.first} has now',
       ]);
     }
-    final p = _sel!;
+    final p = _pv!;
     final id = '${p['id']}';
     switch (slot) {
       case 'supplements':
         final items = [for (final i in (p['items'] as List?) ?? const []) i as Map];
         const t = {'breakfast': 'Breakfast', 'morning': 'Morning', 'post_workout': 'After workout', 'any': 'Any time', 'night': 'Night', 'before_bed': 'Before bed'};
-        final cur = current.isEmpty ? <String>{} : {for (final i in (current.first['items'] as List)) '${i['name']}'};
+        final cur = current.isEmpty || isCur ? <String>{} : {for (final i in (current.first['items'] as List)) '${i['name']}'};
         final now = {for (final i in items) '${i['name']}'};
         return _Pv('${p['name']}', '${p['note'] ?? ''}'.ifEmpty('${p['client_count'] ?? 0} clients on it'), [
           ('Items', '${items.length}'),
@@ -516,7 +639,7 @@ class _Assign extends ChangeNotifier {
       case 'meal':
         final m = await _detail.putIfAbsent(id, () => Services.api.get<Map>('meal-plans/$id/'));
         final meals = [for (final x in (m['meals'] as List?) ?? const []) x as Map];
-        final cur = current.firstOrNull;
+        final cur = isCur ? null : current.firstOrNull;
         final dk = cur == null ? 0 : ((m['kcal_target'] as num) - (cur['kcal'] as num)).toInt();
         final dm = cur == null ? 0 : meals.length - ((cur['meals'] as num?) ?? 0).toInt();
         return _Pv('${m['name']}', '${const {'veg': 'Vegetarian', 'egg': 'Eggetarian', 'nonveg': 'Non-veg', 'vegan': 'Vegan'}[m['diet']] ?? ''} · ${m['client_count'] ?? 0} clients on it', [
@@ -536,12 +659,12 @@ class _Assign extends ChangeNotifier {
         final days = [for (var i = 0; i < 7; i++) dayOf(w1, i)];
         final train = days.where((d) => !isRest(d)).toList();
         final mins = train.isEmpty ? 0 : (train.fold<int>(0, (a, d) => a + dayMinutes(d)) / train.length).round();
-        final cur = current.firstOrNull;
+        final cur = isCur ? null : current.firstOrNull;
         return _Pv('${m['name']}', ['${m['goal_line'] ?? ''}', '${m['client_count'] ?? p['client_count'] ?? 0} clients on it'].where((x) => x.isNotEmpty).join(' · '), [
           ('Days', '${m['days_per_week']} a week'),
           ('Length', '${m['weeks']} weeks'),
           ('Time', mins == 0 ? '–' : '~$mins min'),
-          ('Goal', '${m['goal_line'] ?? ''}'.split(' · ').first.ifEmpty('–')),
+          ('Level', '${m['level_label'] ?? ''}'.ifEmpty('Any level')),
         ], 'Each week', [
           for (var i = 0; i < 7; i++)
             (weekdayShort[i], isRest(days[i]) ? 'Rest' : '${days[i]?['name'] ?? ''}'.ifEmpty('Workout'), isRest(days[i]) ? '${days[i]?['rest_note'] ?? ''}'.split('.').first : '${exercisesOf(days[i]).length} exercises', isRest(days[i])),

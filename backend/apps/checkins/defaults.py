@@ -15,21 +15,15 @@ def q(text, type, *, options=None, scale=None, help="", required=False, metric="
             "required": required, "metric": metric, "allow_other": other}
 
 
+def _onboarding():
+    from apps.clients.onboarding import form_template
+
+    return form_template()
+
+
 TEMPLATES = {
-    "onboarding": [
-        q("What is your main goal?", "single", options=["Lose fat", "Build muscle", "Get stronger", "Get fitter",
-                                                       "Feel better"], required=True, other=True),
-        q("How many days a week can you train?", "single", options=["2", "3", "4", "5", "6"], required=True),
-        q("Where will you train?", "single", options=["Gym", "Home", "Both"], required=True),
-        q("Have you trained before?", "single", options=["Never", "Less than a year", "1–3 years",
-                                                         "More than 3 years"]),
-        q("What do you eat?", "single", options=["Vegetarian", "Eggetarian", "Non-veg", "Vegan"], required=True),
-        q("Foods you don't eat or are allergic to", "long"),
-        q("Any injury, pain or health condition?", "long", help="Back pain, thyroid, recent surgery…"),
-        q("What time do you usually wake up?", "short"),
-        q("Your job is mostly…", "single", options=["Sitting", "Standing", "Moving a lot"]),
-        q("Anything else your coach should know?", "long"),
-    ],
+    # The gym's coaching form (D-36): one question per client profile field, in the form's words.
+    "onboarding": _onboarding(),
     "weekly": [
         q("Body weight (kg)", "number", help="Weigh in the morning, before you eat.", required=True, metric="weight"),
         q("How was your week?", "scale", scale=["Very hard", "Hard", "Okay", "Good", "Great"],
@@ -82,10 +76,19 @@ BUILTIN_FORMS = [
 
 
 def seed():
-    from .models import Form, Question
+    from .models import Answer, Form, Question
 
     for name, type_, questions, is_parq in BUILTIN_FORMS:
-        if Form.all_objects.filter(name=name).exists():
+        f = Form.all_objects.filter(name=name).first()
+        if f is not None:
+            if type_ == "onboarding" and not is_parq and not f.questions.exclude(profile_key="").exists():
+                # Before D-36 the questionnaire had 10 general questions; it becomes the gym's coaching form.
+                # Answered old questions stay readable (taken off the form), the rest go.
+                old = f.questions.all()
+                answered = set(Answer.objects.filter(question__in=old).values_list("question_id", flat=True))
+                old.exclude(id__in=answered).delete()
+                Question.objects.filter(id__in=answered).update(is_removed=True, order=999)
+                Question.objects.bulk_create([Question(form=f, order=i, **qd) for i, qd in enumerate(questions)])
             continue
         f = Form.objects.create(name=name, type=type_, status=Form.Status.PUBLISHED, is_parq=is_parq)
         Question.objects.bulk_create([Question(form=f, order=i, **qd) for i, qd in enumerate(questions)])

@@ -79,6 +79,9 @@ class Program(SoftDeleteModel):
     goal_line = models.CharField(max_length=120, blank=True, default="")  # "Fat loss · gym"
     weeks = models.PositiveSmallIntegerField(default=8, validators=[MinValueValidator(1), MaxValueValidator(52)])
     days_per_week = models.PositiveSmallIntegerField(default=4, validators=[MinValueValidator(1), MaxValueValidator(7)])
+    # Who the plan suits: beginner / intermediate / advanced, or "any" (assign drawer filter and row line)
+    level = models.CharField(max_length=12, choices=[*Level.choices, ("any", "Any level")], default="any",
+                             db_index=True)
     archived_at = models.DateTimeField(null=True, blank=True, db_index=True)
     is_master = models.BooleanField(default=True, db_index=True)
     master = models.ForeignKey("self", null=True, blank=True, on_delete=models.SET_NULL, related_name="copies")

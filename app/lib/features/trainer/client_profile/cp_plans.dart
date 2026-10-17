@@ -18,6 +18,7 @@ import 'cp_common.dart';
 import 'cp_model.dart';
 import 'cp_plans_assign.dart';
 import 'cp_plans_edit.dart';
+import 'cp_plans_meal_edit.dart';
 import 'cp_plans_model.dart';
 import 'cp_plans_parts.dart';
 
@@ -26,7 +27,7 @@ export 'cp_plans_assign.dart' show showAssignPlan;
 /// Client profile → Plans tab (boards `TrainerClientProfile` / `…Mobile`, `show.plans`): segment tabs Workout ·
 /// Meal plan · Supplements · Habits, `Assign new plan`, the current plan card (badges, info line, `Edit for X`,
 /// ⋯ menu), the slot's days / meals / items, Up next and Plan history. `Edit for X` and `Duplicate and edit` open
-/// the plan editor in place of the tab (workout), the version note (meal plan) or the habits drawer.
+/// the plan editor in place of the tab (workout, meal plan) or the habits drawer.
 class CpPlansTab extends StatefulWidget {
   const CpPlansTab(this.c, {super.key});
   final CpController c;
@@ -44,6 +45,9 @@ class _CpPlansTabState extends State<CpPlansTab> {
 
   /// Workout editor open: null = no, false = `Edit X for Y`, true = `New plan for Y: copy of X`.
   bool? _edit;
+
+  /// Meal plan editor open (`Edit for X`: the client's own copy, one weekday at a time).
+  bool _mealEdit = false;
 
   @override
   void initState() {
@@ -94,6 +98,17 @@ class _CpPlansTabState extends State<CpPlansTab> {
               dup: _edit!,
               startDay: _wday,
               onClose: () => setState(() => _edit = null),
+            );
+          }
+          if (_mealEdit && d.meal != null && d.mealPlan != null) {
+            return MealEditor(
+              key: ValueKey('meal${d.meal!['id']}'),
+              d: d,
+              startDay: _mday,
+              onClose: (day) => setState(() {
+                _mealEdit = false;
+                if (day != null) _mday = day;
+              }),
             );
           }
           final phone = context.isPhone;
@@ -364,16 +379,17 @@ class _CpPlansTabState extends State<CpPlansTab> {
     ];
     if (m == null) return _cols([_noPlan('No meal plan yet', 'Pick a meal plan from the library for ${c.first}.', 'Assign a meal plan')], side);
     final plan = d.mealPlan ?? const {};
-    final note = '${m['version_note'] ?? ''}'.trim();
+    final own = ownMealDays(plan);
     final info = [
       '${m['diet_label']}',
       'since ${cpDm(m['start_date'])}',
-      if (note.isNotEmpty) note.split('\n').first,
+      if (own.isNotEmpty) '${own.length} day${own.length == 1 ? '' : 's'} with ${own.length == 1 ? 'its' : 'their'} own meals',
     ].join(' · ');
-    final meals = [for (final x in (plan['meals'] as List?) ?? const []) x as Map];
-    final tot = meals.fold<(double, double)>((0, 0), (a, x) => (a.$1 + mealKcal(x), a.$2 + mealProtein(x)));
+    double kcalOn(int i) => mealsOnDay(plan, i).fold<double>(0, (a, x) => a + mealKcal(x));
     final today = DateTime.now().weekday - 1;
     final sel = _mday ?? today;
+    final meals = mealsOnDay(plan, sel);
+    final tot = meals.fold<(double, double)>((0, 0), (a, x) => (a.$1 + mealKcal(x), a.$2 + mealProtein(x)));
     final card = AppCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         _planHead(
@@ -381,7 +397,7 @@ class _CpPlansTabState extends State<CpPlansTab> {
           info: info,
           edited: m['custom'] == true,
           tip: 'Changes here apply only to ${c.first}. The master meal plan in the library stays the same.',
-          onEdit: () => _versionNote(m),
+          onEdit: _openMealEditor,
           menu: _menu(
             reset: m['custom'] == true ? () => _resetMeal(m) : null,
             openMaster: () => _openMaster('/meal-plans/${m['plan']}'),
@@ -396,16 +412,15 @@ class _CpPlansTabState extends State<CpPlansTab> {
           ('${m['fat_g']} g', 'Fat'),
         ]),
         DayStrip(
-          days: [for (var i = 0; i < 7; i++) (weekdayShort[i], '${_kcal(tot.$1.round())} kcal', false, false)],
+          days: [for (var i = 0; i < 7; i++) (weekdayShort[i], '${_kcal(kcalOn(i).round())} kcal', own.contains(i), false)],
           selected: sel,
           onPick: (i) => setState(() => _mday = i),
         ),
         PdHead(
           title: '${weekdayFull[sel]} · ${meals.length} meals',
           sub: '${_kcal(tot.$1.round())} kcal · P ${tot.$2.round()} g · tap a meal to see the foods',
-          badge: m['custom'] == true ? 'Edited for ${c.first}' : null,
+          badge: own.contains(sel) ? 'Own meals this day' : (m['custom'] == true ? 'Edited for ${c.first}' : null),
         ),
-        if (note.isNotEmpty) DayNote(note, label: 'Version note for ${c.first}'),
         if (meals.isEmpty) const PdEmpty('No meals in this plan yet.'),
         Padding(
           padding: const EdgeInsets.fromLTRB(8, 2, 8, 10),
@@ -413,7 +428,16 @@ class _CpPlansTabState extends State<CpPlansTab> {
             for (final (i, x) in meals.indexed)
               MealRow(
                 meal: x,
-                onTap: () => showMealDrawer(context, c: c, meals: meals, start: i, sub: '${weekdayFull[sel]} · ${m['plan_name']}', onEdit: () => _versionNote(m)),
+                onTap: () => showMealDrawer(context,
+                    c: c,
+                    meals: meals,
+                    start: i,
+                    sub: '${weekdayFull[sel]} · ${m['plan_name']}',
+                    custom: m['custom'] == true,
+                    onEdit: () => setState(() {
+                          _mday = sel;
+                          _mealEdit = true;
+                        })),
               ),
           ]),
         ),
@@ -424,30 +448,16 @@ class _CpPlansTabState extends State<CpPlansTab> {
 
   String _kcal(Object? v) => NumberFormat.decimalPattern('en_IN').format((v as num?) ?? 0);
 
-  Future<void> _versionNote(Map m) async {
-    final saved = await showVersionNote(context, c: c, m: m);
-    if (saved == true && mounted) d.reload();
-  }
+  void _openMealEditor() => setState(() => _mealEdit = true);
 
   Future<void> _resetMeal(Map m) async {
     final ok = await confirmAction(context,
         title: 'Reset to master?',
-        body: 'Removes the version note. ${c.first} follows the master meal plan "${m['plan_name']}" as it is.',
+        body: 'Every change made for ${c.first} in ${m['plan_name']} goes away, on every day. ${c.first} follows the master meal plan as it is. Logged meals stay.',
         confirm: 'Reset to master',
         danger: true,
         icon: AppIcons.reset);
-    if (!ok) return;
-    final prev = '${m['version_note'] ?? ''}';
-    await _post('meal-plans/${m['plan']}/clients/${c.id}/reset/',
-        ok: '${c.first} follows the master again',
-        sub: 'Version note removed',
-        action: 'Undo',
-        onAction: () async {
-          try {
-            await Services.api.put('meal-plans/${m['plan']}/clients/${c.id}/version-note/', {'version_note': prev});
-            d.reload();
-          } on ApiError catch (_) {}
-        });
+    if (ok) await _post('clients/${c.id}/meal-plans/${m['id']}/reset/', ok: '${c.first} follows the master again', sub: '${m['plan_name']}');
   }
 
   // ─────────────────────────────── Supplements

@@ -46,4 +46,4 @@ def test_login_returns_client_setup(db):
     c = APIClient(HTTP_HOST="localhost")
     r = c.post("/api/v1/auth/login/", {"identifier": "riya@example.com", "password": "Demo@1234"}, format="json")
     u = r.json()["user"]
-    assert len(u["client"]["setup_done"]) == 5 and u["client"]["coach"]["first_name"]
+    assert len(u["client"]["setup_done"]) == 9 and u["client"]["coach"]["first_name"]

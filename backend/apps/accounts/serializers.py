@@ -63,13 +63,15 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_client(self, obj):
         """Clients only: what the app needs right after log in (approval wait, setup steps, coach name)."""
+        from apps.clients.models import CLIENT_ONBOARDING_STEPS
+
         cp = getattr(obj, "client_profile", None) if obj.role == Role.CLIENT else None
         if cp is None:
             return None
         t = cp.trainer
         return {
             "setup_done": cp.client_steps_done,
-            "setup_total": 5,
+            "setup_total": len(CLIENT_ONBOARDING_STEPS),
             "setup_later": cp.onboarding_skipped_at is not None,
             "coach": {"id": t.id, "full_name": t.full_name, "first_name": t.first_name} if t else None,
         }

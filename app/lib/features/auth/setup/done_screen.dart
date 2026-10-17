@@ -11,7 +11,7 @@ import '../auth_frame.dart';
 import 'setup_screen.dart';
 import 'setup_state.dart';
 
-/// "You're all set" — profile summary after the 5 steps (`wl-done`).
+/// "You're all set" — profile summary after the setup steps (`wl-done`), one row per step.
 class DoneScreen extends StatefulWidget {
   const DoneScreen({super.key});
   @override

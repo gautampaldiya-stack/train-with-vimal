@@ -157,7 +157,7 @@ class _CpContentTabState extends State<CpContentTab> {
   void _menu(BuildContext anchor, Map r) => showAppMenu(anchor, [
         MenuEntry('Preview', icon: AppIcons.eye, onTap: () => _preview(r)),
         MenuEntry('Change how long', icon: AppIcons.clock, onTap: () => _howLong(r)),
-        MenuEntry('Remind $her to open it', icon: AppIcons.bell, onTap: () => _remind(r)),
+        MenuEntry('Remind ${cpHerObj(c)} to open it', icon: AppIcons.bell, onTap: () => _remind(r)),
         MenuEntry('Open in library', icon: AppIcons.external, onTap: () => _openInLibrary(r)),
         MenuEntry(r['why'] == 'assigned' ? 'Remove for ${c.first}' : 'Hide for ${c.first}', icon: AppIcons.stop, danger: true, onTap: () => _unshare(r)),
       ], width: 220);

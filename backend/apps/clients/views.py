@@ -524,44 +524,47 @@ class ApprovalViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets
 
 # ---------------------------------------------------------------- client self
 class MyOnboardingView(APIView):
-    """Client Welcome / profile setup: 5 steps, each can be saved alone ("Finish later")."""
+    """Client profile setup: the gym's coaching form in steps (D-36), each saved alone ("Finish later").
+    GET: answers so far (`values`, by field key), steps done, the questions the admin's onboarding form still asks
+    (`fields`; null = all) and its extra questions (`extra`), the start photos already added."""
 
     permission_classes = [IsClient]
     allow_inactive_account = True
 
     def get(self, request):
+        from .onboarding import AGREE, TERMS, form_questions, setup_fields, start_photos, values
+
         cp = request.user.client_profile
-        return Response({"answers": cp.onboarding, "steps": CLIENT_ONBOARDING_STEPS, "done": cp.client_steps_done,
+        asks, extra = form_questions()
+        on = cp.onboarding or {}
+        return Response({"answers": on, "steps": CLIENT_ONBOARDING_STEPS, "done": cp.client_steps_done,
                          "progress": cp.onboarding_progress, "skipped_at": cp.onboarding_skipped_at,
-                         "remind": (cp.onboarding or {}).get("_remind")})
+                         "remind": on.get("_remind"), "values": values(request.user), "fields": setup_fields(asks),
+                         "extra": extra, "extra_answers": (on.get("agree") or {}).get("extra") or {},
+                         "photos": start_photos(request.user, request), "terms": TERMS, "agree_text": AGREE})
 
     @transaction.atomic
     def post(self, request):
-        s = OnboardingStepSerializer(data=request.data)
+        from .onboarding import save_step
+
+        s = OnboardingStepSerializer(data=request.data, context={"request": request})
         s.is_valid(raise_exception=True)
-        cp = request.user.client_profile
-        step, data = s.validated_data["step"], s.validated_data["data"]
-        was_complete = len(cp.client_steps_done) == 5
-        cp.onboarding = {**(cp.onboarding or {}), step: data}
+        user = request.user
+        cp = user.client_profile
+        step, clean = s.validated_data["step"], s.validated_data["clean"]
+        was_complete = len(cp.client_steps_done) == len(CLIENT_ONBOARDING_STEPS)
+        kept = save_step(user, step, clean)
+        cp.onboarding = {**(cp.onboarding or {}), step: kept}
         client_done = set(cp.client_steps_done)
         staff_done = set(cp.onboarding_done or [])
         for staff_key, needs in STAFF_STEP_FROM_CLIENT.items():
             if all(k in client_done for k in needs):
                 staff_done.add(staff_key)
         cp.onboarding_done = [k for k in ONBOARDING_STEPS if k in staff_done]
-        if step == "goal":
-            cp.goal = data["goal"]
-        if step == "about":
-            cp.height_cm = data["height_cm"]
-            cp.current_weight_kg = data["weight_kg"]
-            cp.start_weight_kg = cp.start_weight_kg or data["weight_kg"]
-            cp.target_weight_kg = data["target_weight_kg"]
-        if step == "health" and data.get("notes"):
-            cp.health_notes = str(data["notes"])[:2000]
         cp.save()
-        if len(client_done) == 5 and not was_complete and cp.trainer:
-            notify(cp.trainer, "setup_done", f"{request.user.full_name} finished profile setup",
-                   "You can build their plan now.", data={"route": f"/clients/{request.user.id}"})
+        if len(client_done) == len(CLIENT_ONBOARDING_STEPS) and not was_complete and cp.trainer:
+            notify(cp.trainer, "setup_done", f"{user.full_name} finished profile setup",
+                   "You can build their plan now.", data={"route": f"/clients/{user.id}"})
         return self.get(request)
 
     REMIND = {"tonight": (0, 20), "tomorrow": (1, 9), "3days": (3, 9)}

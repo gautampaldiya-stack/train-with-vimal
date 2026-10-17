@@ -11,7 +11,6 @@ import '../../../core/widgets/card.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
-import '../../auth/setup/setup_state.dart';
 import 'cp_common.dart';
 import 'cp_content_drawers.dart';
 import 'cp_forms_editor.dart';
@@ -322,60 +321,12 @@ class _CpFormsTabState extends State<CpFormsTab> {
     );
   }
 
-  /// The onboarding questionnaire from her setup answers (same labels as the client app's setup screens).
+  /// The onboarding questionnaire: her answers as the server reads them from her profile (D-36), so Edit profile
+  /// changes show here, in the onboarding form's words; extra questions the admin added come last.
   Widget _onboarding(Map r) {
-    final on = c.onboarding;
-    Map m(String k) => (on[k] as Map?) ?? const {};
-    final goal = m('goal'), about = m('about'), sched = m('schedule'), health = m('health'), food = m('food');
-    String pick(List<(String, String, String)> xs, Object? v, {bool third = false}) {
-      final x = xs.where((e) => e.$1 == '$v').firstOrNull;
-      return x == null ? '—' : (third ? x.$3 : x.$2);
-    }
-
-    String pick2(List<(String, String)> xs, Object? v) => xs.where((e) => e.$1 == '$v').firstOrNull?.$2 ?? '—';
-    String list(List<(String, String)> xs, Object? vs) {
-      final l = [for (final v in (vs as List? ?? const [])) if (v != 'none') pick2(xs, v)];
-      return l.isEmpty ? 'None' : l.join(', ');
-    }
-
-    String num1(Object? v, String unit, {bool keep = false}) => v == null ? '—' : cpKg(v, unit: unit, keep: keep);
-    final notes = '${c.profile['health_notes'] ?? health['notes'] ?? ''}'.trim();
-    final injuries = list(SetupState.injuries, health['injuries']);
-    final wake = SetupState.wakes.where((w) => w.$1 == '${sched['wake_time']}').firstOrNull?.$2 ?? '${sched['wake_time'] ?? '—'}';
-    final days = (sched['days'] as List?)?.length;
-    final activity = SetupState.activities.where((a) => a.$1 == '${health['activity']}').firstOrNull;
-    final diet = SetupState.diets.where((d) => d.$1 == '${food['diet']}').firstOrNull?.$2 ?? '—';
-    final sections = <(String, List<(String, String)>)>[
-      if (goal.isNotEmpty)
-        ('Goal', [
-          ('Main goal', SetupState.goals.where((g) => g.$1 == '${goal['goal']}').firstOrNull?.$2 ?? '—'),
-          ('Training experience', pick(SetupState.levels, goal['level'], third: true)),
-        ]),
-      if (about.isNotEmpty || sched.isNotEmpty)
-        ('Body and lifestyle', [
-          if (about['age'] != null) ('Age', '${about['age']}'),
-          ('Height', num1(about['height_cm'], 'cm')),
-          ('Weight', num1(about['weight_kg'], 'kg', keep: true)),
-          ('Goal weight', num1(about['target_weight_kg'], 'kg')),
-          ('Where do you train?', pick(SetupState.places, about['place'])),
-          if (days != null) ('Days a week', '$days'),
-          if (sched['session_min'] != null) ('Session length', '${sched['session_min']} min'),
-        ]),
-      if (health.isNotEmpty)
-        ('Health', [
-          ('Injuries or pain', notes.isNotEmpty ? notes.split('\n').first : injuries),
-          ('Health conditions', list(SetupState.conditionOptions, health['conditions'])),
-          ('Doctor clearance to exercise', health['doctor_ok'] == true ? 'Yes' : (health['doctor_ok'] == false ? 'No' : '—')),
-          ('Daily activity', activity == null ? '—' : '${activity.$2} (${activity.$3.split(',').first.toLowerCase()})'),
-          ('Wake-up time', wake),
-        ]),
-      if (food.isNotEmpty)
-        ('Food', [
-          ('Food preference', diet),
-          if (food['meals_per_day'] != null) ('Meals a day', '${food['meals_per_day']}'),
-          ('Foods to avoid', list(SetupState.avoids, food['avoid'])),
-          if (food['home_cooked'] != null) ('Mostly home-cooked food', food['home_cooked'] == true ? 'Yes' : 'No'),
-        ]),
+    final sections = [
+      for (final s in (r['sections'] as List? ?? const []))
+        ('${s['title']}', [for (final x in (s['rows'] as List? ?? const [])) ('${x['q']}', '${x['a']}')]),
     ];
     final filled = cpParse(r['filled_at']);
     final cap = filled == null

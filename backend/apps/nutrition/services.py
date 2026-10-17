@@ -19,6 +19,7 @@ from .models import (
     MealPlan,
     MealPlanAssignment,
     WaterLog,
+    meals_on,
 )
 
 
@@ -26,10 +27,20 @@ from .models import (
 @transaction.atomic
 def sync_meals(plan, meals_data):
     """Make the plan's meals/options/items equal `meals_data` (ids are kept so day states stay linked)."""
+    _sync_set(plan, plan.meals.all(), meals_data, None)
+    if plan.status == MealPlan.Status.PUBLISHED:
+        plan.has_unpublished_changes = True
+    plan.save(update_fields=["has_unpublished_changes", "updated_at"])
+    return plan
+
+
+def _sync_set(plan, meals, meals_data, weekday):
+    """Make one set of meals (`meals`: every-day ones, or one weekday's) equal `meals_data`."""
     keep_meals = set()
     for mi, md in enumerate(meals_data):
-        meal = plan.meals.filter(id=md.get("id")).first() if md.get("id") else None
+        meal = meals.filter(id=md.get("id")).first() if md.get("id") else None
         meal = meal or Meal(plan=plan)
+        meal.weekday = weekday
         meal.name, meal.time = md["name"], md["time"]
         meal.kcal_target = md.get("kcal_target", 0)
         meal.order = mi
@@ -64,11 +75,7 @@ def sync_meals(plan, meals_data):
                 keep_items.add(item.id)
             opt.items.exclude(id__in=keep_items).delete()
         meal.options.exclude(id__in=keep_opts).delete()
-    plan.meals.exclude(id__in=keep_meals).delete()
-    if plan.status == MealPlan.Status.PUBLISHED:
-        plan.has_unpublished_changes = True
-    plan.save(update_fields=["has_unpublished_changes", "updated_at"])
-    return plan
+    meals.exclude(id__in=keep_meals).delete()
 
 
 @transaction.atomic
@@ -269,12 +276,25 @@ def copy_yesterday(client, day=None):
     day = day or timezone.localdate()
     logged = set(MealDayState.objects.filter(client=client, date=day, status=MealDayState.Status.LOGGED)
                  .values_list("meal_id", flat=True))
+    # A client copy can have other meals on another weekday: a plan meal of yesterday goes to today's meal
+    # of the same name (or stays as it was when today has the same meals).
+    mp = _active_plan(client, day)
+    todays = {m.name.lower(): m.id for m in meals_on(mp.followed, day.weekday())} if mp else {}
+    ids = set(todays.values())
+
+    def meal_today(r):
+        if r.meal_id is None or r.meal_id in ids or not todays:
+            return r.meal_id
+        return todays.get(r.meal_name.lower(), r.meal_id)
+
     rows = [r for r in FoodLogEntry.objects.filter(client=client, date=day - timedelta(days=1))
-            if not (r.source == FoodLogEntry.Source.PLAN and r.meal_id in logged)]
+            if not (r.source == FoodLogEntry.Source.PLAN and meal_today(r) in logged)]
+    for r in rows:
+        r.meal_id = meal_today(r)
     now = timezone.now()
     new = FoodLogEntry.objects.bulk_create([
         FoodLogEntry(client=client, date=day, logged_at=_same_time(r.logged_at, day, now) if r.other_time else now,
-                     meal_name=r.meal_name, meal=r.meal, food=r.food,
+                     meal_name=r.meal_name, meal_id=r.meal_id, food=r.food,
                      name=r.name, quantity=r.quantity, unit_name=r.unit_name, grams=r.grams, kcal=r.kcal,
                      protein=r.protein, carbs=r.carbs, fat=r.fat, source=r.source, swapped_from=r.swapped_from,
                      reason=r.reason, other_time=r.other_time)
@@ -302,7 +322,7 @@ def undo_copy(client, ids, meals, day=None):
 
 def _active_plan(client, day):
     return (MealPlanAssignment.objects.filter(client=client, status="active", start_date__lte=day)
-            .select_related("plan").order_by("-start_date").first())
+            .select_related("plan", "custom_plan").order_by("-start_date").first())
 
 
 def totals(client, day):
@@ -328,7 +348,7 @@ def sync_water_habit(client, day, ml):
     for a in HabitAssignment.objects.filter(client=client, active=True, start_date__lte=day,
                                             habit__icon="water", habit__kind=Habit.Kind.COUNTER,
                                             habit__deleted_at__isnull=True).select_related("habit"):
-        h = a.habit
+        h = a.eff
         value = ml if h.unit.strip().lower() == "ml" else ml // 250
         HabitLog.objects.update_or_create(habit=h, client=client, date=day,
                                           defaults={"value": value, "done": bool(h.target) and value >= h.target})
@@ -359,12 +379,13 @@ def day_view(client, day, request=None):
     today = timezone.localdate()
     now = timezone.localtime()
     mp = _active_plan(client, day)
-    plan = mp.plan if mp else None
+    plan = mp.followed if mp else None
     states = {s.meal_id: s for s in MealDayState.objects.filter(client=client, date=day).select_related("option")}
     meals = []
     next_marked = False
     if plan:
-        for meal in plan.meals.prefetch_related("options__items__food__units", "options__items__unit"):
+        for meal in meals_on(plan, day.weekday()).prefetch_related("options__items__food__units",
+                                                                      "options__items__unit"):
             st = states.get(meal.id)
             opt = _option_for(meal, st)
             pill = pill_for(meal, st, day, now)
@@ -398,7 +419,7 @@ def day_view(client, day, request=None):
     water = WaterLog.objects.filter(client=client, date=today).first()
     monday = day - timedelta(days=day.weekday())
     week = []
-    n_meals = plan.meals.count() if plan else 0
+    per_day = [meals_on(plan, i).count() if plan else 0 for i in range(7)]
     logged = {}
     for d, n in (MealDayState.objects.filter(client=client, date__range=(monday, monday + timedelta(days=6)),
                                              status=MealDayState.Status.LOGGED)
@@ -406,6 +427,7 @@ def day_view(client, day, request=None):
         logged[d] = n
     for i in range(7):
         d = monday + timedelta(days=i)
+        n_meals = per_day[i]
         week.append({"date": d, **totals(client, d), "meals_logged": logged.get(d, 0), "meals": n_meals,
                      "done": n_meals > 0 and logged.get(d, 0) >= n_meals})
     photos = {m["id"]: m["photo"] for m in meals if m.get("photo")}
@@ -464,6 +486,153 @@ def end_client_plan(a, *, actor):
     activity_log("ended a meal plan", "plan", actor=actor, target=a.client, target_label=a.plan.name, client=a.client)
 
 
+# ---------------------------------------------------------------- one client's own copy (Plans → Edit for X)
+def _clone_meals(meals, dst, weekday="keep"):
+    """Copy `meals` (options and items too) into plan `dst`. weekday "keep" keeps each meal's own weekday.
+    Returns the (meal, option, item) id maps old → new."""
+    mm, om, im = {}, {}, {}
+    for m in meals.prefetch_related("options__items"):
+        nm = Meal.objects.create(plan=dst, name=m.name, time=m.time, kcal_target=m.kcal_target, order=m.order,
+                                 weekday=m.weekday if weekday == "keep" else weekday)
+        mm[m.id] = nm.id
+        for o in m.options.all():
+            no = MealOption.objects.create(meal=nm, name=o.name, is_default=o.is_default, order=o.order)
+            om[o.id] = no.id
+            for i in o.items.all():
+                im[i.id] = MealItem.objects.create(option=no, food_id=i.food_id, quantity=i.quantity,
+                                                   unit_id=i.unit_id, order=i.order).id
+    return mm, om, im
+
+
+def _rekey(d, im):
+    out = {}
+    for k, v in (d or {}).items():
+        try:
+            out[str(im.get(int(k), k))] = v
+        except (TypeError, ValueError):
+            out[k] = v
+    return out
+
+
+def _move_days(client, maps, weekday=None):
+    """Today's and later day states (logged / skipped, portions, swaps) and plan food logs of the old meals
+    follow their copies, so a meal already logged today stays logged after the plan is edited."""
+    mm, om, im = maps
+    today = timezone.localdate()
+    for st in MealDayState.objects.filter(client=client, date__gte=today, meal_id__in=list(mm)):
+        if weekday is not None and st.date.weekday() != weekday:
+            continue
+        st.meal_id = mm[st.meal_id]
+        st.option_id = om.get(st.option_id) if st.option_id else None
+        st.portions, st.swaps = _rekey(st.portions, im), _rekey(st.swaps, im)
+        st.save(update_fields=["meal", "option", "portions", "swaps", "updated_at"])
+    for e in FoodLogEntry.objects.filter(client=client, date__gte=today, meal_id__in=list(mm)):
+        if weekday is None or e.date.weekday() == weekday:
+            e.meal_id = mm[e.meal_id]
+            e.save(update_fields=["meal", "updated_at"])
+
+
+def _carry_by_name(client, old_meals, plan):
+    """Meals about to go away: today's and later day states (and their plan food logs) move to the meal of the
+    same name that stays in `plan` (that day's own meals, else the every-day ones). No match: they go too."""
+    today = timezone.localdate()
+    old = {m.id: m.name.lower() for m in old_meals}
+    rest = plan.meals.exclude(id__in=list(old))
+    for st in MealDayState.objects.filter(client=client, date__gte=today, meal_id__in=list(old)):
+        own = rest.filter(weekday=st.date.weekday())
+        pool = own if own.exists() else rest.filter(weekday__isnull=True)
+        new = {m.name.lower(): m.id for m in pool}.get(old[st.meal_id])
+        if not new or MealDayState.objects.filter(client=client, date=st.date, meal_id=new).exists():
+            continue
+        was = st.meal_id
+        st.meal_id, st.option_id, st.portions, st.swaps = new, None, {}, {}
+        st.save(update_fields=["meal", "option", "portions", "swaps", "updated_at"])
+        FoodLogEntry.objects.filter(client=client, date=st.date, meal_id=was).update(meal_id=new)
+
+
+def _translate(meals_data, maps):
+    """Ids the app sent for the old meals → the ids of their copies (unknown ids are left to be created)."""
+    mm, om, im = maps
+    out = []
+    for md in meals_data:
+        md = {**md, "id": mm.get(md.get("id"))}
+        md["options"] = [{**od, "id": om.get(od.get("id")),
+                          "items": [{**it, "id": im.get(it.get("id"))} for it in od.get("items", [])]}
+                         for od in md.get("options", [])]
+        out.append(md)
+    return out
+
+
+@transaction.atomic
+def client_copy(a, *, actor):
+    """The client's own copy of their meal plan, made on the first edit. Returns (copy, id maps or None)."""
+    if a.custom_plan_id:
+        return a.custom_plan, None
+    src = a.plan
+    copy = MealPlan.objects.create(
+        name=src.name, diet=src.diet, kcal_target=src.kcal_target, protein_g=src.protein_g, carbs_g=src.carbs_g,
+        fat_g=src.fat_g, fibre_g=src.fibre_g, water_ml=src.water_ml, status=src.status,
+        published_at=src.published_at, allow_swaps=src.allow_swaps, allow_search_any=src.allow_search_any,
+        allow_switch_options=src.allow_switch_options, allow_off_plan=src.allow_off_plan, is_master=False,
+        master=src, created_by=actor)
+    maps = _clone_meals(src.meals.all(), copy)
+    a.custom_plan = copy
+    a.save(update_fields=["custom_plan", "updated_at"])
+    if a.status == "active":
+        _move_days(a.client, maps)
+    activity_log("edited a meal plan for one client", "plan", actor=actor, target=a.client, target_label=src.name,
+                 client=a.client)
+    return copy, maps
+
+
+@transaction.atomic
+def save_client_day(a, *, weekday, every_day, meals_data, actor):
+    """Edit for X → Save: the meals of one weekday of the client's copy (`every_day`: the same meals on every
+    day, which drops the other days' own meals). The master plan never changes."""
+    plan, maps = client_copy(a, actor=actor)
+    if maps:
+        meals_data = _translate(meals_data, maps)
+    own = plan.meals.filter(weekday=weekday)
+    if every_day:
+        if own.exists():
+            _sync_set(plan, own, meals_data, weekday)
+            gone = list(plan.meals.exclude(weekday=weekday))
+            Meal.objects.filter(plan=plan, weekday=weekday).update(weekday=None)
+        else:
+            _sync_set(plan, plan.meals.filter(weekday__isnull=True), meals_data, None)
+            gone = list(plan.meals.filter(weekday__isnull=False))
+        if a.status == "active":
+            _carry_by_name(a.client, gone, plan)
+        Meal.objects.filter(id__in=[m.id for m in gone]).delete()
+    else:
+        if not own.exists():
+            day_maps = _clone_meals(plan.meals.filter(weekday__isnull=True), plan, weekday)
+            if a.status == "active":
+                _move_days(a.client, day_maps, weekday)
+            meals_data = _translate(meals_data, day_maps)
+        _sync_set(plan, plan.meals.filter(weekday=weekday), meals_data, weekday)
+    plan.save(update_fields=["updated_at"])
+    return plan
+
+
+@transaction.atomic
+def reset_client_copy(a, *, actor=None):
+    """Reset to master: the client follows the master plan again; the copy is kept hidden for the history."""
+    copy = a.custom_plan
+    a.custom_plan = None
+    prev = a.version_note
+    a.version_note = ""
+    a.save(update_fields=["custom_plan", "version_note", "updated_at"])
+    if copy is not None:
+        if a.status == "active":
+            _carry_by_name(a.client, list(copy.meals.all()), a.plan)
+        copy.soft_delete()
+        if actor:
+            activity_log("reset a meal plan to master", "plan", actor=actor, target=a.client,
+                         target_label=a.plan.name, client=a.client)
+    return prev
+
+
 def roll_meal_plans(today=None):
     """Daily: an Up next meal plan whose day has come replaces the current one. Returns how many started."""
     today = today or timezone.localdate()
@@ -489,10 +658,11 @@ def staff_food_log(client, params):
     today = timezone.localdate()
     days = days_desc(start, end, client)
     mps = list(MealPlanAssignment.objects.filter(client=client, start_date__lte=end)
-               .select_related("plan").order_by("-start_date"))
+               .select_related("plan", "custom_plan").order_by("-start_date"))
 
     def plan_on(d):
-        return next((m.plan for m in mps if m.start_date <= d and (m.end_date is None or m.end_date >= d)), None)
+        return next((m.followed for m in mps if m.start_date <= d and (m.end_date is None or m.end_date >= d)),
+                    None)
 
     logged = dict(MealDayState.objects.filter(client=client, date__range=(start, end), status=MealDayState.Status.LOGGED)
                   .values_list("date").annotate(n=Count("id")))
@@ -502,9 +672,9 @@ def staff_food_log(client, params):
     rows = []
     for d in days:
         plan = plan_on(d)
-        if plan is not None and plan.id not in n_meals:
-            n_meals[plan.id] = plan.meals.count()
-        meals = n_meals.get(plan.id, 0) if plan else 0
+        if plan is not None and (plan.id, d.weekday()) not in n_meals:
+            n_meals[(plan.id, d.weekday())] = meals_on(plan, d.weekday()).count()
+        meals = n_meals.get((plan.id, d.weekday()), 0) if plan else 0
         t = sums.get(d) or {}
         kcal = int(t.get("kcal") or 0)
         n = logged.get(d, 0)
@@ -522,7 +692,7 @@ def staff_food_log(client, params):
         rows.append({"date": d, "kcal": kcal, "protein": float(t.get("protein") or 0), "carbs": float(t.get("carbs") or 0),
                      "fat": float(t.get("fat") or 0), "meals_logged": n, "meals": meals, "kcal_target": target,
                      "status": st})
-    cur = plan_on(min(end, today)) or (mps[0].plan if mps else None)
+    cur = plan_on(min(end, today)) or (mps[0].followed if mps else None)
     out = page_of(rows, params)
     out["target"] = {"kcal": cur.kcal_target, "protein": cur.protein_g, "carbs": cur.carbs_g, "fat": cur.fat_g} \
         if cur else None

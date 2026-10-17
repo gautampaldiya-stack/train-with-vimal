@@ -22,7 +22,8 @@ import 'cp_model.dart';
 // Content tab drawers (Assign content, Content preview, Change how long) and the drawer pieces the Content and
 // Forms tabs share (`.dr-sec`, `.dr-opt`, `.dr-sw`, `.field`).
 
-/// "her" / "him" / "their" for the board's "Remind her", "From her plans".
+/// [cpHer]: "her" / "his" / "their" (possessive: "From her plans"). [cpHerObj]: "her" / "him" / "them"
+/// (object: "Remind her to open it").
 String cpHer(CpController c) => switch ('${c.detail['gender']}') { 'female' => 'her', 'male' => 'his', _ => 'their' };
 String cpHerObj(CpController c) => switch ('${c.detail['gender']}') { 'female' => 'her', 'male' => 'him', _ => 'them' };
 String cpShe(CpController c) => switch ('${c.detail['gender']}') { 'female' => 'she', 'male' => 'he', _ => 'they' };
@@ -92,6 +93,46 @@ class DrOpts extends StatelessWidget {
         for (final (i, w) in children.indexed)
           Container(decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line))), child: w),
       ]);
+}
+
+/// A pick list in a drawer: [DrOpts] rows, about [rows] rows tall (6 by default); longer lists scroll inside
+/// it with a scroll bar, and [footer] ("Show more") sits at the end of the scroll.
+class DrScrollList extends StatefulWidget {
+  const DrScrollList(this.children, {super.key, this.rows = 6, this.rowHeight = 55, this.footer});
+  final List<Widget> children;
+  final int rows;
+  final double rowHeight;
+  final Widget? footer;
+  @override
+  State<DrScrollList> createState() => _DrScrollListState();
+}
+
+class _DrScrollListState extends State<DrScrollList> {
+  final _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Container(
+        constraints: BoxConstraints(maxHeight: widget.rows * widget.rowHeight),
+        decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line), bottom: BorderSide(color: AppColors.line))),
+        child: Scrollbar(
+          controller: _scroll,
+          thumbVisibility: widget.children.length > widget.rows,
+          child: SingleChildScrollView(
+            controller: _scroll,
+            padding: EdgeInsets.only(right: widget.children.length > widget.rows ? 12 : 0),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              DrOpts(widget.children),
+              if (widget.footer != null) Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: widget.footer),
+            ]),
+          ),
+        ),
+      );
 }
 
 /// `.dr-opt.sm`: radio or square check, optional thumb, title (+ badge), grey line, number on the right.
@@ -327,7 +368,7 @@ Future<int?> showAssignContentDrawer(BuildContext context, CpController c) {
               else if (s.items.isEmpty)
                 EmptyState(s.q.isEmpty ? 'The library is empty' : 'Nothing matches “${s.q}”', sub: s.q.isEmpty ? 'Add videos and guides in the Content library first.' : 'Try another word.')
               else
-                DrOpts([
+                DrScrollList(footer: s.nextOffset != null ? Center(child: AppButton('Show more', size: BtnSize.sm, onPressed: () => s.load(more: true))) : null, [
                   for (final (i, x) in s.items.indexed)
                     DrOpt(
                       multi: true,
@@ -341,13 +382,13 @@ Future<int?> showAssignContentDrawer(BuildContext context, CpController c) {
                       onTap: () => s.set(() => s.picked.contains('${x['id']}') ? s.picked.remove('${x['id']}') : s.picked.add('${x['id']}')),
                     ),
                 ]),
-              if (s.nextOffset != null && !s.loading) Center(child: AppButton('Show more', size: BtnSize.sm, onPressed: () => s.load(more: true))),
             ],
           ),
-          DrSec(title: '2. How long $she keeps it', children: [
+          DrSec(title: '2. How long $she ${she == 'they' ? 'keep' : 'keeps'} it', children: [
             Align(
               alignment: Alignment.centerLeft,
               child: SegmentedTabs<String>(
+                height: 28,
                 items: [const TabItem('always', 'Always'), if (s.plan != null) const TabItem('plan', 'Until plan ends'), const TabItem('date', 'Until a date')],
                 value: s.how,
                 onChanged: (v) => s.set(() {
@@ -484,7 +525,7 @@ Future<String?> showContentPreview(BuildContext context, CpController c, Map r) 
           ),
         ),
         Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          qa('Why $she sees it', '${r['why_label']}'),
+          qa('Why $she ${she == 'they' ? 'see' : 'sees'} it', '${r['why_label']}'),
           qa('Shown until', '${r['until_label']}'),
           qa('Added', cpDm(r['added_at'])),
           if ('${r['note'] ?? ''}'.isNotEmpty) qa('Your note', '${r['note']}'),
@@ -519,7 +560,7 @@ Future<String?> showHowLongModal(BuildContext context, CpController c, Map r, Ma
   final planEnds = cpParse(plan?['ends']);
   return showAppModal<String>(
     context,
-    title: 'How long $she keeps it',
+    title: 'How long $she ${she == 'they' ? 'keep' : 'keeps'} it',
     body: '${r['title']}',
     icon: AppIcons.clock,
     content: (ctx) => ValueListenableBuilder(
@@ -528,6 +569,7 @@ Future<String?> showHowLongModal(BuildContext context, CpController c, Map r, Ma
         Align(
           alignment: Alignment.centerLeft,
           child: SegmentedTabs<String>(
+            height: 28,
             items: [const TabItem('always', 'Always'), if (plan != null) const TabItem('plan', 'Until plan ends'), const TabItem('date', 'Until a date')],
             value: v.$1,
             onChanged: (x) => s.value = (x, v.$2, false, null),

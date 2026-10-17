@@ -186,6 +186,9 @@ abstract final class AppColors {
     }
     return avatars[h];
   }
+
+  // Client profile → Plans → meal editor: `.mb-fr.on` picked food row border.
+  static const pickLine = Color(0xFFD5E1FB);
 }
 
 enum Tone { ok, warn, bad, info, neutral }

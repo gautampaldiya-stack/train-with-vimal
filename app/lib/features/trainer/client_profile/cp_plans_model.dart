@@ -9,7 +9,8 @@ import 'cp_model.dart';
 /// needs to draw its days (workout tree, meal plan meals, habits this week).
 ///
 /// APIs: `clients/<id>/programs/` (+ `custom-structure/`, master `programs/<id>/`), `clients/<id>/meal-plans/`
-/// (+ `meal-plans/<plan>/`), `clients/<id>/supplement-plans/`, `clients/<id>/habit-plan/`, `clients/<id>/habits/`.
+/// (+ `<assignment>/meals/`: the client's own copy or the master), `clients/<id>/supplement-plans/`,
+/// `clients/<id>/habit-plan/`, `clients/<id>/habits/`.
 class PlansData extends ChangeNotifier {
   PlansData(this.c);
   final CpController c;
@@ -20,7 +21,8 @@ class PlansData extends ChangeNotifier {
   /// Workout: the tree the client follows (their copy or the master) and the master to compare with.
   Map? wTree, wMaster;
 
-  /// Meal plan: the plan detail (meals, options, foods).
+  /// Meal plan: what the client follows (their copy, else the master): meals (each with `weekday`, null = every
+  /// day), options, foods; `custom`, `own_days`.
   Map? mealPlan;
   bool loading = true;
   ApiError? error;
@@ -73,7 +75,7 @@ class PlansData extends ChangeNotifier {
 
   Future<void> _mealPlan() async {
     final m = meal;
-    mealPlan = m == null ? null : await Services.api.get<Map>('meal-plans/${m['plan']}/');
+    mealPlan = m == null ? null : await Services.api.get<Map>('clients/$id/meal-plans/${m['id']}/meals/');
   }
 
   /// After any change: reload this tab and the header / Overview / counts.
@@ -82,6 +84,18 @@ class PlansData extends ChangeNotifier {
     c.refresh();
   }
 }
+
+// ─────────────────────────────── meal plan helpers
+
+/// The meals of a weekday (0 = Mon): that day's own meals (a client copy), else the every-day ones.
+List<Map> mealsOnDay(Map? plan, int weekday) {
+  final all = [for (final m in (plan?['meals'] as List?) ?? const []) m as Map];
+  final own = all.where((m) => m['weekday'] == weekday).toList();
+  return own.isNotEmpty ? own : all.where((m) => m['weekday'] == null).toList();
+}
+
+/// Weekdays with their own meals in the client's copy.
+Set<int> ownMealDays(Map? plan) => {for (final m in (plan?['meals'] as List?) ?? const []) if ((m as Map)['weekday'] != null) (m['weekday'] as num).toInt()};
 
 // ─────────────────────────────── workout tree helpers
 

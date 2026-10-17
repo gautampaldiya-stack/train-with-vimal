@@ -71,6 +71,7 @@ class Command(BaseCommand):
             self.exercise_media()
             self.library_link()
             self.aman_dashboard(program, plan)
+            self.onboarding_answers()
             self.settle_old_rows()
         self.stdout.write(self.style.SUCCESS(f"Demo ready. Log in with any demo email and {PASSWORD}"))
         self.stdout.write("Demo links (the reset link works for 15 minutes; run seed_demo again for new ones):")
@@ -197,7 +198,7 @@ class Command(BaseCommand):
         program = Program.objects.filter(name="Fat loss · 8 weeks").first()
         if program is None:
             program = new_program(name="Fat loss · 8 weeks", weeks=8, days_per_week=4, goal_line="Fat loss · gym",
-                                  actor=vimal)
+                                  level="intermediate", actor=vimal)
             ex = {e.name: e for e in Exercise.objects.filter(is_builtin=True)}
             for week in program.program_weeks.all():
                 for day in week.days.filter(is_rest=False):
@@ -210,6 +211,10 @@ class Command(BaseCommand):
                                                        reps=e.default_reps, rest_seconds=e.default_rest_seconds,
                                                        rpe=e.default_rpe, tempo=e.default_tempo)
                 week.days.filter(is_rest=True).update(rest_note="8k steps and 10 minutes of mobility")
+
+        if program.level == "any":  # older seeds had no level
+            Program.objects.filter(id=program.id).update(level="intermediate")
+            program.level = "intermediate"
 
         plan = MealPlan.objects.filter(name="Veg fat loss · 1,800").first()
         if plan is None:
@@ -263,7 +268,7 @@ class Command(BaseCommand):
             assignment = ProgramAssignment.objects.filter(client=c).first()
             for back in range(21, 0, -1):
                 day = today - timedelta(days=back)
-                if not steady and back < 9:
+                if not steady and back < 9 or day < cp.start_date:  # nothing logged before they joined
                     continue
                 WaterLog.objects.update_or_create(client=c, date=day, defaults={"ml": random.choice([2000, 2500, 3000])})
                 for h in habits:
@@ -775,6 +780,72 @@ class Command(BaseCommand):
                                                             reviewed_at=at(today - timedelta(days=back), 9, 0),
                                                             reviewed_by=aman)
 
+    def onboarding_answers(self):
+        """Every demo client who finished setup has filled the gym's coaching form (D-36): the answers sit on the
+        profile, the onboarding steps are done, the form's measurements are the first ones and the start photos
+        are there. Runs again safely: a client who already agreed to the terms is left as they are."""
+        from apps.accounts.models import AccountStatus, Role, User
+        from apps.checkins.models import Measurement, PhotoSet, ProgressPhoto
+        from apps.clients.models import CLIENT_ONBOARDING_STEPS
+        from apps.clients.onboarding import FIELDS, USER_ATTRS
+
+        tints = [((219, 230, 252), (88, 120, 220)), ((220, 240, 228), (70, 150, 100)),
+                 ((236, 228, 250), (140, 110, 210)), ((252, 236, 220), (210, 140, 70))]
+        people = (User.objects.filter(role=Role.CLIENT, status=AccountStatus.ACTIVE,
+                                      client_profile__terms_agreed_at__isnull=True)
+                  .select_related("client_profile").order_by("date_joined", "email"))
+        for i, u in enumerate(people):
+            cp = u.client_profile
+            if len(cp.onboarding_done or []) < 5:
+                continue  # still doing setup (Isha, Sana): nothing to fill in
+            a = _onboarding_persona(u, cp, i)
+            start = cp.start_date or timezone.localdate(u.date_joined)
+            if not u.date_of_birth:
+                u.date_of_birth = a.pop("date_of_birth")
+                u.save(update_fields=["date_of_birth"])
+            a.pop("date_of_birth", None)
+            measures = a.pop("measures")
+            first = Measurement.objects.filter(client=u).order_by("date").first()
+            if first is None:
+                first = Measurement.objects.create(client=u, date=start, values=measures)
+            if not PhotoSet.objects.filter(client=u).exists():
+                ps = PhotoSet.objects.create(client=u, date=start, label="Start photos", weight_kg=cp.start_weight_kg)
+                for pose in ("front", "side", "back"):
+                    ProgressPhoto.objects.create(photo_set=ps, pose=pose,
+                                                 image=_figure(f"{pose}.jpg", *tints[i % len(tints)], pose))
+            for k, v in a.items():
+                if k == "health_notes" and cp.health_notes:
+                    continue
+                setattr(cp, k, v)
+            # What the setup steps keep, step by step (photos are the poses, measurements their day).
+            on = {k: v for k, v in (cp.onboarding or {}).items() if k.startswith("_")}
+            for f in FIELDS:
+                if f.kind == "photo":
+                    on.setdefault("body", {}).setdefault("photos", []).append(f.key[6:])
+                    continue
+                if f.kind == "measure":
+                    v = measures.get(f.key[8:])
+                elif f.kind == "agree":
+                    v = True
+                elif f.key in USER_ATTRS:
+                    v = getattr(u, f.key)
+                    v = v.isoformat() if hasattr(v, "isoformat") else (v or "prefer_not")
+                elif f.key == "weight_kg":
+                    v = float(cp.start_weight_kg) if cp.start_weight_kg is not None else None
+                else:
+                    v = getattr(cp, f.attr or f.key)
+                    v = float(v) if isinstance(v, Decimal) else v
+                on.setdefault(f.step, {})[f.key] = v
+            on["body"]["measured_on"] = first.date.isoformat()
+            on["health"].update({"injuries": cp.injury_areas, "notes": cp.health_notes})
+            on["food"]["diet"] = cp.diet_type
+            on["agree"]["extra"] = {}
+            assert set(CLIENT_ONBOARDING_STEPS) <= set(on)
+            cp.onboarding = on
+            cp.terms_agreed_at = timezone.make_aware(timezone.datetime.combine(start, timezone.datetime.min.time())) \
+                - timedelta(days=1) + timedelta(hours=20)
+            cp.save()
+
     def settle_old_rows(self):
         """Everything the demo made at once looks "added this week". Clients and plans that started before this
         Monday get their created date moved back to their start, so the trainer's "This week" card counts right."""
@@ -794,7 +865,7 @@ class Command(BaseCommand):
 
         week = program.program_weeks.order_by("number").first()
         pday = week.days.filter(weekday=day.weekday(), is_rest=False).prefetch_related("exercises__exercise").first()
-        if pday is None:
+        if pday is None or WorkoutLog.objects.filter(client=client, date=day).exists():  # one workout a day
             return
         start = timezone.make_aware(timezone.datetime.combine(day, timezone.datetime.min.time())) + timedelta(hours=7)
         w = WorkoutLog.objects.create(client=client, assignment=assignment, program_day=pday, name=pday.name, date=day,
@@ -812,6 +883,116 @@ class Command(BaseCommand):
         SetLog.objects.bulk_create(sets)
         w.sets_done = w.sets_planned = len(sets)
         w.save(update_fields=["sets_done", "sets_planned"])
+
+
+# Coaching form answers for the demo clients (D-36). Riya and Aditya as on the boards; the others are picked from
+# the pools by their place in the list, so every profile reads like a real person and none is the same.
+PERSONAS = {
+    "riya@example.com": dict(
+        date_of_birth="1997-03-14", goal_detail="Lose belly fat before my sister's wedding in March",
+        experience="beginner", enrolled_for="3", workout_days=5, workout_place="gym", workout_time="evening",
+        current_exercise="Walk 30 min most days, yoga on Sundays", activity_level="sedentary",
+        injury_areas=["none"], conditions=["none"], doctor_ok=True,
+        past_injuries="Sprained left ankle in 2019, fully healed", surgeries="None", addictions="None",
+        digestive_issues="Bloating after rajma or chole at night",
+        stresses="Work deadlines\nSleeping late after office calls\nManaging home and office together",
+        diet_type="egg", common_foods="Poha, roti, dal, sabzi, curd, eggs, fruit, 2 cups of tea",
+        food_allergies="no", smoking="no",
+        meal_breakfast="Poha or 2 egg omelette with toast, tea", meal_mid_morning="1 fruit, tea",
+        meal_lunch="2 roti, dal, sabzi, curd", meal_pre_workout="Banana and black coffee",
+        meal_post_workout="Whey protein in water", meal_evening="Roasted chana, tea",
+        meal_dinner="2 roti, paneer or egg bhurji, salad",
+        takes_supplements=True, supplements_detail="Whey protein, 1 scoop after workout, for protein",
+        supplement_brands="MuscleBlaze Biozyme Whey", open_to_supplements="yes", takes_medicines=False,
+        medicines_detail="", onboarding_note="I travel for work one week every month.",
+        measures={"neck": 32, "bicep_l": 29.5, "bicep_r": 30, "chest": 93, "abdomen": 90, "waist": 84, "hips": 102,
+                  "thigh_l": 58, "thigh_r": 58.5, "calf_l": 36, "calf_r": 36.5}),
+    "aditya@example.com": dict(
+        date_of_birth="1999-07-02", goal_detail="Gain size in chest and arms, stay lean", experience="intermediate",
+        enrolled_for="6", workout_days=5, workout_place="gym", workout_time="early_morning",
+        current_exercise="Gym 3 days a week: push, pull, legs", activity_level="moderate", injury_areas=["none"],
+        conditions=["none"], doctor_ok=True, past_injuries="Right shoulder strain in 2023 from bench press, healed",
+        surgeries="None", addictions="None", digestive_issues="None",
+        stresses="Final year exams\nFamily business work on weekends\nIrregular sleep",
+        diet_type="non_veg", common_foods="Eggs, chicken, rice, roti, dal, milk, banana", food_allergies="no",
+        smoking="no", meal_breakfast="4 egg whites, 2 whole eggs, 2 toast, milk", meal_mid_morning="Banana, almonds",
+        meal_lunch="Rice, chicken curry, dal, salad", meal_pre_workout="Peanut butter toast, black coffee",
+        meal_post_workout="Whey protein with milk, banana", meal_evening="Sprouts chaat",
+        meal_dinner="3 roti, chicken or paneer, sabzi", takes_supplements=True,
+        supplements_detail="Whey after workout daily, creatine 5 g daily for strength",
+        supplement_brands="Optimum Nutrition Gold Standard, MuscleBlaze Creatine", open_to_supplements="yes",
+        takes_medicines=False, medicines_detail="", onboarding_note="",
+        measures={"neck": 37, "bicep_l": 33, "bicep_r": 33.5, "chest": 98, "abdomen": 82, "waist": 80, "hips": 94,
+                  "thigh_l": 55, "thigh_r": 55.5, "calf_l": 36, "calf_r": 36}),
+}
+_POOL = {
+    "goal_detail": ["Fit into my old jeans", "Get stronger for football", "More energy at work", "Look good for photos",
+                    "Bench press 100 kg", "Bring my sugar levels down"],
+    "experience": ["beginner", "intermediate", "advanced", "intermediate"],
+    "enrolled_for": ["3", "6", "3", "4", "5", "12 months"],
+    "workout_days": [5, 4, 6, 5, 3],
+    "workout_place": ["gym", "home", "gym", "both"],
+    "workout_time": ["early_morning", "evening", "late_night", "afternoon", "evening"],
+    "current_exercise": ["Not performing", "Walk 45 min every morning", "Gym 4 days a week",
+                         "Cricket on weekends", "Home workouts from YouTube, 3 days a week"],
+    "activity_level": ["sedentary", "light", "moderate", "active", "sedentary"],
+    "past_injuries": ["None", "Left knee pain after running in 2022", "Wrist sprain in 2021, healed",
+                      "Lower back strain lifting boxes last year"],
+    "surgeries": ["None", "Appendix removed in 2018", "None", "Knee arthroscopy in 2020"],
+    "addictions": ["None", "Social drinking on weekends", "None", "Too much tea, 5 cups a day"],
+    "digestive_issues": ["None", "Acidity if I skip breakfast", "Gas after milk", "None"],
+    "stresses": ["Office targets\nLong commute\nSleep", "Exams\nMoney\nFamily health",
+                 "New job\nLate nights\nNo time to cook", "Business travel\nKids' schedule\nEating out"],
+    "diet_type": ["veg", "non_veg", "egg", "jain", "non_veg", "vegan"],
+    "common_foods": ["Roti, dal, rice, sabzi, curd, tea", "Eggs, chicken, rice, roti, milk",
+                     "Paratha, paneer, dal, fruit, buttermilk", "Idli, dosa, sambar, rice, curd"],
+    "food_allergies": ["no", "no", "Peanuts", "no", "Lactose, milk upsets my stomach"],
+    "smoking": ["no", "no", "no", "Yes, 3 a day"],
+    "meal_breakfast": ["Poha with tea", "Eggs and toast", "Paratha with curd", "Idli sambar", "Oats with milk"],
+    "meal_mid_morning": ["Fruit", "Buttermilk", "Nothing", "Biscuits with tea"],
+    "meal_lunch": ["Roti, dal, sabzi, rice", "Rice, chicken curry, salad", "Office canteen thali", "Rajma chawal"],
+    "meal_pre_workout": ["Banana", "Black coffee", "Nothing", "Dates and coffee"],
+    "meal_post_workout": ["Whey protein", "Milk and banana", "Sprouts", "Nothing"],
+    "meal_evening": ["Tea and namkeen", "Roasted makhana", "Fruit", "Samosa sometimes"],
+    "meal_dinner": ["Roti, sabzi, dal", "Rice, fish curry", "Khichdi", "Paneer bhurji, roti"],
+    "takes_supplements": [False, True, False, True],
+    "supplements_detail": ["", "Whey protein after workout, daily, for protein", "",
+                           "Multivitamin every morning, doctor suggested"],
+    "supplement_brands": ["", "Optimum Nutrition", "", "HealthKart HK Vitals"],
+    "open_to_supplements": ["yes", "yes", "Only natural ones", "no"],
+    "takes_medicines": [False, False, True, False],
+    "medicines_detail": ["", "", "Thyronorm 50 mcg every morning for 2 years", ""],
+    "onboarding_note": ["", "I work night shifts twice a week.", "", "Vegetarian on Tuesdays."],
+}
+
+
+def _onboarding_persona(user, cp, i):
+    """The coaching form answers of one demo client (PERSONAS, else from the pools)."""
+    from datetime import date
+
+    p = PERSONAS.get(user.email)
+    if p is not None:
+        out = dict(p)
+        out["date_of_birth"] = date.fromisoformat(out["date_of_birth"])
+        out["measures"] = dict(out["measures"])
+        return out
+    out = {k: v[i % len(v)] for k, v in _POOL.items()}
+    out["injury_areas"] = [["none"], ["knee"], ["none"], ["lower_back"], ["none"]][i % 5]
+    out["conditions"] = [["none"], ["none"], ["thyroid"], ["none"]][i % 4] if not out["takes_medicines"] \
+        else ["thyroid"]
+    out["doctor_ok"] = True
+    if out["injury_areas"] != ["none"]:
+        out["health_notes"] = {"knee": "Right knee hurts on deep squats", "lower_back": "Lower back stiff after "
+                               "sitting long"}[out["injury_areas"][0]]
+    out["date_of_birth"] = date(1986 + i % 14, 1 + i % 12, 3 + i % 25)
+    male = user.gender == "male"
+    s = (cp.height_cm and float(cp.height_cm) / 170) or 1
+    out["measures"] = {k: round(v * s, 1) for k, v in ({
+        "neck": 38, "bicep_l": 32, "bicep_r": 32.5, "chest": 100, "abdomen": 92, "waist": 88, "hips": 98,
+        "thigh_l": 56, "thigh_r": 56.5, "calf_l": 37, "calf_r": 37} if male else {
+        "neck": 32, "bicep_l": 28, "bicep_r": 28.5, "chest": 90, "abdomen": 88, "waist": 80, "hips": 100,
+        "thigh_l": 57, "thigh_r": 57.5, "calf_l": 35, "calf_r": 35.5}).items()}
+    return out
 
 
 def _figure(name, bg, fg, pose):

@@ -25,7 +25,10 @@ class QuestionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Question
-        fields = ["id", "text", "type", "options", "scale_labels", "allow_other", "help_text", "required", "metric"]
+        fields = ["id", "text", "type", "options", "scale_labels", "allow_other", "help_text", "required", "metric",
+                  "profile_key"]
+        # Set by the built-in onboarding questionnaire (which profile field a question fills); the builder keeps it.
+        read_only_fields = ["profile_key"]
 
     def validate(self, attrs):
         t = attrs.get("type")

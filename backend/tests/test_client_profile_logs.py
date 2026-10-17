@@ -90,6 +90,52 @@ def test_compare_two_plans(trainer):
     assert trainer.get(_url("logs/compare/"), {"a": "nope", "b": str(cur.id)}).status_code == 400
 
 
+def test_compare_works_with_one_plan_using_dates_and_plan_halves(trainer):
+    riya = _riya()
+    cur = ProgramAssignment.objects.filter(client=riya).order_by("-start_date").first()
+    today = timezone.localdate()
+    q = {"a_from": str(today - timedelta(days=59)), "a_to": str(today - timedelta(days=30)),
+         "b_from": str(today - timedelta(days=29)), "b_to": str(today)}
+    d = trainer.get(_url("logs/compare/"), q).json()
+    assert d["a"]["from"] == q["a_from"] and d["b"]["to"] == q["b_to"]
+    assert d["a"]["id"] is None and "workouts" in d["b"] and "4 weeks" in d["a"]["sub"]
+    # a plan against a period: plan:<id> on one side, dates on the other
+    d = trainer.get(_url("logs/compare/"), {"a": f"plan:{cur.id}", "b_from": str(today - timedelta(days=6)),
+                                            "b_to": str(today)}).json()
+    assert d["a"]["id"] == str(cur.id) and d["b"]["from"] == str(today - timedelta(days=6))
+    bad = trainer.get(_url("logs/compare/"), {"a_from": str(today), "a_to": str(today - timedelta(days=3)),
+                                              "b": str(cur.id)})
+    assert bad.status_code == 400 and "a" in bad.json()["error"]["fields"]
+
+
+def test_bodyweight_sets_count_towards_volume(trainer):
+    from decimal import Decimal
+
+    from apps.checkins.models import WeightLog
+    from apps.training.models import Exercise, SetLog, WorkoutLog
+    from apps.training.services import body_weights, set_volume
+
+    riya = _riya()
+    day = timezone.localdate() - timedelta(days=2)
+    WeightLog.objects.filter(client=riya, date__gte=day - timedelta(days=3)).delete()
+    WeightLog.objects.update_or_create(client=riya, date=day - timedelta(days=3), defaults={"weight_kg": Decimal("60.0")})
+    WeightLog.objects.create(client=riya, date=day + timedelta(days=1), weight_kg=Decimal("70.0"))  # after: not used
+    ex = Exercise.objects.filter(log_type="bodyweight_reps").first() or Exercise.objects.first()
+    w = WorkoutLog.objects.create(client=riya, date=day, name="Core", status="completed", sets_done=3, sets_planned=3)
+    SetLog.objects.bulk_create([
+        SetLog(workout=w, exercise=ex, set_number=1, reps=10, is_bodyweight=True, done=True),
+        SetLog(workout=w, exercise=ex, set_number=2, reps=10, weight_kg=Decimal("5"), is_bodyweight=True, done=True),
+        SetLog(workout=w, exercise=ex, set_number=3, reps=10, is_bodyweight=True, is_warmup=True, done=True),
+    ])
+    assert body_weights(riya.id)(day) == 60.0
+    s1, s2, s3 = SetLog.objects.filter(workout=w).order_by("set_number")
+    assert set_volume(s1, 60) == 600 and set_volume(s2, 60) == 650 and set_volume(s3, 60) == 0
+    one = trainer.get(_url(f"workouts/{w.id}/")).json()
+    assert [s["volume"] for s in sorted(one["sets"], key=lambda s: s["set_number"])] == [600, 650, 0]
+    rows = trainer.get(_url("workouts/"), {"range": "7d", "page_size": 50}).json()["results"]
+    assert next(r for r in rows if r["id"] == str(w.id))["volume"] == 1250
+
+
 def test_comment_reaches_the_client(trainer):
     riya = _riya()
     before = Notification.objects.filter(recipient=riya).count()

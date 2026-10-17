@@ -360,8 +360,8 @@ def _health_items(ctx):
 
     items = []
     health = (ctx.cp.onboarding or {}).get("health") or {}
-    hurt = [x.replace("_", " ") for x in (health.get("injuries") or []) + (health.get("conditions") or [])
-            if x and x != "none"]
+    hurt = [x.replace("_", " ") for x in (ctx.cp.injury_areas or health.get("injuries") or [])
+            + (ctx.cp.conditions or health.get("conditions") or []) if x and x != "none"]
     if hurt:
         items.append(_item("health", "Health form: " + ", ".join(hurt), "From onboarding.", ctx.joined,
                            ctx.user.full_name, "Health", "warn"))
@@ -410,7 +410,7 @@ def _onboarding_line(ctx):
     goal = (on.get("goal") or {}).get("goal")
     about = on.get("about") or {}
     food = on.get("food") or {}
-    days = len((on.get("schedule") or {}).get("days") or [])
+    days = ctx.cp.workout_days or len((on.get("schedule") or {}).get("days") or [])
     from .models import Goal
 
     bits = []
@@ -418,7 +418,7 @@ def _onboarding_line(ctx):
         bits.append(f"Goal: {dict(Goal.choices).get(goal, goal).lower()}.")
     body = [x for x in (_kg(about["weight_kg"]) if about.get("weight_kg") else "",
                         f"{about['height_cm']:g} cm" if isinstance(about.get("height_cm"), (int, float)) else "",
-                        DIETS.get(food.get("diet"), "").lower(),
+                        DIETS.get(ctx.cp.diet_type or food.get("diet"), ctx.cp.diet_type).lower(),
                         f"trains {days} days a week" if days else "") if x]
     if body:
         bits.append(", ".join(body) + ".")
@@ -606,7 +606,7 @@ def _health(ctx):
     for line in [x.strip() for x in (cp.health_notes or "").split("\n") if x.strip()][:4]:
         rows.append({"title": line[:90], "detail": f"Since {_dm(notes_at or ctx.joined)} · from the profile",
                      "tone": "warn"})
-    for x in (health.get("injuries") or []) + (health.get("conditions") or []):
+    for x in (cp.injury_areas or health.get("injuries") or []) + (cp.conditions or health.get("conditions") or []):
         if x and x != "none":
             rows.append({"title": x.replace("_", " ").capitalize(), "detail": f"Since {_dm(ctx.joined)} · from onboarding",
                          "tone": "warn"})
@@ -616,7 +616,7 @@ def _health(ctx):
     if not rows:
         rows.append({"title": "No injuries or conditions", "detail": "From onboarding", "tone": "ok"})
     food = on.get("food") or {}
-    bits = [DIETS.get(food.get("diet"), "")]
+    bits = [DIETS.get(cp.diet_type or food.get("diet"), cp.diet_type)]
     avoid = [a for a in (food.get("avoid") or []) if a and a != "none"]
     if avoid:
         bits.append("no " + ", ".join(a.replace("_", " ") for a in avoid))

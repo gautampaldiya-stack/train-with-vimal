@@ -31,48 +31,16 @@ class CpOverviewTab extends StatelessWidget {
 
   // ─────────────────────────────── About
 
-  static const _diets = {'veg': 'Vegetarian', 'egg': 'Eggetarian', 'non_veg': 'Non-veg', 'vegan': 'Vegan', 'jain': 'Jain'};
-  static const _places = {'gym': 'Gym', 'home': 'Home', 'both': 'Gym and home'};
-  static const _levels = {'beginner': '0 – 6 months', 'intermediate': '6 months – 2 years', 'advanced': '2+ years'};
-  static const _activity = {'desk': 'Mostly sitting', 'on_feet': 'On their feet', 'very_active': 'Very active'};
-  static const _genders = {'female': 'Female', 'male': 'Male', 'other': 'Other'};
-
+  /// What the client answered in onboarding (the gym's coaching form) and the coach changed in Edit profile; the
+  /// server words every value (age from the date of birth, "—" only when nothing is there) — D-36.
   Widget _about() {
-    final on = c.onboarding;
-    final about = (on['about'] as Map?) ?? const {};
-    final goal = (on['goal'] as Map?) ?? const {};
-    final food = (on['food'] as Map?) ?? const {};
-    final health = (on['health'] as Map?) ?? const {};
-    final sched = (on['schedule'] as Map?) ?? const {};
-    final p = c.profile;
-    final dob = cpParse(c.detail['date_of_birth']);
-    final age = dob != null ? (DateTime.now().difference(dob).inDays ~/ 365.25) : about['age'];
-    final days = (sched['days'] as List?)?.length;
-    final injuries = [for (final i in (health['injuries'] as List?) ?? const []) if (i != 'none') '$i'.replaceAll('_', ' ')];
-    final notes = '${p['health_notes'] ?? ''}'.trim();
-    final hurt = notes.isNotEmpty ? notes.split('\n').first : (injuries.isEmpty ? 'None' : '${injuries.join(', ')} pain'.replaceFirstMapped(RegExp('^.'), (m) => m[0]!.toUpperCase()));
-    final wake = '${sched['wake_time'] ?? ''}';
-    String wakeText() {
-      final t = DateTime.tryParse('2000-01-01 $wake:00');
-      return t == null ? '—' : DateFormat('h:mm a').format(t).toLowerCase();
-    }
-
+    final about = (o['about'] as Map?) ?? const {};
+    final items = (about['items'] as List?) ?? const [];
     return CpCard(
       title: 'About ${c.first}',
       sub: 'From onboarding · edit in Edit profile',
       child: CpKvGrid([
-        ('Age', age == null ? '—' : '$age', warn: false),
-        ('Gender', _genders['${c.detail['gender']}'] ?? '—', warn: false),
-        ('Height', p['height_cm'] == null ? '—' : cpKg(p['height_cm'], unit: 'cm'), warn: false),
-        ('Start weight', cpKg(p['start_weight_kg'], keep: true), warn: false),
-        ('Now', cpKg(c.stats['weight'] ?? p['current_weight_kg'], keep: true), warn: false),
-        ('Goal weight', cpKg(p['target_weight_kg']), warn: false),
-        ('Diet', _diets['${food['diet']}'] ?? '—', warn: false),
-        ('Trains at', [if (_places[about['place']] != null) _places[about['place']]!, if (days != null) '$days days a week'].join(' · ').ifEmpty('—'), warn: false),
-        ('Experience', _levels['${goal['level']}'] ?? '—', warn: false),
-        ('Daily activity', _activity['${health['activity']}'] ?? '—', warn: false),
-        ('Wake-up', wake.isEmpty ? '—' : wakeText(), warn: false),
-        ('Injuries', hurt, warn: hurt != 'None'),
+        for (final it in items) ('${it['label']}', '${it['value'] ?? '—'}', warn: it['warn'] == true),
       ]),
     );
   }

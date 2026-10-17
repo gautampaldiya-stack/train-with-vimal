@@ -56,10 +56,10 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Row(children: [
               Expanded(child: Text('Your checklist', style: AppText.s(15, W.w8))),
-              CaPill('${st.done.length} of 5 done', tone: CaTone.blue),
+              CaPill('${st.done.length} of ${SetupState.count} done', tone: CaTone.blue),
             ]),
-            Padding(padding: const EdgeInsets.fromLTRB(0, 10, 0, 6), child: CaSegments(count: 5, isDone: st.done.contains)),
-            for (var i = 0; i < 5; i++)
+            Padding(padding: const EdgeInsets.fromLTRB(0, 10, 0, 6), child: CaSegments(count: SetupState.count, isDone: st.done.contains)),
+            for (var i = 0; i < SetupState.count; i++)
               CaMenuRow(
                 padX: 0,
                 lead: st.done.contains(i) ? const CaIconTile(icon: AppIcons.check, tone: CaTone.green) : CaIconTile(text: '${i + 1}'),

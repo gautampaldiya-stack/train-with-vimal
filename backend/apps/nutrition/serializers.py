@@ -48,7 +48,7 @@ class FoodSerializer(serializers.ModelSerializer):
     def get_used_in(self, obj):
         names = getattr(obj, "_used_in", None)
         if names is None:
-            names = list(MealPlan.objects.filter(meals__options__items__food=obj).distinct()
+            names = list(MealPlan.objects.filter(meals__options__items__food=obj, is_master=True).distinct()
                          .values_list("name", flat=True)[:10])
         return names
 
@@ -189,10 +189,11 @@ class MealOptionSerializer(serializers.ModelSerializer):
 class MealSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)
     options = MealOptionSerializer(many=True, required=False)
+    weekday = serializers.IntegerField(read_only=True)  # null = every day; a client copy can have its own days
 
     class Meta:
         model = Meal
-        fields = ["id", "name", "time", "kcal_target", "options"]
+        fields = ["id", "name", "time", "kcal_target", "weekday", "options"]
 
     def validate(self, attrs):
         opts = attrs.get("options", [])
@@ -258,6 +259,22 @@ class MealPlanDetailSerializer(MealPlanCardSerializer):
 
 class MealStructureSerializer(serializers.Serializer):
     meals = MealSerializer(many=True)
+
+
+class ClientMealDaySerializer(serializers.Serializer):
+    """Client profile → Plans → Meal plan → Edit for X → Save: one weekday's meals of the client's copy."""
+
+    weekday = serializers.IntegerField(min_value=0, max_value=6)
+    every_day = serializers.BooleanField(default=False)
+    meals = MealSerializer(many=True)
+
+    def validate_meals(self, v):
+        if len(v) > 12:
+            raise serializers.ValidationError("Up to 12 meals a day.")
+        for m in v:
+            if not " ".join(str(m.get("name", "")).split()):
+                raise serializers.ValidationError("Every meal needs a name.")
+        return v
 
 
 class FoodLogSerializer(serializers.ModelSerializer):

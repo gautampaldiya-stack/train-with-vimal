@@ -130,7 +130,7 @@ class _PendingScreenState extends State<PendingScreen> with WidgetsBindingObserv
         ok,
         !ok,
       ),
-      ('Complete your profile', n == 5 ? 'All 5 steps done' : '$n of 5 steps done · goal, body, health, food', n == 5, ok && n < 5),
+      ('Complete your profile', n >= me.setupTotal ? 'All ${me.setupTotal} steps done' : '$n of ${me.setupTotal} steps done · goal, body, health, food', n >= me.setupTotal, ok && n < me.setupTotal),
     ];
     final goT = me.setupComplete ? 'See your profile' : (ok ? 'Set up your profile' : 'Finish your profile meanwhile');
     return AuthFrame(

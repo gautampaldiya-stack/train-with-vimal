@@ -11,14 +11,16 @@ import '../../../core/widgets/button.dart';
 import '../../../core/widgets/card.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/input.dart';
+import '../../../core/widgets/media.dart';
 import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
+import '../../../core/widgets/tabs.dart';
 import 'cp_common.dart';
 import 'cp_model.dart';
 import 'cp_plans_model.dart';
 
-// Pieces of the Plans tab: day strip, day head and note, exercise and meal rows, the exercise and meal drawers,
-// the meal plan version note and the habits drawer.
+// Pieces of the Plans tab: day strip, day head and note, exercise and meal rows, the exercise and meal drawers
+// and the habits drawer (with the per-client habit edit).
 
 /// Lets the assign drawer (opened from the header too) ask the Plans tab to open the editor after assigning.
 class PlanEvent {
@@ -190,12 +192,11 @@ Widget numTag((String, bool) tag) => Container(
       constraints: const BoxConstraints(minWidth: 22),
       height: 22,
       padding: EdgeInsets.symmetric(horizontal: tag.$2 ? 5 : 0),
-      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: tag.$2 ? AppColors.purpleBg : AppColors.sub,
         borderRadius: BorderRadius.circular(tag.$2 ? 6 : 11),
       ),
-      child: Text(tag.$1, style: AppText.s(11.5, W.w8, color: tag.$2 ? AppColors.purpleText : AppColors.text2)),
+      child: Center(widthFactor: 1, child: Text(tag.$1, style: AppText.s(11.5, W.w8, color: tag.$2 ? AppColors.purpleText : AppColors.text2))),
     );
 
 /// `.pd-row` for one exercise: tag, video tile, name + badges, "4 × 8 · RPE 7 · …", note, chevron.
@@ -253,9 +254,8 @@ class _SmallBadge extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         height: 19,
         padding: const EdgeInsets.symmetric(horizontal: 6),
-        alignment: Alignment.center,
         decoration: BoxDecoration(color: tone.bg, borderRadius: BorderRadius.circular(5)),
-        child: Text(label, style: AppText.s(10.5, W.w7, color: tone.fg)),
+        child: Center(widthFactor: 1, child: Text(label, style: AppText.s(10.5, W.w7, color: tone.fg))),
       );
 }
 
@@ -329,22 +329,37 @@ class MealRow extends StatelessWidget {
 /// Footer note: fills the row on wide screens; on phone the footer is a column, so it stays as it is.
 Widget _fnote(BuildContext ctx, Widget w) => ctx.isPhone ? w : Expanded(child: w);
 
-Widget _kpis(List<(String, String)> k) => Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
-      child: Wrap(runSpacing: 10, children: [
-        for (final (i, (a, b)) in k.indexed)
-          Container(
-            width: 92,
-            padding: EdgeInsets.only(left: i % 4 == 0 ? 0 : 10),
-            decoration: BoxDecoration(border: i % 4 == 0 ? null : const Border(left: BorderSide(color: AppColors.line))),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-              Text(a, style: AppText.s(12, W.w5, color: AppColors.muted)),
-              Text(b, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w8)),
-            ]),
-          ),
-      ]),
+/// `.dr-kpis`: label over value in even columns with a line between (4 in a row; 6 go 3 + 3), numbers tabular.
+Widget _kpis(List<(String, String)> k) {
+  final per = k.length <= 4 ? k.length : 3;
+  Widget cell(int i) {
+    final (a, b) = k[i];
+    final first = i % per == 0;
+    return Expanded(
+      child: Container(
+        padding: EdgeInsets.only(left: first ? 0 : 12, right: 6),
+        decoration: BoxDecoration(border: first ? null : const Border(left: BorderSide(color: AppColors.line))),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+          Text(a, style: AppText.s(12, W.w5, color: AppColors.muted)),
+          Text(b, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w8, tabular: true)),
+        ]),
+      ),
     );
+  }
+
+  return Container(
+    padding: const EdgeInsets.symmetric(vertical: 12),
+    decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
+    child: Column(spacing: 12, children: [
+      for (var r = 0; r < k.length; r += per)
+        IntrinsicHeight(
+          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            for (var i = r; i < r + per; i++) i < k.length ? cell(i) : const Expanded(child: SizedBox()),
+          ]),
+        ),
+    ]),
+  );
+}
 
 Widget _sub(String t) => Padding(padding: const EdgeInsets.only(top: 16, bottom: 6), child: Text(t, style: AppText.s(13.5, W.w8)));
 
@@ -401,25 +416,15 @@ Future<void> showExerciseDrawer(BuildContext context,
             final how = [for (final s in (ov['how_to'] as List?) ?? (x['how_to'] as List?) ?? const []) '$s'];
             final cues = [for (final s in (ov['form_cues'] as List?) ?? (x['form_cues'] as List?) ?? const []) '$s'];
             final yt = '${ov['youtube_url'] ?? x['youtube_url'] ?? ''}';
-            final media = x['media'] as Map?;
             final also = [for (final a in (x['also_works'] as List?) ?? const []) '${(a as Map)['muscle']}'];
-            final link = media?['url'] ?? (yt.isEmpty ? null : yt);
             return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               const SizedBox(height: 14),
               Text('${exName(e)} · exercise ${n + 1} of ${list.length} · ${tags[n].$1}', style: AppText.cap),
               const SizedBox(height: 10),
-              Hover(
-                onTap: link == null ? null : () => launchUrl(Uri.parse('$link'), mode: LaunchMode.externalApplication),
-                builder: (_, h, _) => Row(spacing: 12, children: [
-                  MediaTile(tone: n, size: 64),
-                  Expanded(
-                    child: Text(
-                      link == null ? 'No video yet. Add one in the exercise library.' : (yt.isNotEmpty && media == null ? 'YouTube · ${exName(e)}' : 'Content library · ${media?['title'] ?? exName(e)}'),
-                      style: AppText.s(12.5, W.w6, color: link == null ? AppColors.muted : (h ? AppColors.linkHover : AppColors.accent)),
-                    ),
-                  ),
-                ]),
-              ),
+              if (snap.connectionState != ConnectionState.done && snap.data == null)
+                const SizedBox(height: 64, child: CpLoading())
+              else
+                ExMedia(key: ValueKey('${e['exercise']}'), media: x['media'] as Map?, link: yt, name: exName(e), tone: n),
               _kpis([
                 ('Sets', '${e['sets']}'),
                 ('Reps', '${e['reps']}'),
@@ -486,9 +491,118 @@ Future<void> showExerciseDrawer(BuildContext context,
   ).whenComplete(() => disposeLater([i]));
 }
 
+/// The exercise's video, YouTube link, picture or web link inside the drawer (the same players as the client
+/// guide): a video and a YouTube video play right here, a picture opens full screen, a web link opens the
+/// browser. The line under it says which one it is.
+class ExMedia extends StatefulWidget {
+  const ExMedia({super.key, required this.media, required this.link, required this.name, this.tone = 0});
+  final Map? media;
+  final String link, name;
+  final int tone;
+  @override
+  State<ExMedia> createState() => _ExMediaState();
+}
+
+class _ExMediaState extends State<ExMedia> {
+  Map? get m => widget.media;
+
+  /// video · image · youtube (library or the exercise's link) · web (a link that is not YouTube) · '' none.
+  late final String kind = () {
+    final k = '${m?['kind'] ?? ''}';
+    if (k.isNotEmpty) return k;
+    if (widget.link.isEmpty) return '';
+    return youtubeId(widget.link).isNotEmpty ? 'youtube' : 'web';
+  }();
+  String get url => '${m?['url'] ?? ''}'.isNotEmpty ? '${m!['url']}' : widget.link;
+  late final VideoCtl? v = kind == 'video' ? VideoCtl(url, fallbackSeconds: ((m?['duration'] as num?) ?? 0).toInt()) : null;
+
+  @override
+  void dispose() {
+    v?.dispose();
+    super.dispose();
+  }
+
+  String _label() {
+    final c = v!;
+    if (c.failed) return 'Could not play here · tap to open';
+    if (c.playing) return 'Playing';
+    if (c.finished) return 'Finished · tap to watch again';
+    if (c.pos > 0) return 'Paused';
+    return 'Tap to play';
+  }
+
+  void _open() => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+
+  @override
+  Widget build(BuildContext context) {
+    if (kind.isEmpty) {
+      return Row(spacing: 12, children: [
+        MediaTile(tone: widget.tone, size: 64, play: false),
+        Expanded(child: Text('No video yet. Add one in the exercise library.', style: AppText.s(12.5, W.w6, color: AppColors.muted))),
+      ]);
+    }
+    final title = '${m?['title'] ?? ''}'.isNotEmpty ? '${m!['title']}' : widget.name;
+    final (AppIconData icon, String what) = switch (kind) {
+      'video' => (AppIcons.video, 'Video'),
+      'image' => (AppIcons.photo, 'Picture'),
+      'youtube' => (AppIcons.video, 'YouTube link'),
+      _ => (AppIcons.link, 'Web link'),
+    };
+    final hint = switch (kind) { 'video' => 'Plays here', 'image' => 'Tap to open', _ => 'Opens in the browser' };
+    final Widget face = switch (kind) {
+      'video' => VideoBox(ctl: v!, label: _label, bg: AppColors.videoDark.first, fg: AppColors.white, height: 220, radius: 0, onTapEmpty: _open),
+      'image' => Semantics(
+          button: true,
+          label: 'Open the picture full screen',
+          child: GestureDetector(
+            onTap: () => showImageViewer(context, [url], title: widget.name),
+            child: MouseRegion(
+              cursor: SystemMouseCursors.zoomIn,
+              child: Container(color: AppColors.sub, height: 220, child: NetImage(url, fit: BoxFit.contain, height: 220)),
+            ),
+          ),
+        ),
+      'youtube' => YoutubeBox(url: url, openLink: false),
+      _ => Hover(
+          onTap: _open,
+          builder: (_, h, _) => Container(
+            height: 96,
+            color: h ? AppColors.hover : AppColors.sub,
+            alignment: Alignment.center,
+            child: Column(mainAxisSize: MainAxisSize.min, spacing: 6, children: [
+              AppIcon(AppIcons.external, size: 22, color: h ? AppColors.accent : AppColors.muted),
+              Text(Uri.tryParse(url)?.host ?? url, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: h ? AppColors.accentText : AppColors.text2)),
+            ]),
+          ),
+        ),
+    };
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.line)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        face,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          child: Row(spacing: 8, children: [
+            AppIcon(icon, size: 15, color: AppColors.muted),
+            Expanded(
+              child: Text.rich(
+                TextSpan(text: what, style: AppText.s(12.5, W.w7), children: [TextSpan(text: ' · $title', style: AppText.s(12.5, W.w5, color: AppColors.text2))]),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (kind == 'youtube') OpenInYoutube(url) else Text(hint, style: AppText.s(12, W.w5, color: AppColors.muted)),
+          ]),
+        ),
+      ]),
+    );
+  }
+}
+
 /// Meal drawer (`mld`): Calories / Protein / Foods / Time, each food with its amount, macros and swaps, the meal total.
 Future<void> showMealDrawer(BuildContext context,
-    {required CpController c, required List<Map> meals, required int start, required String sub, required VoidCallback onEdit}) {
+    {required CpController c, required List<Map> meals, required int start, required String sub, required VoidCallback onEdit, bool custom = false}) {
   final i = ValueNotifier(start);
   return showAppDrawer(
     context,
@@ -544,7 +658,7 @@ Future<void> showMealDrawer(BuildContext context,
       },
     ),
     footer: (ctx) => [
-      _fnote(ctx, Text('Same as the master plan', style: AppText.cap)),
+      _fnote(ctx, Text(custom ? '${c.first}’s own copy · the master stays the same' : 'Same as the master plan', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.cap)),
       if (!ctx.isPhone) AppButton('Close', onPressed: () => Navigator.of(ctx).pop()),
       AppButton.primary('Edit for ${c.first}', icon: AppIcons.edit, onPressed: () {
         Navigator.of(ctx).pop();
@@ -552,40 +666,6 @@ Future<void> showMealDrawer(BuildContext context,
       }),
     ],
   ).whenComplete(() => disposeLater([i]));
-}
-
-/// Meal plan `Edit for X`: the version note (same as the meal plan page): only for this client.
-Future<bool?> showVersionNote(BuildContext context, {required CpController c, required Map m}) {
-  final t = TextEditingController(text: '${m['version_note'] ?? ''}');
-  final busy = ValueNotifier(false);
-  Future<void> save(BuildContext ctx) async {
-    busy.value = true;
-    try {
-      await Services.api.put('meal-plans/${m['plan']}/clients/${c.id}/version-note/', {'version_note': t.text.trim()});
-      if (ctx.mounted) {
-        Navigator.of(ctx).pop(true);
-        showToast(ctx, t.text.trim().isEmpty ? '${c.first} follows the master plan' : 'Version note saved', sub: 'Only for ${c.first}', kind: ToastKind.ok);
-      }
-    } on ApiError catch (e) {
-      busy.value = false;
-      if (ctx.mounted) showToast(ctx, 'Could not save the note', sub: e.message, kind: ToastKind.info);
-    }
-  }
-
-  return showAppModal<bool>(
-    context,
-    title: '${'${m['version_note'] ?? ''}'.isEmpty ? 'Add' : 'Edit'} version note',
-    body: 'Only for ${c.first}. The trainer and the client see it on the plan.',
-    icon: AppIcons.edit,
-    content: (ctx) => AppTextField(controller: t, maxLines: 5, minLines: 4, placeholder: 'Dinner: brown rice 1 × 100 g instead of 1.5. Banana before training instead of dates.'),
-    actions: (ctx) => [
-      AppButton('Cancel', expand: ctx.isPhone, onPressed: () => Navigator.of(ctx).pop()),
-      ValueListenableBuilder(
-        valueListenable: busy,
-        builder: (_, b, _) => AppButton.primary('Save version note', expand: ctx.isPhone, loading: b, onPressed: b ? null : () => save(ctx)),
-      ),
-    ],
-  ).whenComplete(() => disposeLater([t, busy]));
 }
 
 /// Habits `Edit for X`: the client's habits with their start day; remove one, or add habits from the library.
@@ -615,17 +695,30 @@ Future<bool?> showHabitsEditor(BuildContext context, {required CpController c, r
           const SizedBox(height: 8),
           if (rows.isEmpty) const EmptyState('No habits yet', sub: 'Add habits from the library below.'),
           for (final a in rows)
-            AppRow(
-              leading: cpIcon(AppIcons.checkCircle),
-              title: '${a['habit']['name']}',
-              sub: [
-                '${(a['habit'] as Map)['frequency_label']}',
-                cpParse(a['start_date'])!.isAfter(DateTime.now()) ? 'starts ${cpDay(a['start_date'])}' : 'since ${cpDm(a['start_date'])}',
-              ].join(' · '),
-              trailing: AppIconButton(AppIcons.trash, tooltip: 'Remove', ghost: true, small: true, onPressed: () {
-                run(ctx, () => Services.api.post<Map>('clients/${c.id}/habit-plan/${a['id']}/end/', const {}), 'Removed ${a['habit']['name']}');
-              }),
-            ),
+            () {
+              final h = a['habit'] as Map;
+              final target = h['kind'] == 'counter' && h['target'] != null ? '${NumberFormat.decimalPattern('en_IN').format(h['target'])} ${h['unit'] ?? ''}'.trim() : null;
+              return AppRow(
+                leading: cpIcon(AppIcons.checkCircle),
+                title: '${h['name']}',
+                sub: [
+                  ?target,
+                  '${h['frequency_label']}',
+                  cpParse(a['start_date'])!.isAfter(DateTime.now()) ? 'starts ${cpDay(a['start_date'])}' : 'since ${cpDm(a['start_date'])}',
+                  if (a['custom'] == true) 'changed for ${c.first}',
+                ].join(' · '),
+                trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                  AppIconButton(AppIcons.edit, tooltip: 'Edit', ghost: true, small: true, onPressed: () async {
+                    final body = await _editHabit(ctx, c: c, a: a);
+                    if (body == null || !ctx.mounted) return;
+                    await run(ctx, () => Services.api.patch<Map>('clients/${c.id}/habit-plan/${a['id']}/', body), 'Saved ${h['name']}');
+                  }),
+                  AppIconButton(AppIcons.trash, tooltip: 'Remove', ghost: true, small: true, onPressed: () {
+                    run(ctx, () => Services.api.post<Map>('clients/${c.id}/habit-plan/${a['id']}/end/', const {}), 'Removed ${h['name']}');
+                  }),
+                ]),
+              );
+            }(),
           Padding(
             padding: const EdgeInsets.only(top: 12),
             child: Align(
@@ -644,6 +737,90 @@ Future<bool?> showHabitsEditor(BuildContext context, {required CpController c, r
     footer: (ctx) => [AppButton.primary('Done', onPressed: () => Navigator.of(ctx).pop(changed))],
   ).then((v) => v ?? changed).whenComplete(() => disposeLater([state]));
 }
+
+/// Edit habits → Edit: this client's target (counters), how often, which days / how many times a week, and a
+/// note shown to the client. Returns the PATCH body, or null on Cancel. The library habit is not changed.
+Future<Map<String, dynamic>?> _editHabit(BuildContext context, {required CpController c, required Map a}) {
+  final h = a['habit'] as Map;
+  final lib = (a['library'] as Map?) ?? h;
+  final counter = h['kind'] == 'counter';
+  final target = TextEditingController(text: h['target'] == null ? '' : '${h['target']}');
+  final note = TextEditingController(text: '${a['note'] ?? ''}'.isNotEmpty ? '${a['note']}' : '${h['why'] ?? ''}');
+  final freq = ValueNotifier('${h['frequency'] ?? 'daily'}');
+  final days = ValueNotifier<Set<int>>({for (final d in (h['days'] as List?) ?? const []) (d as num).toInt()});
+  final times = ValueNotifier(((h['times_per_week'] as num?) ?? 3).toInt());
+  final err = ValueNotifier<String?>(null);
+  const freqs = [('daily', 'Every day'), ('days', 'On some days'), ('times_week', 'Times a week')];
+
+  Map<String, dynamic>? body() {
+    final t = int.tryParse(target.text.trim().replaceAll(',', ''));
+    if (counter && (t == null || t < 1)) {
+      err.value = 'Enter a target, e.g. ${lib['target'] ?? 8000}.';
+      return null;
+    }
+    if (freq.value == 'days' && days.value.isEmpty) {
+      err.value = 'Pick at least one day.';
+      return null;
+    }
+    return {
+      if (counter) 'target': t,
+      'frequency': freq.value,
+      'days': (days.value.toList()..sort()),
+      'times_per_week': freq.value == 'times_week' ? times.value : null,
+      'note': note.text.trim(),
+    };
+  }
+
+  Widget label(String t) => Text(t, style: AppText.label);
+  return showAppModal<Map<String, dynamic>>(
+    context,
+    title: 'Edit ${h['name']} for ${c.first}',
+    body: 'Only ${c.first}’s habit changes. The library habit stays ${'${lib['frequency_label'] ?? ''}'.toLowerCase()}${lib['target'] != null ? ' · ${lib['target']} ${lib['unit'] ?? ''}'.trimRight() : ''}.',
+    icon: AppIcons.edit,
+    content: (ctx) => ListenableBuilder(
+      listenable: Listenable.merge([freq, days, times, err]),
+      builder: (ctx, _) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [
+        if (counter)
+          Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
+            label('Target'),
+            AppTextField(controller: target, keyboard: TextInputType.number, placeholder: '${lib['target'] ?? ''}', suffix: Text('${h['unit'] ?? ''}', style: AppText.cap)),
+          ]),
+        Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
+          label('How often'),
+          fitTabsLeft(SegmentedTabs<String>(items: [for (final (k, l) in freqs) TabItem(k, l)], value: freq.value, onChanged: (v) => freq.value = v)),
+          if (freq.value == 'days')
+            Wrap(spacing: 6, runSpacing: 6, children: [
+              for (var i = 0; i < 7; i++)
+                FilterChipX(weekdayShort[i],
+                    selected: days.value.contains(i),
+                    onTap: () => days.value = days.value.contains(i) ? ({...days.value}..remove(i)) : {...days.value, i}),
+            ]),
+          if (freq.value == 'times_week')
+            Row(spacing: 10, children: [
+              AppIconButton(AppIcons.minus, tooltip: 'Fewer', small: true, onPressed: times.value <= 1 ? null : () => times.value--),
+              Text('${times.value} times a week', style: AppText.s(13.5, W.w7, tabular: true)),
+              AppIconButton(AppIcons.plus, tooltip: 'More', small: true, onPressed: times.value >= 7 ? null : () => times.value++),
+            ]),
+        ]),
+        Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
+          label('Note for ${c.first}'),
+          AppTextField(controller: note, maxLines: 3, minLines: 2, placeholder: 'Why it matters, or how to do it'),
+        ]),
+        if (err.value != null) Text(err.value!, style: AppText.s(12.5, W.w6, color: AppColors.badText)),
+      ]),
+    ),
+    actions: (ctx) => [
+      AppButton('Cancel', expand: ctx.isPhone, onPressed: () => Navigator.of(ctx).pop()),
+      AppButton.primary('Save', expand: ctx.isPhone, onPressed: () {
+        final b = body();
+        if (b != null) Navigator.of(ctx).pop(b);
+      }),
+    ],
+  ).whenComplete(() => disposeLater([target, note, freq, days, times, err]));
+}
+
+/// `.dr-seg`: segment tabs as wide as their labels, on the left; they slide sideways when the drawer is narrow.
+Widget fitTabsLeft(Widget tabs) => Align(alignment: Alignment.centerLeft, child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: tabs));
 
 Future<List<String>?> _pickHabits(BuildContext context, {required Set<String> have}) {
   final picked = ValueNotifier<Set<String>>({});

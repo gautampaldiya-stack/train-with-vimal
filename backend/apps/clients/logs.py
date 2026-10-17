@@ -77,16 +77,28 @@ def _period(client, pa):
     return start, end
 
 
+def _assignments(client, start, end):
+    """Workout plans that ran some time in [start, end], oldest first."""
+    from apps.training.models import ProgramAssignment
+
+    return list(ProgramAssignment.objects.filter(client=client, start_date__lte=end)
+                .filter(Q(end_date__isnull=True) | Q(end_date__gte=start))
+                .select_related("program", "custom_program").order_by("start_date"))
+
+
 def _weeks(start, end):
     return max(1, ((end - start).days + 1) / 7)
 
 
-def _workouts(client, pa, start, end):
+def _workouts(client, start, end, pa=None):
+    """[pa] = the plan picked for this side; for a date range every plan that ran in it counts."""
     from apps.clients.metrics import planned_workout_days
     from apps.training.models import SetLog, WorkoutLog
+    from apps.training.services import body_weights, workout_volume
 
     weeks = _weeks(start, end)
-    planned = planned_workout_days(pa, start, end)
+    pas = [pa] if pa else _assignments(client, start, end)
+    planned = sorted({d for x in pas for d in planned_workout_days(x, start, min(end, x.end_date or end))})
     planned_past = [d for d in planned if d < timezone.localdate()] or planned
     logs = list(WorkoutLog.objects.filter(client=client, status="completed", date__range=(start, end)))
     done_days = {w.date for w in logs}
@@ -94,14 +106,15 @@ def _workouts(client, pa, start, end):
     sets_done = sum(w.sets_done for w in logs)
     sets_planned = sum(w.sets_planned for w in logs)
     vols = []
+    body = body_weights(client.id)
     for w in logs:
-        v = sum(s.volume for s in w.sets.all())
+        v = workout_volume(w, body(w.date))
         if v:
             vols.append(v)
     mins = [w.duration_seconds / 60 for w in logs if w.duration_seconds]
     by_day = Counter(d.strftime("%A") for d in missed)
-    program = pa.effective_program
-    wk1 = program.program_weeks.order_by("number").first()
+    program = pas[-1].effective_program if pas else None
+    wk1 = program.program_weeks.order_by("number").first() if program else None
     per_week = wk1.days.filter(is_rest=False).count() if wk1 else None
     best = {}
     for s in (SetLog.objects.filter(workout__client=client, workout__status="completed", workout__date__range=(start, end),
@@ -241,30 +254,45 @@ def _body(client, start, end):
             "waist": mch("waist"), "body_fat": mch("body_fat")}
 
 
-def plan_period(client, pa):
-    """One side of Compare plans: what the client did while on this workout plan (and the meal plan then)."""
+def period(client, start, end, *, pa=None, name=None):
+    """One side of Compare plans: what the client did in [start, end] (a plan's run, part of it, or any dates)."""
     from apps.nutrition.models import MealPlanAssignment
 
-    start, end = _period(client, pa)
+    today = timezone.localdate()
+    end = min(end, today)
+    if end < start:
+        end = start
     mp = (MealPlanAssignment.objects.filter(client=client, start_date__lte=end).select_related("plan")
           .order_by("-start_date").first())
-    today = timezone.localdate()
     weeks = max(1, round(((end - start).days + 1) / 7))
-    bits = ["Workout"]
+    bits = ["Workout"] if pa or _assignments(client, start, end) else []
     if mp and mp.plan.kcal_target:
         bits.append(f"{mp.plan.kcal_target:,} kcal")
-    to = "now" if (pa.end_date is None or pa.end_date >= today) else dfmt(end, "%-d %b")
+    to = "now" if end >= today and (pa is None or pa.end_date is None or pa.end_date >= today) else dfmt(end, "%-d %b")
+    when = f"{dfmt(start, '%-d %b')} – {to}"
     return {
-        "id": str(pa.id), "name": pa.effective_program.name, "from": start, "to": end,
-        "sub": f"{' + '.join(bits)} · {dfmt(start, '%-d %b')} – {to} · {weeks} week{'s' if weeks != 1 else ''}",
-        "workouts": _workouts(client, pa, start, end), "meals": _meals(client, start, end),
+        "id": str(pa.id) if pa else None,
+        "name": name or (pa.effective_program.name if pa else f"{dfmt(start, '%-d %b')} – {dfmt(end, '%-d %b')}"),
+        "from": start, "to": end,
+        "sub": " · ".join(x for x in [" + ".join(bits), when, f"{weeks} week{'s' if weeks != 1 else ''}"] if x),
+        "workouts": _workouts(client, start, end, pa), "meals": _meals(client, start, end),
         "checkins": _checkins(client, start, end), "habits": _habits(client, start, end),
         "supps": _supps(client, start, end), "body": _body(client, start, end),
     }
 
 
+def plan_period(client, pa):
+    """What the client did while on this workout plan (and the meal plan then)."""
+    start, end = _period(client, pa)
+    return period(client, start, end, pa=pa)
+
+
 def compare(client, a, b):
-    return {"a": plan_period(client, a), "b": plan_period(client, b)}
+    """[a] / [b]: a ProgramAssignment, or (start, end) dates."""
+    def side(x):
+        return plan_period(client, x) if not isinstance(x, tuple) else period(client, *x)
+
+    return {"a": side(a), "b": side(b)}
 
 
 # ─────────────────────────────── Comments

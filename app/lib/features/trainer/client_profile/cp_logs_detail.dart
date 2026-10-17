@@ -152,7 +152,8 @@ String _setText(Map s) {
   if (km != null && km > 0) bits.add('${cpOne(km)} km');
   if (secs != null && (secs as num) > 0) bits.add(secs >= 120 ? '${(secs / 60).round()} min' : '$secs s');
   if (reps != null && (reps as num) > 0) {
-    bits.add(kg != null && kg > 0 ? '${cpOne(kg)} kg × $reps' : (s['is_bodyweight'] == true ? 'Body × $reps' : '× $reps'));
+    final bw = s['is_bodyweight'] == true;
+    bits.add(kg != null && kg > 0 ? '${bw ? 'Body + ' : ''}${cpOne(kg)} kg × $reps' : (bw ? 'Body × $reps' : '× $reps'));
   } else if (kg != null && kg > 0) {
     bits.add('${cpOne(kg)} kg');
   }
@@ -245,10 +246,32 @@ Widget _workout(CpController c, Map r, Map d, _Nav nav) {
 
 // ─────────────────────────────── Meals
 
-String _qty(Map e) {
-  final q = (e['quantity'] as num?)?.toDouble() ?? 0;
-  final u = '${e['unit'] ?? ''}';
-  return '${cpOne(q)}${u == 'g' || u == 'ml' ? ' $u' : ' $u'}'.trim();
+/// Amount column: quantity × the serving unit. "2" of "1 piece" → "2 pieces", "1.5" of "100 g" → "150 g",
+/// "2" of "1 katori" → "2 katori", "150" of "g" → "150 g".
+String _qty(Map e) => cpAmount((e['quantity'] as num?)?.toDouble() ?? double.tryParse('${e['quantity']}') ?? 0, '${e['unit'] ?? ''}');
+
+String cpAmount(double q, String unit) {
+  var u = unit.trim();
+  var per = 1.0;
+  final m = RegExp(r'^(\d+(?:\.\d+)?)\s*(.*)$').firstMatch(u);
+  if (m != null) {
+    per = double.parse(m.group(1)!);
+    u = m.group(2)!.trim();
+  }
+  final n = q * per;
+  final amount = n == n.roundToDouble() ? cpNum(n) : (n * 10 == (n * 10).roundToDouble() ? cpOne(n) : n.toStringAsFixed(2));
+  if (u.isEmpty) return amount;
+  return '$amount ${n == 1 ? u : _plural(u)}';
+}
+
+/// "piece" → "pieces", "glass" → "glasses"; units and Indian measures (g, ml, tbsp, katori) stay as they are.
+String _plural(String u) {
+  final words = u.split(' ');
+  final w = words.last;
+  const keep = {'g', 'kg', 'ml', 'l', 'oz', 'tbsp', 'tsp', 'katori', 'medium', 'small', 'large'};
+  if (keep.contains(w.toLowerCase()) || w.length < 3 || w.endsWith('s') || !RegExp(r'^[A-Za-z]+$').hasMatch(w)) return u;
+  final p = RegExp(r'(sh|ch|x|ss)$').hasMatch(w) ? '${w}es' : (RegExp(r'[^aeiou]y$').hasMatch(w) ? '${w.substring(0, w.length - 1)}ies' : '${w}s');
+  return [...words.sublist(0, words.length - 1), p].join(' ');
 }
 
 Widget _meals(BuildContext context, CpController c, Map r, Map d) {

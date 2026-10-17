@@ -67,7 +67,8 @@ class _TrainerCheckinsScreenState extends State<TrainerCheckinsScreen> {
                 child: phone
                     ? (open ? _phoneDetail(widget.id!) : _listPane(phone: true))
                     : SizedBox(
-                        height: (MediaQuery.sizeOf(context).height - 150).clamp(640.0, 900.0),
+                        // Fits the window under the title, so the page itself never scrolls (the list and the panel do).
+                        height: (MediaQuery.sizeOf(context).height - 180).clamp(480.0, 1000.0),
                         child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                           Container(
                             width: 360,

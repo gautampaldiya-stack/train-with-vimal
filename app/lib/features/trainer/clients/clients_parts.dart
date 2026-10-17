@@ -5,6 +5,7 @@ import '../../../core/api/api_error.dart';
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
 import '../../../core/util/input_rules.dart';
+import '../../../core/widgets/badge.dart';
 import '../../../core/widgets/button.dart';
 import '../../../core/widgets/card.dart';
 import '../../../core/widgets/hover.dart';
@@ -17,15 +18,37 @@ import 'clients_model.dart';
 const _genders = [('female', 'Female'), ('male', 'Male'), ('other', 'Other'), ('', 'Prefer not to say')];
 const _goals = [('fat_loss', 'Lose fat'), ('muscle_gain', 'Muscle gain'), ('strength', 'Strength'), ('recomp', 'Recomp'), ('general', 'General fitness'), ('event', 'Event prep')];
 
+/// Onboarding answers the drawer edits besides the board's fields (D-36): free text, and choices whose options
+/// come from the server (`options` of `clients/<id>/`). Choices with "Other" keep the client's own words.
+const _texts = [
+  'goal_detail', 'current_exercise', 'past_injuries', 'surgeries', 'addictions', 'digestive_issues', 'stresses', 'common_foods',
+  'meal_breakfast', 'meal_mid_morning', 'meal_lunch', 'meal_pre_workout', 'meal_post_workout', 'meal_evening', 'meal_dinner',
+  'supplements_detail', 'supplement_brands', 'medicines_detail',
+];
+const _others = {'enrolled_for': 'Other', 'workout_place': 'Other', 'workout_time': 'Other', 'diet_type': 'Other', 'food_allergies': 'Yes', 'smoking': 'Yes', 'open_to_supplements': 'Other'};
+const _choices = ['experience', 'activity_level'];
+const _multis = ['injury_areas', 'conditions'];
+const _bools = ['doctor_ok', 'takes_supplements', 'takes_medicines'];
+
 class _EditState extends ChangeNotifier {
   bool loaded = false, busy = false;
   String gender = '', goal = '';
   DateTime? dob;
   Map<String, String> errors = {};
+
+  /// Choice, yes / no, list and days answers by field key; option lists by field key.
+  Map<String, dynamic> vals = {};
+  Map<String, List<(String, String)>> options = {};
+
+  /// Choices where "Other" (or "Yes" for allergies / smoking) is picked: the text box holds their words.
+  final Set<String> otherOpen = {};
   void set(VoidCallback f) {
     f();
     notifyListeners();
   }
+
+  String label(String key, Object? v) => (options[key] ?? const []).where((o) => o.$1 == '$v').firstOrNull?.$2 ?? '$v';
+  bool isOption(String key, Object? v) => (options[key] ?? const []).any((o) => o.$1 == '$v');
 }
 
 /// "Edit details" (row ⋯ menu): the board's client drawer sections — Must have, Good to have, Goal and body —
@@ -41,6 +64,7 @@ Future<bool?> showClientDetailsDrawer(BuildContext context,
   final name = TextEditingController(), phone = TextEditingController(), email = TextEditingController();
   final city = TextEditingController(), goalW = TextEditingController();
   final height = TextEditingController(), weight = TextEditingController(), notes = TextEditingController();
+  final texts = {for (final k in [..._texts, ..._others.keys]) k: TextEditingController()};
   final detail = load().then((d) {
     String num(Object? v) => v == null ? '' : '${double.tryParse('$v')?.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '') ?? v}';
     final p = (d['profile'] as Map?) ?? const {};
@@ -54,10 +78,30 @@ Future<bool?> showClientDetailsDrawer(BuildContext context,
     height.text = num(p['height_cm']);
     weight.text = num(p['current_weight_kg']);
     notes.text = '${p['health_notes'] ?? ''}';
+    for (final k in _texts) {
+      texts[k]!.text = '${p[k] ?? ''}';
+    }
     s.set(() {
       s.gender = '${d['gender'] ?? ''}';
       s.goal = '${p['goal'] ?? ''}';
       s.dob = DateTime.tryParse(b);
+      s.options = {
+        for (final e in ((d['options'] as Map?) ?? const {}).entries)
+          '${e.key}': [for (final o in (e.value as List)) ('${o['value']}', '${o['label']}')],
+      };
+      for (final k in [..._choices, ..._bools, ..._others.keys, 'workout_days']) {
+        s.vals[k] = p[k];
+      }
+      for (final k in _multis) {
+        s.vals[k] = [for (final x in (p[k] as List?) ?? const []) '$x'];
+      }
+      for (final k in _others.keys) {
+        final v = '${p[k] ?? ''}';
+        if (v.isNotEmpty && !s.isOption(k, v)) {
+          s.otherOpen.add(k);
+          texts[k]!.text = v;
+        }
+      }
       s.loaded = true;
     });
     return d;
@@ -93,6 +137,12 @@ Future<bool?> showClientDetailsDrawer(BuildContext context,
         'height_cm': n(height),
         'current_weight_kg': n(weight),
         'health_notes': notes.text.trim(),
+        for (final k in _texts) k: texts[k]!.text.trim(),
+        for (final k in _others.keys) k: s.otherOpen.contains(k) ? texts[k]!.text.trim() : '${s.vals[k] ?? ''}',
+        for (final k in _choices) k: '${s.vals[k] ?? ''}',
+        for (final k in _multis) k: s.vals[k] ?? <String>[],
+        for (final k in _bools) k: s.vals[k],
+        'workout_days': s.vals['workout_days'],
       });
       if (ctx.mounted) Navigator.of(ctx).pop(true);
     } on ApiError catch (e) {
@@ -125,6 +175,58 @@ Future<bool?> showClientDetailsDrawer(BuildContext context,
         child,
         if (error != null) Text(error, style: AppText.s(12, W.w6, color: AppColors.badText)),
       ]);
+
+  String? err(String k) => s.errors[k];
+
+  // Onboarding answers (D-36): selects for choices (options from the server), a text box for "Other" words,
+  // chips for lists, multi-line boxes for what they wrote.
+  Widget choice(String k) {
+    final v = '${s.vals[k] ?? ''}';
+    return AppSelect(v.isEmpty ? 'Not set' : s.label(k, v), entries: [
+      for (final (o, l) in s.options[k] ?? const <(String, String)>[]) MenuEntry(l, selected: o == v, onTap: () => s.set(() => s.vals[k] = o)),
+    ]);
+  }
+
+  Widget other(String k) {
+    final v = '${s.vals[k] ?? ''}', open = s.otherOpen.contains(k), word = _others[k]!;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
+      AppSelect(open ? word : (v.isEmpty ? 'Not set' : s.label(k, v)), entries: [
+        for (final (o, l) in s.options[k] ?? const <(String, String)>[])
+          MenuEntry(l, selected: !open && o == v, onTap: () => s.set(() {
+                s.otherOpen.remove(k);
+                s.vals[k] = o;
+              })),
+        MenuEntry(word == 'Yes' ? 'Yes…' : 'Other…', selected: open, onTap: () => s.set(() => s.otherOpen.add(k))),
+      ]),
+      if (open)
+        AppTextField(controller: texts[k], placeholder: switch (k) { 'smoking' => 'How many a day?', 'food_allergies' => 'Which foods?', _ => 'In their words' }),
+      if (err(k) != null) Text(err(k)!, style: AppText.s(12, W.w6, color: AppColors.badText)),
+    ]);
+  }
+
+  Widget multi(String k) {
+    final picked = [for (final x in (s.vals[k] as List?) ?? const []) '$x'];
+    return Wrap(spacing: 6, runSpacing: 6, children: [
+      for (final (o, l) in s.options[k] ?? const <(String, String)>[])
+        FilterChipX(l, selected: picked.contains(o), onTap: () => s.set(() {
+              s.vals[k] = o == 'none'
+                  ? (picked.contains('none') ? <String>[] : ['none'])
+                  : (picked.contains(o) ? (List.of(picked)..remove(o)) : [...picked.where((x) => x != 'none'), o]);
+            })),
+    ]);
+  }
+
+  Widget yesNo(String k) {
+    final v = s.vals[k];
+    return AppSelect(v == true ? 'Yes' : (v == false ? 'No' : 'Not set'), entries: [
+      MenuEntry('Yes', selected: v == true, onTap: () => s.set(() => s.vals[k] = true)),
+      MenuEntry('No', selected: v == false, onTap: () => s.set(() => s.vals[k] = false)),
+      MenuEntry('Not set', selected: v == null, onTap: () => s.set(() => s.vals[k] = null)),
+    ]);
+  }
+
+  Widget text(String k, String label, {int lines = 3, String? hint}) =>
+      field(label, AppTextField(controller: texts[k], maxLines: lines, placeholder: hint), error: err(k));
 
   return showAppDrawer<bool>(
     context,
@@ -169,7 +271,7 @@ Future<bool?> showClientDetailsDrawer(BuildContext context,
                   field('City', AppTextField(controller: city, placeholder: 'City'), error: e['city']),
                 ),
               ]),
-              sec('Goal and body', 'Optional. If you leave these empty they fill them in onboarding.', last: true, [
+              sec('Goal and body', 'Optional. If you leave these empty they fill them in onboarding.', [
                 two(
                   ctx,
                   field('Goal', AppSelect(s.goal.isEmpty ? 'Pick a goal' : _goals.firstWhere((g) => g.$1 == s.goal, orElse: () => (s.goal, s.goal)).$2,
@@ -183,7 +285,44 @@ Future<bool?> showClientDetailsDrawer(BuildContext context,
                   field('Current weight', AppTextField(controller: weight, keyboard: const TextInputType.numberWithOptions(decimal: true), suffix: _unit('kg')),
                       error: e['current_weight_kg']),
                 ),
+                two(ctx, field('Training experience', choice('experience')), field('Enrolled for', other('enrolled_for'))),
+                text('goal_detail', 'Anything specific about the goal', lines: 1, hint: 'A wedding in March, lose belly fat…'),
+              ]),
+              sec('Training', 'From the coaching form. Change them when their routine changes.', [
+                two(
+                  ctx,
+                  field('Days a week', AppSelect(s.vals['workout_days'] == null ? 'Not set' : '${s.vals['workout_days']} days a week', entries: [
+                    for (var n = 1; n <= 7; n++) MenuEntry(n == 1 ? '1 day a week' : '$n days a week', selected: s.vals['workout_days'] == n, onTap: () => s.set(() => s.vals['workout_days'] = n)),
+                  ]), error: e['workout_days']),
+                  field('Where they train', other('workout_place')),
+                ),
+                two(ctx, field('Workout time', other('workout_time')), field('Activity level', choice('activity_level'))),
+                text('current_exercise', 'Exercise they do now', hint: 'Not performing, walks, gym 3 days…'),
+              ]),
+              sec('Health', 'Only you and their coach see these.', [
+                field('Injuries or pain now', multi('injury_areas'), error: e['injury_areas']),
                 field('Injuries or health notes', AppTextField(controller: notes, maxLines: 3, placeholder: 'Back pain, thyroid, recent surgery…'), error: e['health_notes']),
+                field('Health conditions', multi('conditions'), error: e['conditions']),
+                two(ctx, field('Doctor cleared them for exercise', yesNo('doctor_ok')), const SizedBox.shrink()),
+                text('past_injuries', 'Past injuries'),
+                two(ctx, text('surgeries', 'Surgeries', lines: 2), text('addictions', 'Addictions', lines: 2)),
+                two(ctx, text('digestive_issues', 'Digestive issues', lines: 2), text('stresses', '3 biggest stresses', lines: 2)),
+              ]),
+              sec('Food and lifestyle', 'What they eat now, from the coaching form.', [
+                two(ctx, field('Diet', other('diet_type')), field('Food allergies', other('food_allergies'))),
+                two(ctx, field('Smoking', other('smoking')), const SizedBox.shrink()),
+                text('common_foods', 'Foods they eat most'),
+                two(ctx, text('meal_breakfast', 'Breakfast', lines: 2), text('meal_mid_morning', 'Between breakfast and lunch', lines: 2)),
+                two(ctx, text('meal_lunch', 'Lunch', lines: 2), text('meal_evening', 'Between lunch and dinner', lines: 2)),
+                two(ctx, text('meal_pre_workout', 'Pre-workout', lines: 2), text('meal_post_workout', 'Post-workout', lines: 2)),
+                text('meal_dinner', 'Dinner', lines: 2),
+              ]),
+              sec('Supplements and medicines', 'What they take now and how long.', last: true, [
+                two(ctx, field('Takes supplements', yesNo('takes_supplements')), field('Open to supplements', other('open_to_supplements'))),
+                text('supplements_detail', 'What, how often and why', lines: 2),
+                text('supplement_brands', 'Brands', lines: 1),
+                two(ctx, field('Uses medicines', yesNo('takes_medicines')), const SizedBox.shrink()),
+                text('medicines_detail', 'Medicines and how long', lines: 2),
               ]),
             ]);
           },
@@ -197,7 +336,12 @@ Future<bool?> showClientDetailsDrawer(BuildContext context,
         builder: (_, _) => AppButton.primary('Save changes', icon: AppIcons.check, expand: ctx.isPhone, loading: s.busy, onPressed: s.loaded && !s.busy ? () => save(ctx) : null),
       ),
     ],
-  ).whenComplete(() => disposeLater([s, name, phone, email, city, goalW, height, weight, notes]));
+  ).whenComplete(() => disposeLater([s, name, phone, email, city, goalW, height, weight, notes, ...texts.values]));
+}
+
+int _age(DateTime d) {
+  final n = DateTime.now();
+  return n.year - d.year - ((n.month < d.month || (n.month == d.month && n.day < d.day)) ? 1 : 0);
 }
 
 Widget _unit(String u) => Text(u, style: AppText.s(13, W.w6, color: AppColors.muted));
@@ -226,7 +370,7 @@ class _DateBox extends StatelessWidget {
           decoration: BoxDecoration(color: AppColors.white, borderRadius: AppRadius.all(AppRadius.input), border: Border.all(color: h ? AppColors.lineHover : AppColors.line2)),
           child: Row(spacing: 8, children: [
             Expanded(
-              child: Text(value == null ? 'Pick a date' : DateFormat('d MMM yyyy').format(value!),
+              child: Text(value == null ? 'Pick a date' : '${DateFormat('d MMM yyyy').format(value!)} · ${_age(value!)} years',
                   style: AppText.s(14, value == null ? W.w5 : W.w6, color: value == null ? AppColors.muted : AppColors.text)),
             ),
             const AppIcon(AppIcons.calendar, size: 16, color: AppColors.muted),

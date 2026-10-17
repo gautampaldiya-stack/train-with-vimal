@@ -508,12 +508,15 @@ class ClientWorkoutLogViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, 
         from apps.clients.logs import page_of
         from apps.clients.metrics import planned_workout_days, program_day_for, resolve_range
 
+        from .services import body_weights, set_volume
+
         qs = self.get_queryset()  # 404 for a client this person may not see
         client = get_visible_client(request.user, self.kwargs["client_pk"])
         start, end = resolve_range(request.query_params, client)
         today = timezone.localdate()
         rows = []
         logs = list(qs.filter(date__range=(start, end)))
+        body = body_weights(client.id)
         for w in logs:
             sets = [x for x in w.sets.all() if not x.is_warmup]
             done = w.status == "completed"
@@ -522,7 +525,7 @@ class ClientWorkoutLogViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, 
                 "status": ("partly" if w.sets_planned and w.sets_done < w.sets_planned else "done") if done
                 else "in_progress",
                 "sets_done": w.sets_done, "sets_planned": w.sets_planned,
-                "volume": round(sum(x.volume for x in sets)), "duration_seconds": w.duration_seconds,
+                "volume": round(sum(set_volume(x, body(w.date)) for x in sets)), "duration_seconds": w.duration_seconds,
                 "effort": w.effort, "exercises": len({x.exercise_id for x in sets if x.done}),
             })
         logged = {w.date for w in logs}

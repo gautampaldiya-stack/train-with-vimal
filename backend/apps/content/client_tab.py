@@ -36,7 +36,8 @@ def plan_label(share):
     if label.lower().startswith("your "):
         label = label[5:]
     if not label:
-        label = "her program" if share.source == ContentShare.Source.PROGRAM else "her meal plan"
+        their = {"female": "her", "male": "his"}.get(getattr(share.client, "gender", ""), "their")
+        label = f"{their} program" if share.source == ContentShare.Source.PROGRAM else f"{their} meal plan"
     return label
 
 
@@ -93,7 +94,7 @@ def row(item, share, view, first, request=None):
 
 def rows(client, request=None):
     items = list(visible(client).select_related("created_by"))
-    shares = {s.item_id: s for s in ContentShare.objects.filter(client=client).select_related("shared_by")}
+    shares = {s.item_id: s for s in ContentShare.objects.filter(client=client).select_related("shared_by", "client")}
     views = {v.item_id: v for v in ContentView.objects.filter(user=client)}
     first = first_name(client)
     out = [row(i, shares.get(i.id), views.get(i.id), first, request) for i in items]
@@ -145,7 +146,7 @@ def expires_from(data, client):
     if until == "plan":
         p = plan_end(client)
         if p is None:
-            raise ValidationError({"until": ["She has no current plan. Pick Always or a date."]})
+            raise ValidationError({"until": [f"{first_name(client)} has no current plan. Pick Always or a date."]})
         return p["ends"]
     if until == "date":
         d = parse_date(str(data.get("date") or ""))

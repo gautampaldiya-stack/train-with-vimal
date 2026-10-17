@@ -46,9 +46,37 @@ class HabitAssignment(TimeStampedModel):
     start_date = models.DateField(default=timezone.localdate)
     active = models.BooleanField(default=True, db_index=True)
     assigned_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+    # Client profile → Plans → Habits → Edit habits → Edit: only this client's version. Empty = the library habit's.
+    target = models.PositiveIntegerField(null=True, blank=True)
+    frequency = models.CharField(max_length=10, choices=Habit.Frequency.choices, blank=True, default="")
+    days = ArrayField(models.PositiveSmallIntegerField(validators=[MaxValueValidator(6)]), default=list, blank=True)
+    times_per_week = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1),
+                                                                                         MaxValueValidator(7)])
+    note = models.CharField(max_length=200, blank=True, default="")  # shown to the client in place of "why"
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["habit", "client"], name="uniq_habit_client")]
+
+    @property
+    def custom(self):
+        return bool(self.target or self.frequency or self.note)
+
+    @property
+    def eff(self):
+        """The habit as this client has it: a copy of the library habit with this client's target, frequency and
+        note on top. Never saved."""
+        if not self.custom:
+            return self.habit
+        import copy
+
+        h = copy.copy(self.habit)
+        if self.target and h.kind == Habit.Kind.COUNTER:
+            h.target = self.target
+        if self.frequency:
+            h.frequency, h.days, h.times_per_week = self.frequency, list(self.days or []), self.times_per_week
+        if self.note:
+            h.why = self.note
+        return h
 
 
 class HabitLog(models.Model):

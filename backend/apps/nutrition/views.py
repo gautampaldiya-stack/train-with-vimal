@@ -34,9 +34,11 @@ from .models import (
     MealItem,
     MealPlan,
     MealPlanAssignment,
+    meals_on,
 )
 from .serializers import (
     UNIT_SUGGESTIONS,
+    ClientMealDaySerializer,
     CustomFoodSerializer,
     FoodLogSerializer,
     FoodPickSerializer,
@@ -214,10 +216,10 @@ class MealPlanViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
                 raise PermissionDenied("Your access does not include this. Ask Vimal for more access.")
 
     def get_queryset(self):
-        qs = MealPlan.objects.annotate(
+        custom = ~Q(assignments__version_note="") | Q(assignments__custom_plan__isnull=False)
+        qs = MealPlan.objects.filter(is_master=True).annotate(  # client copies never show in the library
             n_clients=Count("assignments", filter=Q(assignments__status="active"), distinct=True),
-            n_custom=Count("assignments", filter=Q(assignments__status="active") & ~Q(assignments__version_note=""),
-                           distinct=True),
+            n_custom=Count("assignments", filter=Q(assignments__status="active") & custom, distinct=True),
             n_meals=Count("meals", distinct=True),
             n_options=Count("meals__options", distinct=True),
         )
@@ -233,7 +235,7 @@ class MealPlanViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
 
     @action(detail=False)
     def counts(self, request):
-        by = dict(MealPlan.objects.values_list("diet").annotate(n=Count("id")))
+        by = dict(MealPlan.objects.filter(is_master=True).values_list("diet").annotate(n=Count("id")))
         return Response({"all": sum(by.values()), **by})
 
     def create(self, request, *args, **kwargs):
@@ -291,7 +293,7 @@ class MealPlanViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
             "client__client_profile__trainer")
         return Response([{"assignment": a.id, "id": str(a.client_id), "full_name": a.client.full_name,
                           "initials": a.client.initials, "avatar_color": a.client.avatar_color,
-                          "custom": bool(a.version_note), "version_note": a.version_note,
+                          "custom": bool(a.version_note or a.custom_plan_id), "version_note": a.version_note,
                           "trainer": a.client.client_profile.trainer.full_name
                           if a.client.client_profile.trainer else None}
                          for a in rows if a.client_id in visible])
@@ -325,10 +327,7 @@ class MealPlanViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path=r"clients/(?P<client_id>[0-9a-f-]+)/reset")
     def reset_client(self, request, pk=None, client_id=None):
         a = self._assignment(pk, client_id)
-        prev = a.version_note
-        a.version_note = ""
-        a.save(update_fields=["version_note", "updated_at"])
-        return Response({"previous_note": prev})
+        return Response({"previous_note": services.reset_client_copy(a, actor=request.user)})
 
     @action(detail=True, methods=["post"], url_path=r"clients/(?P<client_id>[0-9a-f-]+)/remove")
     def remove_client(self, request, pk=None, client_id=None):
@@ -354,14 +353,17 @@ class ClientMealPlanViewSet(viewsets.ViewSet):
     @staticmethod
     def row(a):
         p = a.plan
+        f = a.followed
         return {"id": a.id, "plan": p.id, "plan_name": p.name, "diet": p.diet, "diet_label": p.get_diet_display(),
                 "kcal": p.kcal_target, "protein_g": p.protein_g, "carbs_g": p.carbs_g, "fat_g": p.fat_g,
-                "meals": p.meals.count(), "version_note": a.version_note, "custom": bool(a.version_note),
+                "meals": meals_on(f, timezone.localdate().weekday()).count(), "version_note": a.version_note,
+                "custom": bool(a.version_note or a.custom_plan_id), "copy": a.custom_plan_id,
                 "start_date": a.start_date, "end_date": a.end_date, "status": a.status,
                 "assigned_by": a.assigned_by.full_name if a.assigned_by else None}
 
     def list(self, request, client_pk=None):
-        rows = list(MealPlanAssignment.objects.filter(client=self._client()).select_related("plan", "assigned_by")
+        rows = list(MealPlanAssignment.objects.filter(client=self._client())
+                    .select_related("plan", "custom_plan", "assigned_by")
                     .order_by("-start_date", "-created_at"))
         return Response({k: [self.row(a) for a in rows if a.status == s]
                          for k, s in (("current", "active"), ("up_next", "up_next"), ("history", "ended"))})
@@ -369,7 +371,7 @@ class ClientMealPlanViewSet(viewsets.ViewSet):
     def create(self, request, client_pk=None):
         self._check_write(request)
         client = self._client()
-        plan = MealPlan.objects.filter(id=request.data.get("plan")).first()
+        plan = MealPlan.objects.filter(id=request.data.get("plan"), is_master=True).first()
         start = parse_date(str(request.data.get("start_date") or ""))
         a = services.assign_plan_to_client(client, plan, actor=request.user, start_date=start,
                                            notify_client=request.data.get("notify", True) is not False)
@@ -384,6 +386,44 @@ class ClientMealPlanViewSet(viewsets.ViewSet):
             a.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         services.end_client_plan(a, actor=request.user)
+        return Response(self.row(a))
+
+    def _mine(self, pk):
+        return get_object_or_404(MealPlanAssignment.objects.select_related("plan", "custom_plan", "client"), id=pk,
+                                 client=self._client(), status__in=["active", "up_next"])
+
+    def _meals(self, a):
+        plan = (MealPlan.all_objects.filter(id=a.followed.id)
+                .prefetch_related("meals__options__items__food__units", "meals__options__items__unit",
+                                  "meals__options__items__food__default_unit").get())
+        return {**MealPlanDetailSerializer(plan).data, "id": a.plan_id, "copy": a.custom_plan_id,
+                "custom": a.custom_plan_id is not None,
+                "own_days": sorted({m.weekday for m in plan.meals.all() if m.weekday is not None})}
+
+    @extend_schema(request=ClientMealDaySerializer)
+    @action(detail=True, methods=["get", "put"])
+    def meals(self, request, client_pk=None, pk=None):
+        """GET: the meals the client follows (their copy, else the master), each with `weekday` (null = every
+        day). PUT {weekday, every_day, meals}: Edit for X → Save. Makes the client's own copy on the first save;
+        the master is not changed."""
+        a = self._mine(pk)
+        if request.method == "PUT":
+            self._check_write(request)
+            s = ClientMealDaySerializer(data=request.data)
+            s.is_valid(raise_exception=True)
+            d = s.validated_data
+            services.save_client_day(a, weekday=d["weekday"], every_day=d["every_day"], meals_data=d["meals"],
+                                     actor=request.user)
+            a.refresh_from_db()
+        return Response(self._meals(a))
+
+    @action(detail=True, methods=["post"], url_path="reset")
+    def reset(self, request, client_pk=None, pk=None):
+        """Reset to master: drops the client's copy (and the old version note)."""
+        self._check_write(request)
+        a = self._mine(pk)
+        services.reset_client_copy(a, actor=request.user)
+        a.refresh_from_db()
         return Response(self.row(a))
 
 
@@ -439,12 +479,12 @@ class MyMealActionView(APIView):
         mp = services._active_plan(request.user, timezone.localdate())
         if mp is None:
             raise serializers.ValidationError("You don't have a meal plan yet.")
-        meal = get_object_or_404(Meal, id=meal_id, plan=mp.plan)
+        meal = get_object_or_404(Meal, id=meal_id, plan=mp.followed)
         day = sync_day(request.data.get("date"))
         today = timezone.localdate()
         if op in ("portions", "swap", "option") and day < today - timedelta(days=1):
             raise serializers.ValidationError("Swaps and portions only apply to today.")
-        plan = mp.plan
+        plan = mp.followed
         if op == "eat":
             photo = request.data.get("photo")  # optional: a picture of the meal, as a data URL (works offline)
             services.mark_eaten(request.user, meal, day,
@@ -535,13 +575,13 @@ class MySwapOptionsView(APIView):
     def get(self, request, item_id):
         mp = services._active_plan(request.user, timezone.localdate())
         item = get_object_or_404(MealItem.objects.select_related("food", "unit"), id=item_id,
-                                 option__meal__plan=mp.plan if mp else None)
+                                 option__meal__plan=mp.followed if mp else None)
         grams = services._grams(item)
         rows = [{**FoodPickSerializer(f).data, "match": match_percent(item.food, f),
                  "grams": same_kcal_grams(item.food, grams, f)} for f in item.food.swaps.all()]
         return Response({"planned": {**FoodPickSerializer(item.food).data, "grams": float(grams)},
                          "options": sorted(rows, key=lambda r: -r["match"]),
-                         "can_search_any": mp.plan.allow_search_any})
+                         "can_search_any": mp.followed.allow_search_any})
 
 
 class MyFoodLogViewSet(mixins.CreateModelMixin, mixins.DestroyModelMixin, viewsets.GenericViewSet):

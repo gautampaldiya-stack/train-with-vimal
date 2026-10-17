@@ -160,11 +160,12 @@ class ProgramCardSerializer(serializers.ModelSerializer):
     client_count = serializers.IntegerField(read_only=True, source="n_clients", default=0)
     week_pattern = serializers.SerializerMethodField()
     archived = serializers.SerializerMethodField()
+    level_label = serializers.CharField(source="get_level_display", read_only=True)
 
     class Meta:
         model = Program
-        fields = ["id", "name", "goal_line", "weeks", "days_per_week", "is_master", "archived", "archived_at",
-                  "client_count", "clients", "week_pattern", "updated_at", "created_at"]
+        fields = ["id", "name", "goal_line", "weeks", "days_per_week", "level", "level_label", "is_master",
+                  "archived", "archived_at", "client_count", "clients", "week_pattern", "updated_at", "created_at"]
         read_only_fields = ["archived_at", "is_master"]
 
     def get_archived(self, obj):
@@ -195,7 +196,7 @@ class ProgramDetailSerializer(ProgramCardSerializer):
 class ProgramCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Program
-        fields = ["id", "name", "goal_line", "weeks", "days_per_week"]
+        fields = ["id", "name", "goal_line", "weeks", "days_per_week", "level"]
 
     def validate_name(self, v):
         v = " ".join(v.split())
@@ -271,7 +272,7 @@ class AssignmentSerializer(serializers.ModelSerializer):
 
 # ---------------------------------------------------------------- logging
 class SetLogSerializer(serializers.ModelSerializer):
-    volume = serializers.FloatField(read_only=True)
+    volume = serializers.SerializerMethodField()
     exercise_name = serializers.CharField(source="exercise.name", read_only=True)
     log_type = serializers.CharField(source="exercise.log_type", read_only=True)
 
@@ -281,6 +282,19 @@ class SetLogSerializer(serializers.ModelSerializer):
                   "reps", "seconds", "distance_km", "is_bodyweight", "is_warmup", "done", "done_at", "is_pr",
                   "volume", "client_key"]
         read_only_fields = ["is_pr", "done_at"]
+
+    def get_volume(self, obj):
+        """Bodyweight sets count the client's weight that day (+ added load); see `services.set_volume`."""
+        from .services import body_weights, set_volume
+
+        body = None
+        if obj.is_bodyweight and obj.done and obj.reps and not obj.is_warmup and obj.workout_id:
+            w = obj.workout
+            cache = self.context.setdefault("_body_weights", {}) if isinstance(self.context, dict) else {}
+            if w.client_id not in cache:
+                cache[w.client_id] = body_weights(w.client_id)
+            body = cache[w.client_id](w.date)
+        return set_volume(obj, body)
 
 
 class WorkoutLogSerializer(serializers.ModelSerializer):

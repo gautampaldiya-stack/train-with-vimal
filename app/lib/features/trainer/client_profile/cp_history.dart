@@ -3,7 +3,8 @@ import 'package:intl/intl.dart';
 
 import '../../../app/services.dart';
 import '../../../core/api/api_error.dart';
-import '../../../core/icons/app_icons.dart';
+// Export is off for now (Gautam, 17 Oct): app_icons and CpBtn32 are only used by the Export button.
+// import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
 import '../../../core/util/save_file.dart';
 import '../../../core/widgets/badge.dart';
@@ -11,13 +12,13 @@ import '../../../core/widgets/button.dart';
 import '../../../core/widgets/card.dart';
 import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
-import 'cp_activity.dart' show CpBtn32;
+// import 'cp_activity.dart' show CpBtn32;
 import 'cp_common.dart';
 import 'cp_history_chart.dart';
 import 'cp_model.dart';
 
 /// Client profile → History tab (`.hs-wrap` on both boards): 4 summary cards, "Plans over time", the Journey
-/// (month by month, filter chips, Export, Show earlier months) and the side cards "About her journey" and
+/// (month by month, filter chips, Export — off for now —, Show earlier months) and the side cards "About her journey" and
 /// "Health over time". Everything from `clients/<id>/history/`; Export downloads `?export=csv`.
 class CpHistoryTab extends StatefulWidget {
   const CpHistoryTab(this.c, {super.key});
@@ -81,6 +82,8 @@ class _CpHistoryTabState extends State<CpHistoryTab> {
     setState(() => loading = false);
   }
 
+  // Export is off for now (Gautam, 17 Oct): the button is commented out in `_journey`; this stays for when it is back.
+  // ignore: unused_element
   Future<void> _export() async {
     setState(() => exporting = true);
     try {
@@ -95,6 +98,7 @@ class _CpHistoryTabState extends State<CpHistoryTab> {
   }
 
   String get _pron => switch ('${c.detail['gender']}') { 'female' => 'her', 'male' => 'his', _ => 'their' };
+  String get _obj => switch ('${c.detail['gender']}') { 'female' => 'her', 'male' => 'him', _ => 'them' };
 
   @override
   Widget build(BuildContext context) {
@@ -176,7 +180,7 @@ class _CpHistoryTabState extends State<CpHistoryTab> {
   Widget _plans() => AppCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           CardHeader('Plans over time',
-              sub: 'Every plan ${c.first} has been on, and who coached $_pron. Hover a bar for dates.', padding: const EdgeInsets.fromLTRB(16, 12, 16, 6)),
+              sub: 'Every plan ${c.first} has been on, and who coached $_obj. Hover a bar for dates.', padding: const EdgeInsets.fromLTRB(16, 12, 16, 6)),
           CpPlansChart((d!['timeline'] as Map?) ?? const {}),
           const CpPlansKey(),
         ]),
@@ -206,7 +210,8 @@ class _CpHistoryTabState extends State<CpHistoryTab> {
                 ]),
               ),
             ),
-            CpBtn32('Export', icon: AppIcons.downloadLine, loading: exporting, onTap: _export),
+            // Export is off for now (Gautam, 17 Oct).
+            // CpBtn32('Export', icon: AppIcons.downloadLine, loading: exporting, onTap: _export),
           ]),
         ),
         if (ms.isEmpty)
@@ -411,9 +416,9 @@ class _SmallBadge extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         height: 19,
         padding: const EdgeInsets.symmetric(horizontal: 6),
-        alignment: Alignment.center,
         decoration: BoxDecoration(color: tone.bg, borderRadius: AppRadius.all(AppRadius.badge)),
-        child: Text(label, style: AppText.s(10.5, W.w7, color: tone.fg, h: 1)),
+        // Fits its text (an aligned Container would stretch to the full row width).
+        child: Center(widthFactor: 1, child: Text(label, maxLines: 1, style: AppText.s(10.5, W.w7, color: tone.fg, h: 1))),
       );
 }
 

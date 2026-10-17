@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../../app/services.dart';
 import '../../../core/api/api_error.dart';
@@ -53,6 +54,33 @@ class _Row {
   }
 }
 
+/// One side of the comparison: a workout plan, part of one, or any period ("Last 30 days", custom dates).
+class _Side {
+  _Side.plan(CpPlan p)
+      : key = 'plan:${p.id}',
+        name = p.name,
+        plan = p,
+        from = null,
+        to = null;
+  _Side.period(this.key, this.name, DateTime f, DateTime t)
+      : plan = null,
+        from = DateUtils.dateOnly(f),
+        to = DateUtils.dateOnly(t);
+  final String key, name;
+  final CpPlan? plan;
+  final DateTime? from, to;
+
+  static String _d(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
+  Map<String, dynamic> query(String letter) =>
+      plan != null ? {letter: 'plan:${plan!.id}'} : {'${letter}_from': _d(from!), '${letter}_to': _d(to!)};
+
+  /// "3 Sep – now" before the numbers arrive.
+  String get when {
+    if (plan != null) return [if (plan!.start != null) cpDm(plan!.start), plan!.end == null ? 'now' : cpDm(plan!.end)].join(' – ');
+    return cpRangeLabel(DateTimeRange(start: from!, end: to!));
+  }
+}
+
 class _Table {
   _Table(this.head, this.rows);
   final String head;
@@ -61,8 +89,10 @@ class _Table {
 
 class _CpLogsCompareState extends State<CpLogsCompare> {
   CpController get c => widget.c;
-  late CpPlan a = widget.plans.length > 1 ? widget.plans[1] : widget.plans.first;
-  late CpPlan b = widget.plans.first;
+  // Two plans or more: the one before against the current one. One plan (or none): the 30 days before
+  // against the last 30 days.
+  late _Side a = widget.plans.length > 1 ? _Side.plan(widget.plans[1]) : _periods()[1];
+  late _Side b = widget.plans.length > 1 ? _Side.plan(widget.plans.first) : _periods()[0];
   String aspect = 'all';
   Map? data;
   ApiError? error;
@@ -81,31 +111,64 @@ class _CpLogsCompareState extends State<CpLogsCompare> {
       error = null;
     });
     try {
-      final d = await Services.api.get<Map>('clients/${c.id}/logs/compare/', query: {'a': a.id, 'b': b.id});
+      final d = await Services.api.get<Map>('clients/${c.id}/logs/compare/', query: {...a.query('a'), ...b.query('b')});
       if (seq == _seq && mounted) setState(() => data = d);
     } on ApiError catch (e) {
       if (seq == _seq && mounted) setState(() => error = e);
     }
   }
 
-  void _pick(BuildContext anchor, bool isA) => showAppMenu(
-        anchor,
-        [
-          for (final p in widget.plans)
-            MenuEntry(p.name, selected: (isA ? a : b).id == p.id, onTap: () {
-              if (isA) {
-                if (p.id == b.id) b = a;
-                a = p;
-              } else {
-                if (p.id == a.id) a = b;
-                b = p;
-              }
-              _load();
-            }),
-        ],
-        width: 300,
-        alignRight: false,
-      );
+  /// Last 30 days, the 30 days before, and each plan's first and second half (plans of two weeks or more).
+  List<_Side> _periods() {
+    final t = DateUtils.dateOnly(DateTime.now());
+    final out = [
+      _Side.period('30d', 'Last 30 days', t.subtract(const Duration(days: 29)), t),
+      _Side.period('prev30', 'Previous 30 days', t.subtract(const Duration(days: 59)), t.subtract(const Duration(days: 30))),
+    ];
+    for (final p in widget.plans) {
+      if (p.start == null) continue;
+      final start = DateUtils.dateOnly(p.start!);
+      final end = p.end == null || p.end!.isAfter(t) ? t : DateUtils.dateOnly(p.end!);
+      final days = end.difference(start).inDays + 1;
+      if (days < 14) continue;
+      final mid = start.add(Duration(days: days ~/ 2 - 1));
+      final own = p == widget.plans.first ? 'This plan' : p.name;
+      out.add(_Side.period('h1:${p.id}', '$own: first half', start, mid));
+      out.add(_Side.period('h2:${p.id}', '$own: second half', mid.add(const Duration(days: 1)), end));
+    }
+    return out;
+  }
+
+  void _set(bool isA, _Side v) {
+    if (isA) {
+      if (v.key == b.key) b = a;
+      a = v;
+    } else {
+      if (v.key == a.key) a = b;
+      b = v;
+    }
+    _load();
+  }
+
+  Future<void> _custom(bool isA) async {
+    final cur = isA ? a : b;
+    final r = await showCpDateRange(context, initial: cur.from == null ? null : DateTimeRange(start: cur.from!, end: cur.to!));
+    if (r == null || !mounted) return;
+    final label = cpRangeLabel(r);
+    _set(isA, _Side.period('custom:$label', label, r.start, r.end));
+  }
+
+  void _pick(BuildContext anchor, bool isA) {
+    final cur = isA ? a : b;
+    final entries = [
+      if (widget.plans.isNotEmpty) const MenuEntry.header('Plans'),
+      for (final p in widget.plans) MenuEntry(p.name, selected: cur.key == 'plan:${p.id}', onTap: () => _set(isA, _Side.plan(p))),
+      const MenuEntry.header('Periods'),
+      for (final x in _periods()) MenuEntry(x.name, selected: cur.key == x.key, onTap: () => _set(isA, x)),
+      MenuEntry('Custom dates…', selected: cur.key.startsWith('custom:'), onTap: () => _custom(isA)),
+    ];
+    anchor.isPhone ? showActionSheet(anchor, entries) : cpShowMenu(anchor, entries, minWidth: 300);
+  }
 
   void _swap() {
     final t = a;
@@ -266,7 +329,7 @@ class _CpLogsCompareState extends State<CpLogsCompare> {
       }
     }
     final head = Text.rich(TextSpan(style: AppText.s(12.5, W.w5, color: AppColors.muted), children: [
-      const TextSpan(text: 'Averages per week of each plan'),
+      TextSpan(text: a.plan != null && b.plan != null ? 'Averages per week of each plan' : 'Averages per week of each side'),
       if (data != null) ...[
         const TextSpan(text: ' · B is better on '),
         TextSpan(text: '$better of $total', style: AppText.s(12.5, W.w7, color: AppColors.okText)),
@@ -302,12 +365,9 @@ class _CpLogsCompareState extends State<CpLogsCompare> {
     ]);
   }
 
-  String _sub(CpPlan p, bool isA) => '${((data?[isA ? 'a' : 'b'] as Map?)?['sub']) ?? [
-        if (p.start != null) cpDm(p.start),
-        p.end == null ? 'now' : cpDm(p.end),
-      ].join(' – ')}';
+  String _sub(_Side p, bool isA) => '${((data?[isA ? 'a' : 'b'] as Map?)?['sub']) ?? p.when}';
 
-  Widget _pickBox(String letter, CpPlan p, bool isA) => Builder(
+  Widget _pickBox(String letter, _Side p, bool isA) => Builder(
         builder: (b) => Hover(
           onTap: () => _pick(b, isA),
           builder: (_, h, _) => Container(
@@ -411,13 +471,12 @@ class _Chip extends StatelessWidget {
         builder: (_, h, _) => Container(
           height: 28,
           padding: const EdgeInsets.symmetric(horizontal: 11),
-          alignment: Alignment.center,
           decoration: BoxDecoration(
             color: on ? AppColors.text : (h ? AppColors.outlineHover : AppColors.card),
             borderRadius: AppRadius.all(AppRadius.chip),
             border: Border.all(color: on ? AppColors.text : AppColors.line2),
           ),
-          child: Text(label, style: AppText.s(12.5, W.w6, color: on ? AppColors.white : AppColors.text2)),
+          child: Center(widthFactor: 1, child: Text(label, style: AppText.s(12.5, W.w6, color: on ? AppColors.white : AppColors.text2))),
         ),
       );
 }

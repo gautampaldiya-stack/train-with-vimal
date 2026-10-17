@@ -275,9 +275,57 @@ class ClientHabitPlansViewSet(_ClientSlot):
 
     @staticmethod
     def row(a):
-        return {"id": a.id, "habit": HabitSerializer(a.habit).data, "start_date": a.start_date, "active": a.active,
+        """`habit` is the habit as this client has it; `library` the library habit when it differs."""
+        return {"id": a.id, "habit": HabitSerializer(a.eff).data, "start_date": a.start_date, "active": a.active,
                 "ended_on": a.updated_at.date() if not a.active else None,
-                "assigned_by": a.assigned_by.full_name if a.assigned_by else None}
+                "assigned_by": a.assigned_by.full_name if a.assigned_by else None,
+                "custom": a.custom, "library": HabitSerializer(a.habit).data if a.custom else None,
+                "note": a.note}
+
+    def partial_update(self, request, client_pk=None, pk=None):
+        """Edit habits → Edit: this client's target, how often and note. Same as the library = cleared."""
+        self._check_write(request)
+        client = self._client()
+        a = get_object_or_404(HabitAssignment.objects.select_related("habit"), id=pk, client=client, active=True)
+        h, d = a.habit, request.data
+        if "target" in d and h.kind == Habit.Kind.COUNTER:
+            try:
+                t = int(d["target"]) if d["target"] not in (None, "") else None
+            except (TypeError, ValueError):
+                raise serializers.ValidationError({"target": ["Enter a number."]})
+            if t is not None and not 1 <= t <= 200000:
+                raise serializers.ValidationError({"target": ["Enter a target from 1 to 200,000."]})
+            a.target = None if t in (None, h.target) else t
+        if "frequency" in d:
+            f = d.get("frequency") or ""
+            if f and f not in Habit.Frequency.values:
+                raise serializers.ValidationError({"frequency": ["Pick how often."]})
+            days = sorted({int(x) for x in (d.get("days") or []) if str(x).isdigit() and int(x) <= 6})
+            n = d.get("times_per_week")
+            if f == Habit.Frequency.DAYS and not days:
+                raise serializers.ValidationError({"days": ["Pick at least one day."]})
+            if f == Habit.Frequency.TIMES_WEEK:
+                try:
+                    n = int(n)
+                except (TypeError, ValueError):
+                    n = 0
+                if not 1 <= n <= 7:
+                    raise serializers.ValidationError({"times_per_week": ["1 to 7 times a week."]})
+            else:
+                n = None
+            if f != Habit.Frequency.DAYS:
+                days = []
+            same = f == h.frequency and days == sorted(h.days or []) and n == h.times_per_week
+            a.frequency, a.days, a.times_per_week = ("", [], None) if not f or same else (f, days, n)
+        if "note" in d:
+            note = " ".join(str(d.get("note") or "").split())
+            if len(note) > 200:
+                raise serializers.ValidationError({"note": ["Keep it under 200 characters."]})
+            a.note = "" if note == h.why else note
+        a.save(update_fields=["target", "frequency", "days", "times_per_week", "note", "updated_at"])
+        activity_log("changed a habit for one client", "plan", actor=request.user, target=client,
+                     target_label=h.name, client=client)
+        return Response(self._rows(client))
 
     def create(self, request, client_pk=None):
         self._check_write(request)
@@ -348,7 +396,7 @@ def habits_day(client, day):
     h_done = h_due = 0
     best = (None, 0)
     for a in assigns:
-        h = a.habit
+        h = a.eff
         log = logs.get((h.id, day))
         cur, top = _streaks(client, h, today)
         due_on = lambda d: d >= a.start_date and h.is_due_on(d)  # noqa: E731
@@ -363,7 +411,7 @@ def habits_day(client, day):
         if cur > best[1]:
             best = (SHORT.get(h.icon, h.name), cur)
         habits.append({
-            **HabitSerializer(h).data, "assignment": a.id,
+            **HabitSerializer(h).data, "assignment": a.id, "custom": a.custom,
             "value": log.value if log else 0, "logged": log is not None, "done": bool(log and log.done),
             "due": h.is_due_on(day), "starts_on": a.start_date if a.start_date > today else None,
             "since": a.start_date, "set_by": a.assigned_by.full_name if a.assigned_by else None,
@@ -377,14 +425,14 @@ def habits_day(client, day):
     strip = []
     for i in range(9):
         d = strip_start + timedelta(days=i)
-        due = [a.habit for a in assigns if a.habit.is_due_on(d) and d >= a.start_date]
+        due = [a.eff for a in assigns if a.eff.is_due_on(d) and d >= a.start_date]
         done = sum(1 for h in due if done_on(h, d))
         strip.append({"date": d, "today": d == today, "future": d > today,
                       "state": "none" if d > today or not due else ("done" if done == len(due) else
                                                                     ("today" if d == today else "missed"))})
     days = []
     for d in week:
-        due = [a.habit for a in assigns if a.habit.is_due_on(d) and d >= a.start_date]
+        due = [a.eff for a in assigns if a.eff.is_due_on(d) and d >= a.start_date]
         n = sum(1 for h in due if done_on(h, d))
         days.append({"date": d, "today": d == today, "future": d > today,
                      "state": "coming" if d > today else "none" if not due else "done" if n == len(due)
@@ -470,7 +518,7 @@ def staff_log(client, kind, params):
         logs = {(lg.habit_id, lg.date): lg for lg in HabitLog.objects.filter(
             client=client, date__range=(start, end), habit__in=[a.habit for a in assigns])}
         for a in assigns:
-            h = a.habit
+            h = a.eff
 
             def sub(lg, h=h):
                 if lg is None or not lg.value:
@@ -532,7 +580,7 @@ class MyHabitLogView(APIView):
 
     def post(self, request, habit_id):
         a = get_object_or_404(HabitAssignment, habit_id=habit_id, client=request.user, active=True)
-        h = a.habit
+        h = a.eff  # this client's target
         day = parse_date(request.data.get("date") or "") or timezone.localdate()
         today = timezone.localdate()
         if day > today or day < today - timedelta(days=7):

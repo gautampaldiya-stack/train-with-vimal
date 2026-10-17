@@ -42,7 +42,8 @@ class Me {
   bool get pending => status == 'pending';
   Map<String, dynamic> get _client => (json['client'] as Map?)?.cast<String, dynamic>() ?? const {};
   List<String> get setupDone => [for (final s in (_client['setup_done'] as List? ?? const [])) '$s'];
-  bool get setupComplete => setupDone.length >= 5;
+  int get setupTotal => (_client['setup_total'] as num?)?.toInt() ?? 9;
+  bool get setupComplete => setupDone.length >= setupTotal;
 
   /// Chose "Finish setup later" once, so log in goes to Home instead of the setup steps.
   bool get setupLater => _client['setup_later'] == true;

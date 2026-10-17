@@ -114,6 +114,10 @@ class MealPlan(SoftDeleteModel):
     allow_search_any = models.BooleanField(default=False)
     allow_switch_options = models.BooleanField(default=True)
     allow_off_plan = models.BooleanField(default=True)  # flagged to coach
+    # A client's own copy (Client profile → Plans → Meal plan → Edit for X) is not a library plan: it hangs off
+    # MealPlanAssignment.custom_plan and points back at its master. The library only lists masters.
+    is_master = models.BooleanField(default=True, db_index=True)
+    master = models.ForeignKey("self", null=True, blank=True, on_delete=models.SET_NULL, related_name="copies")
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
                                    related_name="+")
 
@@ -130,9 +134,18 @@ class Meal(models.Model):
     time = models.TimeField()
     kcal_target = models.PositiveIntegerField(default=0)
     order = models.PositiveSmallIntegerField(default=0)
+    # null = every day. A client copy can give one weekday (0 = Monday) its own meals: when a plan has meals
+    # for that weekday, that day shows only those; other days show the every-day meals (see `meals_on`).
+    weekday = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MaxValueValidator(6)])
 
     class Meta:
         ordering = ["time", "order"]
+
+
+def meals_on(plan, weekday):
+    """The meals of `plan` on a weekday (0 = Monday): that day's own meals, else the every-day ones."""
+    own = plan.meals.filter(weekday=weekday)
+    return own if own.exists() else plan.meals.filter(weekday__isnull=True)
 
 
 class MealOption(models.Model):
@@ -168,6 +181,9 @@ class MealPlanAssignment(TimeStampedModel):
                                related_name="meal_plan_assignments")
     plan = models.ForeignKey(MealPlan, on_delete=models.PROTECT, related_name="assignments")
     version_note = models.TextField(blank=True, default="", max_length=1000)  # custom version for this client
+    # The client's own copy of `plan` (Edit for X): foods, portions, meal names and per-weekday meals. null = the
+    # client follows the master as it is. The master is never changed by it.
+    custom_plan = models.ForeignKey(MealPlan, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     start_date = models.DateField(default=timezone.localdate)
     end_date = models.DateField(null=True, blank=True)
     status = models.CharField(max_length=10, default="active", db_index=True,
@@ -176,6 +192,11 @@ class MealPlanAssignment(TimeStampedModel):
 
     class Meta:
         indexes = [models.Index(fields=["client", "status"])]
+
+    @property
+    def followed(self):
+        """The plan the client actually eats from: their own copy, else the master."""
+        return self.custom_plan or self.plan
 
 
 def meal_photo_path(instance, filename):

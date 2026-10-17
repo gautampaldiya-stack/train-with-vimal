@@ -273,7 +273,7 @@ class _CpProgressTabState extends State<CpProgressTab> {
     Widget chg(double? a, double? b, String u) {
       if (a == null || b == null) return cpCell('—', bold: true);
       final v = b - a;
-      return Text(_sgn(v, u), style: AppText.s(13.5, W.w8, color: v < 0 ? AppColors.okText : AppColors.text, tabular: true));
+      return Text(_sgn(v, u), maxLines: 1, softWrap: false, style: AppText.s(13.5, W.w8, color: v < 0 ? AppColors.okText : AppColors.text, tabular: true));
     }
 
     String dateOf(Map m) => identical(m, first) ? '${cpDm(m['date'])} · start' : cpDm(m['date']);
@@ -304,19 +304,23 @@ class _CpProgressTabState extends State<CpProgressTab> {
       sub: sub,
       action: more,
       child: CpTable(
-        cols: [const CpCol('Date', 110, grow: 1.4), const CpCol('Weight', 80, right: true), for (final col in cols) CpCol(col.$2, 72, right: true)],
+        // Wide enough that "79.5 cm" / "71.2 kg" stay on one line; a narrow card scrolls the table sideways.
+        cols: [const CpCol('Date', 110, grow: 1.4), const CpCol('Weight', 92, right: true), for (final col in cols) CpCol(col.$2, 90, right: true)],
         rows: [
           for (final m in shown)
             [
               cpCell(dateOf(m)),
-              cpCell(kgOn(cpParse(m['date'])) == null ? '—' : cpKg(kgOn(cpParse(m['date'])), keep: true)),
-              for (final col in cols) cpCell(fmt(_mv(m, col.$3), col.$1)),
+              _one(kgOn(cpParse(m['date'])) == null ? '—' : cpKg(kgOn(cpParse(m['date'])), keep: true)),
+              for (final col in cols) _one(fmt(_mv(m, col.$3), col.$1)),
             ],
         ],
         footer: [cpCell('Change', bold: true), ...changeCells],
       ),
     );
   }
+
+  /// A value cell that never wraps ("79.5 cm" on one line).
+  static Widget _one(String s) => Text(s, maxLines: 1, softWrap: false, overflow: TextOverflow.fade, style: AppText.s(13.5, W.w5, tabular: true));
 
   double? _firstOf(List<Map> ms, List<String> keys) {
     for (final m in ms) {

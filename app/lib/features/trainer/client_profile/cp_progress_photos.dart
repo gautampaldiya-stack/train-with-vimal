@@ -255,7 +255,7 @@ Future<void> showCpAllPhotos(BuildContext context, {required String name, requir
       builder: (ctx, p, _) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         const SizedBox(height: 16),
         Row(children: [
-          SegmentedTabs<String>(items: [for (final (k, l) in cpPoses) TabItem(k, l)], value: p, onChanged: (v) => pose.value = v),
+          SegmentedTabs<String>(height: 28, items: [for (final (k, l) in cpPoses) TabItem(k, l)], value: p, onChanged: (v) => pose.value = v),
           const Spacer(),
           Text(count, style: AppText.cap),
         ]),

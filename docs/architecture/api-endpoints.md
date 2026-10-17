@@ -122,7 +122,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `clients/<pk>/resume/` | POST | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
 | `clients/<pk>/stats/` | GET | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
 | `clients/<uuid:client_pk>/logs/comment/` | POST | ClientLogCommentView | POST clients/<id>/logs/comment/ {about: workout/meals, date, text}: the client gets it in the app. |
-| `clients/<uuid:client_pk>/logs/compare/` | GET | ClientLogCompareView | GET clients/<id>/logs/compare/?a=<assignment>&b=<assignment> → both plan periods side by side. |
+| `clients/<uuid:client_pk>/logs/compare/` | GET | ClientLogCompareView | GET clients/<id>/logs/compare/ → A and B side by side. Each side is a workout plan |
 | `clients/<uuid:client_pk>/logs/summary/` | GET | ClientLogSummaryView | GET clients/<id>/logs/summary/?range= → {from, to, workouts, meals, checkins}. |
 | `clients/counts/` | GET | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
 | `clients/export/` | GET | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
@@ -136,7 +136,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `me/account/` | GET | MyAccountView | Client More tab: profile, coach card, plan rows, goal, reminders, deletion date, gym contact. |
 | `me/activity/` | GET | MyActivityView | Client More → My activity: everything logged in the last 7 days, newest first, by day. |
 | `me/data-export/` | POST | MyDataExportView | Client More → Privacy & data → Download my data: a ZIP is built in the background and the link |
-| `me/onboarding/` | GET, POST, DELETE | MyOnboardingView | Client Welcome / profile setup: 5 steps, each can be saved alone ("Finish later"). |
+| `me/onboarding/` | GET, POST, DELETE | MyOnboardingView | Client profile setup: the gym's coaching form in steps (D-36), each saved alone ("Finish later"). |
 | `me/report/` | POST | MyProblemReportView | Client More → Help & about → Report a problem. The admin gets it in the app and by email. |
 | `me/trainer/` | GET | MyTrainerView | Client More → My trainer: only the fields the trainer switched on in What clients see. |
 
@@ -180,6 +180,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | Path | Methods | View | Notes |
 |---|---|---|---|
 | `clients/<client_pk>[0-9a-f-]+)/habit-plan/` | GET, POST | ClientHabitPlansViewSet |  |
+| `clients/<client_pk>[0-9a-f-]+)/habit-plan/<pk>/` | PATCH | ClientHabitPlansViewSet |  |
 | `clients/<client_pk>[0-9a-f-]+)/habit-plan/<pk>/end/` | POST | ClientHabitPlansViewSet |  |
 | `clients/<client_pk>[0-9a-f-]+)/supplement-plans/` | GET, POST | ClientSupplementPlansViewSet |  |
 | `clients/<client_pk>[0-9a-f-]+)/supplement-plans/<pk>/end/` | POST | ClientSupplementPlansViewSet |  |
@@ -228,6 +229,8 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 |---|---|---|---|
 | `clients/<client_pk>[0-9a-f-]+)/meal-plans/` | GET, POST | ClientMealPlanViewSet | Client profile → Plans → Meal plan slot: current, Up next and history; assign one plan; end it. |
 | `clients/<client_pk>[0-9a-f-]+)/meal-plans/<pk>/end/` | POST | ClientMealPlanViewSet | Client profile → Plans → Meal plan slot: current, Up next and history; assign one plan; end it. |
+| `clients/<client_pk>[0-9a-f-]+)/meal-plans/<pk>/meals/` | GET, PUT | ClientMealPlanViewSet | Client profile → Plans → Meal plan slot: current, Up next and history; assign one plan; end it. |
+| `clients/<client_pk>[0-9a-f-]+)/meal-plans/<pk>/reset/` | POST | ClientMealPlanViewSet | Client profile → Plans → Meal plan slot: current, Up next and history; assign one plan; end it. |
 | `clients/<uuid:client_pk>/food/` | GET | ClientFoodLogView | Client profile → Logs → Meals: one day (`?date=`), or one page of days (`?range=&page=`). |
 | `food-picker/` | GET | FoodPickerView | Builder → Add food: team foods first, grouped. |
 | `foods/` | GET, POST | FoodViewSet | Food library (staff). Clients search foods through /me/foods/. |

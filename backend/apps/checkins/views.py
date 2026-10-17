@@ -163,7 +163,8 @@ class FormViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
             Question.objects.bulk_create([
                 Question(form=f, order=q.order, text=q.text, type=q.type, options=q.options,
                          scale_labels=q.scale_labels, allow_other=q.allow_other, help_text=q.help_text,
-                         required=q.required, metric=q.metric) for q in src.questions.filter(is_removed=False)])
+                         required=q.required, metric=q.metric, profile_key=q.profile_key)
+                for q in src.questions.filter(is_removed=False)])
         return Response(FormRowSerializer(f).data, status=201)
 
     @action(detail=True, methods=["post"])

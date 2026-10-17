@@ -130,7 +130,7 @@ def _copy_questions(src, dst):
     Question.objects.bulk_create([
         Question(form=dst, order=q.order, text=q.text, type=q.type, options=q.options, scale_labels=q.scale_labels,
                  allow_other=q.allow_other, help_text=q.help_text, required=q.required, metric=q.metric,
-                 copied_from_id=q.copied_from_id if src.status == Form.Status.CLIENT else q.id)
+                 profile_key=q.profile_key, copied_from_id=q.copied_from_id if src.status == Form.Status.CLIENT else q.id)
         for q in live_questions(src)])
 
 
@@ -149,7 +149,7 @@ def save_questions(form, items, master=None):
             m = src.get(qid)
             q = Question(form=form, copied_from=m)
             if m is not None:  # fields the editor does not show come from the master question
-                for k in ("options", "scale_labels", "allow_other", "help_text", "metric"):
+                for k in ("options", "scale_labels", "allow_other", "help_text", "metric", "profile_key"):
                     setattr(q, k, getattr(m, k))
         for k, v in qd.items():
             if k != "id":
@@ -305,11 +305,17 @@ def rows(client):
     out = []
     steps = len(cp.client_steps_done)
     if cp.onboarding:
-        done = steps >= 5
+        from apps.clients.models import CLIENT_ONBOARDING_STEPS
+        from apps.clients.onboarding import answer_sections
+
+        total = len(CLIENT_ONBOARDING_STEPS)
+        done = steps >= total
+        filled = cp.terms_agreed_at or cp.created_at
+        # The answers are the profile fields (Edit profile changes them), in the admin's question words.
         out.append({"key": "onboarding", "kind": "onboarding", "name": "Onboarding questionnaire",
                     "status": "done" if done else "waiting", "status_label": "Done" if done else "Waiting",
-                    "sub": (f"Filled {_d(cp.created_at)} · {steps} parts" if done else f"{steps} of 5 parts filled"),
-                    "icon": "form", "filled_at": cp.created_at if done else None})
+                    "sub": (f"Filled {_d(filled)} · {steps} parts" if done else f"{steps} of {total} parts filled"),
+                    "icon": "form", "filled_at": filled if done else None, "sections": answer_sections(client)})
     one_off = Q(schedule__isnull=True) | Q(schedule__repeat=FormSchedule.Repeat.ONCE)
     reqs = list(FormRequest.objects.filter(one_off, client=client).select_related("form")
                 .prefetch_related("form__questions").order_by("-created_at")[:60])

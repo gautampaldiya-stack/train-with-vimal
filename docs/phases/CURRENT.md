@@ -170,3 +170,7 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
   pieces, one file per tab + drawers). Check-ins (D-35): `app/lib/features/trainer/checkins/`.
 - Next trainer boards: TrainerCalendar, TrainerMe, TrainerMoreMobile, then the library pages the profile links to
   (Programs, Content library), TrainerProfile, Trainers. Then admin.
+- Onboarding (D-36, 2026-10-17): setup = the gym's coaching form in 9 steps (`app/lib/features/auth/setup/`);
+  fields and rules in `backend/apps/clients/onboarding.py`; answers are profile fields, edited in the Edit profile
+  drawer (`trainer/clients/clients_parts.dart`), About card from `overview.about.items`. Not browser-checked yet on
+  phone / desktop: the 9 setup steps and the new drawer sections need a look against the setup boards.

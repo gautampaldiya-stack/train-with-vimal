@@ -189,8 +189,13 @@ class _TrainerClientProfileScreenState extends State<TrainerClientProfileScreen>
   }
 
   void _assignMenu(BuildContext anchor) => showAppMenu(anchor, [
-        for (final (k, l) in const [('workout', 'Workout plan'), ('meal', 'Meal plan'), ('supplements', 'Supplement plan'), ('habits', 'Habit plan')])
-          MenuEntry(l, onTap: () => showAssignPlan(context, c, k)),
+        for (final (k, l, ic) in const [
+          ('workout', 'Workout plan', AppIcons.dumbbell),
+          ('meal', 'Meal plan', AppIcons.apple),
+          ('supplements', 'Supplement plan', AppIcons.pill),
+          ('habits', 'Habit plan', AppIcons.checkCircle),
+        ])
+          MenuEntry(l, icon: ic, onTap: () => showAssignPlan(context, c, k)),
       ], width: 210);
 
   void _moreMenu(BuildContext anchor) => showAppMenu(anchor, [

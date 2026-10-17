@@ -91,8 +91,11 @@ class _TcPanelState extends State<TcPanel> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final phone = context.isPhone;
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) => _build(context, box.maxWidth));
+
+  /// Narrow panel (phone, or a tablet-width window): icon-only Open profile, numbers in 2 columns.
+  Widget _build(BuildContext context, double width) {
+    final phone = context.isPhone || width < 560;
     return FutureBuilder<Map>(
       future: c.detail(r.id),
       builder: (context, snap) {

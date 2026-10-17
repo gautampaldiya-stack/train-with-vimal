@@ -27,11 +27,11 @@ EXERCISE_FIELDS = ["exercise_id", "order", "superset_group", "sets", "reps", "rp
 
 
 # ---------------------------------------------------------------- program tree
-def new_program(*, name, weeks, days_per_week, goal_line="", actor=None):
+def new_program(*, name, weeks, days_per_week, goal_line="", level="any", actor=None):
     """New program modal: N weeks, the first `days_per_week` days are workout days, the rest rest days."""
     with transaction.atomic():
         p = Program.objects.create(name=name, weeks=weeks, days_per_week=days_per_week, goal_line=goal_line,
-                                   created_by=actor)
+                                   level=level, created_by=actor)
         for n in range(1, weeks + 1):
             w = ProgramWeek.objects.create(program=p, number=n)
             ProgramDay.objects.bulk_create([
@@ -56,8 +56,8 @@ def copy_tree(src, dst):
 @transaction.atomic
 def duplicate_program(src, *, actor=None, name=None, as_master=True, master=None):
     dst = Program.objects.create(name=name or f"{src.name} (copy)"[:120], goal_line=src.goal_line,
-                                 weeks=src.weeks, days_per_week=src.days_per_week, is_master=as_master,
-                                 master=master, created_by=actor)
+                                 level=src.level, weeks=src.weeks, days_per_week=src.days_per_week,
+                                 is_master=as_master, master=master, created_by=actor)
     copy_tree(src, dst)
     return dst
 
@@ -477,3 +477,43 @@ def auto_save_stale_workouts():
             finish_workout(wl, auto=True)
             n += 1
     return n
+
+
+# ---------------------------------------------------------------- volume
+def body_weights(client_id):
+    """kg on a day: the latest weigh-in on or before it (else the first one after, else the profile weight).
+    Used for bodyweight sets, so a 'Body × 10' set of dead bugs counts towards volume."""
+    from bisect import bisect_right
+
+    from apps.checkins.models import WeightLog
+    from apps.clients.models import ClientProfile
+
+    rows = list(WeightLog.objects.filter(client_id=client_id).order_by("date").values_list("date", "weight_kg"))
+    days = [d for d, _ in rows]
+    cp = ClientProfile.objects.filter(user_id=client_id).values("current_weight_kg", "start_weight_kg").first() or {}
+    fallback = cp.get("current_weight_kg") or cp.get("start_weight_kg")
+
+    def on(day):
+        i = bisect_right(days, day)
+        if i:
+            return float(rows[i - 1][1])
+        if rows:
+            return float(rows[0][1])
+        return float(fallback) if fallback else None
+
+    return on
+
+
+def set_volume(s, body_kg=None):
+    """kg × reps of one working set. A bodyweight set lifts the body weight that day plus any added load."""
+    if s.is_warmup or not s.done or not s.reps:
+        return 0
+    if s.is_bodyweight:
+        kg = (body_kg or 0) + float(s.weight_kg or 0)
+    else:
+        kg = float(s.weight_kg) if s.weight_kg is not None else 0
+    return kg * s.reps
+
+
+def workout_volume(w, body_kg=None):
+    return sum(set_volume(s, body_kg) for s in w.sets.all())

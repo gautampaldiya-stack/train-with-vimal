@@ -71,6 +71,9 @@ class Question(models.Model):
     required = models.BooleanField(default=False)
     # Maps an answer to a tracked metric: weight, sleep_hours, energy, mood, hunger, soreness, waist…
     metric = models.CharField(max_length=20, blank=True, default="")
+    # Onboarding questionnaire: the client profile field this question fills (apps.clients.onboarding.FIELDS keys,
+    # e.g. "surgeries"). Blank = an extra question; its answer is kept with the onboarding answers.
+    profile_key = models.CharField(max_length=40, blank=True, default="")
     # Deleted from the builder but already answered: hidden from the form, old answers stay readable.
     is_removed = models.BooleanField(default=False)
     # On a client's copy: the master question it was copied from ("Added for Riya" / "Was: required").

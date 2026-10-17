@@ -233,6 +233,7 @@ Tasks card on the trainer dashboard (from automations or added by hand).
 | `help_text` | CharField |  |
 | `required` | BooleanField |  |
 | `metric` | CharField |  |
+| `profile_key` | CharField |  |
 | `is_removed` | BooleanField |  |
 | `copied_from` | ForeignKey | → Question; optional; indexed |
 
@@ -388,6 +389,41 @@ Send a form to one client later or again and again (Client profile → Send a fo
 | `onboarding_done` | JSONField |  |
 | `onboarding_skipped_at` | DateTimeField | optional |
 | `ask_parq` | BooleanField |  |
+| `goal_detail` | CharField |  |
+| `experience` | CharField |  |
+| `enrolled_for` | CharField |  |
+| `workout_days` | PositiveSmallIntegerField | optional |
+| `workout_place` | CharField |  |
+| `workout_time` | CharField |  |
+| `current_exercise` | TextField |  |
+| `activity_level` | CharField |  |
+| `injury_areas` | JSONField |  |
+| `conditions` | JSONField |  |
+| `doctor_ok` | BooleanField | optional |
+| `past_injuries` | TextField |  |
+| `surgeries` | TextField |  |
+| `addictions` | TextField |  |
+| `digestive_issues` | TextField |  |
+| `stresses` | TextField |  |
+| `diet_type` | CharField |  |
+| `common_foods` | TextField |  |
+| `food_allergies` | CharField |  |
+| `smoking` | CharField |  |
+| `meal_breakfast` | TextField |  |
+| `meal_mid_morning` | TextField |  |
+| `meal_lunch` | TextField |  |
+| `meal_pre_workout` | TextField |  |
+| `meal_post_workout` | TextField |  |
+| `meal_evening` | TextField |  |
+| `meal_dinner` | TextField |  |
+| `takes_supplements` | BooleanField | optional |
+| `supplements_detail` | TextField |  |
+| `supplement_brands` | TextField |  |
+| `open_to_supplements` | CharField |  |
+| `takes_medicines` | BooleanField | optional |
+| `medicines_detail` | TextField |  |
+| `onboarding_note` | TextField |  |
+| `terms_agreed_at` | DateTimeField | optional |
 | `measure_keys` | JSONField |  |
 | `photo_every_weeks` | PositiveSmallIntegerField |  |
 | `signup_source` | CharField | choices: web, android, ios, added |
@@ -645,6 +681,11 @@ Singleton holding the trainer and client columns of the permission matrix.
 | `start_date` | DateField |  |
 | `active` | BooleanField | indexed |
 | `assigned_by` | ForeignKey | → User; optional; indexed |
+| `target` | PositiveIntegerField | optional |
+| `frequency` | CharField | choices: daily, days, times_week |
+| `days` | ArrayField |  |
+| `times_per_week` | PositiveSmallIntegerField | optional |
+| `note` | CharField |  |
 
 Constraints: uniq_habit_client
 
@@ -946,6 +987,8 @@ Constraints: uniq_food_unit_name
 | `allow_search_any` | BooleanField |  |
 | `allow_switch_options` | BooleanField |  |
 | `allow_off_plan` | BooleanField |  |
+| `is_master` | BooleanField | indexed |
+| `master` | ForeignKey | → MealPlan; optional; indexed |
 | `created_by` | ForeignKey | → User; optional; indexed |
 
 ### Meal
@@ -959,6 +1002,7 @@ Constraints: uniq_food_unit_name
 | `time` | TimeField |  |
 | `kcal_target` | PositiveIntegerField |  |
 | `order` | PositiveSmallIntegerField |  |
+| `weekday` | PositiveSmallIntegerField | optional |
 
 ### MealOption
 
@@ -994,6 +1038,7 @@ Constraints: uniq_food_unit_name
 | `client` | ForeignKey | → User; indexed |
 | `plan` | ForeignKey | → MealPlan; indexed |
 | `version_note` | TextField |  |
+| `custom_plan` | ForeignKey | → MealPlan; optional; indexed |
 | `start_date` | DateField |  |
 | `end_date` | DateField | optional |
 | `status` | CharField | choices: up_next, active, ended; indexed |
@@ -1222,6 +1267,7 @@ Master plan (is_master) or one client's custom copy (master points at the origin
 | `goal_line` | CharField |  |
 | `weeks` | PositiveSmallIntegerField |  |
 | `days_per_week` | PositiveSmallIntegerField |  |
+| `level` | CharField | choices: beginner, intermediate, advanced, any; indexed |
 | `archived_at` | DateTimeField | optional; indexed |
 | `is_master` | BooleanField | indexed |
 | `master` | ForeignKey | → Program; optional; indexed |

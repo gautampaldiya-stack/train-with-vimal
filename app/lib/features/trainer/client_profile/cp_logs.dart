@@ -7,7 +7,6 @@ import '../../../core/theme/theme.dart';
 import '../../../core/widgets/badge.dart';
 import '../../../core/widgets/button.dart';
 import '../../../core/widgets/card.dart';
-import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/pager.dart';
 import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/tabs.dart';
@@ -115,13 +114,8 @@ class _CpLogsTabState extends State<CpLogsTab> {
     _load();
   }
 
-  void _compare() {
-    if (plans.length < 2) {
-      showToast(context, 'Nothing to compare yet', sub: '${c.first} has had one workout plan so far. Compare plans needs two.', kind: ToastKind.info);
-      return;
-    }
-    setState(() => compare = true);
-  }
+  /// Opens Compare plans. With one plan (or none) A and B are periods: the 30 days before against the last 30.
+  void _compare() => setState(() => compare = true);
 
   // ─────────────────────────────── Build
 

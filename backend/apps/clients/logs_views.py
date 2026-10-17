@@ -32,24 +32,39 @@ class ClientLogSummaryView(APIView):
 
 
 class ClientLogCompareView(APIView):
-    """GET clients/<id>/logs/compare/?a=<assignment>&b=<assignment> → both plan periods side by side."""
+    """GET clients/<id>/logs/compare/ → A and B side by side. Each side is a workout plan
+    (`?a=plan:<assignment>` or `?a=<assignment>`) or any dates (`?a_from=2026-09-01&a_to=2026-09-30`), so a
+    client on their first plan can still compare two halves of it or the last 30 days with the 30 before."""
 
     permission_classes = [IsStaff]
 
     def get(self, request, client_pk):
+        from django.utils.dateparse import parse_date
+
         from apps.training.models import ProgramAssignment
 
         client = _client(request.user, client_pk)
+        q = request.query_params
         out = []
         for key in ("a", "b"):
+            if q.get(f"{key}_from") or q.get(f"{key}_to"):
+                try:
+                    start, end = parse_date(q.get(f"{key}_from") or ""), parse_date(q.get(f"{key}_to") or "")
+                except ValueError:
+                    start = end = None
+                if not start or not end or start > end or (end - start).days > 3660:
+                    raise serializers.ValidationError({key: ["Pick a start and an end date."]})
+                out.append((start, end))
+                continue
+            raw = q.get(key) or ""
             try:
-                v = uuid.UUID(request.query_params.get(key) or "")
+                v = uuid.UUID(raw[5:] if raw.startswith("plan:") else raw)
             except ValueError:
                 v = None
             pa = ProgramAssignment.objects.filter(client=client, id=v).select_related(
                 "program", "custom_program").first() if v else None
             if pa is None:
-                raise serializers.ValidationError({key: ["Pick a plan."]})
+                raise serializers.ValidationError({key: ["Pick a plan or dates."]})
             out.append(pa)
         return Response(logs.compare(client, *out))
 
