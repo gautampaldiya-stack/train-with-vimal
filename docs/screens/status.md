@@ -59,8 +59,8 @@ Status: **Done** (built and checked in a browser against the board, phone and de
 
 | Board | Status | Note |
 |---|---|---|
-| TrainerCalendar | Not started |  |
-| TrainerCalendarMobile | Not started |  |
+| TrainerCalendar | Done | Week / Day, stats, legend, session panel (Open profile, Reschedule, Mark as done, Cancel + Undo), New / Move session drawer with clash check, My working hours (D-38). Checked 768, 1024, 1440 on 2026-10-17. |
+| TrainerCalendarMobile | Done | Day strip + day view, week list, session sheet, new session and working hours sheets. Checked 390 on 2026-10-17. |
 | TrainerCheckins | Done | Tabs + counts, search, type chips with counts, rows (age red after 48 h, ✓ Replied), Show more, review panel (numbers with green / red, answers vs last time, note, photos, reply + quick replies, Mark reviewed + Undo, Mark as not reviewed), ‹ › and Open profile. Sidebar count. Checked 1440 on 2026-10-17 (D-35). |
 | TrainerCheckinsMobile | Done | List, tap opens the check-in in the same card (`/checkins/<id>`), ‹ back. Checked 390 on 2026-10-17. |
 | TrainerClientProfile | Done | All 9 tabs (D-34). Checked 1440 on 2026-10-17. Round 3 (D-37): Portion and swaps panel, per-client swaps and supplement copies, compact pickers, workout editor overflow fixed, Forms inner scroll + start photos, amounts with grams; checked 390, 768, 1024, 1440 on 2026-10-17. Not built (no data): target date, health over time, form-check video, device name, supplement stock history, body map. Open master plan / Open in library go to pages not built yet (Programs, Content library). |
@@ -69,8 +69,8 @@ Status: **Done** (built and checked in a browser against the board, phone and de
 | TrainerClientsMobile | Done | One line per client (avatar, name, goal, badge, ⋯), icon Filter / Export, Edit details as a tall sheet, pager. Checked 390. |
 | TrainerDashboard | Done | Stats, Today (Done, ⋯ menu, cancel + Undo), Clients who need you (chips, Remind + Undo, Show more), Check-ins to review + review drawer (reply, quick replies, Undo), This week (left column), Activity card (latest 10, D-31), review drawer photos open full screen, no AV button on web, bell dropdown, New session modal (Day / Time list fits on screen and scrolls). Numbers match Check-ins page, My profile and the admin Trainers table (D-30). Checked 600, 768, 900, 1024, 1280, 1440 on 2026-10-16. Open client profile / Plan next / Open go to `/clients/<id>` (TrainerClientProfile not built yet; review drawer Open profile now opens it after the drawer closes). Rechecked 390, 1280 on 2026-10-16 (stats cards, Activity, Day list). |
 | TrainerDashboardMobile | Done | Blue hero under the status bar with the 4-cell stats strip, same cards; ⋯ menu as a bottom sheet, bell full width, review drawer as a tall sheet. Checked 390. |
-| TrainerMe | Not started |  |
-| TrainerMeMobile | Not started |  |
+| TrainerMe | Done | 6 tabs, stats match dashboard (D-30, D-38), documents upload / viewer, What clients see preview, Ask for more access, activity, devices, notifications, Edit my details. Checked 768, 1024, 1440 on 2026-10-17. Not built: drag-and-drop upload, PDF page preview, Daily summary / Gym news sending. |
+| TrainerMeMobile | Done | Same code, phone layout. Checked 390 on 2026-10-17. |
 | TrainerMoreMobile | Not started |  |
 | TrainerProfile | Not started |  |
 | TrainerProfileMobile | Not started |  |

@@ -998,7 +998,7 @@ Dashboard ka review drawer, sidebar count aur yeh page ek hi `checkins/counts/` 
 
 ---
 
-### 3.4 Trainer calendar — `TrainerCalendar`
+### 3.4 Trainer calendar — `TrainerCalendar` (built, D-38)
 
 Admin calendar ka trainer version — sirf apni sessions. Title **Calendar**, buttons `My working hours`, `New session`, `Today`.
 
@@ -1012,7 +1012,7 @@ Session pe click → panel: `Open profile` · `Reschedule` · `Mark as done` / `
 
 ---
 
-### 3.5 Me — `TrainerMe`
+### 3.5 Me — `TrainerMe` (built, D-38; tabs at `/me/<tab>`)
 
 Trainer apni hi profile dekhta hai. Header `AV` · **Aman Verma** · `Active` · *"Strength, fat loss"* · button `Edit my details`. Wahi 4 stats jo admin ke trainer profile pe hain.
 

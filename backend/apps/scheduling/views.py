@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, time, timedelta
 
 from django.contrib.auth import get_user_model
@@ -28,18 +29,38 @@ def person(u):
     return {"id": str(u.id), "full_name": u.full_name, "initials": u.initials, "avatar_color": u.avatar_color}
 
 
+def plan_line(client):
+    """Session panel "Plan": "Fat loss · week 6 of 12" (goal and the program week), "No plan yet" without one."""
+    from apps.clients.metrics import active_program
+
+    prof = getattr(client, "client_profile", None)
+    goal = prof.get_goal_display() if prof and prof.goal else ""
+    pa = active_program(client)
+    if pa is None:
+        return "No plan yet"
+    p = pa.effective_program
+    week = min((timezone.localdate() - pa.start_date).days // 7 + 1, p.weeks)
+    return f"{goal or p.name} · week {week} of {p.weeks}"
+
+
+_PHONE = re.compile(r"^\+?[0-9 ]{10,15}$")
+_LINK = re.compile(r"^(https?://)?[\w-]+(\.[\w-]+)+(/\S*)?$", re.I)
+
+
 class SessionSerializer(serializers.ModelSerializer):
     client_detail = serializers.SerializerMethodField()
     trainer_detail = serializers.SerializerMethodField()
     booked_by_name = serializers.CharField(source="booked_by.full_name", read_only=True, default=None)
     minutes = serializers.IntegerField(write_only=True, required=False, min_value=5, max_value=240)
+    length = serializers.SerializerMethodField()
+    client_plan = serializers.SerializerMethodField()
     tell_client = serializers.BooleanField(write_only=True, default=True)
 
     class Meta:
         model = Session
         fields = ["id", "kind", "client", "client_detail", "trainer", "trainer_detail", "title", "start", "end",
-                  "minutes", "is_call", "place", "call_link", "note", "status", "booked_by_name", "tell_client",
-                  "created_at"]
+                  "minutes", "length", "is_call", "place", "call_link", "note", "status", "booked_by_name",
+                  "client_plan", "tell_client", "created_at"]
         read_only_fields = ["status", "end"]
         extra_kwargs = {"trainer": {"required": False}}
 
@@ -48,6 +69,22 @@ class SessionSerializer(serializers.ModelSerializer):
 
     def get_trainer_detail(self, obj):
         return person(obj.trainer)
+
+    def get_length(self, obj):
+        return int((obj.end - obj.start).total_seconds() // 60)
+
+    def get_client_plan(self, obj):
+        # One line per client per answer (a week lists the same client many times).
+        cache = self.context.setdefault("_plans", {})
+        if obj.client_id not in cache:
+            cache[obj.client_id] = plan_line(obj.client)
+        return cache[obj.client_id]
+
+    def validate_call_link(self, v):
+        v = (v or "").strip()
+        if v and not (_PHONE.match(v) and len(re.sub(r"\D", "", v)) >= 10 or _LINK.match(v)):
+            raise serializers.ValidationError("Enter a call link (meet.google.com/…) or a 10 digit number.")
+        return v
 
     def validate(self, attrs):
         req = self.context["request"]
@@ -98,12 +135,13 @@ def working_check(trainer, start, end):
     """'Outside Aman's working hours (6:30 am – 8 pm)' / 'day off'."""
     local_s, local_e = timezone.localtime(start), timezone.localtime(end)
     av = Availability.objects.filter(trainer=trainer, weekday=local_s.weekday()).first()
-    if av is None:
-        return "ok", None
-    if not av.is_working:
+    # No row yet = the defaults My working hours shows (Mon–Sat 6:30 am – 8 pm, Sunday off).
+    working = av.is_working if av else local_s.weekday() < 6
+    start, end = (av.start, av.end) if av else (time(6, 30), time(20, 0))
+    if not working:
         return "day_off", None
-    if local_s.time() < av.start or local_e.time() > av.end:
-        return "outside", {"start": av.start, "end": av.end}
+    if local_s.time() < start or local_e.time() > end or local_e.date() != local_s.date():
+        return "outside", {"start": start, "end": end}
     return "ok", None
 
 
@@ -121,7 +159,7 @@ class SessionViewSet(viewsets.ModelViewSet):
         if u.is_trainer and not u.trainer_profile.has_perm("clients.view_all"):
             qs = qs.filter(trainer=u)
         p = self.request.query_params
-        if self.action == "list":
+        if self.action in ("list", "stats"):
             start = parse_date(p.get("from") or "") or timezone.localdate() - timedelta(
                 days=timezone.localdate().weekday())
             end = parse_date(p.get("to") or "") or start + timedelta(days=6)
@@ -208,7 +246,13 @@ class SessionViewSet(viewsets.ModelViewSet):
     def check(self, request):
         """Live check under the form: free / clash / outside hours / day off."""
         p = request.query_params
-        trainer = get_object_or_404(User, id=p.get("trainer"))
+        u = request.user
+        if not p.get("trainer") or str(p.get("trainer")) == str(u.id):
+            trainer = u
+        elif u.is_trainer and not u.trainer_profile.has_perm("clients.view_all"):
+            raise PermissionDenied("You can check only your own calendar.")
+        else:
+            trainer = get_object_or_404(User, id=p.get("trainer"), role__in=[Role.TRAINER, Role.ADMIN])
         start = parse_datetime(p.get("start") or "")
         if start is None:
             raise serializers.ValidationError({"start": ["Send start."]})

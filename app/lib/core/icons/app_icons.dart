@@ -133,6 +133,30 @@ abstract final class AppIcons {
   static const pinAlt = Ic.i04a3f5; // session place
   static const usersAlt = Ic.if2e92a; // trainer stat: My clients
   static const clipboardShort = Ic.i01abe6; // trainer stat: Check-ins to review
+  // Trainer Calendar
+  static const calStat = Ic.i0250ed; // stat: Sessions this week
+  static const call = Ic.i28e69f; // stat: On a call
+  static const clockAlt = Ic.if7d07a; // My working hours
+  static const move = Ic.ifa240c; // Reschedule
+  static const prev = Ic.i452bb9; // ‹ week / day
+  static const next = Ic.i0d4a60; // › week / day
+  // My profile (TrainerMe board)
+  static const docLines = Ic.i2dc3ba;
+  static const instagram = Ic.i97c520;
+  static const youtube = Ic.i7a99cd;
+  static const web = Ic.i9a1cb4;
+  static const award = Ic.i20ba37;
+  static const idCard = Ic.ief8515;
+  static const chatBubble = Ic.if847aa;
+  static const logIn = Ic.i7be8c4;
+  static const key = Ic.i93a85d;
+  static const arrowRightAlt = Ic.ice80d0;
+  static const upload = Ic.i71203f;
+  static const mobile = Ic.ie50d87;
+  static const zoomOut = Ic.i31f6a0;
+  static const zoomIn = Ic.ifef2cc;
+  static const replace = Ic.i4f62b9;
+
   // Not on any board (full-screen video); same 24 grid and stroke as the board icons.
   static const expand = AppIconData('0 0 24 24', '<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>');
 }

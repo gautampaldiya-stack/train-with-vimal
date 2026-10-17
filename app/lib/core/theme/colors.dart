@@ -189,6 +189,19 @@ abstract final class AppColors {
 
   // Client profile → Plans → meal editor: `.mb-fr.on` picked food row border.
   static const pickLine = Color(0xFFD5E1FB);
+
+  // Trainer Calendar: session kinds `k-ss` 1:1 session · `k-qc` Quick call · `k-rv` Program review (block, text, dot).
+  static const kSsBg = Color(0xFFEDF7D6), kSsText = Color(0xFF3F6212), kSsDot = Color(0xFF84CC16);
+  static const kQcBg = Color(0xFFE2EDFD), kQcText = Color(0xFF1E40AF), kQcDot = Color(0xFF60A5FA);
+  static const kRvBg = Color(0xFFEEE8FD), kRvText = Color(0xFF5B21B6), kRvDot = Color(0xFFA78BFA);
+  static const calToday = Color(0xFFE8EEFC), calTodayLine = Color(0xFFD5DEF5); // today's column and its hour lines
+  static const calWeekend = Color(0xFFFAFAF8); // Sat / Sun column
+  static const calOff = Color(0x09171717); // outside working hours stripes (rgba(23,23,23,.035))
+  static const calOffA = Color(0xFFECECE8), calOffB = Color(0xFFF7F7F4); // legend swatch stripes
+  static const calNow = Color(0xFFDC2626); // now line
+  // My profile (TrainerMe): teal activity icon, ticked / locked permission chips.
+  static const tlTlBg = Color(0xFFCCFBF1), tlTlFg = Color(0xFF0F766E);
+  static const permOnBg = Color(0xFFECFDF3), permOnText = Color(0xFF05603A), permOffBg = Color(0xFFF4F4F2);
 }
 
 enum Tone { ok, warn, bad, info, neutral }

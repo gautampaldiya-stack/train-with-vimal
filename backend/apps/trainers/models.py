@@ -48,6 +48,8 @@ class TrainerProfile(TimeStampedModel):
     permissions = models.JSONField(default=dict, blank=True)  # used when access_mode == custom
     visibility = models.JSONField(default=_visibility_default, blank=True)
     is_owner = models.BooleanField(default=False)
+    # Me → Account → Notifications toggles that have no StaffNotificationPreference column (daily_summary, gym_news).
+    notify = models.JSONField(default=dict, blank=True)
 
     class Meta:
         ordering = ["user__full_name"]

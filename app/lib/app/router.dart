@@ -27,6 +27,8 @@ import '../features/client/more/about_screen.dart';
 import '../features/client/more/more_screen.dart';
 import '../features/client/train/train_screen.dart';
 import '../features/client/train/workout_screen.dart';
+import '../features/trainer/calendar/cal_screen.dart';
+import '../features/trainer/me/me_screen.dart';
 import '../features/trainer/checkins/tc_screen.dart';
 import '../features/trainer/client_profile/cp_screen.dart';
 import '../features/trainer/clients/clients_screen.dart';
@@ -107,6 +109,9 @@ final Map<String, Widget Function(GoRouterState)> trainerScreens = {
   '/clients': (_) => const TrainerClientsScreen(),
   '/checkins': (_) => const TrainerCheckinsScreen(),
   '/checkins/:id': (st) => TrainerCheckinsScreen(id: st.pathParameters['id']),
+  '/calendar': (_) => const TrainerCalendarScreen(),
+  '/me': (_) => const TrainerMeScreen(key: ValueKey('me')),
+  '/me/:id': (st) => TrainerMeScreen(key: const ValueKey('me'), tab: st.pathParameters['id']),
   '/clients/:id': (st) => TrainerClientProfileScreen(key: ValueKey(st.uri.toString()), id: st.pathParameters['id']!, tab: st.uri.queryParameters['tab']),
 };
 

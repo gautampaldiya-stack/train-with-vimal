@@ -41,7 +41,7 @@ class Session(TimeStampedModel):
     end = models.DateTimeField()
     is_call = models.BooleanField(default=False)
     place = models.CharField(max_length=120, blank=True, default="")
-    call_link = models.URLField(blank=True, default="")
+    call_link = models.CharField(max_length=200, blank=True, default="")  # meet link or a phone number
     note = models.CharField(max_length=300, blank=True, default="")
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.BOOKED, db_index=True)
     booked_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")

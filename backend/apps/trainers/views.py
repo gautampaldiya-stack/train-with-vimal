@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.db.models import Avg, Count, F, Q
+from django.db.models import Avg, Count, F, OuterRef, Q, Subquery
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
@@ -48,7 +48,12 @@ def trainers_queryset():
         .select_related("trainer_profile")
         .annotate(
             n_clients=Count("coached_clients", filter=ACTIVE_CLIENT, distinct=True),
-            avg_adherence=Avg("coached_clients__adherence_7d", filter=ACTIVE_CLIENT),
+            # A subquery: averaging over the same join as the check-in count would weigh each client by their
+            # number of waiting check-ins (the table then disagreed with the profile card, D-30).
+            avg_adherence=Subquery(
+                ClientProfile.objects.filter(trainer=OuterRef("pk"), user__status=AccountStatus.ACTIVE,
+                                             removed_at__isnull=True)
+                .order_by().values("trainer").annotate(a=Avg("adherence_7d")).values("a")[:1]),
             n_review=Count(
                 "coached_clients__user__submissions",
                 filter=WAITING,
@@ -575,6 +580,9 @@ class TrainerMeView(APIView):
         data = TrainerDetailSerializer(user, context={"request": request}).data
         data["stats"] = trainer_stats(user)
         data["access_groups"] = permission_groups(user.trainer_profile.effective_permissions())
+        from .me import me_extras
+
+        data.update(me_extras(user))
         return Response(data)
 
     def patch(self, request):

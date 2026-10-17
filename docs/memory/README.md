@@ -39,3 +39,4 @@ Things a new person (or a new Claude session) must know. Update when Gautam deci
 - Gautam (2026-10-17): trainer Client profile built with all 9 tabs and the Check-ins page (D-34, D-35). Daily check-ins are reviewed as that day (sleep, energy, workout, steps); green = better, red = worse.
 - Gautam (2026-10-17): onboarding = his coaching Google Form, the whole form (D-36). Answers are profile fields; trainer edits them in Edit profile; About shows them; no mock data; age from date of birth.
 - Gautam (2026-10-17): swaps and supplements are per client (client copy), adherence counts the client's copy (D-37); setup left panel light like other account pages, only steps scroll; every text box has a placeholder; non-gram amounts show grams "2 pieces (80 g)".
+- Gautam (2026-10-17): Trainer Calendar and My profile built (D-38); no AV avatar top right on web pages.

@@ -194,17 +194,30 @@ class DocumentSerializer(serializers.ModelSerializer):
     status = serializers.CharField(read_only=True)
     verified_by_name = serializers.CharField(source="verified_by.full_name", read_only=True, default=None)
     file_url = serializers.SerializerMethodField()
+    file_info = serializers.SerializerMethodField()
 
     class Meta:
         model = TrainerDocument
         fields = ["id", "kind", "name", "issuer", "issued_on", "expires_on", "visibility", "remind_before_expiry",
-                  "file", "file_url", "verified_at", "verified_by_name", "signed", "status", "created_at"]
+                  "file", "file_url", "file_info", "verified_at", "verified_by_name", "signed", "status", "created_at"]
         read_only_fields = ["verified_at", "signed"]
         extra_kwargs = {"file": {"write_only": True}}
 
     def get_file_url(self, obj):
         req = self.context.get("request")
         return req.build_absolute_uri(obj.file.url) if req and obj.file else None
+
+    def get_file_info(self, obj):
+        """Viewer "File" row: 'PDF, 412 KB'."""
+        if not obj.file:
+            return None
+        ext = obj.file.name.rsplit(".", 1)[-1].upper()
+        try:
+            n = obj.file.size
+        except OSError:
+            return {"ext": ext, "label": ext}
+        size = f"{n / 1048576:.1f} MB" if n >= 1048576 else f"{max(1, round(n / 1024))} KB"
+        return {"ext": ext, "label": f"{ext}, {size}"}
 
     def validate_file(self, f):
         ext = f.name.rsplit(".", 1)[-1].lower()

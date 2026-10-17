@@ -1,7 +1,7 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from . import views
+from . import me, views
 
 router = DefaultRouter()
 router.register("trainers", views.TrainerViewSet, basename="trainer")
@@ -12,5 +12,8 @@ router.register("access-requests", views.AccessRequestViewSet, basename="access-
 urlpatterns = [
     path("trainers/me/", views.TrainerMeView.as_view(), name="trainer-me"),
     path("trainers/me/visibility/", views.TrainerMeVisibilityView.as_view(), name="trainer-me-visibility"),
+    path("trainers/me/activity/", me.MyActivityView.as_view(), name="trainer-me-activity"),
+    path("trainers/me/devices/", me.MyDevicesView.as_view(), name="trainer-me-devices"),
+    path("trainers/me/notifications/", me.MyNotificationsView.as_view(), name="trainer-me-notifications"),
     *router.urls,
 ]
