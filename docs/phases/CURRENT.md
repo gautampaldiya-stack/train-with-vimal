@@ -2,9 +2,10 @@
 
 Updated with every push, so anyone (another Claude session, local Claude Code, a developer) can pick up from here.
 
-**Last updated:** 2026-10-17 · branch `working`
+**Last updated:** 2026-10-18 · branch `working`
 
 ## Done
+- 2026-10-18 (later): web drag and drop in the upload modal (own window drop listener on web), Edit details for documents, document viewer footer fits (Delete is an icon), dashboard Today Done moved into ⋯ ("Mark as done"), Clients who need you chips scroll sideways, Activity card `View all` → My profile · My activity. Parked until Gautam asks: Daily summary design and Gym news screens. Next: TrainerMoreMobile, then the library screens.
 - 2026-10-18: round 4 fixes (debug-mode crashes, PlanEditBar, Add food un-select, amount format, Your access card, Daily summary + Gym news sending, drag and drop / PDF preview). Gautam tests in Flutter web DEBUG: check new pages with `flutter run -d web-server --no-web-resources-cdn` and look for console assertions; never put a LayoutBuilder under IntrinsicHeight/Width.
 - 2026-10-17 round 3 (D-37): meal editor Portion and swaps (per-client swaps), supplement client copies, adherence from the followed plan, compact pickers, Forms photos, setup panel light. Trainer Calendar and My profile built (D-38). Next: TrainerMoreMobile, then the library screens (Programs, Exercises, Nutrition & foods, Habits & supplements, Content library).
 - Backend complete (all modules, offline sync, seeds, tests). Runs without Docker/Redis.
