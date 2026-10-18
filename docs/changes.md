@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-18 · Docs — handoff for a new Claude account
+- **Pehle:** Handoff sirf `docs/phases/CURRENT.md` me tha; kaam ka tareeka, parked items aur artifact links alag-alag jagah the.
+- **Ab:** `docs/HANDOFF.md` me sab ek jagah: app, kya bana / kya baaki (board names), parked Daily summary + Gym news, Gautam ki preferences, design canvas artifacts, kaam kaise hota tha, naye project ke instructions aur pehla message.
+- **Kyun:** Gautam project ko dusre claude.ai account se continue karenge.
+- **Updated:** docs/HANDOFF.md, CLAUDE.md, docs/phases/CURRENT.md
+
 ### 2026-10-18 · My profile — drag and drop fixed, Edit details; workout row gap; dashboard Done in ⋯
 - **Pehle:** Web par upload modal me file drop karne se browser use naye tab me khol deta tha. Document ki details badalne ka seedha button nahi tha (sirf Replace file). Workout editor me exercise naam aur Sets wali line me zyada gap. Viewer footer (Edit details / Replace file / Delete) "RIGHT OVERFLOWED BY 35 PIXELS". Dashboard Today row me alag Done button, "Clients who need you" chips wrap hote the, Activity card me View all nahi.
 - **Ab:** Upload modal khula ho to page par kahin bhi file chhodo, app use le leta hai (web: apna drop listener, desktop: desktop_drop). Document card par `Edit` aur viewer me `Edit details` (naam, type, dates, kaun dekhe; file tab tak wahi jab tak naya na chuno). Naam aur Sets line ka gap 2 px. Viewer footer: do buttons barabar jagah, Delete ab icon (koi overflow nahi). Dashboard: Done ab ⋯ menu me "Mark as done", chips sideways scroll, Activity card me `View all` → My profile · My activity.
