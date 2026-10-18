@@ -24,3 +24,45 @@ Future<(String, Uint8List)?> pickDocument() async {
   input.click();
   return done.future;
 }
+
+/// Web: while the upload modal is open, a file dragged anywhere over the page is caught here (the browser would
+/// otherwise open it in a new tab). [onOver] says whether a file is being dragged over; [onFile] gets the first
+/// dropped file. Returns a function that stops listening.
+void Function() watchDrops({required void Function(bool over) onOver, required void Function((String, Uint8List) file) onFile}) {
+  var depth = 0;
+  bool hasFiles(web.DragEvent e) => e.dataTransfer?.types.toDart.any((t) => t.toDart == 'Files') ?? false;
+  final enter = (web.DragEvent e) {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    if (depth++ == 0) onOver(true);
+  }.toJS;
+  final over = (web.DragEvent e) {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    e.dataTransfer?.dropEffect = 'copy';
+  }.toJS;
+  final leave = (web.DragEvent e) {
+    if (!hasFiles(e)) return;
+    if (depth > 0 && --depth == 0) onOver(false);
+  }.toJS;
+  final drop = (web.DragEvent e) {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    depth = 0;
+    onOver(false);
+    final f = e.dataTransfer?.files.item(0);
+    if (f == null) return;
+    f.arrayBuffer().toDart.then((b) => onFile((f.name, b.toDart.asUint8List())));
+  }.toJS;
+  web.window.addEventListener('dragenter', enter, true.toJS);
+  web.window.addEventListener('dragover', over, true.toJS);
+  web.window.addEventListener('dragleave', leave, true.toJS);
+  web.window.addEventListener('drop', drop, true.toJS);
+  return () {
+    web.window.removeEventListener('dragenter', enter, true.toJS);
+    web.window.removeEventListener('dragover', over, true.toJS);
+    web.window.removeEventListener('dragleave', leave, true.toJS);
+    web.window.removeEventListener('drop', drop, true.toJS);
+  };
+}

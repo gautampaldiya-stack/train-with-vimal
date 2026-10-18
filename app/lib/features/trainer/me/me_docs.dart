@@ -68,7 +68,7 @@ class MeDocsTab extends StatelessWidget {
             final gap = cols == 3 ? 16.0 : 12.0;
             final w = (b.maxWidth - gap * (cols - 1)) / cols;
             return Wrap(spacing: gap, runSpacing: gap, children: [
-              for (final d in items) SizedBox(width: w, child: _DocCard(d, onOpen: () => showDocViewer(context, c, all.indexOf(d)))),
+              for (final d in items) SizedBox(width: w, child: _DocCard(d, onOpen: () => showDocViewer(context, c, all.indexOf(d)), onEdit: () => showUploadDocument(context, c, replace: d, edit: true))),
             ]);
           }),
         ],
@@ -82,9 +82,10 @@ bool _clientsSee(Map d) => d['visibility'] == 'admins_clients' && d['kind'] == '
 
 /// `.card.tp-doc`.
 class _DocCard extends StatelessWidget {
-  const _DocCard(this.d, {required this.onOpen});
+  const _DocCard(this.d, {required this.onOpen, this.onEdit});
   final Map<String, dynamic> d;
   final VoidCallback onOpen;
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -131,6 +132,7 @@ class _DocCard extends StatelessWidget {
                 Flexible(child: Text(cl ? 'Clients see it' : 'Admins only', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: cl ? AppColors.okText : AppColors.muted))),
               ]),
             ),
+            if (onEdit != null) MeTextBtn('Edit', onTap: onEdit!),
             MeTextBtn('View', onTap: onOpen),
           ]),
         ]),
@@ -141,15 +143,18 @@ class _DocCard extends StatelessWidget {
 
 // ─────────────────────────────── Upload a document
 
-/// "Upload a document" modal. With [replace] it is "Replace file" for that document: the form is filled in and
-/// a new file is optional (sent again, the admin checks it again).
-Future<void> showUploadDocument(BuildContext context, MeController c, {Map<String, dynamic>? replace}) async {
+/// "Upload a document" modal. With [replace] it edits that document: the form is filled in and a new file is
+/// optional (a new file is checked by the admin again). [edit] = "Edit details" (name, type, dates, who sees it),
+/// otherwise "Replace file".
+Future<void> showUploadDocument(BuildContext context, MeController c, {Map<String, dynamic>? replace, bool edit = false}) async {
   final f = _UpForm(replace);
   final saved = await showAppModal<Map<String, dynamic>>(
     context,
-    title: replace == null ? 'Upload a document' : 'Replace file',
-    body: replace == null ? 'Certificates, ID proof or contract. PDF or photo, up to 10 MB.' : '${replace['name']}. Vimal checks the new file again.',
-    icon: AppIcons.upload,
+    title: replace == null ? 'Upload a document' : (edit ? 'Edit details' : 'Replace file'),
+    body: replace == null
+        ? 'Certificates, ID proof or contract. PDF or photo, up to 10 MB.'
+        : (edit ? '${replace['name']}. Change the details; the file stays unless you pick a new one.' : '${replace['name']}. Vimal checks the new file again.'),
+    icon: edit ? AppIcons.edit : AppIcons.upload,
     wide: true,
     content: (ctx) => ListenableBuilder(listenable: f, builder: (ctx, _) => f.build(ctx)),
     actions: (ctx) => [
@@ -173,6 +178,7 @@ Future<void> showUploadDocument(BuildContext context, MeController c, {Map<Strin
 
 class _UpForm extends ChangeNotifier {
   _UpForm(this.old) {
+    if (kIsWeb) _unwatch = watchDrops(onOver: (v) => _set(() => dragging = v), onFile: _take);
     final o = old;
     if (o != null) {
       kind = '${o['kind']}';
@@ -194,6 +200,7 @@ class _UpForm extends ChangeNotifier {
 
   @override
   void dispose() {
+    _unwatch();
     name.dispose();
     issuer.dispose();
     super.dispose();
@@ -205,6 +212,9 @@ class _UpForm extends ChangeNotifier {
   }
 
   bool dragging = false;
+
+  /// Web: catch a file dropped anywhere while this modal is open (the browser would open it in a new tab).
+  void Function() _unwatch = () {};
 
   Future<void> pick() async {
     final r = await pickDocument();
@@ -313,12 +323,15 @@ class _UpForm extends ChangeNotifier {
       },
     );
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [
-      DropTarget(
-        onDragEntered: (_) => _set(() => dragging = true),
-        onDragExited: (_) => _set(() => dragging = false),
-        onDragDone: drop,
-        child: zone,
-      ),
+      if (kIsWeb)
+        zone
+      else
+        DropTarget(
+          onDragEntered: (_) => _set(() => dragging = true),
+          onDragExited: (_) => _set(() => dragging = false),
+          onDragDone: drop,
+          child: zone,
+        ),
       if (fileErr != null) Text(fileErr!, style: AppText.s(12, W.w6, color: AppColors.badText)),
       MeGrid2([
         meField('Type', AppSelect(meDocKind(kind), entries: [
@@ -440,8 +453,8 @@ class _ViewerState extends State<_Viewer> {
     }
   }
 
-  Future<void> _replace(Map<String, dynamic> d) async {
-    await showUploadDocument(context, widget.c, replace: d);
+  Future<void> _replace(Map<String, dynamic> d, {bool edit = false}) async {
+    await showUploadDocument(context, widget.c, replace: d, edit: edit);
     if (mounted) setState(() {});
   }
 
@@ -568,10 +581,11 @@ class _ViewerState extends State<_Viewer> {
       Container(
         padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
         decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
-        child: Row(children: [
-          AppButton('Replace file', icon: AppIcons.replace, onPressed: () => _replace(d)),
-          const Spacer(),
-          MeTextBtn('Delete', danger: true, onTap: () => _delete(d)),
+        // The side panel is narrow: the two buttons share the row, Delete is an icon (no overflow at any width).
+        child: Row(spacing: 8, children: [
+          Expanded(child: AppButton('Edit details', size: BtnSize.sm, expand: true, onPressed: () => _replace(d, edit: true))),
+          Expanded(child: AppButton('Replace file', size: BtnSize.sm, expand: true, onPressed: () => _replace(d))),
+          AppIconButton(AppIcons.trash, tooltip: 'Delete', ghost: true, color: AppColors.badText, onPressed: () => _delete(d)),
         ]),
       ),
     ]);

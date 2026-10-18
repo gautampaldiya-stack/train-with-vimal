@@ -9,3 +9,6 @@ Future<(String, Uint8List)?> pickDocument() async {
   final f = files.first;
   return (f.name, await f.xFile.readAsBytes());
 }
+
+/// Phone / desktop: drops come through `DropTarget` (desktop_drop); nothing to watch here.
+void Function() watchDrops({required void Function(bool over) onOver, required void Function((String, Uint8List) file) onFile}) => () {};

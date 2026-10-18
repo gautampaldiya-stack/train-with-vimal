@@ -574,7 +574,7 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
             ),
             numTag(tag),
             Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 5, children: [
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 2, children: [
                 if (phone) Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: name), acts]) else name,
                 // A Wrap, not a Row: at mid widths (side nav + 230 day list) the five columns need 396 px and
                 // the name column can be narrower, so the last ones (Load, then Rest) drop to a second line.

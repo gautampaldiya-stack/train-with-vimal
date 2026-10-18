@@ -277,7 +277,6 @@ class _TrainerDashboardScreenState extends State<TrainerDashboardScreen> {
       'missed' => const AppBadge('Missed', tone: Tone.bad),
       _ => null,
     };
-    final doneBtn = s.status == 'booked' ? AppButton('Done', icon: AppIcons.check, size: BtnSize.sm, onPressed: () => c.setStatus(s, 'done').catchError(_fail)) : null;
     final menu = Builder(builder: (b) => AppIconButton(AppIcons.dots, tooltip: 'More actions', small: true, ghost: true, fill: true, onPressed: () => _sessionMenu(b, s)));
     final next = now && s.inText.isNotEmpty ? AppBadge(s.inText, tone: Tone.info) : null;
     return Container(
@@ -294,7 +293,6 @@ class _TrainerDashboardScreenState extends State<TrainerDashboardScreen> {
                 ]),
               ),
               ?status,
-              ?doneBtn,
               SizedBox(width: 28, child: menu),
             ])
           : Row(spacing: 10, children: [
@@ -303,13 +301,14 @@ class _TrainerDashboardScreenState extends State<TrainerDashboardScreen> {
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [name, where])),
               ?status,
               ?next,
-              ?doneBtn,
               menu,
             ]),
     );
   }
 
   void _sessionMenu(BuildContext anchor, TdSession s) => showAppMenu(anchor, width: 210, [
+        // Done lives here (Gautam, 18 Oct): the row stays short and the name has room.
+        if (s.status == 'booked') MenuEntry('Mark as done', icon: AppIcons.check, onTap: () => c.setStatus(s, 'done').catchError(_fail)),
         if (s.status == 'booked') MenuEntry('Mark as missed', icon: AppIcons.missed, onTap: () => c.setStatus(s, 'missed').catchError(_fail)),
         if (s.status == 'done') MenuEntry('Mark as not done', icon: AppIcons.undo, onTap: () => c.setStatus(s, 'booked').catchError(_fail)),
         MenuEntry('Open client profile', icon: AppIcons.eye, onTap: () => context.go('/clients/${s.client.id}')),
@@ -351,9 +350,8 @@ class _TrainerDashboardScreenState extends State<TrainerDashboardScreen> {
         CardHeader('Clients who need you', padding: _hPad, count: AppCount(d.need.length), action: Text('Only your clients', style: AppText.cap)),
         Padding(
           padding: EdgeInsets.fromLTRB(phone ? 16 : 20, 2, phone ? 0 : 20, 8),
-          child: phone
-              ? SingleChildScrollView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.only(right: 28), child: Row(spacing: 6, children: chips))
-              : Wrap(spacing: 6, runSpacing: 6, children: chips),
+          // One line that scrolls sideways on every width (Gautam, 18 Oct), never wraps to a second row.
+          child: SingleChildScrollView(scrollDirection: Axis.horizontal, padding: EdgeInsets.only(right: phone ? 28 : 0), child: Row(spacing: 6, children: chips)),
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(8, 4, 8, 10),
@@ -518,7 +516,7 @@ class _TrainerDashboardScreenState extends State<TrainerDashboardScreen> {
     final rows = d.activity;
     return AppCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        CardHeader('Activity', padding: _hPad, sub: 'You and your clients'),
+        CardHeader('Activity', padding: _hPad, sub: 'You and your clients', action: _Link('View all', () => context.go('/me/activity'))),
         if (rows.isEmpty)
           Padding(
             padding: EdgeInsets.fromLTRB(phone ? 16 : 20, 0, phone ? 16 : 20, 16),
