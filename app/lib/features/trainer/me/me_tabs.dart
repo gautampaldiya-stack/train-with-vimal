@@ -185,53 +185,15 @@ class MeAccessTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final phone = context.isPhone;
     final asked = c.asked;
-    final askedT = asked == null ? 'Nothing' : '${(asked['labels'] as List).join(', ')} · waiting';
     final n = (c.stats['clients'] as num?) ?? 0;
     final tip = switch ('${c.me['access_mode']}') {
       'all' => 'Every client of the gym: their plans, logs and check-ins. Set by Vimal.',
       'custom' => 'Vimal picked what you can do below.',
       _ => 'Only the clients given to you: their plans, logs and check-ins. Set by Vimal.',
     };
-    final level = Row(crossAxisAlignment: CrossAxisAlignment.center, spacing: phone ? 12 : 14, children: [
-      IconTile(AppIcons.key, size: phone ? 36 : 44, radius: phone ? 10 : 12, iconSize: phone ? 18 : 22, bg: AppColors.hover, fg: AppColors.accentText),
-      Expanded(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-          Text('YOUR ACCESS', style: AppText.s(phone ? 11 : 12, W.w7, color: AppColors.muted, ls: .48)),
-          Row(spacing: 6, children: [
-            Flexible(child: Text(c.accessLevel, style: AppText.s(phone ? 15 : 17, W.w8))),
-            AppTooltip(message: tip, child: const AppIcon(AppIcons.infoAlt, size: 15, color: AppColors.muted)),
-          ]),
-        ]),
-      ),
-    ]);
-    Widget cell(String l, String v, {bool warn = false, bool first = false}) => Container(
-          padding: EdgeInsets.only(left: first ? 0 : (phone ? 10 : 16), right: phone ? 10 : 16),
-          decoration: BoxDecoration(border: first ? null : const Border(left: BorderSide(color: AppColors.line))),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-            Text(l, style: AppText.s(12, W.w6, color: AppColors.muted)),
-            Text(v, style: AppText.s(14, W.w8, color: warn ? AppColors.warnText : AppColors.text)),
-          ]),
-        );
-    final cells = [
-      cell('Switched on', '${c.permsOn} of ${c.permsTotal}', first: true),
-      cell('Clients you see', c.seesAll ? 'Every client' : 'Only yours ($n)'),
-      cell('Asked for', askedT, warn: asked != null),
-    ];
     final ask = AppButton('Ask for more access', icon: AppIcons.key, expand: phone, onPressed: () => showAskAccess(context, c));
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 16, children: [
-      AppCard(
-        padding: phone ? const EdgeInsets.all(16) : const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: LayoutBuilder(builder: (context, b) {
-          if (b.maxWidth < 860) {
-            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-              level,
-              IntrinsicHeight(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [for (final w in cells) Expanded(child: w)])),
-              ask,
-            ]);
-          }
-          return Row(spacing: 20, children: [Expanded(child: level), IntrinsicHeight(child: Row(children: cells)), ask]);
-        }),
-      ),
+      _AccessCard(c: c, phone: phone, tip: tip, clients: n.toInt(), asked: asked, ask: ask),
       AppCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           const CardHeader('What you can do', sub: 'Ticked ones are on for you. The rest only Vimal can switch on.', padding: EdgeInsets.fromLTRB(16, 14, 16, 12)),
@@ -269,6 +231,129 @@ class MeAccessTab extends StatelessWidget {
       child: LayoutBuilder(builder: (context, b) {
         if (b.maxWidth < 560) return Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 8, children: [head, chips]);
         return Row(crossAxisAlignment: CrossAxisAlignment.center, spacing: 12, children: [SizedBox(width: 130, child: head), Expanded(child: chips)]);
+      }),
+    );
+  }
+}
+
+/// "Your access" card (`.card.me-acc`): the level with its icon and what it means, Ask for more access, then a strip
+/// with Switched on (14 of 19 and a bar of one segment a permission), Clients you see and Asked for.
+class _AccessCard extends StatelessWidget {
+  const _AccessCard({required this.c, required this.phone, required this.tip, required this.clients, required this.asked, required this.ask});
+  final MeController c;
+  final bool phone;
+  final String tip;
+  final int clients;
+  final Map<String, dynamic>? asked;
+  final Widget ask;
+
+  @override
+  Widget build(BuildContext context) {
+    final on = c.permsOn, total = c.permsTotal;
+    final pct = total == 0 ? 0 : (on * 100 / total).round();
+    final level = Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: phone ? 12 : 14, children: [
+      IconTile(AppIcons.key, size: phone ? 40 : 48, radius: phone ? 11 : 13, iconSize: phone ? 20 : 24, bg: AppColors.hover, fg: AppColors.accentText),
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 3, children: [
+          Text('YOUR ACCESS', style: AppText.s(phone ? 11 : 11.5, W.w7, color: AppColors.muted, ls: .5)),
+          Row(spacing: 6, children: [
+            Flexible(child: Text(c.accessLevel, style: AppText.s(phone ? 17 : 19, W.w8, ls: -0.3))),
+            AppTooltip(message: tip, child: const AppIcon(AppIcons.infoAlt, size: 15, color: AppColors.muted)),
+          ]),
+          Text(tip.replaceFirst(' Set by Vimal.', ''), style: AppText.s(phone ? 12.5 : 13, W.w5, color: AppColors.text2, h: 1.4)),
+        ]),
+      ),
+    ]);
+
+    // One segment a permission: blue = switched on.
+    final bar = Row(spacing: 3, children: [
+      for (var i = 0; i < total; i++)
+        Expanded(
+          child: Container(
+            height: 6,
+            decoration: BoxDecoration(color: i < on ? AppColors.accent : AppColors.segTrack, borderRadius: AppRadius.all(3)),
+          ),
+        ),
+    ]);
+    Widget label(String t) => Text(t.toUpperCase(), style: AppText.s(11, W.w7, color: AppColors.muted, ls: .44));
+    final switched = Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
+      label('Switched on'),
+      Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, spacing: 6, children: [
+        Text('$on', style: AppText.s(20, W.w8, ls: -0.4, tabular: true)),
+        Text('of $total', style: AppText.s(13, W.w6, color: AppColors.muted)),
+        const Spacer(),
+        Text('$pct%', style: AppText.s(12.5, W.w7, color: AppColors.accentText, tabular: true)),
+      ]),
+      bar,
+    ]);
+    final sees = Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 6, children: [
+      label('Clients you see'),
+      Row(spacing: 8, children: [
+        IconTile(c.seesAll ? AppIcons.clients : AppIcons.person, size: 26, radius: 7, iconSize: 14, bg: AppColors.okBg, fg: AppColors.okText),
+        Flexible(child: Text(c.seesAll ? 'Every client' : 'Only yours ($clients)', maxLines: 2, style: AppText.s(14, W.w7, h: 1.25))),
+      ]),
+    ]);
+    final a = asked;
+    final askedW = Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 6, children: [
+      label('Asked for'),
+      if (a == null)
+        Row(spacing: 8, children: [
+          const IconTile(AppIcons.check, size: 26, radius: 7, iconSize: 14, bg: AppColors.sub, fg: AppColors.muted),
+          Flexible(child: Text('Nothing', style: AppText.s(14, W.w7, color: AppColors.text2))),
+        ])
+      else
+        Row(spacing: 8, children: [
+          const IconTile(AppIcons.clock, size: 26, radius: 7, iconSize: 14, bg: AppColors.warnBg, fg: AppColors.warnText),
+          Flexible(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+              Text((a['labels'] as List).join(', '), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7, h: 1.25)),
+              Text('Waiting for Vimal${a['at'] == null ? '' : ' · sent ${meDmy(a['at'])}'}', style: AppText.s(12, W.w6, color: AppColors.warnText)),
+            ]),
+          ),
+        ]),
+    ]);
+    const vline = SizedBox(height: 52, child: VerticalDivider(width: 1, thickness: 1, color: AppColors.line));
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(color: AppColors.card, borderRadius: AppRadius.all(AppRadius.card), border: Border.all(color: AppColors.line)),
+      child: LayoutBuilder(builder: (context, b) {
+        final wide = b.maxWidth >= 600, mid = b.maxWidth >= 700;
+        final head = Padding(
+          padding: phone ? const EdgeInsets.fromLTRB(16, 16, 16, 14) : const EdgeInsets.fromLTRB(20, 18, 20, 16),
+          child: wide
+              ? Row(crossAxisAlignment: CrossAxisAlignment.center, spacing: 20, children: [Expanded(child: level), ask])
+              : level,
+        );
+        final strip = Container(
+          padding: phone ? const EdgeInsets.fromLTRB(16, 14, 16, 14) : const EdgeInsets.fromLTRB(20, 14, 20, 16),
+          decoration: const BoxDecoration(color: AppColors.tableHead, border: Border(top: BorderSide(color: AppColors.line))),
+          child: mid
+              ? Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                  Expanded(flex: 5, child: Padding(padding: const EdgeInsets.only(right: 20), child: switched)),
+                  vline,
+                  Expanded(flex: 4, child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: sees)),
+                  vline,
+                  Expanded(flex: 4, child: Padding(padding: const EdgeInsets.only(left: 20), child: askedW)),
+                ])
+              : Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [
+                  switched,
+                  const Divider1(),
+                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Expanded(child: Padding(padding: const EdgeInsets.only(right: 12), child: sees)),
+                    Expanded(child: askedW),
+                  ]),
+                ]),
+        );
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          head,
+          strip,
+          if (!wide)
+            Container(
+              padding: phone ? const EdgeInsets.fromLTRB(16, 12, 16, 14) : const EdgeInsets.fromLTRB(20, 12, 20, 14),
+              decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
+              child: ask,
+            ),
+        ]);
       }),
     );
   }

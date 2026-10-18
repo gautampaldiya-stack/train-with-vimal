@@ -31,7 +31,9 @@ class CalGrid extends StatelessWidget {
       child: Stack(children: [
         Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           _head(),
-          IntrinsicHeight(
+          // Fixed height (hours × px): the day columns use LayoutBuilder, which can't report an intrinsic height.
+          SizedBox(
+            height: (calH1 - calH0) * calHourPx,
             child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               SizedBox(width: _gutter, child: _times()),
               for (final i in days) Expanded(child: _col(context, i)),

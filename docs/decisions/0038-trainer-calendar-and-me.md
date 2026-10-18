@@ -20,9 +20,19 @@ Date: 2026-10-17
 - Fix: admin Trainers table average adherence is no longer weighted by waiting check-ins (Aman 50 % → 56 %, same as
   everywhere else).
 
+## Update 2026-10-18 (Gautam's feedback)
+- **Daily summary**: beat task `daily-summaries` at 8:00 gym time (board text "Email at 8:00 am with your day"). Every
+  trainer with the toggle on gets one message a day — bell, push and email per their push / email settings — e.g.
+  "Today: 3 sessions, 5 check-ins to review, 2 clients need you", opening the Dashboard. Counts come from the
+  dashboard's own functions. `apps/notifications/staff.py`.
+- **Gym news**: new `GymNews` model (`notifications/0003_gym_news`), `GET/POST gym-news/` (admin only, paginated).
+  Posting sends it to active trainers with Gym news on (bell + push). The admin screen to post comes with admin screens.
+- **Documents**: drag and drop on web/desktop (`desktop_drop`), any PDF/JPG/PNG on phones (`file_picker`), PDF pages in
+  the viewer with page nav and zoom 50–300 % (`pdfrx`; falls back to the file card if a PDF can't be drawn).
+- Your access card redesigned (switched-on bar, clients you see, asked for).
+
 ## Not built yet
-- Daily summary / Gym news are saved but nothing sends them yet. Upload drop zone has no drag and drop; phone picks
-  photos only (no file-picker package). PDFs show a file card with Open file, not the page.
+- Admin "post gym news" screen (with admin screens).
 
 ## Why
 Gautam (17 Oct): "saath me next screens build kar dena.. Agla: Trainer Calendar, phir My profile."

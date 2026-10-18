@@ -192,3 +192,17 @@ class ReminderLog(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["user", "kind", "ref", "day"], name="uniq_reminder_once")]
+
+
+class GymNews(TimeStampedModel):
+    """A notice from the admin to the team ("Gym news" in Trainer Me → Account → Notifications).
+    Sent once when posted, to every trainer who has Gym news switched on (bell + push)."""
+
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+    title = models.CharField(max_length=120)
+    body = models.TextField(blank=True, default="")
+    sent_to = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name_plural = "gym news"

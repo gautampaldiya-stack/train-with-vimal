@@ -62,10 +62,14 @@ class MediaTile extends StatelessWidget {
 
 /// `.pd-days`: 7 day buttons (day, name or kcal, blue dot when changed for the client). Narrow: scrolls sideways.
 class DayStrip extends StatelessWidget {
-  const DayStrip({super.key, required this.days, required this.selected, required this.onPick});
+  const DayStrip({super.key, required this.days, required this.selected, required this.onPick, this.short});
   final List<(String, String, bool, bool)> days; // (Mon, Upper A, changed, rest)
   final int selected;
   final ValueChanged<int> onPick;
+
+  /// A short second line per day ("5 ex", "1.6k"): when given, a narrow strip (phone) shows all seven days as
+  /// small cells instead of scrolling.
+  final List<String>? short;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -100,8 +104,40 @@ class DayStrip extends StatelessWidget {
             );
           }
 
-          if (b.maxWidth / 7 >= 88) {
+          Widget compact(int i) {
+            final (d, _, dot, rest) = days[i];
+            final on = i == selected;
+            return Hover(
+              onTap: () => onPick(i),
+              builder: (_, h, _) => Container(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                decoration: BoxDecoration(
+                  color: on ? AppColors.hover : (rest ? AppColors.caWebBg : AppColors.card),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: on ? AppColors.accent : (h ? AppColors.line2 : AppColors.line)),
+                ),
+                child: Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
+                  Column(spacing: 1, children: [
+                    Text(d, maxLines: 1, style: AppText.s(12, W.w8, color: on ? AppColors.accentText : AppColors.text)),
+                    Text(short![i], maxLines: 1, overflow: TextOverflow.clip, style: AppText.s(10.5, W.w6, color: on ? AppColors.accentText : AppColors.muted, tabular: true)),
+                  ]),
+                  if (dot)
+                    Positioned(
+                      top: -2,
+                      right: 4,
+                      child: Container(width: 6, height: 6, decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle)),
+                    ),
+                ]),
+              ),
+            );
+          }
+
+          if (b.maxWidth / 7 >= 72) {
             return Row(spacing: 6, children: [for (var i = 0; i < days.length; i++) Expanded(child: day(i))]);
+          }
+          // Phone: all seven days fit as small cells (day over [short]), no sideways scrolling.
+          if (short != null && (b.maxWidth - 24) / 7 >= 34) {
+            return Row(spacing: 4, children: [for (var i = 0; i < days.length; i++) Expanded(child: compact(i))]);
           }
           return SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -109,6 +145,39 @@ class DayStrip extends StatelessWidget {
           );
         }),
       );
+}
+
+/// `.cp-subbar` of the plan editors (workout, meals, supplements): `Back to plan` on the left, `Reset to master`
+/// (when the client has an own copy), `Cancel` and the save button on the right. Phone: one row: back and reset
+/// as square icon buttons (tooltips), Cancel, and the save button taking the rest of the width.
+class PlanEditBar extends StatelessWidget {
+  const PlanEditBar({super.key, required this.onBack, required this.onCancel, required this.save, required this.onSave, this.onReset, this.busy = false});
+  final VoidCallback onBack, onCancel, onSave;
+  final VoidCallback? onReset;
+  final String save;
+  final bool busy;
+
+  @override
+  Widget build(BuildContext context) {
+    final cancel = AppButton('Cancel', onPressed: busy ? null : onCancel);
+    final ok = AppButton.primary(save, icon: AppIcons.check, loading: busy, expand: context.isPhone, onPressed: busy ? null : onSave);
+    if (context.isPhone) {
+      return Row(spacing: 8, children: [
+        AppButton('Back to plan', icon: AppIcons.chevronLeft, iconOnly: true, onPressed: onBack),
+        if (onReset != null) AppButton('Reset to master', icon: AppIcons.reset, iconOnly: true, onPressed: busy ? null : onReset),
+        cancel,
+        Expanded(child: ok),
+      ]);
+    }
+    return Wrap(alignment: WrapAlignment.spaceBetween, runSpacing: 10, spacing: 8, children: [
+      AppButton('Back to plan', icon: AppIcons.chevronLeft, onPressed: onBack),
+      Wrap(spacing: 8, runSpacing: 8, children: [
+        if (onReset != null) AppButton('Reset to master', kind: BtnKind.text, icon: AppIcons.reset, onPressed: busy ? null : onReset),
+        cancel,
+        ok,
+      ]),
+    ]);
+  }
 }
 
 /// `.pd-head`: "Tuesday · Lower A" over "6 exercises · 19 sets…", badge on the right.

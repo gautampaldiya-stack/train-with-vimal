@@ -207,6 +207,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | Path | Methods | View | Notes |
 |---|---|---|---|
 | `devices/` | POST, DELETE | DeviceTokenView | POST registers this phone/browser for push. DELETE (with token) removes it on logout. |
+| `gym-news/` | GET, POST | GymNewsViewSet | Admin → Gym news: post a notice to the team. Each trainer with Gym news on gets it in the bell (and push). |
 | `me/reminders/` | GET, POST, PUT, PATCH | ReminderPreferenceView |  |
 | `me/staff-notifications/` | GET, PUT, PATCH | StaffNotificationPreferenceView |  |
 | `message-templates/` | GET, POST | MessageTemplateViewSet | Emails & alerts → Client messages (admin only). |

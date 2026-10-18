@@ -1,8 +1,11 @@
 import 'dart:typed_data';
 
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:dio/dio.dart' show FormData, MultipartFile;
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:pdfrx/pdfrx.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/services.dart';
@@ -201,9 +204,22 @@ class _UpForm extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool dragging = false;
+
   Future<void> pick() async {
     final r = await pickDocument();
-    if (r == null) return;
+    if (r != null) _take(r);
+  }
+
+  /// A file dropped on the drop zone (web and desktop): the first one counts.
+  Future<void> drop(DropDoneDetails d) async {
+    _set(() => dragging = false);
+    final f = d.files.whereType<DropItemFile>().firstOrNull;
+    if (f == null) return;
+    _take((f.name, await f.readAsBytes()));
+  }
+
+  void _take((String, Uint8List) r) {
     final ext = r.$1.split('.').last.toLowerCase();
     _set(() {
       if (!['pdf', 'jpg', 'jpeg', 'png'].contains(ext)) {
@@ -258,30 +274,50 @@ class _UpForm extends ChangeNotifier {
 
   Widget build(BuildContext context) {
     final picked = file;
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [
-      Hover(
-        onTap: pick,
-        builder: (_, h, _) => Container(
-          padding: const EdgeInsets.all(22),
-          decoration: BoxDecoration(
-            color: h ? AppColors.hover : AppColors.sub,
-            borderRadius: AppRadius.all(12),
-            border: Border.all(color: fileErr != null ? AppColors.badText : AppColors.line2, width: 1.5),
-          ),
-          child: Column(spacing: 4, children: [
-            AppIcon(picked == null ? AppIcons.upload : AppIcons.file, size: 22, color: AppColors.accent),
-            if (picked == null)
-              Text.rich(
-                TextSpan(text: old == null ? 'Pick a file or ' : 'Keep the file or ', style: AppText.s(13, W.w7), children: [
-                  TextSpan(text: 'browse', style: AppText.s(13, W.w7).copyWith(decoration: TextDecoration.underline)),
-                ]),
+    // "Drop a file here or browse" (board): drag and drop works on the web and on desktop; a phone taps to pick.
+    final canDrop = kIsWeb || !(defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
+    final lead = picked != null
+        ? null
+        : (old == null ? (canDrop ? 'Drop a file here or ' : 'Pick a file or ') : (canDrop ? 'Keep the file, drop a new one or ' : 'Keep the file or '));
+    final zone = Hover(
+      onTap: pick,
+      builder: (_, h, _) {
+        final hot = dragging || h;
+        return CustomPaint(
+          foregroundPainter: _Dashed(color: fileErr != null ? AppColors.badText : (dragging ? AppColors.accent : AppColors.line2), radius: 12),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(color: dragging ? AppColors.accentSoft : (hot ? AppColors.hover : AppColors.sub), borderRadius: AppRadius.all(12)),
+            child: Column(spacing: 4, children: [
+              AppIcon(dragging ? AppIcons.download : (picked == null ? AppIcons.upload : AppIcons.file), size: 22, color: AppColors.accent),
+              if (dragging)
+                Text('Drop it to add the file', textAlign: TextAlign.center, style: AppText.s(13, W.w7, color: AppColors.accentText))
+              else if (picked == null)
+                Text.rich(
+                  TextSpan(text: lead, style: AppText.s(13, W.w7), children: [
+                    TextSpan(text: 'browse', style: AppText.s(13, W.w7).copyWith(decoration: TextDecoration.underline)),
+                  ]),
+                  textAlign: TextAlign.center,
+                )
+              else
+                Text(picked.$1, textAlign: TextAlign.center, style: AppText.s(13, W.w7)),
+              Text(
+                dragging ? 'PDF, JPG or PNG, up to 10 MB' : (picked == null ? 'PDF, JPG or PNG' : '${_size(picked.$2.length)} · ${canDrop ? 'drop or click' : 'tap'} to pick another'),
                 textAlign: TextAlign.center,
-              )
-            else
-              Text(picked.$1, textAlign: TextAlign.center, style: AppText.s(13, W.w7)),
-            Text(picked == null ? 'PDF, JPG or PNG' : '${_size(picked.$2.length)} · tap to pick another', style: AppText.s(12, W.w5, color: AppColors.muted)),
-          ]),
-        ),
+                style: AppText.s(12, W.w5, color: AppColors.muted),
+              ),
+            ]),
+          ),
+        );
+      },
+    );
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [
+      DropTarget(
+        onDragEntered: (_) => _set(() => dragging = true),
+        onDragExited: (_) => _set(() => dragging = false),
+        onDragDone: drop,
+        child: zone,
       ),
       if (fileErr != null) Text(fileErr!, style: AppText.s(12, W.w6, color: AppColors.badText)),
       MeGrid2([
@@ -331,6 +367,30 @@ class _UpForm extends ChangeNotifier {
       if (formErr != null) Text(formErr!, style: AppText.s(12.5, W.w6, color: AppColors.badText)),
     ]);
   }
+}
+
+/// `.tp-drop` 1.5px dashed border.
+class _Dashed extends CustomPainter {
+  const _Dashed({required this.color, required this.radius});
+  final Color color;
+  final double radius;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    final path = Path()..addRRect(RRect.fromRectAndRadius((Offset.zero & size).deflate(.75), Radius.circular(radius)));
+    for (final m in path.computeMetrics()) {
+      for (var d = 0.0; d < m.length; d += 9) {
+        canvas.drawPath(m.extractPath(d, (d + 5).clamp(0, m.length)), paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_Dashed o) => o.color != color || o.radius != radius;
 }
 
 String _size(int n) => n >= 1048576 ? '${(n / 1048576).toStringAsFixed(1)} MB' : '${(n / 1024).round().clamp(1, 1024)} KB';
@@ -417,60 +477,48 @@ class _ViewerState extends State<_Viewer> {
     final ext = '${(d['file_info'] as Map?)?['ext'] ?? ''}'.toLowerCase();
     final img = ['jpg', 'jpeg', 'png'].contains(ext);
     final fname = Uri.tryParse(url)?.pathSegments.lastOrNull ?? '';
-    final dark = AppColors.text;
+    void download() => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    if (url.isNotEmpty && !img) {
+      // PDF: the pages themselves (pdfrx: PDFium, WASM on the web), zoom, page by page, Download.
+      return _PdfStage(key: ValueKey(url), url: url, fname: fname, onDownload: download, fallback: _fileCard(d, download));
+    }
     return Container(
-      color: dark,
+      color: AppColors.text,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
-          child: Row(spacing: 4, children: [
-            Expanded(child: Text(fname, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.white))),
-            if (img) ...[
-              _dk(AppIcons.zoomOut, 'Zoom out', zoom > 50 ? () => setState(() => zoom -= 25) : null),
-              SizedBox(width: 44, child: Text('$zoom%', textAlign: TextAlign.center, style: AppText.s(12, W.w6, color: AppColors.white))),
-              _dk(AppIcons.zoomIn, 'Zoom in', zoom < 150 ? () => setState(() => zoom += 25) : null),
-            ],
-            _dk(AppIcons.download, 'Download', url.isEmpty ? null : () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication)),
-          ]),
-        ),
+        _stageBar([
+          Expanded(child: _fname(fname)),
+          if (img) ...[
+            _dk(AppIcons.zoomOut, 'Zoom out', zoom > 50 ? () => setState(() => zoom -= 25) : null),
+            _pct('$zoom%'),
+            _dk(AppIcons.zoomIn, 'Zoom in', zoom < 150 ? () => setState(() => zoom += 25) : null),
+          ],
+          _dk(AppIcons.download, 'Download', url.isEmpty ? null : download),
+        ]),
         Expanded(
           child: url.isEmpty
               ? const SizedBox()
-              : img
-                  ? ClipRect(
-                      child: InteractiveViewer(
-                        child: Center(child: Transform.scale(scale: zoom / 100, child: NetImage(url, fit: BoxFit.contain))),
-                      ),
-                    )
-                  : Center(
-                      child: Container(
-                        width: 220,
-                        padding: const EdgeInsets.all(22),
-                        decoration: BoxDecoration(color: AppColors.white, borderRadius: AppRadius.all(6)),
-                        child: Column(mainAxisSize: MainAxisSize.min, spacing: 10, children: [
-                          meDocIcon('${d['kind']}', size: 44),
-                          Text('${d['name']}', textAlign: TextAlign.center, style: AppText.s(13.5, W.w7)),
-                          Text('PDF file', style: AppText.s(12, W.w5, color: AppColors.muted)),
-                          AppButton('Open file', size: BtnSize.sm, onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication)),
-                        ]),
-                      ),
-                    ),
+              : ClipRect(
+                  child: InteractiveViewer(
+                    child: Center(child: Transform.scale(scale: zoom / 100, child: NetImage(url, fit: BoxFit.contain))),
+                  ),
+                ),
         ),
       ]),
     );
   }
 
-  Widget _dk(AppIconData ic, String tip, VoidCallback? onTap) => Hover(
-        onTap: onTap,
-        builder: (_, h, _) => Tooltip(
-          message: tip,
-          child: Container(
-            width: 30,
-            height: 30,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(color: h && onTap != null ? AppColors.white.withValues(alpha: .12) : null, borderRadius: AppRadius.all(6)),
-            child: AppIcon(ic, size: 16, color: AppColors.white.withValues(alpha: onTap == null ? .35 : 1)),
-          ),
+  /// A PDF that cannot be drawn (damaged file, no network): the file card with Open file.
+  Widget _fileCard(Map d, VoidCallback open) => Center(
+        child: Container(
+          width: 220,
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(color: AppColors.white, borderRadius: AppRadius.all(6)),
+          child: Column(mainAxisSize: MainAxisSize.min, spacing: 10, children: [
+            meDocIcon('${d['kind']}', size: 44),
+            Text('${d['name']}', textAlign: TextAlign.center, style: AppText.s(13.5, W.w7)),
+            Text('PDF file · no preview', style: AppText.s(12, W.w5, color: AppColors.muted)),
+            AppButton('Open file', size: BtnSize.sm, onPressed: open),
+          ]),
         ),
       );
 
@@ -527,5 +575,133 @@ class _ViewerState extends State<_Viewer> {
         ]),
       ),
     ]);
+  }
+}
+
+// ─────────────────────────────── Viewer stage bits (dark bar over the file)
+
+Widget _stageBar(List<Widget> children) => Padding(padding: const EdgeInsets.fromLTRB(14, 8, 8, 8), child: Row(spacing: 4, children: children));
+
+Widget _fname(String f) => Text(f, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.white));
+
+Widget _pct(String t, {double w = 44}) => SizedBox(width: w, child: Text(t, textAlign: TextAlign.center, maxLines: 1, style: AppText.s(12, W.w6, color: AppColors.white, tabular: true)));
+
+/// A white icon button on the dark viewer bar.
+Widget _dk(AppIconData ic, String tip, VoidCallback? onTap) => Hover(
+      onTap: onTap,
+      builder: (_, h, _) => Tooltip(
+        message: tip,
+        child: Container(
+          width: 30,
+          height: 30,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(color: h && onTap != null ? AppColors.white.withValues(alpha: .12) : null, borderRadius: AppRadius.all(6)),
+          child: AppIcon(ic, size: 16, color: AppColors.white.withValues(alpha: onTap == null ? .35 : 1)),
+        ),
+      ),
+    );
+
+/// PDF pages in the viewer: ‹ page n of N ›, zoom out / in in 25 % steps (100 % = fit to width), Download. Scroll or swipe through
+/// the pages; pinch or ctrl + wheel zooms too.
+class _PdfStage extends StatefulWidget {
+  const _PdfStage({super.key, required this.url, required this.fname, required this.onDownload, required this.fallback});
+  final String url, fname;
+  final VoidCallback onDownload;
+  final Widget fallback;
+  @override
+  State<_PdfStage> createState() => _PdfStageState();
+}
+
+class _PdfStageState extends State<_PdfStage> {
+  final ctl = PdfViewerController();
+  double? fit; // the zoom that fits the page width (shown as 100 %)
+  int page = 1, pages = 0;
+  bool failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    ctl.addListener(_tick);
+  }
+
+  @override
+  void dispose() {
+    ctl.removeListener(_tick);
+    super.dispose();
+  }
+
+  void _tick() {
+    if (mounted && ctl.isReady) setState(() {});
+  }
+
+  int get _pctNow => ctl.isReady && fit != null && fit! > 0 ? (ctl.currentZoom / fit! * 100).round() : 100;
+
+  /// 25 % steps from fit-to-width (100 %), 50–300 %, around the middle of the view.
+  void _zoom(int d) {
+    final f = fit;
+    if (!ctl.isReady || f == null) return;
+    final next = ((_pctNow / 25).round() * 25 + d).clamp(50, 300);
+    ctl.setZoom(ctl.centerPosition, f * next / 100);
+  }
+
+  void _goto(int p) {
+    if (!ctl.isReady || p < 1 || p > pages) return;
+    ctl.goToPage(pageNumber: p);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ready = ctl.isReady && pages > 0 && !failed;
+    final phone = context.isPhone;
+    return Container(
+      color: AppColors.text,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        _stageBar([
+          Expanded(child: _fname(widget.fname)),
+          if (ready) ...[
+            _dk(AppIcons.prev, 'Previous page', page > 1 ? () => _goto(page - 1) : null),
+            _pct(phone ? '$page/$pages' : '$page of $pages', w: phone ? 40 : 56),
+            _dk(AppIcons.next, 'Next page', page < pages ? () => _goto(page + 1) : null),
+            const SizedBox(width: 6),
+            _dk(AppIcons.zoomOut, 'Zoom out', _pctNow > 50 ? () => _zoom(-25) : null),
+            _pct('$_pctNow%'),
+            _dk(AppIcons.zoomIn, 'Zoom in', _pctNow < 300 ? () => _zoom(25) : null),
+          ],
+          _dk(AppIcons.download, 'Download', widget.onDownload),
+        ]),
+        Expanded(
+          child: failed
+              ? widget.fallback
+              : ClipRect(
+                  child: PdfViewer.uri(
+                    Uri.parse(widget.url),
+                    controller: ctl,
+                    params: PdfViewerParams(
+                      backgroundColor: AppColors.text,
+                      margin: 12,
+                      pageDropShadow: BoxShadow(color: AppColors.black.withValues(alpha: .35), blurRadius: 8, offset: const Offset(0, 2)),
+                      onViewerReady: (doc, c) => setState(() {
+                        pages = doc.pages.length;
+                        fit = c.currentZoom;
+                        page = c.pageNumber ?? 1;
+                      }),
+                      onPageChanged: (n) {
+                        if (n != null && mounted) setState(() => page = n);
+                      },
+                      loadingBannerBuilder: (_, _, _) => const Center(
+                        child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.white)),
+                      ),
+                      errorBannerBuilder: (_, _, _, _) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted && !failed) setState(() => failed = true);
+                        });
+                        return widget.fallback;
+                      },
+                    ),
+                  ),
+                ),
+        ),
+      ]),
+    );
   }
 }

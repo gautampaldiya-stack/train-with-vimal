@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -46,8 +47,27 @@ String _n(double v) => v == v.roundToDouble() ? '${v.round()}' : v.toStringAsFix
 
 final _f = NumberFormat.decimalPattern('en_IN');
 
-/// `portion()` of the board: "60 g", "1 scoop", "1.5 × 1 cup".
-String _portion(double q, String? unit) => unit == null || unit == 'g' ? '${_n(q)} g' : (q == 1 ? unit : '${_n(q)} × $unit');
+const _frac = {0: '', 25: '¼', 50: '½', 75: '¾'};
+const _plural = {'piece': 'pieces', 'slice': 'slices', 'cup': 'cups', 'scoop': 'scoops', 'plate': 'plates', 'bowl': 'bowls', 'glass': 'glasses', 'handful': 'handfuls'};
+
+/// 0.5 → "½", 1.5 → "1½", 2 → "2", 0.3 → "0.3".
+String _qty(double q) {
+  final w = q.floor();
+  final f = _frac[((q - w) * 100).round()];
+  if (f == null) return _n(q);
+  return w == 0 && f.isNotEmpty ? f : '$w$f';
+}
+
+/// An amount people read at a glance: "60 g", "1 scoop", "½ katori", "1½ katori", "2 pieces" (never
+/// "0.5 × 1 katori"). Same as the server's `portion_label`.
+String _portion(double q, String? unit) {
+  if (unit == null || unit == 'g') return '${_n(q)} g';
+  final name = unit.trim();
+  if (!name.startsWith('1 ')) return q == 1 ? name : '${_qty(q)} × $name';
+  var noun = name.substring(2).trim();
+  if (q > 1) noun = _plural[noun] ?? noun;
+  return '${_qty(q)} $noun';
+}
 
 /// Swap badge colour by match %: the board's `b-ok` from 80 %, else `b-warn`.
 Tone _matchTone(num m) => m >= 80 ? Tone.ok : Tone.warn;
@@ -160,12 +180,12 @@ class _MealEditorState extends State<MealEditor> {
   static double tot(Iterable its, String k) => its.fold(0.0, (a, it) => a + m(it as Map, k));
   double dayTot(String k) => draft.fold(0.0, (a, x) => a + tot(items(x), k));
 
-  /// "2 × 1 katori · 300 g", "150 g".
+  /// "2 katori · 300 g", "½ plate · 75 g", "150 g".
   static String amount(Map it) {
     final u = unitOf(it);
-    final q = _n(_d(it['quantity']));
-    if (u == null) return '$q g';
-    return '${q == '1' ? '' : '$q × '}${u['name']} · ${_n(_d(it['grams']))} g';
+    final q = _d(it['quantity']);
+    if (u == null) return _portion(q, null);
+    return '${_portion(q, '${u['name']}')} · ${_n(_d(it['grams']))} g';
   }
 
   /// What the master has here when this food differs ("Moong dal (cooked), 1 katori · 150 g", "not in the
@@ -208,6 +228,18 @@ class _MealEditorState extends State<MealEditor> {
           recalc(it);
           list.add(it);
           pick = (draft.indexOf(meal), list.length - 1);
+        });
+      },
+      onRemove: (f) {
+        if (!mounted) return;
+        final list = items(meal);
+        final ii = list.lastIndexWhere((x) => '${(x as Map)['food']}' == '${f['id']}');
+        if (ii < 0) return;
+        final mi = draft.indexOf(meal);
+        _change(() {
+          list.removeAt(ii);
+          final p = pick;
+          if (p != null && p.$1 == mi) pick = p.$2 == ii ? null : (p.$2 > ii ? (mi, p.$2 - 1) : p);
         });
       },
     );
@@ -490,11 +522,6 @@ class _MealEditorState extends State<MealEditor> {
         style: AppText.cap,
       ),
     ]);
-    final acts = <Widget>[
-      if (custom) AppButton('Reset to master', kind: BtnKind.text, icon: AppIcons.reset, onPressed: busy ? null : _reset),
-      if (!phone || !custom) AppButton('Cancel', onPressed: busy ? null : _cancel),
-      AppButton.primary('Save for $first', icon: AppIcons.check, loading: busy, onPressed: busy ? null : () => _save()),
-    ];
     return LayoutBuilder(builder: (context, b) {
       // `.cpm-grid`: meals | 340 panel. Tablet: a narrower panel, and the meal rows drop P / C / F when the
       // meals column gets narrow. Phone: one column, the panel is a bottom sheet.
@@ -510,10 +537,7 @@ class _MealEditorState extends State<MealEditor> {
         AppButton('Add meal', icon: AppIcons.plus, expand: true, onPressed: _addMeal),
       ]);
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-        Wrap(alignment: WrapAlignment.spaceBetween, runSpacing: 10, spacing: 8, children: [
-          AppButton('Back to plan', icon: AppIcons.chevronLeft, onPressed: _cancel),
-          Row(mainAxisSize: MainAxisSize.min, spacing: 8, children: acts),
-        ]),
+        PlanEditBar(onBack: _cancel, onCancel: _cancel, onReset: custom ? _reset : null, save: 'Save for $first', busy: busy, onSave: () => _save()),
         head,
         _targetCard(),
         side
@@ -553,6 +577,7 @@ class _MealEditorState extends State<MealEditor> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         DayStrip(
           days: [for (var i = 0; i < 7; i++) (weekdayShort[i], '${_f.format(kcalOn(i).round())} kcal', own.contains(i) || (dirty && i == sel && !everyDay), false)],
+          short: [for (var i = 0; i < 7; i++) _f.format(kcalOn(i).round())],
           selected: sel,
           onPick: _pickDay,
         ),
@@ -767,6 +792,27 @@ class _MealEditorState extends State<MealEditor> {
         footer: (ctx) => [AppButton.primary('Done', expand: true, onPressed: () => Navigator.of(ctx).pop())],
       );
 
+  /// A swap's name (and [badge]) over its amount ("½ katori · 75 g") and what it gives ("82 kcal · P 5 g · C 14 g ·
+  /// F 3 g"); [mac] holds kcal / protein / carbs / fat.
+  static Widget _swapText(String name, double q, String? unit, double grams, Map mac, {Widget? badge}) {
+    final amt = unit == null ? _portion(q, null) : '${_portion(q, unit)} · ${_n(grams)} g';
+    final title = Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w7));
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+      badge == null ? title : Row(spacing: 8, children: [Flexible(child: title), badge]),
+      Text.rich(
+        TextSpan(children: [
+          TextSpan(text: amt, style: AppText.s(12, W.w7, color: AppColors.text2, tabular: true)),
+          TextSpan(text: ' · ${_d(mac['kcal']).round()} kcal'),
+        ]),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: AppText.s(12, W.w6, color: AppColors.muted, tabular: true),
+      ),
+      Text('P ${_d(mac['protein']).round()} g · C ${_d(mac['carbs']).round()} g · F ${_d(mac['fat']).round()} g',
+          maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w5, color: AppColors.muted, tabular: true)),
+    ]);
+  }
+
   Widget _label(String t, String tip) => Row(spacing: 4, children: [
         Text(t, style: AppText.label),
         AppTooltip(message: tip, child: const Padding(padding: EdgeInsets.all(2), child: AppIcon(AppIcons.info, size: 14, color: AppColors.muted))),
@@ -881,16 +927,13 @@ class _MealEditorState extends State<MealEditor> {
         const SizedBox(height: 4),
         for (var i = 0; i < swaps.length; i++)
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 7),
+            padding: const EdgeInsets.symmetric(vertical: 8),
             decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line))),
-            child: Row(spacing: 8, children: [
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 8, children: [
               Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                  Text('${swaps[i]['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w7)),
-                  Text(_portion(_d(swaps[i]['quantity']), swaps[i]['unit'] == null ? null : '${swaps[i]['unit_name']}'), style: AppText.s(12, W.w5, color: AppColors.muted)),
-                ]),
+                child: _swapText('${swaps[i]['name']}', _d(swaps[i]['quantity']), swaps[i]['unit'] == null ? null : '${swaps[i]['unit_name']}', _d(swaps[i]['grams']), swaps[i],
+                    badge: _MatchBadge(_d(swaps[i]['match']).round())),
               ),
-              _MatchBadge(_d(swaps[i]['match']).round()),
               AppIconButton(AppIcons.close, tooltip: 'Remove', ghost: true, small: true, onPressed: () => _removeSwap(it, swaps[i])),
             ]),
           ),
@@ -923,6 +966,7 @@ class _MealEditorState extends State<MealEditor> {
         }).then((r) => [for (final x in r) x as Map]);
     Widget body(VoidCallback close) => ValueListenableBuilder(
           valueListenable: scope,
+          // Header and footnote stay put; only the rows scroll, so the popover (or sheet) never runs off the window.
           builder: (_, s, _) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Container(
               padding: const EdgeInsets.fromLTRB(4, 2, 4, 8),
@@ -933,50 +977,48 @@ class _MealEditorState extends State<MealEditor> {
                 SegmentedTabs(height: 28, items: const [TabItem('group', 'Same group'), TabItem('all', 'All foods')], value: s, onChanged: (v) => scope.value = v),
               ]),
             ),
-            FutureBuilder<List<Map>>(
-              future: load(s),
-              builder: (_, snap) {
-                if (snap.hasError) return Padding(padding: const EdgeInsets.all(12), child: Text('Could not load the foods', style: AppText.s(12.5, W.w5, color: AppColors.muted)));
-                if (!snap.hasData) return const Padding(padding: EdgeInsets.all(16), child: Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent))));
-                final rows = snap.data!;
-                if (rows.isEmpty) return Padding(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12), child: Text('No other foods in this group.', style: AppText.s(12.5, W.w5, color: AppColors.muted)));
-                return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 2, children: [
-                  for (final (i, r) in rows.indexed)
-                    Hover(
-                      onTap: () {
-                        close();
-                        _addSwap(it, r);
-                      },
-                      builder: (_, h, _) {
-                        final (c1, c2) = AppColors.mediaTiles['${r['name']}'.length % 4];
-                        final mac = (r['macros'] as Map?) ?? const {};
-                        return Container(
-                          constraints: const BoxConstraints(minHeight: 46),
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                          decoration: BoxDecoration(color: h ? AppColors.sub : null, borderRadius: AppRadius.all(AppRadius.item)),
-                          child: Row(spacing: 10, children: [
-                            Container(
-                              key: ValueKey('alt$i'),
-                              width: 30,
-                              height: 30,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [c1, c2])),
-                              child: const AppIcon(AppIcons.apple, size: 16, color: AppColors.mediaFg),
-                            ),
-                            Expanded(
-                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                                Text('${r['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w7)),
-                                Text('${_portion(_d(r['quantity']), r['unit'] == null ? null : '${r['unit_name']}')} · ${_d(mac['kcal']).round()} kcal · P ${_d(mac['protein']).round()} g',
-                                    maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w6, color: AppColors.muted)),
+            Flexible(
+              child: FutureBuilder<List<Map>>(
+                future: load(s),
+                builder: (_, snap) {
+                  if (snap.hasError) return Padding(padding: const EdgeInsets.all(12), child: Text('Could not load the foods', style: AppText.s(12.5, W.w5, color: AppColors.muted)));
+                  if (!snap.hasData) return const Padding(padding: EdgeInsets.all(16), child: Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent))));
+                  final rows = snap.data!;
+                  if (rows.isEmpty) return Padding(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12), child: Text('No other foods in this group.', style: AppText.s(12.5, W.w5, color: AppColors.muted)));
+                  return SingleChildScrollView(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 2, children: [
+                      for (final (i, r) in rows.indexed)
+                        Hover(
+                          onTap: () {
+                            close();
+                            _addSwap(it, r);
+                          },
+                          builder: (_, h, _) {
+                            final (c1, c2) = AppColors.mediaTiles['${r['name']}'.length % 4];
+                            final mac = (r['macros'] as Map?) ?? const {};
+                            return Container(
+                              constraints: const BoxConstraints(minHeight: 56),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                              decoration: BoxDecoration(color: h ? AppColors.sub : null, borderRadius: AppRadius.all(AppRadius.item)),
+                              child: Row(spacing: 10, children: [
+                                Container(
+                                  key: ValueKey('alt$i'),
+                                  width: 32,
+                                  height: 32,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [c1, c2])),
+                                  child: const AppIcon(AppIcons.apple, size: 16, color: AppColors.mediaFg),
+                                ),
+                                Expanded(child: _swapText('${r['name']}', _d(r['quantity']), r['unit'] == null ? null : '${r['unit_name']}', _d(r['grams']), mac)),
+                                _MatchPill(_d(r['match']).round()),
                               ]),
-                            ),
-                            _MatchPill(_d(r['match']).round()),
-                          ]),
-                        );
-                      },
-                    ),
-                ]);
-              },
+                            );
+                          },
+                        ),
+                    ]),
+                  );
+                },
+              ),
             ),
             Container(
               margin: const EdgeInsets.only(top: 4),
@@ -987,7 +1029,7 @@ class _MealEditorState extends State<MealEditor> {
           ]),
         );
     if (anchor.isPhone) {
-      await showAppSheet(context, title: 'Swap for ${f['name'] ?? ''}', sub: '${draft[pick!.$1]['name']} · only for $first', builder: (ctx) => body(() => Navigator.of(ctx).pop()));
+      await showAppSheet(context, title: 'Swap for ${f['name'] ?? ''}', sub: '${draft[pick!.$1]['name']} · only for $first', fixedBody: true, builder: (ctx) => body(() => Navigator.of(ctx).pop()));
     } else {
       await _popover(anchor, width: 400, alignRight: true, builder: (close) => body(close));
     }
@@ -1054,10 +1096,14 @@ Future<void> _popover(BuildContext anchor, {required double width, bool alignRig
   final overlay = Overlay.of(anchor, rootOverlay: true).context.findRenderObject() as RenderBox;
   final topLeft = box.localToGlobal(Offset.zero, ancestor: overlay);
   final size = overlay.size;
-  final below = topLeft.dy + box.size.height + 4;
-  final roomBelow = size.height - below - 12, roomAbove = topLeft.dy - 4 - 12;
+  // The anchor clamped to the window (it can sit partly outside it after a scroll).
+  final aTop = topLeft.dy.clamp(0.0, size.height), aBottom = (topLeft.dy + box.size.height).clamp(0.0, size.height);
+  final below = aBottom + 4;
+  final roomBelow = size.height - below - 12, roomAbove = aTop - 4 - 12;
   final up = roomBelow < 360 && roomAbove > roomBelow;
-  final maxH = (up ? roomAbove : roomBelow).clamp(160.0, 520.0);
+  // Neither side has room for a useful list (short window): pin it inside the window instead; it scrolls inside.
+  final pin = (up ? roomAbove : roomBelow) < 220;
+  final maxH = pin ? math.min(520.0, size.height - 24) : math.min(520.0, up ? roomAbove : roomBelow);
   return showGeneralDialog(
     context: anchor,
     barrierDismissible: true,
@@ -1067,8 +1113,8 @@ Future<void> _popover(BuildContext anchor, {required double width, bool alignRig
     pageBuilder: (ctx, _, _) => Stack(children: [
       Positioned(
         left: (alignRight ? topLeft.dx + box.size.width - width : topLeft.dx).clamp(8, size.width - width - 8),
-        top: up ? null : below,
-        bottom: up ? size.height - topLeft.dy + 4 : null,
+        top: pin ? (size.height - maxH) / 2 : (up ? null : below),
+        bottom: !pin && up ? size.height - aTop + 4 : null,
         width: width,
         child: Material(
           color: Colors.transparent,
@@ -1076,7 +1122,7 @@ Future<void> _popover(BuildContext anchor, {required double width, bool alignRig
             padding: const EdgeInsets.all(8),
             constraints: BoxConstraints(maxHeight: maxH),
             decoration: BoxDecoration(color: AppColors.card, borderRadius: AppRadius.all(AppRadius.menu), border: Border.all(color: AppColors.line), boxShadow: AppShadows.menu),
-            child: SingleChildScrollView(child: builder(() => Navigator.of(ctx).pop())),
+            child: builder(() => Navigator.of(ctx).pop()),
           ),
         ),
       ),
@@ -1169,10 +1215,13 @@ Future<void> showFoodPicker(
   String dietLabel = '',
   required Set<String> Function() added,
   required ValueChanged<Map> onAdd,
+  required ValueChanged<Map> onRemove,
 }) {
   final group = ValueNotifier('');
   final q = ValueNotifier('');
+  // Foods added / taken out while the drawer is open (the footer count); `n` redraws the rows and the footer.
   final n = ValueNotifier(0);
+  final addedNow = <String>{}, removedNow = <String>{};
   final search = TextEditingController();
   const fits = {'veg': ['veg', 'vegan'], 'egg': ['veg', 'vegan', 'egg'], 'vegan': ['vegan']};
   final all = Services.api.get<List>('food-picker/').then((r) => [
@@ -1227,10 +1276,24 @@ Future<void> showFoodPicker(
                         padding: const EdgeInsets.only(top: 2, bottom: 12),
                         itemCount: rows.length,
                         separatorBuilder: (_, _) => const Divider(height: 1, thickness: 1, color: AppColors.line),
-                        itemBuilder: (_, i) => _FoodPickRow(x: rows[i], added: inMeal.contains('${rows[i]['id']}'), onAdd: () {
-                          onAdd(rows[i]);
-                          n.value++;
-                        }),
+                        itemBuilder: (_, i) {
+                          final id = '${rows[i]['id']}';
+                          return _FoodPickRow(
+                            x: rows[i],
+                            added: inMeal.contains(id),
+                            onAdd: () {
+                              onAdd(rows[i]);
+                              if (!removedNow.remove(id)) addedNow.add(id);
+                              n.value++;
+                            },
+                            // `✓ Added` is a toggle: a food added by mistake comes out again.
+                            onRemove: () {
+                              onRemove(rows[i]);
+                              if (!addedNow.remove(id)) removedNow.add(id);
+                              n.value++;
+                            },
+                          );
+                        },
                       ),
               ),
             ]);
@@ -1242,7 +1305,7 @@ Future<void> showFoodPicker(
       ValueListenableBuilder(
         valueListenable: n,
         builder: (_, v, _) {
-          final t = Text(v == 0 ? '' : '$v added', style: AppText.cap);
+          final t = Text([if (addedNow.isNotEmpty) '${addedNow.length} added', if (removedNow.isNotEmpty) '${removedNow.length} removed'].join(' · '), style: AppText.cap);
           return ctx.isPhone ? t : Expanded(child: t);
         },
       ),
@@ -1260,10 +1323,10 @@ double _servingProtein(Map x) {
 
 /// `.mb-pr`: food tile, name (+ Team), "1 katori · 185 kcal · P 4 g · C 38 g · F 2 g", `Add` or `✓ Added`.
 class _FoodPickRow extends StatelessWidget {
-  const _FoodPickRow({required this.x, required this.added, required this.onAdd});
+  const _FoodPickRow({required this.x, required this.added, required this.onAdd, required this.onRemove});
   final Map x;
   final bool added;
-  final VoidCallback onAdd;
+  final VoidCallback onAdd, onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -1308,12 +1371,19 @@ class _FoodPickRow extends StatelessWidget {
           ]),
         ),
         if (added)
-          SizedBox(
-            height: 30,
-            child: Row(mainAxisSize: MainAxisSize.min, spacing: 4, children: [
-              const AppIcon(AppIcons.check, size: 14, color: AppColors.okText, stroke: 2.4),
-              Text('Added', style: AppText.s(12.5, W.w7, color: AppColors.okText)),
-            ]),
+          // `✓ Added` toggles back: hover shows `Remove` (web), a tap takes the food out of the meal again.
+          Hover(
+            onTap: onRemove,
+            builder: (_, h, _) => Container(
+              height: 30,
+              constraints: const BoxConstraints(minWidth: 82),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              decoration: BoxDecoration(color: h ? AppColors.badBg : null, borderRadius: AppRadius.all(AppRadius.btn)),
+              child: Row(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, spacing: 4, children: [
+                AppIcon(h ? AppIcons.close : AppIcons.check, size: 14, color: h ? AppColors.badText : AppColors.okText, stroke: 2.4),
+                Text(h ? 'Remove' : 'Added', style: AppText.s(12.5, W.w7, color: h ? AppColors.badText : AppColors.okText)),
+              ]),
+            ),
           )
         else
           AppButton('Add', icon: AppIcons.plus, size: BtnSize.sm, onPressed: onAdd),

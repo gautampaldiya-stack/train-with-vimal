@@ -487,12 +487,17 @@ Future<(CalSession, CalSession?)?> showSessionForm(BuildContext context, Calenda
             'Starts',
             Row(spacing: 8, children: [
               SizedBox(
-                width: 112,
+                width: 100,
                 child: AppSelect(calFmt(f.hour * 60), entries: [
                   for (var h = calH0; h < calH1; h++) MenuEntry(calFmt(h * 60), selected: h == f.hour, onTap: () => f.set(() => f.hour = h, recheck: true)),
                 ]),
               ),
-              Container(
+              // Flexible + scaleDown: the :00 … :45 strip shrinks a little in a narrow drawer instead of overflowing.
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Container(
                 height: 36,
                 padding: const EdgeInsets.all(3),
                 decoration: BoxDecoration(color: AppColors.sub, borderRadius: AppRadius.all(AppRadius.input)),
@@ -513,6 +518,8 @@ Future<(CalSession, CalSession?)?> showSessionForm(BuildContext context, Calenda
                       ),
                     ),
                 ]),
+              ),
+                ),
               ),
             ]),
             error: f.errors['start'],

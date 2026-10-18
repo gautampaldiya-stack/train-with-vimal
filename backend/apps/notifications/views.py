@@ -14,6 +14,7 @@ from .defaults import default_channels_for
 from .models import (
     Delivery,
     DeviceToken,
+    GymNews,
     MessageTemplate,
     Notification,
     NotificationSettings,
@@ -25,6 +26,7 @@ from .realtime import send_to_user
 from .rendering import VARIABLES, context_for, render
 from .serializers import (
     DeviceTokenSerializer,
+    GymNewsSerializer,
     MessageTemplateSerializer,
     NewTemplateSerializer,
     NotificationSerializer,
@@ -218,3 +220,19 @@ class NotificationSettingsView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return NotificationSettings.load()
+
+
+class GymNewsViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, viewsets.GenericViewSet):
+    """Admin → Gym news: post a notice to the team. Each trainer with Gym news on gets it in the bell (and push).
+    The admin screen comes with the admin screens; this is the API it will use."""
+
+    serializer_class = GymNewsSerializer
+    permission_classes = [IsAdmin]
+
+    def get_queryset(self):
+        return GymNews.objects.select_related("author")
+
+    def perform_create(self, serializer):
+        from .staff import send_gym_news
+
+        send_gym_news(serializer.save(author=self.request.user))

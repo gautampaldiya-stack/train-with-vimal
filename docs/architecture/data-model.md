@@ -922,6 +922,19 @@ De-duplicates scheduled reminders: one row per (user, kind, ref, day).
 
 Constraints: uniq_reminder_once
 
+### GymNews
+A notice from the admin to the team ("Gym news" in Trainer Me → Account → Notifications).
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | UUIDField |  |
+| `created_at` | DateTimeField | indexed |
+| `updated_at` | DateTimeField |  |
+| `author` | ForeignKey | → User; optional; indexed |
+| `title` | CharField |  |
+| `body` | TextField |  |
+| `sent_to` | PositiveIntegerField |  |
+
 ## nutrition
 
 ### Food

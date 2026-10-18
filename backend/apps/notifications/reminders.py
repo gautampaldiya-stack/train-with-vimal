@@ -349,3 +349,28 @@ def purge_deleted():
 
     IdempotencyRecord.objects.filter(created_at__lt=timezone.now() - timedelta(days=14)).delete()
     return total
+
+
+# ---------------------------------------------------------------- team: Daily summary
+DAILY_SUMMARY_HOUR = 8  # Trainer Me → Notifications: "Email at 8:00 am with your day"
+
+
+@shared_task
+def daily_summaries():
+    """8 am: one message a trainer with Daily summary on (bell, push, email): today's sessions, check-ins to
+    review and clients who need you, the same numbers as the Dashboard."""
+    from .staff import send_daily_summary, team
+
+    local = _local_now()
+    if not (local.hour == DAILY_SUMMARY_HOUR and local.minute < 15):
+        return 0
+    today = local.date()
+    sent = 0
+    for u in team("daily_summary"):
+        if once(u, "daily_summary", "day", today):
+            try:
+                send_daily_summary(u)
+                sent += 1
+            except Exception:
+                log.exception("daily summary failed for %s", u.id)
+    return sent

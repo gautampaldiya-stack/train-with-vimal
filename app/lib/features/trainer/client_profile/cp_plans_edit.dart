@@ -304,17 +304,15 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
         style: AppText.cap,
       ),
     ]);
-    final acts = <Widget>[
-      if (!widget.dup && a['custom'] == true)
-        AppButton('Reset to master', kind: BtnKind.text, icon: AppIcons.reset, onPressed: busy ? null : _reset),
-      if (!phone || widget.dup || a['custom'] != true) AppButton('Cancel', onPressed: busy ? null : _cancel),
-      AppButton.primary(widget.dup ? 'Assign copy' : 'Save for $first', icon: AppIcons.check, loading: busy, onPressed: busy ? null : _save),
-    ];
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-      Wrap(alignment: WrapAlignment.spaceBetween, runSpacing: 10, spacing: 8, children: [
-        AppButton('Back to plan', icon: AppIcons.chevronLeft, onPressed: _cancel),
-        Wrap(spacing: 8, runSpacing: 8, children: acts),
-      ]),
+      PlanEditBar(
+        onBack: _cancel,
+        onCancel: _cancel,
+        onReset: !widget.dup && a['custom'] == true ? _reset : null,
+        save: widget.dup ? 'Assign copy' : 'Save for $first',
+        busy: busy,
+        onSave: _save,
+      ),
       head,
       if (widget.dup) _dupBar(context),
       phone
@@ -374,7 +372,6 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
       return Hover(
         onTap: () => setState(() => sel = i),
         builder: (_, h, _) => Container(
-          width: phone ? 150 : null,
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(color: on ? AppColors.accentSoft : (h ? AppColors.hover : null), borderRadius: BorderRadius.circular(AppRadius.item)),
           child: Row(spacing: 10, children: [
@@ -397,12 +394,34 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
       );
     }
 
+    if (phone) {
+      // Phone: the seven days fit in one strip (day over "5 ex" / "Rest"), no sideways scrolling.
+      return AppCard(
+        padding: const EdgeInsets.only(top: 4, bottom: 8),
+        child: DayStrip(
+          days: [
+            for (var i = 0; i < 7; i++)
+              () {
+                final dd = dayOf(weekOf(tree, week), i);
+                return (weekdayShort[i], isRest(dd) ? 'Rest' : '${dd?['name'] ?? ''}'.ifEmpty('Workout'), touched.contains(i) || diff.day(week, i), isRest(dd));
+              }(),
+          ],
+          short: [
+            for (var i = 0; i < 7; i++)
+              () {
+                final dd = dayOf(weekOf(tree, week), i);
+                return isRest(dd) ? 'Rest' : '${exercisesOf(dd).length} ex';
+              }(),
+          ],
+          selected: sel,
+          onPick: (i) => setState(() => sel = i),
+        ),
+      );
+    }
     return AppCard(
       child: Padding(
         padding: const EdgeInsets.all(8),
-        child: phone
-            ? SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: [for (var i = 0; i < 7; i++) row(i)]))
-            : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [for (var i = 0; i < 7; i++) row(i)]),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [for (var i = 0; i < 7; i++) row(i)]),
       ),
     );
   }
@@ -494,8 +513,8 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
     );
   }
 
-  /// One exercise of the day (`.cp-exl` row): drag handle, tag, name and what changed, its numbers in even
-  /// columns (sets × reps, RPE, tempo, rest, load), the note, and Swap / Edit / Remove.
+  /// One exercise of the day (`.cp-exl` row): drag handle, tag, name (ⓘ with the note) and what changed, its
+  /// numbers in even columns (sets × reps, RPE, tempo, rest, load), and Swap / Edit / Remove.
   Widget _exRow(int i, Map e, (String, bool) tag, String? was, {required Key key}) => LayoutBuilder(
         key: key,
         // Narrow day card (phone, or tablet / small desktop next to the 230 day list): actions beside the name and
@@ -513,7 +532,7 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
           ]),
         );
     final stats = [
-      stat('Sets × reps', '${e['sets'] ?? '–'} × ${'${e['reps'] ?? ''}'.ifEmpty('–')}', 92),
+      stat('Sets × reps', '${e['sets'] ?? '–'} × ${'${e['reps'] ?? ''}'.ifEmpty('–')}', 112),
       stat('RPE', '${e['rpe'] ?? ''}', 44),
       stat('Tempo', '${e['tempo'] ?? ''}', 64),
       stat('Rest', restText(e['rest_seconds']), 76),
@@ -527,6 +546,12 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
     final name = Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
       Row(spacing: 6, children: [
         Flexible(child: Text(exName(e), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
+        // The note for the client sits behind ⓘ (tooltip), so the row stays short.
+        if (note.isNotEmpty)
+          AppTooltip(
+            message: note,
+            child: const Padding(padding: EdgeInsets.symmetric(horizontal: 1), child: AppIcon(AppIcons.info, size: 14, color: AppColors.muted)),
+          ),
         if (was != null) Container(width: 7, height: 7, decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle)),
       ]),
       if (was != null) Text(was, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.cap),
@@ -537,7 +562,7 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
       child: Hover(
         onTap: () => _editExercise(i),
         builder: (_, h, _) => Container(
-          padding: const EdgeInsets.fromLTRB(10, 10, 8, 10),
+          padding: const EdgeInsets.fromLTRB(10, 7, 8, 7),
           decoration: BoxDecoration(color: h ? AppColors.outlineHover : null, border: const Border(bottom: BorderSide(color: AppColors.line))),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
             Padding(
@@ -549,16 +574,11 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
             ),
             numTag(tag),
             Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 5, children: [
                 if (phone) Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: name), acts]) else name,
                 // A Wrap, not a Row: at mid widths (side nav + 230 day list) the five columns need 396 px and
                 // the name column can be narrower, so the last ones (Load, then Rest) drop to a second line.
-                Wrap(spacing: phone ? 16 : 14, runSpacing: 8, children: stats),
-                if (note.isNotEmpty)
-                  Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 6, children: [
-                    const Padding(padding: EdgeInsets.only(top: 2), child: AppIcon(AppIcons.info, size: 13, color: AppColors.muted)),
-                    Expanded(child: Text(note, style: AppText.s(12.5, W.w5, color: AppColors.text2, h: 1.45))),
-                  ]),
+                Wrap(spacing: phone ? 16 : 14, runSpacing: 6, children: stats),
               ]),
             ),
             if (!phone) acts,

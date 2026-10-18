@@ -7,6 +7,7 @@ router = DefaultRouter()
 router.register("notifications", views.NotificationViewSet, basename="notification")
 router.register("message-templates", views.MessageTemplateViewSet, basename="message-template")
 router.register("team-alerts", views.TeamAlertSettingViewSet, basename="team-alert")
+router.register("gym-news", views.GymNewsViewSet, basename="gym-news")
 
 urlpatterns = [
     path("devices/", views.DeviceTokenView.as_view(), name="device-token"),

@@ -193,7 +193,7 @@ class NotificationsSerializer(serializers.Serializer):
 # Board toggle → StaffNotificationPreference field (the senders read these); the last two live on the profile.
 PREF_FIELDS = {"new_checkin": "new_checkin", "missed_workouts": "missed_workouts", "new_client": "new_client",
                "session_reminders": "session_changes"}
-EXTRA_DEFAULTS = {"daily_summary": False, "gym_news": True}
+from apps.notifications.staff import NOTIFY_DEFAULTS as EXTRA_DEFAULTS  # noqa: E402  (one place for the defaults)
 
 
 class MyNotificationsView(APIView):

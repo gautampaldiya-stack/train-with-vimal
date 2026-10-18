@@ -68,14 +68,41 @@ def item_swaps(item):
     return seed_from_food(item)
 
 
-def amount_label(quantity, unit):
-    """'1.5 × 1 scoop · 48 g', '1 medium · 118 g', '150 g'."""
+_FRAC = {0: "", 25: "¼", 50: "½", 75: "¾"}
+_PLURAL = {"piece": "pieces", "slice": "slices", "cup": "cups", "scoop": "scoops", "plate": "plates", "bowl": "bowls",
+           "glass": "glasses", "handful": "handfuls"}
+
+
+def friendly_qty(q):
+    """0.5 → '½', 1.5 → '1½', 2 → '2', 0.3 → '0.3'."""
+    q = float(q)
+    whole = int(q)
+    f = _FRAC.get(round((q - whole) * 100))
+    if f is None:
+        return f"{round(q, 1):g}"
+    return f if whole == 0 and f else f"{whole}{f}"
+
+
+def portion_label(quantity, unit):
+    """'½ katori', '1½ katori', '2 pieces', '150 g' (never '0.5 × 1 katori'). Same as the app's `portionText`."""
     q = float(quantity)
-    qs = f"{q:g}"
     if unit is None:
-        return f"{qs} g"
-    g = q * float(unit.grams)
-    return f"{'' if q == 1 else qs + ' × '}{unit.name} · {round(g, 1):g} g"
+        return f"{q:g} g"
+    name = unit.name.strip()
+    if not name.startswith("1 "):
+        return name if q == 1 else f"{friendly_qty(q)} × {name}"
+    noun = name[2:].strip()
+    if q > 1:
+        noun = _PLURAL.get(noun, noun)
+    return f"{friendly_qty(q)} {noun}"
+
+
+def amount_label(quantity, unit):
+    """'1½ scoop · 48 g', '1 medium · 118 g', '150 g'."""
+    if unit is None:
+        return portion_label(quantity, None)
+    g = float(quantity) * float(unit.grams)
+    return f"{portion_label(quantity, unit)} · {round(g, 1):g} g"
 
 
 def resolve(item, cache=None):

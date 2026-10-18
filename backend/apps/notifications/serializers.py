@@ -3,6 +3,7 @@ from rest_framework import serializers
 from .models import (
     ALL_CHANNELS,
     DeviceToken,
+    GymNews,
     MessageTemplate,
     Notification,
     NotificationSettings,
@@ -101,3 +102,23 @@ class NotificationSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = NotificationSettings
         exclude = ["id"]
+
+
+class GymNewsSerializer(serializers.ModelSerializer):
+    author_name = serializers.CharField(source="author.full_name", default=None, read_only=True)
+
+    class Meta:
+        model = GymNews
+        fields = ["id", "title", "body", "sent_to", "author_name", "created_at"]
+        read_only_fields = ["id", "sent_to", "author_name", "created_at"]
+
+    def validate_title(self, v):
+        v = v.strip()
+        if not v:
+            raise serializers.ValidationError("Write a title.")
+        return v
+
+    def validate_body(self, v):
+        if len(v) > 2000:
+            raise serializers.ValidationError("Keep it under 2,000 characters.")
+        return v.strip()

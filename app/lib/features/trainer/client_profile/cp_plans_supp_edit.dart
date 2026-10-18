@@ -11,11 +11,11 @@ import '../../../core/widgets/card.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/input.dart';
 import '../../../core/widgets/overlays.dart';
-import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/select.dart';
 import '../../../core/widgets/tooltip.dart';
 import 'cp_common.dart';
 import 'cp_model.dart';
+import 'cp_plans_parts.dart';
 
 /// Supplement plan editor for one client (`pe.supp`, board `TrainerClientProfile`): `Edit X for Y`. The first save
 /// makes Y's own copy (`clients/<id>/supplement-plans/<a>/items/`); the master and other clients stay the same.
@@ -202,18 +202,9 @@ class _SupplementEditorState extends State<SupplementEditor> {
 
   @override
   Widget build(BuildContext context) {
-    final phone = context.isPhone;
     final n = _nChanges;
-    final acts = <Widget>[
-      if (a['custom'] == true) AppButton('Reset to master', kind: BtnKind.text, icon: AppIcons.reset, onPressed: busy ? null : _reset),
-      if (!phone || a['custom'] != true) AppButton('Cancel', onPressed: busy ? null : _cancel),
-      AppButton.primary('Save for $first', icon: AppIcons.check, loading: busy, onPressed: busy ? null : _save),
-    ];
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-      Wrap(alignment: WrapAlignment.spaceBetween, runSpacing: 10, spacing: 8, children: [
-        AppButton('Back to plan', icon: AppIcons.chevronLeft, onPressed: _cancel),
-        Wrap(spacing: 8, runSpacing: 8, children: acts),
-      ]),
+      PlanEditBar(onBack: _cancel, onCancel: _cancel, onReset: a['custom'] == true ? _reset : null, save: 'Save for $first', busy: busy, onSave: _save),
       Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
         Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 4, children: [
           Text('Edit ${a['plan_name']} for $first', style: AppText.s(17, W.w7, ls: -.2)),
