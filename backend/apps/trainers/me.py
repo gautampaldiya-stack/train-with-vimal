@@ -86,7 +86,7 @@ class MyDevicesView(APIView):
             recent = now - s.last_active_at < timedelta(minutes=5)
             where = s.city or ""
             seen = "active now" if this or recent else when_text(s.last_active_at, now)
-            return {"id": str(s.id), "label": device_label(s), "sub": f"{where} · {seen}" if where else seen.capitalize(),
+            return {"id": str(s.id), "label": device_label(s), "sub": f"{where} · {seen}" if where else seen[:1].upper() + seen[1:],
                     "this_device": this, "phone": is_phone(s)}
 
         total = qs.count()

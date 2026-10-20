@@ -122,6 +122,29 @@ def test_devices_and_notifications(trainer):
     assert trainer.put(ME + "notifications/", {"gym_news": "maybe"}, format="json").status_code == 400
 
 
+def test_device_dates_keep_the_month_capital(trainer):
+    """"Wed 14 Oct", not "Wed 14 oct" (only the first letter of "today, …" / "yesterday, …" is raised)."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from apps.accounts.models import UserSession
+
+    aman = User.objects.get(email="aman@trainwithvimal.com")
+    old = UserSession.objects.create(user=aman, platform="web", city="", last_active_at=timezone.now() - timedelta(days=3))
+    rows = trainer.get(ME + "devices/").json()["results"]
+    sub = next((r["sub"] for r in rows if r["id"] == str(old.id)), None)
+    if sub is None:  # more than one page of devices: the new one is the oldest, ask for the last page
+        page, d = 2, None
+        while sub is None:
+            d = trainer.get(ME + "devices/", {"page": page}).json()
+            sub = next((r["sub"] for r in d["results"] if r["id"] == str(old.id)), None)
+            assert d["results"] or sub, "device not listed"
+            page += 1
+    month = sub.split()[-1]
+    assert month[0].isupper() and month[1:].islower(), sub
+
+
 def test_clients_cannot_open_trainer_me(client_user):
     assert client_user.get(ME).status_code == 403
     assert client_user.get(ME + "activity/").status_code == 403

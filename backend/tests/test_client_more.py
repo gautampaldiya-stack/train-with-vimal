@@ -140,7 +140,7 @@ def test_photos_come_every_n_weeks_with_the_weekly_checkin(client_user):
     assert photo_week(riya, today)
 
 
-def test_past_day_and_edited_measurements_leave_a_line(client_user, django_capture_on_commit_callbacks):
+def test_past_day_and_edited_measurements_leave_a_line(client_user, django_capture_on_commit_callbacks, fresh_measure_period):
     today = timezone.localdate()
     past = today - timedelta(days=3)
     url = "/api/v1/me/measurements/"
@@ -218,7 +218,7 @@ def test_account_has_daily_checkin_state(client_user):
     assert d["reminder"] == "9:00 pm" and isinstance(d["sent_today"], bool)
 
 
-def test_history_lists_measurements_with_weigh_ins(client_user):
+def test_history_lists_measurements_with_weigh_ins(client_user, fresh_measure_period):
     today = timezone.localdate()
     client_user.post("/api/v1/me/measurements/", {"date": today.isoformat(), "values": {"waist": 79, "bicep_l": 28}},
                      format="json")

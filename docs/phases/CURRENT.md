@@ -2,9 +2,10 @@
 
 Updated with every push, so anyone (another Claude session, local Claude Code, a developer) can pick up from here.
 
-**Last updated:** 2026-10-18 · branch `working`
+**Last updated:** 2026-10-20 · branch `working`
 
 ## Done
+- 2026-10-20: TrainerMeMobile phone layout fixed (header, 2 × 2 stats, detail rows, tab strip follows the open tab, tablet header). 7 backend tests that failed on some dates now pass on any date (`fresh_measure_period` fixture); run `pip install -r requirements.txt` (pypdfium2) and `pytest --create-db` when the date changed. **Next: TrainerMoreMobile**, then the library screens (Programs, Exercises, Nutrition & foods, Habits & supplements, Content library), then admin. Parked: Daily summary design, Gym news admin screen.
 - 2026-10-18 (handoff): `docs/HANDOFF.md` written so a new claude.ai account can continue (status, what is left, parked items, artifacts, working method, project instructions to paste). Next is unchanged: TrainerMoreMobile, then the library screens.
 - 2026-10-18 (later): web drag and drop in the upload modal (own window drop listener on web), Edit details for documents, document viewer footer fits (Delete is an icon), dashboard Today Done moved into ⋯ ("Mark as done"), Clients who need you chips scroll sideways, Activity card `View all` → My profile · My activity. Parked until Gautam asks: Daily summary design and Gym news screens. Next: TrainerMoreMobile, then the library screens.
 - 2026-10-18: round 4 fixes (debug-mode crashes, PlanEditBar, Add food un-select, amount format, Your access card, Daily summary + Gym news sending, drag and drop / PDF preview). Gautam tests in Flutter web DEBUG: check new pages with `flutter run -d web-server --no-web-resources-cdn` and look for console assertions; never put a LayoutBuilder under IntrinsicHeight/Width.

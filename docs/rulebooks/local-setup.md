@@ -6,7 +6,7 @@ Full steps: `../../README.md`.
   cache and realtime run in memory and background jobs run straight away. Scheduled reminders need Redis + Celery.
 - **With Docker:** `docker compose up --build`, then `seed_demo`.
 - Demo data: `python manage.py seed_demo` (password `Demo@1234`).
-- Tests: `cd backend && pytest`.
+- Tests: `cd backend && pytest`. After a pull run `pip install -r requirements.txt` first (new packages, e.g. `pypdfium2` for PDF pages). The test DB is kept between runs (`--reuse-db`) and the demo data is dated from the day it was seeded, so on a new day run `pytest --create-db` once.
 - Flutter: `cd app && flutter run -d chrome --dart-define=API_URL=http://localhost:8000`.
 
 ## Permissions (camera, photos, notifications)

@@ -73,7 +73,7 @@ def test_add_photo_as_data_url_then_replace_and_undo(client_user):
     assert none.status_code == 400 and "image" in none.json()["error"]["fields"]
 
 
-def test_log_measurements_merges_the_day_and_undo_takes_them_off(client_user):
+def test_log_measurements_merges_the_day_and_undo_takes_them_off(client_user, fresh_measure_period):
     from apps.checkins.models import Measurement
 
     day = timezone.localdate().isoformat()
@@ -97,7 +97,7 @@ def test_log_measurements_merges_the_day_and_undo_takes_them_off(client_user):
     assert client_user.post(url, {"date": future, "values": {"waist": 80}}, format="json").status_code == 400
 
 
-def test_checkin_measurement_answer_lands_on_progress(client_user):
+def test_checkin_measurement_answer_lands_on_progress(client_user, fresh_measure_period):
     from apps.checkins.models import Form, Measurement, Question
 
     weekly = Form.objects.get(name="Weekly check-in")

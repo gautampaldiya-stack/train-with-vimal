@@ -30,3 +30,18 @@ def trainer(db):
 @pytest.fixture
 def client_user(db):
     return login("riya@example.com")
+
+
+@pytest.fixture
+def fresh_measure_period(db):
+    """Measurements are one entry per photo period (D-25). The demo data logs one every 2 weeks from Riya's start,
+    so on some days today is still inside a seeded entry's period and a log edits it instead of adding one.
+    Tests that expect "today's first log" clear the last 30 days first, so they pass on any date."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from apps.checkins.models import Measurement
+
+    Measurement.objects.filter(client__email="riya@example.com",
+                               date__gte=timezone.localdate() - timedelta(days=30)).delete()

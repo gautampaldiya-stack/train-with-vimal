@@ -120,7 +120,7 @@ def test_trainer_sees_rows_about_their_client_from_before_they_took_over(trainer
         email="aman@trainwithvimal.com").id) for x in rows["results"])
 
 
-def test_weigh_in_and_measurements_show_as_body_rows(client_user, trainer, django_capture_on_commit_callbacks):
+def test_weigh_in_and_measurements_show_as_body_rows(client_user, trainer, django_capture_on_commit_callbacks, fresh_measure_period):
     from apps.checkins.models import Measurement, WeightLog
 
     today = timezone.localdate()
@@ -141,7 +141,11 @@ def test_weigh_in_and_measurements_show_as_body_rows(client_user, trainer, djang
 
 
 def test_past_day_weigh_in_is_a_body_row_too(client_user, trainer, django_capture_on_commit_callbacks):
+    from apps.checkins.models import WeightLog
+
     day = timezone.localdate() - timedelta(days=2)
+    # The demo data may already have exactly 68.2 kg that day, and an unchanged weigh-in leaves no line.
+    WeightLog.objects.filter(client=_riya(), date=day).delete()
     with django_capture_on_commit_callbacks(execute=True):
         client_user.post("/api/v1/me/weights/", {"date": day.isoformat(), "weight_kg": 68.2}, format="json")
     rows = trainer.get("/api/v1/activity/", {"client": str(_riya().id), "kind": "body", "range": "today"}).json()

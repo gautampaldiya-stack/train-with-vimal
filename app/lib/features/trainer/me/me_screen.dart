@@ -58,7 +58,12 @@ class _TrainerMeScreenState extends State<TrainerMeScreen> {
             onRefresh: c.refresh,
             children: [
               Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: phone ? 12 : 16, children: [
-                phone ? _headPhone() : _head(),
+                // Header by the room it has: one meta line when wide; on narrow tablets the meta goes on its
+                // own lines (no separator left hanging at a line end) and below ~620 the button goes full width.
+                if (phone)
+                  _headPhone()
+                else
+                  LayoutBuilder(builder: (context, b) => b.maxWidth >= 820 ? _head() : b.maxWidth >= 620 ? _headMid() : _headPhone()),
                 phone ? _statsPhone() : _stats(),
               ]),
               UnderlineTabs<String>(
@@ -125,14 +130,43 @@ class _TrainerMeScreenState extends State<TrainerMeScreen> {
     ]);
   }
 
+  /// Tablet: avatar, name and the meta on separate lines, Edit my details on the right.
+  Widget _headMid() {
+    final st = AppText.s(13, W.w5, color: AppColors.muted, h: 1.5);
+    return Row(crossAxisAlignment: CrossAxisAlignment.center, spacing: 14, children: [
+      _avatar(56),
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+          Wrap(spacing: 10, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+            Text(c.name, style: AppText.s(24, W.w8, ls: -.6, h: 1.2)),
+            _badge(),
+          ]),
+          ..._metaPhone(st, AppText.s(13, W.w7, color: AppColors.text, h: 1.5)),
+        ]),
+      ),
+      AppButton('Edit my details', icon: AppIcons.edit, onPressed: _edit),
+    ]);
+  }
+
   Widget _badge() => switch ('${c.me['status']}') {
         'active' => const AppBadge('Active', tone: Tone.ok),
         _ => const AppBadge('Inactive', tone: Tone.neutral),
       };
 
+  List<Widget> _metaPhone(TextStyle st, TextStyle bold) {
+    final sp = c.speciality;
+    final spec = sp.isEmpty ? '' : [sp.first, ...sp.skip(1).map((s) => s.toLowerCase())].join(', ');
+    final login = c.lastLogin?['text'] as String?;
+    final top = [if (spec.isNotEmpty) spec, if (c.yearsText.isNotEmpty) '${c.yearsText} experience'];
+    return [
+      if (top.isNotEmpty) Text(top.join('  •  '), style: st),
+      Text.rich(TextSpan(children: [const TextSpan(text: 'Access '), TextSpan(text: c.accessLevel, style: bold)]), style: st),
+      if (login != null) Text('Last login $login', style: st),
+    ];
+  }
+
   Widget _headPhone() {
     final st = AppText.s(12.5, W.w5, color: AppColors.muted, h: 1.55);
-    final parts = _meta(st, AppText.s(12.5, W.w7, color: AppColors.text, h: 1.55));
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [
       Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 12, children: [
         _avatar(52),
@@ -142,12 +176,9 @@ class _TrainerMeScreenState extends State<TrainerMeScreen> {
               Text(c.name, style: AppText.s(20, W.w8, ls: -.4, h: 1.2)),
               _badge(),
             ]),
-            Text.rich(
-              TextSpan(children: [
-                for (final (i, s) in parts.indexed) ...[if (i > 0) const TextSpan(text: '  •  '), s],
-              ]),
-              style: st,
-            ),
+            // Phone: "Strength, fat loss • 6 years experience", then access and last login on their own
+            // lines, so no line starts with a dot and nothing breaks in the middle.
+            ..._metaPhone(st, AppText.s(12.5, W.w7, color: AppColors.text, h: 1.55)),
           ]),
         ),
       ]),
@@ -201,30 +232,35 @@ class _TrainerMeScreenState extends State<TrainerMeScreen> {
         );
       });
 
-  /// Phone: one card, 4 columns ("24 / 30" over "My clients").
+  /// Phone: one card with the 4 numbers in a 2 × 2 grid ("10 / 30" over "My clients"); tap opens the page.
   Widget _statsPhone() {
     final rows = _rows;
+    Widget cell(int i) {
+      final (_, l, v, _, _, _, tap) = rows[i];
+      return Expanded(
+        child: GestureDetector(
+          onTap: tap,
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+              Text(v, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(17, W.w8, tabular: true)),
+              Text(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted)),
+            ]),
+          ),
+        ),
+      );
+    }
+
+    Widget line(int a) => IntrinsicHeight(
+          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            cell(a),
+            const VerticalDivider(width: 1, thickness: 1, color: AppColors.line),
+            cell(a + 1),
+          ]),
+        );
     return AppCard(
-      child: IntrinsicHeight(
-        child: Row(children: [
-          for (final (i, (_, l, v, _, _, _, tap)) in rows.indexed) ...[
-            if (i > 0) const VerticalDivider(width: 1, thickness: 1, color: AppColors.line),
-            Expanded(
-              child: GestureDetector(
-                onTap: tap,
-                behavior: HitTestBehavior.opaque,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 9, 6, 9),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-                    FittedBox(fit: BoxFit.scaleDown, child: Text(v, style: AppText.s(15, W.w8, tabular: true))),
-                    Text(l, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(11, W.w5, color: AppColors.muted, h: 1.25)),
-                  ]),
-                ),
-              ),
-            ),
-          ],
-        ]),
-      ),
+      child: Column(children: [line(0), const Divider(height: 1, thickness: 1, color: AppColors.line), line(2)]),
     );
   }
 }

@@ -57,6 +57,24 @@ class MeKv extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: padding,
         child: LayoutBuilder(builder: (context, b) {
+          // Phone: one pair a row, label on the left and the value beside it, so long values (email,
+          // "Assigned clients · 14 of 19") get room and never break in the middle of a word.
+          if (context.isPhone && columns > 1) {
+            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              for (final (l, v) in items)
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 12, children: [
+                    SizedBox(
+                      width: (b.maxWidth * .36).clamp(96.0, 140.0),
+                      child: Padding(padding: const EdgeInsets.only(top: 1.5), child: Text(l, style: AppText.s(12.5, W.w6, color: AppColors.muted))),
+                    ),
+                    Expanded(child: v),
+                  ]),
+                ),
+            ]);
+          }
           const gap = 20.0;
           final w = (b.maxWidth - gap * (columns - 1)) / columns;
           return Wrap(spacing: gap, children: [
