@@ -202,6 +202,11 @@ abstract final class AppColors {
   // My profile (TrainerMe): teal activity icon, ticked / locked permission chips.
   static const tlTlBg = Color(0xFFCCFBF1), tlTlFg = Color(0xFF0F766E);
   static const permOnBg = Color(0xFFECFDF3), permOnText = Color(0xFF05603A), permOffBg = Color(0xFFF4F4F2);
+  // More page (AdminMoreMobile / TrainerMoreMobile, `.mb-ric` / `.mb-me`): row icon tiles and the profile card.
+  static const mbBlueBg = Color(0xFFEAF2FE), mbGreenBg = Color(0xFFE7F6EC), mbGreenFg = Color(0xFF15803D);
+  static const mbAmberBg = Color(0xFFFEF3E2), mbAmberFg = Color(0xFFB45309), mbPinkBg = Color(0xFFFDECF3), mbPinkFg = Color(0xFFBE185D);
+  static const mbTealBg = Color(0xFFE4F5F4), mbTealFg = Color(0xFF0F766E), mbPurpleBg = Color(0xFFF1ECFD), mbPurpleFg = Color(0xFF6D28D9);
+  static const mbRed = Color(0xFFC2353A), mbMeFrom = Color(0xFFEEF7FE), mbMeLine = Color(0xFFDCEBFB), mbMeRing = Color(0xFFCFE3FA);
 }
 
 enum Tone { ok, warn, bad, info, neutral }

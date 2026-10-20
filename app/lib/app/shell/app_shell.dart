@@ -18,6 +18,14 @@ import 'nav_items.dart';
 class NavCounts {
   static final values = ValueNotifier<Map<String, int>>({});
   static void set(String key, int n) => values.value = {...values.value, key: n};
+
+  /// Whose counts these are: a new log in (another user on the same device) starts empty.
+  static String? owner;
+  static void claim(String userId) {
+    if (owner == userId) return;
+    owner = userId;
+    values.value = {};
+  }
 }
 
 /// One shell for every role (docs/design.md §2):
@@ -42,6 +50,22 @@ class _AppShellState extends State<AppShell> {
     SharedPreferences.getInstance().then((p) {
       if (mounted) setState(() => _mini = p.getBool('twv.sideMini') ?? false);
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadCounts()); // not during build: it notifies the badges
+  }
+
+  /// The trainer's Check-ins badge shows on every page (board TrainerMoreMobile), not only after
+  /// Dashboard or Check-ins loaded. Those pages keep it fresh afterwards.
+  Future<void> _loadCounts() async {
+    final me = Services.session.me;
+    if (me == null) return;
+    NavCounts.claim(me.id);
+    if (me.role != Role.trainer || NavCounts.values.value.containsKey('checkins')) return;
+    try {
+      final c = await Services.api.get<Map>('checkins/counts/');
+      if (!NavCounts.values.value.containsKey('checkins')) NavCounts.set('checkins', (c['to_review'] as num?)?.toInt() ?? 0);
+    } catch (_) {
+      // Offline or signed out: the badge simply waits for the next page load.
+    }
   }
 
   @override

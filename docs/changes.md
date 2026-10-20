@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-20 · Trainer More tab (phone) built; Check-ins badge everywhere
+- **Pehle:** Trainer ke phone par More tab "This page is on the way" dikhata tha. Bottom bar ka Check-ins badge sirf Dashboard ya Check-ins kholne ke baad aata tha (More, Calendar, My profile seedha kholne par nahi). Log out karke dusre user se login karne par purana badge reh sakta tha.
+- **Ab:** More page board jaisa: upar profile card (→ My profile), Library group (Programs, Exercises, Nutrition & foods, Habits & supplements, Content library), neeche laal Log out ("Log out?" confirm). Badge app khulte hi load hota hai, har trainer page par dikhta hai, aur naye login par khaali se shuru hota hai.
+- **Kyun:** Gautam ka order: My profile ke baad TrainerMoreMobile. Board me badge More page par bhi hai.
+- **Updated:** app/lib/features/trainer/more/more_screen.dart, app/lib/app/router.dart, app/lib/app/shell/app_shell.dart, app/lib/core/theme/colors.dart, docs/screens/status.md, docs/phases/CURRENT.md
+
 ### 2026-10-20 · My profile (phone) — layout fixed; date-proof tests
 - **Pehle:** Phone par My profile ke header me speciality, experience, access aur last login ek hi line me chipke the; stats 4 alag cards; details do column me tight; tab strip scroll hone par khula tab dikhai nahi deta tha (link se tab kholne par error bhi). Device dates "Wed 14 oct" (month chhota). Tablet (600–819) par naam "Aman Ver…" kat jata tha. 7 backend tests kuch dates par fail hote the (seed data ka measurement period aaj ko cover karta tha) aur PDF test `pypdfium2` ke bina.
 - **Ab:** Header teen saaf lines me; stats ek card me 2 × 2; details label-left / value-right rows; tab strip khule tab ko beech me le aata hai; "Wed 14 Oct". Tablet ke liye alag header (naam pura, button right). Tests kisi bhi date par pass (`fresh_measure_period` fixture), device date ka naya test.
