@@ -85,8 +85,33 @@ String _hex(Color c) => '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(
 
 /// `bm`: front and back figure with the worked muscles filled, and the legend.
 class BodyMap extends StatelessWidget {
-  const BodyMap(this.regions, {super.key});
+  const BodyMap(this.regions, {super.key, this.onTap});
   final Map<String, String> regions;
+
+  /// `.bm.click` (board ExerciseAdd): tapping a muscle gives its region ("chest", "lowback"…).
+  final ValueChanged<String>? onTap;
+
+  // Hit areas in the 120 × 244 figure: region, centre x, centre y, half width, half height (both sides mirror).
+  static const _front = [
+    ('shoulders', 38.5, 49.5, 9.0, 8.0), ('chest', 51.0, 55.0, 9.0, 11.0), ('biceps', 32.0, 71.0, 6.0, 11.0), ('forearms', 27.0, 98.0, 5.0, 13.0),
+    ('abs', 55.0, 90.0, 4.5, 20.0), ('obliques', 46.5, 88.0, 3.5, 20.0), ('quads', 50.0, 150.0, 9.0, 25.0), ('calves', 50.0, 206.0, 6.0, 21.0),
+  ];
+  static const _back = [
+    ('traps', 55.0, 46.0, 7.0, 13.0), ('shoulders', 38.5, 49.5, 9.0, 8.0), ('back', 51.0, 74.0, 8.0, 22.0), ('lowback', 54.0, 103.0, 6.0, 9.0),
+    ('triceps', 32.0, 71.0, 6.0, 11.0), ('forearms', 27.0, 98.0, 5.0, 13.0), ('glutes', 51.0, 125.0, 9.5, 11.0), ('hamstrings', 50.0, 160.0, 8.5, 21.0),
+    ('calves', 50.0, 206.0, 6.5, 18.0),
+  ];
+
+  static String? _hit(List<(String, double, double, double, double)> areas, Offset p) {
+    final x = p.dx > 60 ? 120 - p.dx : p.dx; // mirror the right side onto the left
+    String? best;
+    var bestD = 1.25; // a little outside the shape still counts
+    for (final (r, cx, cy, rx, ry) in areas) {
+      final d = ((x - cx) / rx) * ((x - cx) / rx) + ((p.dy - cy) / ry) * ((p.dy - cy) / ry);
+      if (d < bestD) (best, bestD) = (r, d);
+    }
+    return best;
+  }
 
   String _svg(String body) {
     var s = body.replaceAll('{base}', _hex(AppColors.barTrack)).replaceAll('{edge}', _hex(AppColors.caWebBg));
@@ -100,7 +125,19 @@ class BodyMap extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget fig(String body, String cap) => Column(mainAxisSize: MainAxisSize.min, spacing: 2, children: [
-          SizedBox(width: 102, height: 208, child: SvgPicture.string(_svg(body))),
+          if (onTap == null)
+            SizedBox(width: 102, height: 208, child: SvgPicture.string(_svg(body)))
+          else
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTapUp: (d) {
+                  final r = _hit(body == bodyFront ? _front : _back, Offset(d.localPosition.dx * 120 / 102, d.localPosition.dy * 244 / 208));
+                  if (r != null) onTap!(r);
+                },
+                child: SizedBox(width: 102, height: 208, child: SvgPicture.string(_svg(body))),
+              ),
+            ),
           Text(cap, style: AppText.s(11.5, W.w6, color: AppColors.muted)),
         ]);
     Widget key(Color c, String t) => Row(mainAxisSize: MainAxisSize.min, spacing: 5, children: [

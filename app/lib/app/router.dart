@@ -27,6 +27,9 @@ import '../features/client/more/about_screen.dart';
 import '../features/client/more/more_screen.dart';
 import '../features/client/train/train_screen.dart';
 import '../features/client/train/workout_screen.dart';
+import '../features/library/exercises/detail_screen.dart';
+import '../features/library/exercises/edit_screen.dart';
+import '../features/library/exercises/library_screen.dart';
 import '../features/library/programs/builder_screen.dart';
 import '../features/library/programs/programs_screen.dart';
 import '../features/trainer/more/more_screen.dart';
@@ -116,6 +119,13 @@ final Map<String, Widget Function(GoRouterState)> trainerScreens = {
   '/more': (_) => const TrainerMoreScreen(),
   '/programs': (_) => const ProgramsScreen(),
   '/programs/:id': (st) => ProgramBuilderScreen(key: ValueKey(st.pathParameters['id']), id: st.pathParameters['id']!),
+  '/exercises': (_) => const ExerciseLibraryScreen(),
+  '/exercises/:id': (st) {
+    final id = st.pathParameters['id']!;
+    if (id == 'new') return ExerciseEditScreen(key: ValueKey(st.uri.toString()));
+    if (st.uri.queryParameters['edit'] == '1') return ExerciseEditScreen(key: ValueKey(st.uri.toString()), id: id);
+    return ExerciseDetailScreen(key: ValueKey(st.uri.toString()), id: id);
+  },
   '/me': (_) => const TrainerMeScreen(key: ValueKey('me')),
   '/me/:id': (st) => TrainerMeScreen(key: const ValueKey('me'), tab: st.pathParameters['id']),
   '/clients/:id': (st) => TrainerClientProfileScreen(key: ValueKey(st.uri.toString()), id: st.pathParameters['id']!, tab: st.uri.queryParameters['tab']),

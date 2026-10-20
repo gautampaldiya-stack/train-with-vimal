@@ -29,7 +29,7 @@ class SegmentedTabs<T> extends StatelessWidget {
             final on = it.value == value;
             return Container(
               height: height,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: EdgeInsets.symmetric(horizontal: expand ? 8 : 12),
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: on ? AppColors.white : (h ? AppColors.white.withValues(alpha: .7) : null),
@@ -38,7 +38,11 @@ class SegmentedTabs<T> extends StatelessWidget {
                 boxShadow: on ? AppShadows.tab : null,
               ),
               child: Row(mainAxisSize: MainAxisSize.min, spacing: 6, children: [
-                Text(it.label, style: AppText.s(13, W.w6, color: on ? AppColors.text : AppColors.text2), overflow: TextOverflow.ellipsis),
+                // stretched tabs share the width, so a long label shortens instead of overflowing
+                if (expand)
+                  Flexible(child: Text(it.label, maxLines: 1, style: AppText.s(13, W.w6, color: on ? AppColors.text : AppColors.text2), overflow: TextOverflow.ellipsis))
+                else
+                  Text(it.label, style: AppText.s(13, W.w6, color: on ? AppColors.text : AppColors.text2), overflow: TextOverflow.ellipsis),
                 if (it.count != null) Text('${it.count}', style: AppText.s(12, W.w6, color: AppColors.muted)),
               ]),
             );

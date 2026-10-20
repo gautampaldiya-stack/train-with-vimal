@@ -102,12 +102,12 @@ Status: **Done** (built and checked in a browser against the board, phone and de
 | ContentMobile | Not started |  |
 | Emails | Not started |  |
 | EmailsMobile | Not started |  |
-| ExerciseAdd | Not started |  |
-| ExerciseAddMobile | Not started |  |
-| ExerciseDetail | Not started |  |
-| ExerciseDetailMobile | Not started |  |
-| ExerciseLibrary | Not started |  |
-| ExerciseLibraryMobile | Not started |  |
+| ExerciseAdd | Done | `/exercises/new`, `/exercises/<id>?edit=1` (`app/lib/features/library/exercises/edit_screen.dart`): Basics, Default sets and reps (Client logs tabs, steppers), How to, Form cues, Video and image (Pick a video modal, YouTube link with preview, frame tiles, Upload image with drop zone), Muscles (chips, tappable body map, Light / Strong with notes), Leave without saving? confirm. Frame tiles are placeholders (no frame grab, D-40). Checked against the board at 390, 768, 1024, 1440 and in DEBUG mode at 390, 768, 1024 and 1440 with no console errors (2026-10-20). Not built yet: "Upload to library" opens Content library (ContentLibrary board, coming). |
+| ExerciseAddMobile | Done | Same page under 600: one column, full-width tabs, 2-column steppers, sheet for Pick a video. Checked against the board at 390, 768, 1024, 1440 and in DEBUG mode at 390, 768, 1024 and 1440 with no console errors (2026-10-20). |
+| ExerciseDetail | Done | `/exercises/<id>` (`detail_screen.dart`): header with cover, Edit / Duplicate to edit, Add to program (modal: program, then day), ⋯ (Delete with Undo), Default sets and reps (3 × 2 when narrow), How to / Form cues / Muscles tabs with body map, Video, Details, Used in N programs (→ Program builder). Checked against the board at 390, 768, 1024, 1440 and in DEBUG mode at 390, 768, 1024 and 1440 with no console errors (2026-10-20). |
+| ExerciseDetailMobile | Done | Same page under 600: video first, then tabs, details, used in. Checked against the board at 390, 768, 1024, 1440 and in DEBUG mode at 390, 768, 1024 and 1440 with no console errors (2026-10-20). |
+| ExerciseLibrary | Done | `/exercises` (`library_screen.dart`): picture cards (2–5 columns), search, Filter (Muscle · Equipment · Level · Source, several options, counts), chips with Clear all, Sort, New exercise, ⋯ (Open, Edit, Duplicate to edit, Add to program, Delete), Show more. Checked against the board at 390, 768, 1024, 1440 and in DEBUG mode at 390, 768, 1024 and 1440 with no console errors (2026-10-20). |
+| ExerciseLibraryMobile | Done | Same page under 600: two cards a row, Filter and Sort under the search. Checked against the board at 390, 768, 1024, 1440 and in DEBUG mode at 390, 768, 1024 and 1440 with no console errors (2026-10-20). |
 | FormBuilder | Not started |  |
 | FormBuilderMobile | Not started |  |
 | Forms | Not started |  |
@@ -119,7 +119,7 @@ Status: **Done** (built and checked in a browser against the board, phone and de
 | MealPlanBuilderMobile | Not started |  |
 | Nutrition | Not started |  |
 | NutritionMobile | Not started |  |
-| ProgramBuilder | Done | `/programs/<id>` (`app/lib/features/library/programs/builder_*.dart`): week pills, Copy week, 7-column day grid (list under 840 px content), + Day, day panel with exercise table, day / exercise / program ⋯ menus, Edit sets and rest, Edit for this program, Add exercises drawer, Assign modal, Assigned clients drawer, rest day, coach note, Undo toasts. Read-only + Duplicate to edit when the person may not change it (D-39). Checked against the board at 390, 900, 1024, 1440 and in DEBUG mode at 390 and 1024 with no console errors (2026-10-20). Not built yet: Exercise details opens ExerciseDetail (Exercises screens are next). |
+| ProgramBuilder | Done | `/programs/<id>` (`app/lib/features/library/programs/builder_*.dart`): week pills, Copy week, 7-column day grid (list under 840 px content), + Day, day panel with exercise table, day / exercise / program ⋯ menus, Edit sets and rest, Edit for this program, Add exercises drawer, Assign modal, Assigned clients drawer, rest day, coach note, Undo toasts. Read-only + Duplicate to edit when the person may not change it (D-39). Checked against the board at 390, 900, 1024, 1440 and in DEBUG mode at 390 and 1024 with no console errors (2026-10-20). Exercise details opens the Exercise page (built 2026-10-20). |
 | ProgramBuilderMobile | Done | Same page under 600: day rows with Add, exercise cards with Sets / Reps / RPE / Tempo / Rest chips, sheets for modals. Checked against the board at 390, 900, 1024, 1440 and in DEBUG mode at 390 and 1024 with no console errors (2026-10-20). |
 | Programs | Done | `/programs`: cards (week pattern, clients, edited date), Active / Archived, search, Show more (24 a page), New program modal, card ⋯ Open / Duplicate / Archive / Restore / Delete with Undo. Trainers see only their own clients on cards. Checked 600, 1024, 1440 (2026-10-20). |
 | ProgramsMobile | Done | One column of cards, + button for New program. Checked 390 (2026-10-20). |

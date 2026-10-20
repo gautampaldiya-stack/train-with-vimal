@@ -27,6 +27,13 @@ def _clean_lines(lines, field, max_items=20):
     return out
 
 
+def exercise_perm(user):
+    """Vimal, or a trainer with "Add custom exercises" (training.custom_exercises)."""
+    if user.is_admin:
+        return True
+    return bool(user.is_trainer and user.trainer_profile.has_perm("training.custom_exercises"))
+
+
 def youtube_thumb(url):
     """https://youtu.be/<id>, youtube.com/watch?v=<id> or /shorts/<id> → the video's still image."""
     import re
@@ -41,14 +48,31 @@ class ExerciseSerializer(serializers.ModelSerializer):
     source = serializers.SerializerMethodField()
     thumb = serializers.SerializerMethodField()
     media = serializers.SerializerMethodField()
+    cover_image = serializers.SerializerMethodField()
+    can_edit = serializers.SerializerMethodField()
+    # empty lines are dropped in validate()
+    how_to = serializers.ListField(child=serializers.CharField(max_length=300, allow_blank=True), required=False)
+    form_cues = serializers.ListField(child=serializers.CharField(max_length=300, allow_blank=True), required=False)
 
     class Meta:
         model = Exercise
         fields = ["id", "name", "muscle_group", "primary_muscle", "also_works", "equipment", "level", "is_builtin",
-                  "source", "video", "video_title", "youtube_url", "thumb", "media", "cover_at_seconds", "how_to",
-                  "form_cues", "log_type", "default_sets", "default_reps", "default_rest_seconds", "default_rpe",
-                  "default_tempo", "duplicated_from", "programs", "created_at", "updated_at"]
+                  "source", "video", "video_title", "youtube_url", "thumb", "media", "cover_at_seconds", "cover_image",
+                  "how_to", "form_cues", "log_type", "default_sets", "default_reps", "default_rest_seconds",
+                  "default_rpe", "default_tempo", "duplicated_from", "programs", "can_edit", "created_at", "updated_at"]
         read_only_fields = ["is_builtin", "duplicated_from"]
+
+    def _url(self, f):
+        req = self.context.get("request")
+        return req.build_absolute_uri(f.url) if req else f.url
+
+    def get_cover_image(self, obj):
+        return self._url(obj.cover_image) if obj.cover_image else None
+
+    def get_can_edit(self, obj):
+        """Built-in exercises never change (Duplicate to edit); custom ones need "Add custom exercises"."""
+        user = getattr(self.context.get("request"), "user", None)
+        return bool(user and not obj.is_builtin and exercise_perm(user))
 
     def get_source(self, obj):
         return "builtin" if obj.is_builtin else "custom"
@@ -60,7 +84,10 @@ class ExerciseSerializer(serializers.ModelSerializer):
         return media_of(obj.video, self.context.get("request"))
 
     def get_thumb(self, obj):
-        """Picture for the exercise tile: the video's cover, else the YouTube still, else none (icon)."""
+        """Picture for the exercise tile: an uploaded cover, else the video's cover, else the YouTube still, else
+        none (icon)."""
+        if obj.cover_image:
+            return self._url(obj.cover_image)
         v = obj.video
         if v and v.kind == "image" and v.file:
             req = self.context.get("request")
@@ -86,7 +113,14 @@ class ExerciseSerializer(serializers.ModelSerializer):
             level = row.get("level", "light")
             if level not in ALSO_LEVELS:
                 raise serializers.ValidationError("Level is light or strong.")
-            out.append({"muscle": str(row["muscle"]).strip()[:40], "level": level})
+            item = {"muscle": str(row["muscle"]).strip()[:40], "level": level}
+            note = " ".join(str(row.get("note") or "").split())[:80]
+            if note:
+                item["note"] = note  # "Straighten the arms at the top" (Muscles tab)
+            out.append(item)
+        names = [x["muscle"].lower() for x in out]
+        if len(set(names)) != len(names):
+            raise serializers.ValidationError("Each muscle once.")
         return out
 
     def validate(self, attrs):

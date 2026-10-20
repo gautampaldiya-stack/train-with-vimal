@@ -56,6 +56,15 @@ EXERCISES = [
     ("Dead Bug", "core", "Abs", "bodyweight", "beginner", "bodyweight_reps", 3, "10 each side", 45, None, "", []),
 ]
 
+# What an "also works" muscle does in a lift (Muscles tab line under the muscle, board ExerciseDetail).
+ALSO_NOTES = {
+    "Biceps": "Bend the elbows as you pull", "Core": "Keep the body still", "Forearms": "Hold the grip",
+    "Front shoulders": "Help press up", "Glutes": "Drive the hips forward", "Hamstrings": "Keep the hips steady",
+    "Hip flexors": "Lift the legs", "Lats": "Pull the arms down", "Lower back": "Keep the back flat",
+    "Rear shoulders": "Pull the shoulder blades back", "Shoulders": "Hold the arms in place",
+    "Triceps": "Straighten the arms at the top", "Upper back": "Keep the shoulders back",
+}
+
 HOW_TO = {
     "Barbell Bench Press": (["Lie with your eyes under the bar, feet flat on the floor.",
                              "Grip slightly wider than your shoulders.",

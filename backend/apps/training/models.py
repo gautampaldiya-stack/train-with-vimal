@@ -53,6 +53,8 @@ class Exercise(SoftDeleteModel):
                               related_name="exercises")
     youtube_url = models.URLField(blank=True, default="")
     cover_at_seconds = models.PositiveIntegerField(default=0)
+    # "Upload image" cover (board ExerciseAdd); when empty the library shows the video's frame / cover.
+    cover_image = models.ImageField(upload_to="exercises/covers/", null=True, blank=True)
     how_to = ArrayField(models.CharField(max_length=300), default=list, blank=True)
     form_cues = ArrayField(models.CharField(max_length=300), default=list, blank=True)
     log_type = models.CharField(max_length=16, choices=LogType.choices, default=LogType.WEIGHT_REPS)

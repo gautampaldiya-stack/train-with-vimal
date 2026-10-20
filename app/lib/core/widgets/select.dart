@@ -8,8 +8,11 @@ import 'overlays.dart';
 /// `.select` 36 high, full width: the value and a chevron; opens the entries as a menu the width of the box
 /// (an action sheet on a phone).
 class AppSelect extends StatelessWidget {
-  const AppSelect(this.value, {super.key, required this.entries, this.icon});
+  const AppSelect(this.value, {super.key, required this.entries, this.icon, this.lead});
   final String value;
+
+  /// Muted word before the value (`.select .lead`, e.g. "Sort").
+  final String? lead;
   final List<MenuEntry> entries;
 
   /// Optional leading icon (the calendar on range pickers).
@@ -28,6 +31,7 @@ class AppSelect extends StatelessWidget {
             ),
             child: Row(spacing: 8, children: [
               if (icon != null) AppIcon(icon!, size: 15, color: AppColors.text2),
+              if (lead != null) Text(lead!, style: AppText.s(13.5, W.w5, color: AppColors.muted)),
               Expanded(child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w6))),
               const AppIcon(AppIcons.chevronDown, size: 16, color: AppColors.muted),
             ]),

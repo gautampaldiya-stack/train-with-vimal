@@ -36,6 +36,7 @@ from .serializers import (
     ExerciseMiniSerializer,
     ExerciseSerializer,
     FeedbackSerializer,
+    exercise_perm,
     FinishSerializer,
     ProgramCardSerializer,
     ProgramCreateSerializer,
@@ -64,7 +65,8 @@ class ExerciseViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
     permission_classes = [IsStaff, HasTrainerPermission]
     required_permissions = {"create": "training.custom_exercises", "partial_update": "training.custom_exercises",
                             "update": "training.custom_exercises", "destroy": "training.custom_exercises",
-                            "duplicate": "training.custom_exercises"}
+                            "duplicate": "training.custom_exercises", "restore": "training.custom_exercises",
+                            "cover": "training.custom_exercises"}
     search_fields = ["name", "primary_muscle"]
     ordering_fields = ["name", "created_at", "updated_at", "n_programs"]
     ordering = ["name"]
@@ -105,7 +107,72 @@ class ExerciseViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
         data = facet_counts(base)
         data["builtin"] = Exercise.objects.filter(is_builtin=True).count()
         data["custom"] = Exercise.objects.filter(is_builtin=False).count()
+        data["can"] = {"create": exercise_perm(request.user)}
         return Response(data)
+
+    @action(detail=True, methods=["post", "delete"], url_path="cover")
+    def cover(self, request, pk=None):
+        """'Upload image' cover: POST multipart `file` (JPG / PNG, up to 5 MB) or DELETE to go back to the video frame."""
+        ex = self.get_object()
+        if ex.is_builtin:
+            raise PermissionDenied("Built-in exercises can't be edited. Use Duplicate to edit.")
+        if request.method == "DELETE":
+            if ex.cover_image:
+                ex.cover_image.delete(save=False)
+            ex.cover_image = None
+            ex.save(update_fields=["cover_image", "updated_at"])
+            return Response(ExerciseSerializer(ex, context={"request": request}).data)
+        f = request.FILES.get("file")
+        err = None
+        if f is None:
+            err = "Pick an image."
+        elif f.size > 5 * 1024 * 1024:
+            err = "The image is bigger than 5 MB."
+        elif (f.name or "").rsplit(".", 1)[-1].lower() not in ("jpg", "jpeg", "png"):
+            err = "Use a JPG or PNG image."
+        if err:
+            return Response({"error": {"code": "invalid", "message": err, "fields": {"file": [err]}}}, status=400)
+        from PIL import Image, UnidentifiedImageError
+
+        try:
+            Image.open(f).verify()
+            f.seek(0)
+        except (UnidentifiedImageError, OSError):
+            msg = "This file is not an image."
+            return Response({"error": {"code": "invalid", "message": msg, "fields": {"file": [msg]}}}, status=400)
+        if ex.cover_image:
+            ex.cover_image.delete(save=False)
+        ex.cover_image.save(f.name, f, save=False)
+        ex.save(update_fields=["cover_image", "updated_at"])
+        return Response(ExerciseSerializer(ex, context={"request": request}).data)
+
+    @action(detail=False, url_path="youtube-info")
+    def youtube_info(self, request):
+        """Title and channel of a YouTube link for the 'YouTube link' preview (YouTube oEmbed; blank when offline)."""
+        from apps.content.library import youtube_id
+
+        url = (request.query_params.get("url") or "").strip()
+        vid = youtube_id(url)
+        if not vid:
+            return Response({"error": {"code": "invalid", "message": "Paste a YouTube link.",
+                                       "fields": {"url": ["Paste a YouTube link."]}}}, status=400)
+        key = f"yt-info:{vid}"
+        data = cache.get(key)
+        if data is None:
+            import json
+            import urllib.parse
+            import urllib.request
+
+            data = {"title": "", "author": ""}
+            try:
+                q = urllib.parse.urlencode({"url": f"https://www.youtube.com/watch?v={vid}", "format": "json"})
+                with urllib.request.urlopen(f"https://www.youtube.com/oembed?{q}", timeout=3) as r:  # noqa: S310
+                    j = json.loads(r.read().decode("utf-8"))
+                data = {"title": str(j.get("title", ""))[:200], "author": str(j.get("author_name", ""))[:120]}
+                cache.set(key, data, 24 * 3600)
+            except Exception:  # noqa: BLE001 — offline / private video: the preview shows the link only
+                pass
+        return Response({"id": vid, "thumb": f"https://img.youtube.com/vi/{vid}/mqdefault.jpg", **data})
 
     def perform_create(self, serializer):
         ex = serializer.save(created_by=self.request.user, is_builtin=False)
@@ -126,7 +193,7 @@ class ExerciseViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
         fields["video_id"] = fields.pop("video").id if fields.get("video") else None
         ex = Exercise.objects.create(name=f"{src.name} (copy)"[:120], duplicated_from=src, is_builtin=False,
                                      created_by=request.user, **fields)
-        return Response(ExerciseSerializer(ex).data, status=status.HTTP_201_CREATED)
+        return Response(ExerciseSerializer(ex, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, url_path="used-in")
     def used_in(self, request, pk=None):
@@ -144,7 +211,9 @@ class ExerciseViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
         out = []
         for pid, item in progs.items():
             item["days"] = sorted(item["days"])
-            item["clients"] = ProgramAssignment.objects.filter(program_id=pid, status="active").count()
+            # a trainer counts only their own clients (D-39)
+            item["clients"] = ProgramAssignment.objects.filter(
+                program_id=pid, status="active", client__in=visible_clients(request.user)).count()
             item["workouts"] = SetLog.objects.filter(exercise=ex, workout__assignment__program_id=pid,
                                                      workout__status="completed").values("workout").distinct().count()
             out.append(item)
@@ -341,6 +410,22 @@ class ProgramViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
         services.copy_week(p, n)
         p = Program.objects.prefetch_related("program_weeks__days__exercises__exercise").get(id=p.id)
         return Response(ProgramDetailSerializer(p, context=self.get_serializer_context()).data)
+
+    @action(detail=True, methods=["post"], url_path="add-exercise")
+    def add_exercise(self, request, pk=None):
+        """Exercise page → Add to program: {exercise, weekday} adds it to that day in every week."""
+        p = self.get_object()
+        ex = Exercise.objects.filter(id=request.data.get("exercise")).first() if request.data.get("exercise") else None
+        if ex is None:
+            raise serializers.ValidationError({"exercise": ["Pick an exercise."]})
+        try:
+            wd = int(request.data.get("weekday"))
+        except (TypeError, ValueError):
+            wd = -1
+        if not p.program_weeks.filter(days__weekday=wd, days__is_rest=False).exists():
+            raise serializers.ValidationError({"weekday": ["Pick a workout day."]})
+        n = services.add_exercise_to_day(p, ex, wd)
+        return Response({"weeks": n, "program": str(p.id), "name": p.name})
 
     @action(detail=True)
     def clients(self, request, pk=None):

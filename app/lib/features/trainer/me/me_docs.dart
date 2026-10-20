@@ -294,7 +294,7 @@ class _UpForm extends ChangeNotifier {
       builder: (_, h, _) {
         final hot = dragging || h;
         return CustomPaint(
-          foregroundPainter: _Dashed(color: fileErr != null ? AppColors.badText : (dragging ? AppColors.accent : AppColors.line2), radius: 12),
+          foregroundPainter: DashedBox(color: fileErr != null ? AppColors.badText : (dragging ? AppColors.accent : AppColors.line2), radius: 12),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 120),
             padding: const EdgeInsets.all(22),
@@ -383,8 +383,9 @@ class _UpForm extends ChangeNotifier {
 }
 
 /// `.tp-drop` 1.5px dashed border.
-class _Dashed extends CustomPainter {
-  const _Dashed({required this.color, required this.radius});
+/// Dashed rounded border (`.ex-drop`, the upload drop zone), painted over the box.
+class DashedBox extends CustomPainter {
+  const DashedBox({required this.color, required this.radius});
   final Color color;
   final double radius;
 
@@ -403,7 +404,7 @@ class _Dashed extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_Dashed o) => o.color != color || o.radius != radius;
+  bool shouldRepaint(DashedBox o) => o.color != color || o.radius != radius;
 }
 
 String _size(int n) => n >= 1048576 ? '${(n / 1048576).toStringAsFixed(1)} MB' : '${(n / 1024).round().clamp(1, 1024)} KB';

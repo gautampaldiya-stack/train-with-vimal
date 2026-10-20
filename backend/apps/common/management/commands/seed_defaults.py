@@ -39,11 +39,14 @@ class Command(BaseCommand):
                 if how and not have.how_to:  # steps added to the library later
                     have.how_to, have.form_cues = how, cues
                     have.save(update_fields=["how_to", "form_cues"])
+                if have.also_works and not any(a.get("note") for a in have.also_works):  # notes added later
+                    have.also_works = [{**a, "note": D.ALSO_NOTES.get(a["muscle"], "")} for a in have.also_works]
+                    have.save(update_fields=["also_works"])
                 continue
             Exercise.objects.create(
                 name=name, muscle_group=muscle, primary_muscle=primary, equipment=equip, level=level,
                 log_type=log_type, default_sets=sets, default_reps=reps, default_rest_seconds=rest, default_rpe=rpe,
-                default_tempo=tempo, also_works=[{"muscle": m, "level": lv} for m, lv in also], how_to=how,
+                default_tempo=tempo, also_works=[{"muscle": m, "level": lv, "note": D.ALSO_NOTES.get(m, "")} for m, lv in also], how_to=how,
                 form_cues=cues, is_builtin=True)
             made += 1
         self.stdout.write(f"Exercises: {made} new")

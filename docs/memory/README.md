@@ -42,4 +42,5 @@ Things a new person (or a new Claude session) must know. Update when Gautam deci
 - Gautam (2026-10-17): Trainer Calendar and My profile built (D-38); no AV avatar top right on web pages.
 - Gautam (2026-10-18): he tests in Flutter web DEBUG mode — every screen must be free of debug assertions (no LayoutBuilder under Intrinsic*); amounts read "½ katori · 75 g", never "0.5 × 1 katori".
 - 2026-10-20: Programs page and Program builder built (D-39). A trainer changes only programs they made (or all with "Edit gym templates"), can always Duplicate; cards and Assign show only their own clients.
+- 2026-10-20: Exercise library, Exercise page and Add / Edit exercise built (D-40). Built-in exercises are read-only (Duplicate to edit); custom ones need "Add custom exercises". Add to program adds to that weekday in every week.
 - Gautam (2026-10-18): Daily summary design/template and a Gym news (announcements) screen are parked — remember them, build only when he asks (backend sending already exists, D-38).
