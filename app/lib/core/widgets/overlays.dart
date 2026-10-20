@@ -14,12 +14,15 @@ import 'responsive.dart';
 // ─────────────────────────────── Menu (docs/design.md §4.1)
 
 class MenuEntry {
-  const MenuEntry(this.label, {this.icon, this.onTap, this.danger = false, this.selected = false, this.end, this.header = false, this.separator = false});
+  const MenuEntry(this.label, {this.icon, this.onTap, this.danger = false, this.selected = false, this.end, this.header = false, this.separator = false, this.sub});
   const MenuEntry.header(this.label)
-      : icon = null, onTap = null, danger = false, selected = false, end = null, header = true, separator = false;
+      : icon = null, onTap = null, danger = false, selected = false, end = null, header = true, separator = false, sub = null;
   const MenuEntry.separator()
-      : label = '', icon = null, onTap = null, danger = false, selected = false, end = null, header = false, separator = true;
+      : label = '', icon = null, onTap = null, danger = false, selected = false, end = null, header = false, separator = true, sub = null;
   final String label;
+
+  /// Grey line under the label (`.pb-ms`, e.g. "Swap with Monday"); the row grows to fit it.
+  final String? sub;
   final AppIconData? icon;
   final VoidCallback? onTap;
   final bool danger, selected, header, separator;
@@ -36,7 +39,7 @@ Future<void> showAppMenu(BuildContext anchor, List<MenuEntry> entries, {double w
   final left = alignRight ? (topLeft.dx + box.size.width - width) : topLeft.dx;
   final below = topLeft.dy + box.size.height + 6;
   // Opens on the side with room; a long list gets that side's height and scrolls, starting at the picked row.
-  final need = 12 + _rowH * entries.length;
+  final need = 12 + _rowH * entries.length + 14.0 * entries.where((e) => e.sub != null).length;
   final roomBelow = size.height - below - 12, roomAbove = topLeft.dy - 6 - 12;
   final openUp = need > roomBelow && roomAbove > roomBelow;
   final maxH = (openUp ? roomAbove : roomBelow).clamp(120.0, 420.0);
@@ -110,12 +113,19 @@ class _MenuBoxState extends State<_MenuBox> {
                     builder: (context, h, _) {
                       final fg = e.danger ? AppColors.badText : AppColors.text;
                       return Container(
-                        height: 34,
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        height: e.sub == null ? 34 : null,
+                        padding: EdgeInsets.symmetric(horizontal: 10, vertical: e.sub == null ? 0 : 7),
                         decoration: BoxDecoration(color: h ? (e.danger ? AppColors.badBg : AppColors.sub) : null, borderRadius: AppRadius.all(AppRadius.item)),
                         child: Row(spacing: 10, children: [
                           if (e.icon != null) AppIcon(e.icon!, size: 16, color: e.danger ? AppColors.badText : AppColors.muted),
-                          Expanded(child: Text(e.label, style: AppText.s(13.5, e.selected ? W.w7 : W.w5, color: fg), overflow: TextOverflow.ellipsis)),
+                          Expanded(
+                            child: e.sub == null
+                                ? Text(e.label, style: AppText.s(13.5, e.selected ? W.w7 : W.w5, color: fg), overflow: TextOverflow.ellipsis)
+                                : Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                                    Text(e.label, style: AppText.s(13.5, W.w5, color: fg), overflow: TextOverflow.ellipsis),
+                                    Text(e.sub!, style: AppText.s(11.5, W.w5, color: AppColors.muted), overflow: TextOverflow.ellipsis),
+                                  ]),
+                          ),
                           if (e.end != null) Text(e.end!, style: AppText.s(12, W.w5, color: AppColors.muted)),
                           if (e.selected) AppIcon(AppIcons.check, size: 15, color: AppColors.accent, stroke: 2.2),
                         ]),
@@ -147,11 +157,16 @@ Future<void> showActionSheet(BuildContext context, List<MenuEntry> entries, {Str
                       e.onTap!();
                     },
               builder: (_, h, _) => Container(
-                height: 48,
-                padding: const EdgeInsets.symmetric(horizontal: 4),
+                constraints: const BoxConstraints(minHeight: 48),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
                 child: Row(spacing: 12, children: [
                   if (e.icon != null) AppIcon(e.icon!, size: 18, color: e.danger ? AppColors.badText : AppColors.text2),
-                  Expanded(child: Text(e.label, style: AppText.s(14.5, e.selected ? W.w7 : W.w6, color: e.danger ? AppColors.badText : AppColors.text))),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                      Text(e.label, style: AppText.s(14.5, e.selected ? W.w7 : W.w6, color: e.danger ? AppColors.badText : AppColors.text)),
+                      if (e.sub != null) Text(e.sub!, style: AppText.s(12, W.w5, color: AppColors.muted)),
+                    ]),
+                  ),
                   if (e.end != null) Text(e.end!, style: AppText.cap),
                   if (e.selected) AppIcon(AppIcons.check, size: 16, color: AppColors.accent, stroke: 2.2),
                 ]),

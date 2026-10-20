@@ -190,11 +190,15 @@ def assign_program(client, program_id, *, actor=None, start_date=None, when="now
 @transaction.atomic
 def set_program_clients(program, client_ids, *, actor):
     """Assign drawer: the program's followers become exactly `client_ids`."""
-    current = set(ProgramAssignment.objects.filter(program=program, status=AssignmentStatus.ACTIVE)
+    from apps.clients.services import visible_clients
+
+    # Only clients this person can see are touched: a trainer saving the drawer never takes the
+    # program away from another trainer's clients (they are not in the list they ticked from).
+    current = set(ProgramAssignment.objects.filter(program=program, status=AssignmentStatus.ACTIVE,
+                                                   client__in=visible_clients(actor))
                   .values_list("client_id", flat=True))
     wanted = set(client_ids)
     added, removed = wanted - current, current - wanted
-    from apps.clients.services import visible_clients
 
     clients = {u.id: u for u in visible_clients(actor).filter(id__in=added).select_related("client_profile")}
     for cid in added:
@@ -517,3 +521,16 @@ def set_volume(s, body_kg=None):
 
 def workout_volume(w, body_kg=None):
     return sum(set_volume(s, body_kg) for s in w.sets.all())
+
+
+def can_edit_program(user, program):
+    """D-39: Vimal changes every master plan. A trainer changes one if their access has "Edit gym templates",
+    or if they made it themselves and may use templates (so a program they create is theirs to build)."""
+    if user.is_admin:
+        return True
+    if not user.is_trainer:
+        return False
+    tp = user.trainer_profile
+    if tp.has_perm("training.edit_templates"):
+        return True
+    return program.created_by_id == user.id and tp.has_perm("training.use_templates")

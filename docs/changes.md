@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-20 · Programs page and Program builder built
+- **Pehle:** Library → Programs "This page is on the way" dikhata tha. Backend me trainer naya program bana sakta tha par use build nahi kar sakta tha (edit ke liye "Edit gym templates" chahiye tha). Program cards par sab trainers ke clients dikhte the, aur trainer ka Assign dusre trainers ke clients ko program se hata sakta tha. Delete ka Undo nahi tha.
+- **Ab:** Programs page board jaisa (cards, Active / Archived, search, New program, ⋯ menu, Undo). Program builder: weeks, 7 din ka grid (phone par list), din ka panel, exercise table (phone par cards), sets / rest modal, Edit for this program, Add exercises, Assign, Assigned clients, rest day, coach note — har change turant save, Undo ke saath. Trainer apne banaye program badal sakta hai; Vimal ke program read-only hain "Duplicate to edit" ke saath. Cards aur Assign me trainer ko sirf apne clients. Delete → Undo clients ko wapas program par laata hai. Demo me 5 aur programs (ek archived).
+- **Kyun:** Gautam: "Ab aage ka karo" — TrainerMoreMobile ke baad Library screens, Programs se shuru.
+- **Updated:** backend/apps/training/views.py, services.py, serializers.py, seed_demo.py, backend/tests/test_programs.py, app/lib/features/library/ (lib_common, programs/), app/lib/app/router.dart, app/lib/core/widgets/overlays.dart (menu sub line), app/lib/core/theme/colors.dart, app/lib/core/icons/app_icons.dart, docs/screens/status.md, docs/phases/CURRENT.md, docs/architecture/api-endpoints.md, docs/memory/README.md · Decision D-39
+
 ### 2026-10-20 · Trainer More tab (phone) built; Check-ins badge everywhere
 - **Pehle:** Trainer ke phone par More tab "This page is on the way" dikhata tha. Bottom bar ka Check-ins badge sirf Dashboard ya Check-ins kholne ke baad aata tha (More, Calendar, My profile seedha kholne par nahi). Log out karke dusre user se login karne par purana badge reh sakta tha.
 - **Ab:** More page board jaisa: upar profile card (→ My profile), Library group (Programs, Exercises, Nutrition & foods, Habits & supplements, Content library), neeche laal Log out ("Log out?" confirm). Badge app khulte hi load hota hai, har trainer page par dikhta hai, aur naye login par khaali se shuru hota hai.

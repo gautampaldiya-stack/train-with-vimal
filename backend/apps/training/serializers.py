@@ -101,8 +101,9 @@ class ExerciseSerializer(serializers.ModelSerializer):
 class ExerciseMiniSerializer(serializers.ModelSerializer):
     class Meta:
         model = Exercise
-        fields = ["id", "name", "muscle_group", "primary_muscle", "equipment", "level", "log_type", "default_sets",
-                  "default_reps", "default_rest_seconds", "default_rpe", "default_tempo", "video", "youtube_url"]
+        fields = ["id", "name", "muscle_group", "primary_muscle", "also_works", "equipment", "level", "log_type",
+                  "default_sets", "default_reps", "default_rest_seconds", "default_rpe", "default_tempo", "video",
+                  "youtube_url", "how_to", "form_cues"]
 
 
 # ---------------------------------------------------------------- program tree
@@ -165,16 +166,32 @@ class ProgramCardSerializer(serializers.ModelSerializer):
     class Meta:
         model = Program
         fields = ["id", "name", "goal_line", "weeks", "days_per_week", "level", "level_label", "is_master",
-                  "archived", "archived_at", "client_count", "clients", "week_pattern", "updated_at", "created_at"]
+                  "archived", "archived_at", "client_count", "clients", "week_pattern", "can_edit", "updated_at",
+                  "created_at"]
         read_only_fields = ["archived_at", "is_master"]
+
+    can_edit = serializers.SerializerMethodField()
 
     def get_archived(self, obj):
         return obj.archived_at is not None
 
+    def get_can_edit(self, obj):
+        """Rename, days, archive, delete (D-39). False without a request (e.g. a background job)."""
+        from .services import can_edit_program
+
+        req = self.context.get("request")
+        return bool(req and can_edit_program(req.user, obj))
+
     def get_clients(self, obj):
         rows = getattr(obj, "_preview_clients", None)
         if rows is None:
-            rows = [a.client for a in obj.assignments.filter(status="active").select_related("client")[:3]]
+            qs = obj.assignments.filter(status="active").select_related("client").order_by("-created_at")
+            req = self.context.get("request")
+            if req and req.user.is_trainer:
+                from apps.clients.services import visible_clients
+
+                qs = qs.filter(client__in=visible_clients(req.user))
+            rows = [a.client for a in qs[:3]]
         return [{"id": str(u.id), "initials": u.initials, "avatar_color": u.avatar_color, "full_name": u.full_name}
                 for u in rows]
 

@@ -119,10 +119,10 @@ Status: **Done** (built and checked in a browser against the board, phone and de
 | MealPlanBuilderMobile | Not started |  |
 | Nutrition | Not started |  |
 | NutritionMobile | Not started |  |
-| ProgramBuilder | Not started |  |
-| ProgramBuilderMobile | Not started |  |
-| Programs | Not started |  |
-| ProgramsMobile | Not started |  |
+| ProgramBuilder | Done | `/programs/<id>` (`app/lib/features/library/programs/builder_*.dart`): week pills, Copy week, 7-column day grid (list under 840 px content), + Day, day panel with exercise table, day / exercise / program ⋯ menus, Edit sets and rest, Edit for this program, Add exercises drawer, Assign modal, Assigned clients drawer, rest day, coach note, Undo toasts. Read-only + Duplicate to edit when the person may not change it (D-39). Checked against the board at 390, 900, 1024, 1440 and in DEBUG mode at 390 and 1024 with no console errors (2026-10-20). Not built yet: Exercise details opens ExerciseDetail (Exercises screens are next). |
+| ProgramBuilderMobile | Done | Same page under 600: day rows with Add, exercise cards with Sets / Reps / RPE / Tempo / Rest chips, sheets for modals. Checked against the board at 390, 900, 1024, 1440 and in DEBUG mode at 390 and 1024 with no console errors (2026-10-20). |
+| Programs | Done | `/programs`: cards (week pattern, clients, edited date), Active / Archived, search, Show more (24 a page), New program modal, card ⋯ Open / Duplicate / Archive / Restore / Delete with Undo. Trainers see only their own clients on cards. Checked 600, 1024, 1440 (2026-10-20). |
+| ProgramsMobile | Done | One column of cards, + button for New program. Checked 390 (2026-10-20). |
 | Settings | Not started |  |
 | SettingsMobile | Not started |  |
 

@@ -207,6 +207,18 @@ abstract final class AppColors {
   static const mbAmberBg = Color(0xFFFEF3E2), mbAmberFg = Color(0xFFB45309), mbPinkBg = Color(0xFFFDECF3), mbPinkFg = Color(0xFFBE185D);
   static const mbTealBg = Color(0xFFE4F5F4), mbTealFg = Color(0xFF0F766E), mbPurpleBg = Color(0xFFF1ECFD), mbPurpleFg = Color(0xFF6D28D9);
   static const mbRed = Color(0xFFC2353A), mbMeFrom = Color(0xFFEEF7FE), mbMeLine = Color(0xFFDCEBFB), mbMeRing = Color(0xFFCFE3FA);
+  // Programs (`.pg-*`): card icon tones t1–t4, training day cell, archived card.
+  static const pgOnBg = Color(0xFFDCE7FD), pgArchBg = Color(0xFFFBFBF9);
+  static const pgTones = [
+    (Color(0xFFEAF0FE), Color(0xFF1D4ED8)),
+    (Color(0xFFF1EAFE), Color(0xFF5B21B6)),
+    (Color(0xFFE8F6EE), Color(0xFF11663D)),
+    (Color(0xFFFFF1E6), Color(0xFF9A3A10)),
+  ];
+  // Program builder (`.pb-*`): selected day, rest day, pill / day hover, superset tag, row and bar.
+  static const pbOnBg = Color(0xFFF5F8FF), pbRestBg = Color(0xFFFAFAF8), pbPillHover = Color(0xFFE6E6E1), pbDayHover = Color(0xFFBDBDB6);
+  static const pbSsTagBg = Color(0xFFF1EAFE), pbSsTagText = Color(0xFF5B21B6), pbSsRow = Color(0xFFFBF9FF), pbSsBar = Color(0xFFA78BFA);
+  static const pbSlotHover = Color(0xFFF7FAFF);
 }
 
 enum Tone { ok, warn, bad, info, neutral }

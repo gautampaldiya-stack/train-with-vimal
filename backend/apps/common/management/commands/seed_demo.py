@@ -61,6 +61,7 @@ class Command(BaseCommand):
         with transaction.atomic():
             vimal = self.people()
             program, plan = self.plans(vimal)
+            self.more_programs(vimal)
             self.history(program, plan)
             self.riya_home()
             self.riya_train()
@@ -240,6 +241,57 @@ class Command(BaseCommand):
             if not MealPlanAssignment.objects.filter(client=c).exists():
                 MealPlanAssignment.objects.create(client=c, plan=plan, start_date=cp.start_date, assigned_by=cp.trainer)
         return program, plan
+
+    # Programs page (board Programs): more master plans so the cards, tabs and Archived have something to show.
+    # [name, goal line, weeks, level, archived, days: (weekday, name, exercises)]; other weekdays are rest days.
+    MORE_PROGRAMS = [
+        ("Hypertrophy · Push / Pull / Legs", "Muscle gain · 5 days", 8, "intermediate", False, [
+            (0, "Push", ["Barbell Bench Press", "Incline Dumbbell Press", "Overhead Press", "Triceps Pushdown"]),
+            (1, "Pull", ["Pull-up", "Bent-over Barbell Row", "Face Pull", "Barbell Curl"]),
+            (2, "Legs", ["Back Squat", "Romanian Deadlift", "Leg Press", "Walking Lunge"]),
+            (4, "Upper", ["Barbell Bench Press", "Seated Cable Row", "Dumbbell Lateral Raise", "Hammer Curl"]),
+            (5, "Lower", ["Hip Thrust", "Goblet Squat", "Walking Lunge", "Plank"])]),
+        ("Beginner Full Body", "General fitness · 3 days", 4, "beginner", False, [
+            (0, "Full body A", ["Goblet Squat", "Push-up", "Lat Pulldown", "Plank"]),
+            (2, "Full body B", ["Romanian Deadlift", "Incline Dumbbell Press", "Seated Cable Row", "Dead Bug"]),
+            (4, "Full body C", ["Leg Press", "Overhead Press", "Single-arm Dumbbell Row", "Hanging Knee Raise"])]),
+        ("Yoga Strength", "Mobility and strength · 3 days", 6, "any", False, [
+            (0, "Strength and balance", ["Goblet Squat", "Push-up", "Plank"]),
+            (2, "Hips and back", ["Hip Thrust", "Dead Bug", "Face Pull"]),
+            (5, "Easy cardio", ["Treadmill Walk"])]),
+        ("Strength Base", "Strength · 4 days", 10, "advanced", False, [
+            (0, "Squat day", ["Back Squat", "Box Squat", "Plank"]),
+            (1, "Bench day", ["Barbell Bench Press", "Bench Dips", "Triceps Pushdown"]),
+            (3, "Pull day", ["Bent-over Barbell Row", "Pull-up", "Barbell Curl"]),
+            (4, "Hinge day", ["Romanian Deadlift", "Kettlebell Swing", "Hanging Knee Raise"])]),
+        ("Shoulder-safe Upper Body", "Rehab · 2 days", 4, "beginner", True, [
+            (1, "Upper A", ["Face Pull", "Incline Dumbbell Press", "Seated Cable Row"]),
+            (4, "Upper B", ["Dumbbell Lateral Raise", "Lat Pulldown", "Push-up"])]),
+    ]
+
+    def more_programs(self, vimal):
+        from apps.training.models import Exercise, Program, ProgramExercise
+        from apps.training.services import new_program
+
+        ex = {e.name: e for e in Exercise.objects.filter(is_builtin=True)}
+        for name, goal, weeks, level, archived, days in self.MORE_PROGRAMS:
+            if Program.all_objects.filter(name=name, is_master=True).exists():
+                continue
+            p = new_program(name=name, weeks=weeks, days_per_week=len(days), goal_line=goal, level=level, actor=vimal)
+            plan = {wd: (n, xs) for wd, n, xs in days}
+            for week in p.program_weeks.all():
+                for day in week.days.all():
+                    d = plan.get(day.weekday)
+                    day.is_rest, day.name = d is None, d[0] if d else "Rest"
+                    day.rest_note = "" if d else "8k steps and 10 minutes of mobility"
+                    day.save(update_fields=["is_rest", "name", "rest_note"])
+                    for order, n in enumerate(x for x in (d[1] if d else []) if x in ex):
+                        e = ex[n]
+                        ProgramExercise.objects.create(day=day, exercise=e, order=order, sets=e.default_sets,
+                                                       reps=e.default_reps, rest_seconds=e.default_rest_seconds,
+                                                       rpe=e.default_rpe, tempo=e.default_tempo)
+            if archived:
+                Program.objects.filter(id=p.id).update(archived_at=timezone.now())
 
     def history(self, program, plan):
         """Weights, finished workouts, eaten meals, water and habits for the last 3 weeks."""

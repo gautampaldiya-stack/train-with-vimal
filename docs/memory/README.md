@@ -41,4 +41,5 @@ Things a new person (or a new Claude session) must know. Update when Gautam deci
 - Gautam (2026-10-17): swaps and supplements are per client (client copy), adherence counts the client's copy (D-37); setup left panel light like other account pages, only steps scroll; every text box has a placeholder; non-gram amounts show grams "2 pieces (80 g)".
 - Gautam (2026-10-17): Trainer Calendar and My profile built (D-38); no AV avatar top right on web pages.
 - Gautam (2026-10-18): he tests in Flutter web DEBUG mode — every screen must be free of debug assertions (no LayoutBuilder under Intrinsic*); amounts read "½ katori · 75 g", never "0.5 × 1 katori".
+- 2026-10-20: Programs page and Program builder built (D-39). A trainer changes only programs they made (or all with "Edit gym templates"), can always Duplicate; cards and Assign show only their own clients.
 - Gautam (2026-10-18): Daily summary design/template and a Gym news (announcements) screen are parked — remember them, build only when he asks (backend sending already exists, D-38).

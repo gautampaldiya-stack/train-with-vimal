@@ -356,7 +356,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `me/workouts/<pk>/state/` | PUT | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/exercise-history/` | GET | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/sync/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
-| `programs/` | GET, POST | ProgramViewSet |  |
+| `programs/` | GET, POST | ProgramViewSet | Programs page (`tab`, `search`, paginated). Cards carry `can_edit`; trainers see only their own clients. POST needs Use templates (D-39). |
 | `programs/<pk>/` | GET, PUT, PATCH, DELETE | ProgramViewSet |  |
 | `programs/<pk>/archive/` | POST | ProgramViewSet |  |
 | `programs/<pk>/assign/` | POST | ProgramViewSet |  |
@@ -364,8 +364,8 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `programs/<pk>/copy-week/` | POST | ProgramViewSet |  |
 | `programs/<pk>/delete-preview/` | GET | ProgramViewSet |  |
 | `programs/<pk>/duplicate/` | POST | ProgramViewSet |  |
-| `programs/<pk>/restore/` | POST | ProgramViewSet |  |
-| `programs/<pk>/structure/` | PUT | ProgramViewSet |  |
+| `programs/<pk>/restore/` | POST | ProgramViewSet | Undo of Delete: brings back the program and its clients (within one hour). |
+| `programs/<pk>/structure/` | PUT | ProgramViewSet | Program builder saves the whole tree. Only who may change it (D-39). |
 | `programs/<pk>/unarchive/` | POST | ProgramViewSet |  |
 | `programs/assign-options/` | GET | ProgramViewSet |  |
-| `programs/counts/` | GET | ProgramViewSet |  |
+| `programs/counts/` | GET | ProgramViewSet | Tab counts + `can: {create, assign, edit_all}` (D-39). |

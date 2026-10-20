@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.core.cache import cache
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
 from django.shortcuts import get_object_or_404
@@ -18,6 +19,7 @@ from apps.common.mixins import SoftDeleteViewMixin
 from apps.common.permissions import HasTrainerPermission, IsClient, IsStaff
 
 from . import services
+from .services import can_edit_program
 from .models import (
     AssignmentStatus,
     Exercise,
@@ -161,11 +163,28 @@ class ProgramViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
         user = request.user
         if user.is_trainer and request.method not in ("GET", "HEAD", "OPTIONS"):
             tp = user.trainer_profile
-            needed = "training.use_templates" if self.action in ("create", "duplicate") else "training.edit_templates"
-            if self.action == "assign":
-                needed = "training.programs_edit"
-            if not tp.has_perm(needed):
+            needed = {"create": "training.use_templates", "duplicate": "training.use_templates",
+                      "assign": "training.programs_edit"}.get(self.action)
+            if needed and not tp.has_perm(needed):
                 raise PermissionDenied("Your access does not include this. Ask Vimal for more access.")
+
+    def check_object_permissions(self, request, obj):
+        """Changing a master plan (rename, days, archive, delete) needs `can_edit_program` (D-39)."""
+        super().check_object_permissions(request, obj)
+        if request.method not in ("GET", "HEAD", "OPTIONS") and self.action not in ("duplicate", "assign"):
+            if not can_edit_program(request.user, obj):
+                raise PermissionDenied("Only Vimal or a trainer with \"Edit gym templates\" can change this program. "
+                                       "Duplicate it to make your own.")
+
+    def get_serializer_context(self):
+        return {**super().get_serializer_context(), "request": self.request}
+
+    def _visible_assignments(self):
+        """Trainers see only their own clients on the cards and in counts (golden rule)."""
+        qs = ProgramAssignment.objects.filter(status="active")
+        if self.request.user.is_trainer:
+            qs = qs.filter(client__in=visible_clients(self.request.user))
+        return qs
 
     def get_queryset(self):
         qs = Program.objects.filter(is_master=True)
@@ -191,9 +210,10 @@ class ProgramViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
         page = self.paginate_queryset(qs)
         rows = page if page is not None else list(qs)
         ids = [p.id for p in rows]
-        previews = {}
-        for a in (ProgramAssignment.objects.filter(program_id__in=ids, status="active")
+        previews, counts = {}, {}
+        for a in (self._visible_assignments().filter(program_id__in=ids)
                   .select_related("client").order_by("program_id", "-created_at")):
+            counts[a.program_id] = counts.get(a.program_id, 0) + 1
             lst = previews.setdefault(a.program_id, [])
             if len(lst) < 3:
                 lst.append(a.client)
@@ -203,21 +223,32 @@ class ProgramViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
         for p in rows:
             p._preview_clients = previews.get(p.id, [])
             p._week1 = week1.get(p.id, {})
-        data = ProgramCardSerializer(rows, many=True).data
+            p.n_clients = counts.get(p.id, 0)
+        data = ProgramCardSerializer(rows, many=True, context=self.get_serializer_context()).data
         return self.get_paginated_response(data) if page is not None else Response(data)
 
     @action(detail=False)
     def counts(self, request):
         qs = Program.objects.filter(is_master=True)
+        u = request.user
+        can = lambda k: u.is_admin or (u.is_trainer and u.trainer_profile.has_perm(k))  # noqa: E731
         return Response({"active": qs.filter(archived_at__isnull=True).count(),
-                         "archived": qs.filter(archived_at__isnull=False).count()})
+                         "archived": qs.filter(archived_at__isnull=False).count(),
+                         # what the page offers this person (D-39): New program / Duplicate, Assign
+                         "can": {"create": can("training.use_templates"), "assign": can("training.programs_edit"),
+                                 "edit_all": can("training.edit_templates")}})
+
+    def retrieve(self, request, *args, **kwargs):
+        p = self.get_object()
+        p.n_clients = self._visible_assignments().filter(program=p).count()
+        return Response(ProgramDetailSerializer(p, context=self.get_serializer_context()).data)
 
     def create(self, request, *args, **kwargs):
         s = ProgramCreateSerializer(data=request.data)
         s.is_valid(raise_exception=True)
         p = services.new_program(actor=request.user, **s.validated_data)
         activity_log("created a program", "plan", actor=request.user, target=p, target_label=p.name)
-        return Response(ProgramDetailSerializer(p).data,
+        return Response(ProgramDetailSerializer(p, context=self.get_serializer_context()).data,
                         status=status.HTTP_201_CREATED)
 
     def partial_update(self, request, *args, **kwargs):
@@ -229,18 +260,39 @@ class ProgramViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
         if "name" in s.validated_data and old != p.name:
             activity_log("renamed a program", "plan", actor=request.user, target=p, target_label=p.name,
                          change=(old, p.name))
-        return Response(ProgramCardSerializer(p).data)
+        return Response(ProgramCardSerializer(p, context=self.get_serializer_context()).data)
 
     def destroy(self, request, *args, **kwargs):
         p = self.get_object()
-        n = ProgramAssignment.objects.filter(program=p, status="active").count()
+        ended = list(ProgramAssignment.objects.filter(program=p, status__in=["active", "up_next"])
+                     .values_list("id", "status"))
+        n = sum(1 for _, st in ended if st == "active")
         with transaction.atomic():
             p.soft_delete()
-            ProgramAssignment.objects.filter(program=p, status__in=["active", "up_next"]).update(
+            ProgramAssignment.objects.filter(id__in=[i for i, _ in ended]).update(
                 status=AssignmentStatus.ENDED, end_date=timezone.localdate())
+        # Undo (restore) puts these clients back on the plan.
+        cache.set(f"program-unassigned:{p.id}", [(str(i), st) for i, st in ended], 60 * 60)
         activity_log("deleted a program", "plan", actor=request.user, target=p, target_label=p.name,
                      meta={"unassigned": n})
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=["post"])
+    def restore(self, request, pk=None):
+        """The delete toast's Undo: the program comes back and the clients it was taken from follow it again."""
+        p = Program.all_objects.filter(pk=pk, is_master=True, deleted_at__isnull=False).first()
+        if p is None:
+            return Response({"error": {"code": "not_found", "message": "Nothing to restore."}}, status=404)
+        self.check_object_permissions(request, p)
+        ended = cache.get(f"program-unassigned:{p.id}") or []
+        with transaction.atomic():
+            p.restore()
+            for aid, st in ended:
+                ProgramAssignment.objects.filter(id=aid, program=p, status=AssignmentStatus.ENDED).update(
+                    status=st, end_date=None)
+        cache.delete(f"program-unassigned:{p.id}")
+        p.n_clients = self._visible_assignments().filter(program=p).count()
+        return Response(ProgramCardSerializer(p, context=self.get_serializer_context()).data)
 
     @action(detail=True, url_path="delete-preview")
     def delete_preview(self, request, pk=None):
@@ -250,7 +302,7 @@ class ProgramViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def duplicate(self, request, pk=None):
         p = services.duplicate_program(self.get_object(), actor=request.user)
-        return Response(ProgramCardSerializer(p).data, status=status.HTTP_201_CREATED)
+        return Response(ProgramCardSerializer(p, context=self.get_serializer_context()).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["post"])
     def archive(self, request, pk=None):
@@ -258,14 +310,14 @@ class ProgramViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
         p.archived_at = timezone.now()
         p.save(update_fields=["archived_at", "updated_at"])
         activity_log("archived a program", "plan", actor=request.user, target=p, target_label=p.name)
-        return Response(ProgramCardSerializer(p).data)
+        return Response(ProgramCardSerializer(p, context=self.get_serializer_context()).data)
 
     @action(detail=True, methods=["post"])
     def unarchive(self, request, pk=None):
         p = self.get_object()
         p.archived_at = None
         p.save(update_fields=["archived_at", "updated_at"])
-        return Response(ProgramCardSerializer(p).data)
+        return Response(ProgramCardSerializer(p, context=self.get_serializer_context()).data)
 
     @extend_schema(request=StructureSerializer)
     @action(detail=True, methods=["put"])
@@ -275,7 +327,7 @@ class ProgramViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
         s.is_valid(raise_exception=True)
         services.sync_structure(p, s.validated_data["weeks"])
         p = Program.objects.prefetch_related("program_weeks__days__exercises__exercise").get(id=p.id)
-        return Response(ProgramDetailSerializer(p).data)
+        return Response(ProgramDetailSerializer(p, context=self.get_serializer_context()).data)
 
     @action(detail=True, methods=["post"], url_path="copy-week")
     def copy_week(self, request, pk=None):
@@ -288,7 +340,7 @@ class ProgramViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
             raise serializers.ValidationError({"week": ["No such week."]})
         services.copy_week(p, n)
         p = Program.objects.prefetch_related("program_weeks__days__exercises__exercise").get(id=p.id)
-        return Response(ProgramDetailSerializer(p).data)
+        return Response(ProgramDetailSerializer(p, context=self.get_serializer_context()).data)
 
     @action(detail=True)
     def clients(self, request, pk=None):
@@ -481,7 +533,7 @@ class ClientProgramViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
                 "program_weeks__days__exercises__exercise").first() if pid else None
             if p is None:
                 raise serializers.ValidationError({key: ["Pick a plan."]})
-            out.append(ProgramDetailSerializer(p).data)
+            out.append(ProgramDetailSerializer(p, context=self.get_serializer_context()).data)
         return Response({"a": out[0], "b": out[1]})
 
 
