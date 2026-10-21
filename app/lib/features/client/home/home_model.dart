@@ -242,7 +242,7 @@ class HomeSupplement {
   final bool due;
   bool taken;
 
-  static const _order = ['breakfast', 'morning', 'post_workout', 'any', 'night', 'before_bed'];
+  static const _order = ['breakfast', 'morning', 'pre_workout', 'post_workout', 'any', 'night', 'before_bed'];
   int get order => _order.indexOf(timing);
 
   /// "1 tablet · night, before bed", like the board.
@@ -250,6 +250,7 @@ class HomeSupplement {
     final when = switch (timing) {
       'breakfast' => 'with breakfast',
       'morning' => 'morning',
+      'pre_workout' => 'before training',
       'post_workout' => 'after training',
       'night' => 'night',
       'before_bed' => 'night, before bed',

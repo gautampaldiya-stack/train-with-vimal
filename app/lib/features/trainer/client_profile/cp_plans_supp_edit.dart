@@ -37,13 +37,14 @@ class SupplementEditor extends StatefulWidget {
 const _timings = [
   ('breakfast', 'Breakfast'),
   ('morning', 'Morning'),
+  ('pre_workout', 'Pre-workout'),
   ('post_workout', 'Post-workout'),
   ('any', 'Any time'),
   ('night', 'Night'),
   ('before_bed', 'Before bed'),
 ];
 
-String _timingLabel(String k) => _timings.firstWhere((t) => t.$1 == k, orElse: () => _timings[3]).$2;
+String _timingLabel(String k) => _timings.firstWhere((t) => t.$1 == k, orElse: () => _timings[4]).$2;
 
 class _SupplementEditorState extends State<SupplementEditor> {
   CpController get c => widget.c;

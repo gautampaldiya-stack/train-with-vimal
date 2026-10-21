@@ -20,6 +20,7 @@ import '../features/client/checkins/checkins_screen.dart';
 import '../features/client/food/food_log_screen.dart';
 import '../features/client/food/food_screen.dart';
 import '../features/client/habits/habits_screen.dart';
+import '../features/library/habits/habits_screen.dart';
 import '../features/client/progress/progress_pages.dart';
 import '../features/client/progress/progress_screen.dart';
 import '../features/client/home/home_screen.dart';
@@ -124,6 +125,7 @@ final Map<String, Widget Function(GoRouterState)> trainerScreens = {
   '/programs/:id': (st) => ProgramBuilderScreen(key: ValueKey(st.uri.toString()), id: st.pathParameters['id']!, open: st.uri.queryParameters['open']),
   '/nutrition': (st) => NutritionScreen(tab: st.uri.queryParameters['tab']),
   '/nutrition/:id': (st) => MealPlanBuilderScreen(key: ValueKey(st.uri.toString()), id: st.pathParameters['id']!, open: st.uri.queryParameters['open']),
+  '/habits': (st) => HabitsScreen(tab: st.uri.queryParameters['tab']),
   '/exercises': (_) => const ExerciseLibraryScreen(),
   '/exercises/:id': (st) {
     final id = st.pathParameters['id']!;
@@ -186,6 +188,8 @@ final appRouter = GoRouter(
       routes: [
         GoRoute(
           path: '/:section',
+          // Library pages with an editor in the page (Habits & supplements) ask before they close too.
+          onExit: (context, _) => LeaveGuard.ask(context),
           pageBuilder: (_, st) => NoTransitionPage(child: _screen('/${st.pathParameters['section']}', st)),
           routes: [
             GoRoute(

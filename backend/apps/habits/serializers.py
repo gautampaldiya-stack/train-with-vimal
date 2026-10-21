@@ -50,6 +50,8 @@ class HabitSerializer(serializers.ModelSerializer):
             target = attrs.get("target", inst.target if inst else None)
             if not target or target < 1:
                 raise serializers.ValidationError({"target": ["A counter needs a target."]})
+            if target > 100000:
+                raise serializers.ValidationError({"target": ["Keep the target under 100,000."]})
         else:
             attrs["target"] = None
         if freq == Habit.Frequency.DAYS:

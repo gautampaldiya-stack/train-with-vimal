@@ -330,10 +330,10 @@ class _NutritionScreenState extends State<NutritionScreen> {
           if (plansTab) ...[
             if (canFoods) AppButton('Create food', icon: AppIcons.bowl, iconOnly: phone, tooltip: phone ? 'Create food' : null, onPressed: () => _openFood()),
             if (canCreate)
-              phone ? _PlusButton(label: 'New plan', onTap: () => showNewMealPlan(context)) : AppButton.primary('New plan', icon: AppIcons.plus, onPressed: () => showNewMealPlan(context)),
+              phone ? LibPlusButton(label: 'New plan', onTap: () => showNewMealPlan(context)) : AppButton.primary('New plan', icon: AppIcons.plus, onPressed: () => showNewMealPlan(context)),
           ] else if (canFoods) ...[
             AppButton('Import from Excel', icon: AppIcons.importFile, iconOnly: phone, tooltip: phone ? 'Import from Excel' : null, onPressed: _import),
-            phone ? _PlusButton(label: 'Create food', onTap: () => _openFood()) : AppButton.primary('Create food', icon: AppIcons.plus, onPressed: () => _openFood()),
+            phone ? LibPlusButton(label: 'Create food', onTap: () => _openFood()) : AppButton.primary('Create food', icon: AppIcons.plus, onPressed: () => _openFood()),
           ],
         ],
       ),
@@ -537,31 +537,6 @@ class _NutritionScreenState extends State<NutritionScreen> {
   Widget _foodList() => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         for (final (i, f) in foods.indexed) _FoodItem(f, per100: per100, last: i == foods.length - 1, onOpen: () => _openFood(f), onMenu: (a) => _foodMenu(a, f)),
       ]);
-}
-
-/// Phone header: the blue + button (`.btn.pri` icon only, 36).
-class _PlusButton extends StatelessWidget {
-  const _PlusButton({required this.label, required this.onTap});
-  final String label;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => AppTooltip(
-        message: label,
-        child: Semantics(
-          button: true,
-          label: label,
-          child: Hover(
-            onTap: onTap,
-            builder: (_, h, _) => Container(
-              width: 36,
-              height: 36,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(color: h ? AppColors.accentText : AppColors.accent, borderRadius: AppRadius.all(AppRadius.btn)),
-              child: const AppIcon(AppIcons.plus, size: 18, color: AppColors.white),
-            ),
-          ),
-        ),
-      );
 }
 
 /// `.nu-pc`: icon, name, "Diet · 4 meals · 10 meal options", ⋯; kcal + Published / Draft; macro bar and legend;

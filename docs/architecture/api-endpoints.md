@@ -192,6 +192,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `habits/<pk>/assign/` | GET, POST | HabitViewSet |  |
 | `habits/<pk>/duplicate/` | POST | HabitViewSet |  |
 | `habits/<pk>/restore/` | POST | HabitViewSet |  |
+| `habits/counts/` | GET | HabitViewSet | Habits & supplements page: tab counts (`habits`, `supplements`) and `can` {edit, assign_habits, assign_supplements} (D-39). |
 | `me/habits/` | GET | MyHabitsView | Habits & supplements page (?date=): the day, its Mon–Sun week grid (`week`), start dates, supplement groups. |
 | `me/habits/<uuid:habit_id>/log/` | POST | MyHabitLogView | POST {value} for a counter (steps / glasses / minutes) or {done} for a tick. |
 | `me/supplements/<int:item_id>/` | POST, PATCH | MySupplementView | POST take / untake (Undo), PATCH stock. |

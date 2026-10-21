@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-21 · Habits & supplements page; Pre-workout supplement timing
+- **Pehle:** Trainer ke Library me "Habits & supplements" par "This page is on the way" aata tha. Supplement timing me Pre-workout nahi tha (board me hai).
+- **Ab:** `/habits` page board jaisa: Habits (list, editor, Save / Discard, client preview, Assigned to, Assign, Duplicate / Delete + Undo, New habit) aur Supplements (plans, dose and timing modal, quick add, Custom, note, Client sees, Rename / Duplicate / Delete + Undo, New plan). Phone par list → sheet. Unsaved changes ke saath page chhodne ya doosra habit kholne par pehle poochta hai. Daily target max 100,000. Nayi timing `pre_workout` (client app me "before training"). `habits/counts/` batata hai page par kya kar sakte hain.
+- **Kyun:** Gautam: trainer ke Library pages poore karo (2026-10-21).
+- **Updated:** app/lib/features/library/habits/*, app/lib/app/router.dart (onExit on section pages), core/widgets/tabs.dart (byLabel), backend/apps/habits (Timing, counts, target limit, migration 0004), notifications/reminders.py, tests/test_habits_library.py, docs/screens/status.md, docs/architecture/*
+
 ### 2026-10-22 · Meal builder: alternatives in a drawer, smaller amount stepper
 - **Pehle:** Portion panel me "Add alternative" ek chhota popover kholta tha; Amount ka − n + poori width me bahut lamba tha.
 - **Ab:** "Pick an alternative" drawer khulta hai (Same group / All foods, match %), phone par sheet. Amount stepper 132 wide, unit picker baaki jagah. Client profile ke meal editor me bhi same stepper.

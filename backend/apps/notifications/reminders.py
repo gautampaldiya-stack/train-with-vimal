@@ -140,7 +140,7 @@ def checkin_reminders():
 
 # ---------------------------------------------------------------- water and supplements
 WATER_HOURS = (10, 12, 14, 16, 18, 20)  # "every 2 hours when you are behind"
-SUPP_TIMES = {"breakfast": 8, "morning": 8, "post_workout": None, "any": 12, "night": 21, "before_bed": 22}
+SUPP_TIMES = {"breakfast": 8, "morning": 8, "pre_workout": None, "post_workout": None, "any": 12, "night": 21, "before_bed": 22}
 
 
 @shared_task

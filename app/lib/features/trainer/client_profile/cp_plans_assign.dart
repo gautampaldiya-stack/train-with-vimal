@@ -623,7 +623,7 @@ class _Assign extends ChangeNotifier {
     switch (slot) {
       case 'supplements':
         final items = [for (final i in (p['items'] as List?) ?? const []) i as Map];
-        const t = {'breakfast': 'Breakfast', 'morning': 'Morning', 'post_workout': 'After workout', 'any': 'Any time', 'night': 'Night', 'before_bed': 'Before bed'};
+        const t = {'breakfast': 'Breakfast', 'morning': 'Morning', 'pre_workout': 'Before workout', 'post_workout': 'After workout', 'any': 'Any time', 'night': 'Night', 'before_bed': 'Before bed'};
         final cur = current.isEmpty || isCur ? <String>{} : {for (final i in (current.first['items'] as List)) '${i['name']}'};
         final now = {for (final i in items) '${i['name']}'};
         return _Pv('${p['name']}', '${p['note'] ?? ''}'.ifEmpty('${p['client_count'] ?? 0} clients on it'), [

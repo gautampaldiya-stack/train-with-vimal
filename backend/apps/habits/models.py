@@ -108,6 +108,7 @@ class SupplementPlan(SoftDeleteModel):
 class Timing(models.TextChoices):
     BREAKFAST = "breakfast", "Breakfast"
     MORNING = "morning", "Morning"
+    PRE_WORKOUT = "pre_workout", "Pre-workout"
     POST_WORKOUT = "post_workout", "Post-workout"
     ANY = "any", "Any time"
     NIGHT = "night", "Night"

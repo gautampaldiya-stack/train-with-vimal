@@ -228,6 +228,16 @@ abstract final class AppColors {
   // Exercise pages (`.ex-*`, `.media .play`): video length pill, YouTube pill, primary muscle block, body map box.
   static const playBadge = Color(0xB8171717), ytRed = Color(0xFFE02424);
   static const exPriBg = Color(0xFFEEF3FE), exPriLine = Color(0xFFC7D7FB);
+  // Habits & supplements (`.hb-*`): icon tones t1–t4 (bg, fg), picked row line, unsaved dot, save bar, phone frame,
+  // preview card done line.
+  static const hbTones = [
+    (Color(0xFFE0EAFF), Color(0xFF1E40AF)),
+    (Color(0xFFE8F6EE), Color(0xFF11663D)),
+    (Color(0xFFFFF1E6), Color(0xFF9A3A10)),
+    (Color(0xFFF1EAFE), Color(0xFF5B21B6)),
+  ];
+  static const hbOnLine = Color(0xFFD5E1FB), hbDot = Color(0xFFD97706), hbSaveBg = Color(0xFFFBFBF9), hbPhone = Color(0xFFF4F4F1);
+  static const hbDoneLine = Color(0xFFBFE5CF), hbIcoHover = Color(0xFFBDBDB6), hbDayOff = Color(0xFFB5B5B0);
 }
 
 enum Tone { ok, warn, bad, info, neutral }

@@ -729,7 +729,7 @@ Constraints: uniq_habit_log
 | `name` | CharField |  |
 | `dose` | CharField |  |
 | `how` | CharField |  |
-| `timing` | CharField | choices: breakfast, morning, post_workout, any, night, before_bed |
+| `timing` | CharField | choices: breakfast, morning, pre_workout, post_workout, any, night, before_bed |
 | `days` | ArrayField |  |
 | `with_food` | BooleanField |  |
 | `order` | PositiveSmallIntegerField |  |

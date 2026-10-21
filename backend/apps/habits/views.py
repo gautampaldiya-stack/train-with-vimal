@@ -93,6 +93,16 @@ class HabitViewSet(_StaffWrite, SoftDeleteViewMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         return Habit.objects.annotate(n_clients=Count("assignments", filter=Q(assignments__active=True)))
 
+    @action(detail=False)
+    def counts(self, request):
+        """Tab counts and what the page offers this person: edit (New habit / plan, Save, Duplicate, Delete) and
+        Assign, per tab (D-39)."""
+        u = request.user
+        can = lambda k: u.is_admin or (u.is_trainer and u.trainer_profile.has_perm(k))  # noqa: E731
+        return Response({"habits": Habit.objects.count(), "supplements": SupplementPlan.objects.filter(is_master=True).count(),
+                         "can": {"edit": can("training.edit_templates"), "assign_habits": can(HabitViewSet.assign_permission),
+                                 "assign_supplements": can(SupplementPlanViewSet.assign_permission)}})
+
     def perform_create(self, serializer):
         h = serializer.save(created_by=self.request.user)
         activity_log("created a habit", "plan", actor=self.request.user, target=h, target_label=h.name)

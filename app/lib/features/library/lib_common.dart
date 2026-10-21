@@ -80,6 +80,31 @@ class LibStepper extends StatelessWidget {
       );
 }
 
+/// Phone header: the blue + button (`.btn.pri` icon only, 36).
+class LibPlusButton extends StatelessWidget {
+  const LibPlusButton({super.key, required this.label, required this.onTap});
+  final String label;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => AppTooltip(
+        message: label,
+        child: Semantics(
+          button: true,
+          label: label,
+          child: Hover(
+            onTap: onTap,
+            builder: (_, h, _) => Container(
+              width: 36,
+              height: 36,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(color: h ? AppColors.accentText : AppColors.accent, borderRadius: AppRadius.all(AppRadius.btn)),
+              child: const AppIcon(AppIcons.plus, size: 18, color: AppColors.white),
+            ),
+          ),
+        ),
+      );
+}
+
 /// Bumped when the Program builder closes, so the Programs page (still alive under it) reloads its cards.
 final programsChanged = ValueNotifier<int>(0);
 

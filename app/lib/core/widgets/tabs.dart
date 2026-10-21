@@ -12,18 +12,21 @@ class TabItem<T> {
 
 /// Segmented `.tabs`: sub bg, padding 4, tab 32 high radius 6, active white + line ring.
 class SegmentedTabs<T> extends StatelessWidget {
-  const SegmentedTabs({super.key, required this.items, required this.value, required this.onChanged, this.expand = false, this.height = 32});
+  const SegmentedTabs({super.key, required this.items, required this.value, required this.onChanged, this.expand = false, this.height = 32, this.byLabel = false});
   final List<TabItem<T>> items;
   final T value;
   final ValueChanged<T> onChanged;
   final bool expand;
+
+  /// With [expand]: a longer label gets a wider tab ("Times per week" next to "Daily"), as the boards' flex tabs.
+  final bool byLabel;
   final double height;
 
   @override
   Widget build(BuildContext context) {
     final tabs = [
       for (final it in items)
-        _wrap(Hover(
+        _wrap(it, Hover(
           onTap: () => onChanged(it.value),
           builder: (context, h, _) {
             final on = it.value == value;
@@ -56,7 +59,7 @@ class SegmentedTabs<T> extends StatelessWidget {
     );
   }
 
-  Widget _wrap(Widget w) => expand ? Expanded(child: w) : w;
+  Widget _wrap(TabItem<T> it, Widget w) => expand ? Expanded(flex: byLabel ? it.label.length + 8 : 1, child: w) : w;
 }
 
 /// Underline `.utabs`: 1px line below, gap 20, active dark text + 2px underline. Scrolls sideways when the tabs
