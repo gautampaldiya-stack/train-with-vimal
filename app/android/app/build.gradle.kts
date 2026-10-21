@@ -6,7 +6,9 @@ plugins {
 
 android {
     namespace = "com.trainwithvimal.twv"
-    compileSdk = flutter.compileSdkVersion
+    // permission_handler_android 14 is built against Android 37, so the app must compile against 37 too
+    // (compileSdk only decides which APIs the code can see; targetSdk and minSdk stay as Flutter sets them).
+    compileSdk = maxOf(flutter.compileSdkVersion, 37)
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

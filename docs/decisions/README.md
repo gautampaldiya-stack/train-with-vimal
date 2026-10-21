@@ -43,4 +43,5 @@ One file per decision. Add a new file for every new decision (next number), and 
 | [D-38](0038-trainer-calendar-and-me.md) | Trainer Calendar (week / day, sessions, working hours) and My profile (6 tabs), numbers match the dashboard | 2026-10-17 |
 | [D-39](0039-programs-library-and-edit-rights.md) | Programs page + Program builder; a trainer changes only programs they made (or all with Edit gym templates), sees only own clients, Delete has Undo | 2026-10-20 |
 | [D-40](0040-exercise-library-rules.md) | Exercises: built-in read-only (Duplicate to edit), custom needs "Add custom exercises", cover upload, YouTube check, Add to program in every week, trainer sees own client counts | 2026-10-20 |
+| [D-41](0041-login-panel-and-phone-testing.md) | Web login side panel 40 / 60 with a faded blue; help sheets open at once; real-phone testing (laptop IP, cleartext in debug); Android compileSdk 37 | 2026-10-21 |
 | [D-31](0031-trainer-activity-and-fixes.md) | Trainer Activity card, stat cards fill the row, menus fit the screen, readable guides | 2026-10-16 |

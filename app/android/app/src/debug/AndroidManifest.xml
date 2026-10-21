@@ -4,4 +4,7 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Debug builds talk to the laptop's Django server over plain http (http://<laptop-ip>:8000). Android blocks
+         plain http unless the app allows it; release builds keep it blocked and use https. -->
+    <application android:usesCleartextTraffic="true"/>
 </manifest>

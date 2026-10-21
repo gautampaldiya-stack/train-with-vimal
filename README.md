@@ -62,6 +62,22 @@ flutter run -d chrome --dart-define=API_URL=http://localhost:8000
 flutter run -d emulator-5554 --dart-define=API_URL=http://10.0.2.2:8000   # Android emulator
 ```
 
+### On a real phone (same wifi as the laptop)
+`10.0.2.2` works only inside the Android emulator. A real phone must use the laptop's wifi IP:
+1. Find the laptop IP: Windows `ipconfig` → "Wireless LAN adapter Wi-Fi" → IPv4 Address (for example `192.168.1.5`).
+2. Start the API so the phone can reach it (listen on every network, not only on the laptop itself):
+   `uvicorn config.asgi:application --reload --host 0.0.0.0 --port 8000`
+   (or `python manage.py runserver 0.0.0.0:8000`). Dev settings accept any host name, so `ALLOWED_HOSTS` needs no change.
+3. Check from the phone's browser: `http://192.168.1.5:8000/api/docs/` should open. If it does not, Windows Firewall is
+   blocking it: allow Python on **Private** networks (the pop-up when the server starts), or run once in an admin
+   PowerShell: `New-NetFirewallRule -DisplayName "TWV API 8000" -Direction Inbound -Protocol TCP -LocalPort 8000 -Action Allow -Profile Private`.
+   The wifi must be set to **Private** network in Windows (Settings → Network → Wi-Fi → Network profile type).
+4. Run the app: `flutter run --dart-define=API_URL=http://192.168.1.5:8000`.
+
+Debug and profile builds allow plain `http` to the laptop (`android/app/src/debug|profile/AndroidManifest.xml`);
+release builds need `https`. The app compiles against Android SDK 37 because `permission_handler` needs it
+(`android/app/build.gradle.kts`); Android Studio downloads SDK Platform 37 the first time if it is missing.
+
 ## Branches
 `working` (daily work) → `develop` (testing / staging) → `main` (production).
 

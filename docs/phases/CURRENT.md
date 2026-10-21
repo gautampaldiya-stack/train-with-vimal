@@ -2,9 +2,10 @@
 
 Updated with every push, so anyone (another Claude session, local Claude Code, a developer) can pick up from here.
 
-**Last updated:** 2026-10-20 · branch `working`
+**Last updated:** 2026-10-21 · branch `working`
 
 ## Done
+- 2026-10-21: fixes from Gautam's phone test (D-41): Android compileSdk 37, real-phone login (laptop IP, http in debug, any host in dev, README steps), web auth side panel 40 / 60 with a faded blue, help sheets open at once. Android build not verified here (no Android SDK in this environment). **Next: Nutrition & foods** (with MealPlanBuilder), then Habits & supplements, Content library, then admin.
 - 2026-10-20 (night): Exercises built — library, Exercise page, Add / Edit exercise (+ mobile) (D-40: built-in read-only, custom needs "Add custom exercises", cover upload, YouTube check, Add to program in every week). Tests 210 pass. **Next: Nutrition & foods** (with MealPlanBuilder), then Habits & supplements, Content library (the Pick a video modal's "Upload to library" opens it), then admin (admin has no screens in the router yet; add the library pages to an admin map then). Parked: Daily summary design, Gym news admin screen.
 - 2026-10-20 (evening): Programs page + Program builder built (D-39: who may change a program, trainer sees only own clients, Delete Undo). Tests 203 pass. **Next: Exercises** (ExerciseLibrary, ExerciseDetail, ExerciseAdd + mobile; builder's "Exercise details" opens it), then Nutrition & foods (with MealPlanBuilder), Habits & supplements, Content library, then admin (admin has no screens in the router yet; add the library pages to an admin map then). Parked: Daily summary design, Gym news admin screen.
 - 2026-10-20 (later): TrainerMoreMobile built (profile card, Library rows, Log out); Check-ins badge loads on every trainer page. **Next: the library screens** (Programs, Exercises, Nutrition & foods, Habits & supplements, Content library), then admin.

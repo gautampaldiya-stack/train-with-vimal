@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -62,8 +64,8 @@ const kPanelWidth = 900.0;
 bool authSplit(BuildContext context) => MediaQuery.sizeOf(context).width >= kSplitWidth;
 bool authPanel(BuildContext context) => MediaQuery.sizeOf(context).width >= kPanelWidth;
 
-/// Side panel width: 520 on wide screens, narrower on small laptops and tablet landscape.
-double _panelW(BuildContext context) => (MediaQuery.sizeOf(context).width * .4).clamp(360.0, 520.0);
+/// Side panel: 40 % of the window, the page gets the other 60 % (Gautam, 2026-10-21). At least 360 wide.
+double _panelW(BuildContext context) => math.max(MediaQuery.sizeOf(context).width * .4, 360.0);
 
 /// Panel picture: 260 tall, smaller on short laptop screens so the panel text still fits.
 double _illH(BuildContext context, double rest) => (MediaQuery.sizeOf(context).height - rest).clamp(120.0, 260.0);
@@ -190,13 +192,13 @@ class AuthFrame extends StatelessWidget {
             if (authPanel(context))
             SizedBox(
               width: _panelW(context),
-              child: plain != null
+              child: _PanelBg(child: plain != null
                   ? _PlainPanel(plain!)
                   : list != null
                       ? _ListPanel(list!)
                       : brand == BrandKind.steps && steps != null
                           ? _StepsPanel(steps!)
-                          : const _SoftPanel(),
+                          : const _SoftPanel()),
             ),
             Expanded(
               child: LayoutBuilder(
@@ -247,6 +249,28 @@ class AuthFrame extends StatelessWidget {
       );
 }
 
+/// The side panel's blue: stronger in the middle, fading into the page colour on every side, so the panel has no
+/// hard edge against the form.
+class _PanelBg extends StatelessWidget {
+  const _PanelBg({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget fade(Alignment from, Alignment to) => DecoratedBox(
+          decoration: BoxDecoration(gradient: LinearGradient(begin: from, end: to, colors: [AppColors.caWebBg, AppColors.caWebBg.withValues(alpha: 0)])),
+        );
+    return Stack(children: [
+      Positioned.fill(child: Container(color: AppColors.brandPanel)),
+      Positioned(left: 0, top: 0, bottom: 0, width: 48, child: fade(Alignment.centerLeft, Alignment.centerRight)),
+      Positioned(right: 0, top: 0, bottom: 0, width: 160, child: fade(Alignment.centerRight, Alignment.centerLeft)),
+      Positioned(left: 0, right: 0, top: 0, height: 72, child: fade(Alignment.topCenter, Alignment.bottomCenter)),
+      Positioned(left: 0, right: 0, bottom: 0, height: 72, child: fade(Alignment.bottomCenter, Alignment.topCenter)),
+      Positioned.fill(child: child),
+    ]);
+  }
+}
+
 class _Legal extends StatelessWidget {
   const _Legal({this.short = false});
   final bool short;
@@ -286,7 +310,6 @@ class _SoftPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        color: AppColors.brandSoft,
         padding: _panelPad(context),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 28, children: [
           const _BrandHead(),
@@ -359,7 +382,6 @@ class _StepsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        color: AppColors.brandSoft,
         padding: _panelPad(context),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 22, children: [
           const Align(alignment: Alignment.centerLeft, child: _BrandHead()),
@@ -572,7 +594,6 @@ class _AccountPanel extends StatelessWidget {
   final (String, String)? card;
   @override
   Widget build(BuildContext context) => Container(
-        color: AppColors.brandSoft,
         padding: _panelPad(context),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 28, children: [
           const Align(alignment: Alignment.centerLeft, child: _BrandHead()),

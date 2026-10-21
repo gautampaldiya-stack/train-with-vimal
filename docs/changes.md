@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-21 · Android build, login from a real phone, login side panel 40 / 60, help sheet speed
+- **Pehle:** Android build `checkDebugAarMetadata` par fail hota tha (permission_handler ko compileSdk 37 chahiye, app 36 par tha). Phone par app "offline" dikhata tha: 10.0.2.2 sirf emulator ke liye hai, Android debug build plain http block karta tha, aur dev server sirf localhost par sunta tha. Web login pages ka left panel max 520 wide tha, halka flat blue. "Need help?" sheet `gym/` ka jawab aane ke baad hi khulti thi, isliye der se khulti thi.
+- **Ab:** compileSdk 37 (targetSdk / minSdk same). Debug / profile build me http allowed; dev settings koi bhi host accept karti hain; README me real phone ke steps (laptop IP, `--host 0.0.0.0`, Windows Firewall). Left panel window ka 40 %, form wala hissa 60 %; panel ka blue gehra aur chaaron taraf fade hota hai. Help / support sheet turant khulti hai, number aur email baad me aate hain.
+- **Kyun:** Gautam ne phone par chalaya aur ye issues bheje (2026-10-21).
+- **Updated:** app/android/app/build.gradle.kts, app/android/gradle.properties, app/android/app/src/debug|profile/AndroidManifest.xml, backend/config/settings/dev.py, README.md, app/lib/features/auth/auth_frame.dart, sheets.dart, app/lib/core/theme/colors.dart, docs/memory/README.md, docs/phases/CURRENT.md · Decision D-41
+
 ### 2026-10-20 · Exercise library, Exercise page and Add / Edit exercise built
 - **Pehle:** Library → Exercises "This page is on the way" dikhata tha. Program builder ka "Exercise details" bhi wahi khali page kholta tha. Backend me built-in exercise badla ja sakta tha, cover image upload nahi tha, "Also works" me note nahi tha, aur Used in me sab trainers ke clients gine jaate the.
 - **Ab:** Exercise library board jaisa (picture cards, search, Filter — Muscle / Equipment / Level / Source, chips, Sort, New exercise, ⋯ menu). Exercise page: cover, Default sets and reps, How to / Form cues / Muscles (body map), Video, Details, Used in N programs, Add to program (program + din, har week me add), Delete with Undo. Add / Edit exercise: saare fields, content library se video ya YouTube link (preview ke saath), cover frame ya Upload image, muscles chips aur body map par tap. Built-in exercise read-only ("Duplicate to edit"); custom ke liye "Add custom exercises" chahiye. Trainer ko Used in me sirf apne clients.

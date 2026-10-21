@@ -46,6 +46,7 @@ abstract final class AppColors {
   static const amberLine = Color(0xFFF6D99B), amberDeep = Color(0xFF8A5300); // off-plan chip on
   static const sky = Color(0xFF4FB8EE), skyMid = Color(0xFF2F8FE6), skySoft = Color(0xFFE3F3FD), skyFade = Color(0xFFF7FBFE);
   static const brandSoft = Color(0xFFEEF3FD); // web login side panel
+  static const brandPanel = Color(0xFFD8E4FC); // web login side panel middle; its edges fade into caWebBg
   static const purpleBg = Color(0xFFF1ECFE), purpleText = Color(0xFF6D28D9); // ch-ic purple
   static const dotOff = Color(0xFFCBD5E1); // intro slide dots
   static const shadowSoft = Color(0x0A171717), shadowBlue = Color(0x142563EB); // intro picture card
