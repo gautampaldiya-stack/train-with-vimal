@@ -1061,6 +1061,8 @@ Constraints: uniq_food_unit_name
 | `end_date` | DateField | optional |
 | `status` | CharField | choices: up_next, active, ended; indexed |
 | `assigned_by` | ForeignKey | → User; optional; indexed |
+| `end_reason` | CharField | blank, replaced, unassigned, ended (D-44, as D-43) |
+| `replaced` | ForeignKey | → MealPlanAssignment it took over from; optional (D-44) |
 
 ### MealDayState
 A client's day for one planned meal: logged / skipped, today's portions and swaps.

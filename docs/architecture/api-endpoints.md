@@ -236,8 +236,8 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `clients/<client_pk>[0-9a-f-]+)/meal-plans/<pk>/reset/` | POST | ClientMealPlanViewSet | Client profile → Plans → Meal plan slot: current, Up next and history; assign one plan; end it. |
 | `clients/<uuid:client_pk>/food/` | GET | ClientFoodLogView | Client profile → Logs → Meals: one day (`?date=`), or one page of days (`?range=&page=`). |
 | `food-picker/` | GET | FoodPickerView | Builder → Add food: team foods first, grouped. |
-| `foods/` | GET, POST | FoodViewSet | Food library (staff). Clients search foods through /me/foods/. |
-| `foods/<pk>/` | GET, PUT, PATCH, DELETE | FoodViewSet | Food library (staff). Clients search foods through /me/foods/. |
+| `foods/` | GET, POST | FoodViewSet | Food library (staff; `group`, `diet`, `search`, paginated). Rows carry `used_in` (plan names) and `used_tip` ("Plan · Meal, Meal"). Clients search foods through /me/foods/. |
+| `foods/<pk>/` | GET, PUT, PATCH, DELETE | FoodViewSet | Create / Edit food drawer (`source_note` editable). DELETE of a built-in food → 403 "Duplicate it to make your own". |
 | `foods/<pk>/delete-preview/` | GET | FoodViewSet | Food library (staff). Clients search foods through /me/foods/. |
 | `foods/<pk>/duplicate/` | POST | FoodViewSet | Food library (staff). Clients search foods through /me/foods/. |
 | `foods/<pk>/restore/` | POST | FoodViewSet | Food library (staff). Clients search foods through /me/foods/. |
@@ -259,19 +259,21 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `me/food/meals/<int:meal_id>/<str:op>/` | POST | MyMealActionView | POST /me/food/meals/<meal_id>/<op>/  op = eat / unlog / skip / unskip / portions / swap / option |
 | `me/foods/` | GET, POST | MyFoodSearchViewSet | Log food: search team foods + 'My foods'; create a custom food (saved to My foods). |
 | `me/foods/recent/` | GET | MyFoodSearchViewSet | Log food: search team foods + 'My foods'; create a custom food (saved to My foods). |
-| `meal-plans/` | GET, POST | MealPlanViewSet |  |
-| `meal-plans/<pk>/` | GET, PUT, PATCH, DELETE | MealPlanViewSet |  |
+| `meal-plans/` | GET, POST | MealPlanViewSet | Nutrition → Meal plans cards (`diet`, `search`, paginated): `can_edit`, `owner`, `meal_names`, `client_count` / `custom_count` (trainer: own clients only), `status`, `has_unpublished_changes`. |
+| `meal-plans/<pk>/` | GET, PUT, PATCH, DELETE | MealPlanViewSet | Meal plan builder: detail with `meals` → `options` → `items` (`swaps` resolved) and `planned`. PATCH name, targets, `allow_*`. Changing needs `can_edit` (D-44). |
 | `meal-plans/<pk>/assign/` | POST | MealPlanViewSet |  |
 | `meal-plans/<pk>/clients/` | GET | MealPlanViewSet |  |
 | `meal-plans/<pk>/clients/<client_id>[0-9a-f-]+)/remove/` | POST | MealPlanViewSet |  |
 | `meal-plans/<pk>/clients/<client_id>[0-9a-f-]+)/reset/` | POST | MealPlanViewSet |  |
 | `meal-plans/<pk>/clients/<client_id>[0-9a-f-]+)/version-note/` | PUT | MealPlanViewSet |  |
-| `meal-plans/<pk>/duplicate/` | POST | MealPlanViewSet |  |
+| `meal-plans/<pk>/delete-preview/` | GET | MealPlanViewSet | `{clients}` on the plan, for the Delete confirm. |
+| `meal-plans/<pk>/duplicate/` | POST | MealPlanViewSet | Same meals, no clients. |
 | `meal-plans/<pk>/publish-preview/` | GET | MealPlanViewSet |  |
-| `meal-plans/<pk>/publish/` | POST | MealPlanViewSet |  |
-| `meal-plans/<pk>/restore/` | POST | MealPlanViewSet |  |
-| `meal-plans/<pk>/structure/` | PUT | MealPlanViewSet |  |
-| `meal-plans/counts/` | GET | MealPlanViewSet |  |
+| `meal-plans/<pk>/publish/` | POST | MealPlanViewSet | Publish: status published, clients and their trainers get a notice → `{sent_to}`. |
+| `meal-plans/<pk>/restore/` | POST | MealPlanViewSet | Delete toast Undo: the plan and the clients it was taken from come back. |
+| `meal-plans/<pk>/structure/` | PUT | MealPlanViewSet | Builder Publish step 1: `{meals: [...]}` replaces the every-day meals; an item's `swaps: [{food, quantity, unit}]` replaces its list (leave it out to keep it). |
+| `meal-plans/assign-options/` | GET | MealPlanViewSet | Builder Assign to clients: every client the person can see with `plan` / `plan_name` (their current meal plan). |
+| `meal-plans/counts/` | GET | MealPlanViewSet | Diet tab counts, `foods`, `can: {create, assign, foods, edit_all}`. |
 
 ## scheduling
 

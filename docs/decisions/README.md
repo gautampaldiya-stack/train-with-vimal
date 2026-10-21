@@ -46,4 +46,5 @@ One file per decision. Add a new file for every new decision (next number), and 
 | [D-41](0041-login-panel-and-phone-testing.md) | Web login side panel 40 / 60 with a faded blue; help sheets open at once; real-phone testing (laptop IP, cleartext in debug); Android compileSdk 37 | 2026-10-21 |
 | [D-42](0042-real-cover-frames-card-menu-tooltips.md) | Exercise cover frames are real stills (ffmpeg / YouTube), program card ⋯ menu, tooltips on every unclear button | 2026-10-21 |
 | [D-43](0043-builder-save-and-assignment-history.md) | Program builder: Save changes / Discard, ask before leaving, week ⋯ menu; assignment Undo leaves no history; Unassigned label; who made a program | 2026-10-21 |
+| [D-44](0044-nutrition-rights-food-library-meal-builder.md) | Nutrition & foods: who may change a meal plan, delete Undo, food library rules, Excel import, meal plan builder draft + Publish | 2026-10-21 |
 | [D-31](0031-trainer-activity-and-fixes.md) | Trainer Activity card, stat cards fill the row, menus fit the screen, readable guides | 2026-10-16 |

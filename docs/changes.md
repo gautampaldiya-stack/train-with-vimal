@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-21 · Nutrition & foods page and Meal plan builder built
+- **Pehle:** Library → Nutrition "This page is on the way" dikhata tha. Meal plan sirf client page ke andar edit ho sakta tha; food library, Excel import aur master meal plan builder nahi the. Built-in food delete ho sakta tha.
+- **Ab:** Nutrition page: Meal plans tab (cards, ⋯ menu, New meal plan) aur Food library tab (table / phone rows, filters, pager, Create / Edit food drawer, Excel import). Meal plan builder `/nutrition/:id`: targets, meals → options → foods, Portion and swaps panel (desktop side column, phone / tablet drawer), alternatives, client permissions, Assign (sirf apne clients, "Moves here" badge), clients drawer. Publish = save + clients ko bhejna; draft banner (Discard / Publish now), bahar jaane par "Publish your changes?" (Publish / Don't publish / Cancel). Built-in food read-only; team food delete ho sakta hai.
+- **Kyun:** Plan ka next step (Nutrition & foods), boards Nutrition, NutritionMobile, MealPlanBuilder, MealPlanBuilderMobile.
+- **Updated:** backend/apps/nutrition (views, serializers), tests/test_meal_plans.py, app/lib/features/library/nutrition/*, app/lib/app/router.dart, app/lib/core/theme/colors.dart, cp_plans_meal_edit.dart, docs/architecture/*, docs/screens/status.md · Decision D-44
+
 ### 2026-10-21 · Programs list refresh, card layout, exercise drawer in the builder
 - **Pehle:** Builder band karke Programs par aate the to naya program ya naya naam card me nahi dikhta tha (list reload builder ke band hote waqt chalta tha aur fail ho jata tha). Desktop card me icon upar, name aur level neeche; "By you / Gym" badge baaki tags ke saath left me. Builder me "Exercise details" seedha exercise page khol deta tha.
 - **Ab:** Builder band hone ke baad list reload hoti hai, card turant naye naam, week aur "Edited" ke saath. Card me name aur level icon ke right side (phone aur desktop dono), owner badge tags wali line me right end par. "Exercise details" client page wala exercise drawer kholta hai (video, sets/reps/rest, muscles, prev/next); neeche "Open exercise page" aur "Edit sets and rest".
