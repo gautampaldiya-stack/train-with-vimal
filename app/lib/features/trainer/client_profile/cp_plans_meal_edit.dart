@@ -1213,6 +1213,7 @@ Future<void> showFoodPicker(
   required String first,
   required String diet,
   String dietLabel = '',
+  String? sub,
   required Set<String> Function() added,
   required ValueChanged<Map> onAdd,
   required ValueChanged<Map> onRemove,
@@ -1233,7 +1234,7 @@ Future<void> showFoodPicker(
   return showAppDrawer<void>(
     context,
     title: 'Add to $meal',
-    sub: 'Food library · only for $first',
+    sub: sub ?? 'Food library · only for $first',
     icon: AppIcons.apple,
     fixedBody: true,
     builder: (ctx) => FutureBuilder<List<Map>>(
@@ -1264,7 +1265,7 @@ Future<void> showFoodPicker(
                 child: Row(spacing: 8, children: [
                   Text('${rows.length} food${rows.length == 1 ? '' : 's'}', style: AppText.s(12, W.w6, color: AppColors.muted)),
                   Expanded(
-                    child: Text('Most protein first${dietLabel.isEmpty || fits[diet] == null ? '' : ' · ${dietLabel.toLowerCase()} foods for $first'}',
+                    child: Text('Most protein first${dietLabel.isEmpty || fits[diet] == null ? '' : ' · ${dietLabel.toLowerCase()} foods${first.isEmpty ? '' : ' for $first'}'}',
                         textAlign: TextAlign.right, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w6, color: AppColors.muted)),
                   ),
                 ]),
@@ -1390,4 +1391,51 @@ class _FoodPickRow extends StatelessWidget {
       ]),
     );
   }
+}
+
+// ─────────────────────────────── shared with the Meal plan builder (library/nutrition)
+
+/// One planned food's maths, the same as the client editor: units, grams and macros, swaps that follow the amount.
+abstract final class MealItemMath {
+  static List<Map> unitsOf(Map it) => _MealEditorState.unitsOf(it);
+  static Map? unitOf(Map it) => _MealEditorState.unitOf(it);
+  static void recalc(Map it) => _MealEditorState.recalc(it);
+  static void rescaleSwaps(Map it) => _MealEditorState.rescaleSwaps(it);
+  static List<Map> swapsOf(Map it) => _MealEditorState.swapsOf(it);
+  static double m(Map it, String k) => _MealEditorState.m(it, k);
+  static String amount(Map it) => _MealEditorState.amount(it);
+}
+
+/// "60 g", "1 scoop", "½ katori", "2 pieces".
+String portionLabel(double q, String? unit) => _portion(q, unit);
+
+/// A `.menu`-style popover under [anchor] (see [_popover]).
+Future<void> showPopover(BuildContext anchor, {required double width, bool alignRight = false, required Widget Function(VoidCallback close) builder}) =>
+    _popover(anchor, width: width, alignRight: alignRight, builder: builder);
+
+/// `+ Add a unit in the food library` modal; gives back the new unit.
+Future<Map?> askFoodUnit(BuildContext context, {required String food, required String foodId}) => _askUnit(context, food: food, foodId: foodId);
+
+/// "74% match" badge (b-ok from 80 %) and the picker's match pill.
+class MatchBadge extends StatelessWidget {
+  const MatchBadge(this.match, {super.key});
+  final int match;
+  @override
+  Widget build(BuildContext context) => _MatchBadge(match);
+}
+
+class MatchPill extends StatelessWidget {
+  const MatchPill(this.match, {super.key});
+  final int match;
+  @override
+  Widget build(BuildContext context) => _MatchPill(match);
+}
+
+/// Red text button with a trash icon.
+class DangerText extends StatelessWidget {
+  const DangerText(this.label, {super.key, required this.onTap});
+  final String label;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => _DangerText(label, onTap: onTap);
 }

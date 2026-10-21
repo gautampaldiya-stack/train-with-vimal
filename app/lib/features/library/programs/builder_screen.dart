@@ -18,6 +18,7 @@ import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/tooltip.dart';
 import '../../trainer/client_profile/cp_plans_edit.dart' show showExercisePicker;
+import '../../trainer/client_profile/cp_plans_parts.dart' show showExerciseDrawer;
 import '../lib_common.dart';
 import 'builder_model.dart';
 import 'builder_sheets.dart';
@@ -58,7 +59,8 @@ class _ProgramBuilderScreenState extends State<ProgramBuilderScreen> {
   void dispose() {
     LeaveGuard.unregister(this);
     m.dispose();
-    programsChanged.value++;
+    // After this frame: the Programs page under it may not change while the tree is being torn down.
+    Future.microtask(() => programsChanged.value++);
     _note.dispose();
     _pills.dispose();
     super.dispose();
@@ -483,6 +485,31 @@ class _ProgramBuilderScreenState extends State<ProgramBuilderScreen> {
     }, toast: '$name removed', sub: dayTitle(m.day!));
   }
 
+  /// Exercise details: the same drawer as the client page (video, numbers, how to, cues, muscles); its footer
+  /// opens the exercise page or the sets of this row.
+  void _details(List xs, int i) {
+    final list = [for (final x in xs) x as Map];
+    final d = m.day!;
+    showExerciseDrawer(context,
+        list: list,
+        start: i,
+        dayLabel: '${m.dayHead} · ${dayTitle(d)}',
+        dayNote: '${d['rest_note'] ?? ''}',
+        program: m.name,
+        was: (_) => null,
+        footer: (ctx, n) => [
+              AppButton('Open exercise page', icon: AppIcons.open, onPressed: () {
+                Navigator.of(ctx).pop();
+                context.go('/exercises/${list[n]['exercise']}');
+              }),
+              if (_edit)
+                AppButton.primary('Edit sets and rest', icon: AppIcons.edit, onPressed: () {
+                  Navigator.of(ctx).pop();
+                  _editSets(list[n]);
+                }),
+            ]);
+  }
+
   void _exMenu(BuildContext anchor, List xs, int i) {
     final e = xs[i] as Map;
     final g = '${e['superset_group'] ?? ''}';
@@ -491,7 +518,7 @@ class _ProgramBuilderScreenState extends State<ProgramBuilderScreen> {
       MenuEntry('Edit sets and rest', icon: AppIcons.edit, onTap: () => _editSets(e)),
       MenuEntry('Edit for this program', icon: AppIcons.docLines, onTap: () => _editForProgram(e)),
       if (edited) MenuEntry('Reset to library version', icon: AppIcons.undo, onTap: () => _reset(e)),
-      MenuEntry('Exercise details', icon: AppIcons.eye, onTap: () => context.go('/exercises/${e['exercise']}')),
+      MenuEntry('Exercise details', icon: AppIcons.eye, onTap: () => _details(xs, i)),
       MenuEntry('Move up', icon: AppIcons.chevronUp, onTap: i > 0 ? () => _moveEx(xs, i, -1) : null),
       MenuEntry('Move down', icon: AppIcons.chevronDown, onTap: i < xs.length - 1 ? () => _moveEx(xs, i, 1) : null),
       if (g.isNotEmpty)

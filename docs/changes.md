@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-21 · Programs list refresh, card layout, exercise drawer in the builder
+- **Pehle:** Builder band karke Programs par aate the to naya program ya naya naam card me nahi dikhta tha (list reload builder ke band hote waqt chalta tha aur fail ho jata tha). Desktop card me icon upar, name aur level neeche; "By you / Gym" badge baaki tags ke saath left me. Builder me "Exercise details" seedha exercise page khol deta tha.
+- **Ab:** Builder band hone ke baad list reload hoti hai, card turant naye naam, week aur "Edited" ke saath. Card me name aur level icon ke right side (phone aur desktop dono), owner badge tags wali line me right end par. "Exercise details" client page wala exercise drawer kholta hai (video, sets/reps/rest, muscles, prev/next); neeche "Open exercise page" aur "Edit sets and rest".
+- **Kyun:** Gautam ka test feedback.
+- **Updated:** app/lib/features/library/programs/programs_screen.dart, builder_screen.dart, app/lib/features/trainer/client_profile/cp_plans_parts.dart
+
 ### 2026-10-21 · Program builder Save changes, leave prompt, week menu, real cover frames, card menu
 - **Pehle:** Builder har change turant save karta tha (clients adhoore edits dekhte the), bahar jaate waqt kuch nahi puchta tha, week sirf copy ho sakta tha (delete nahi). Assign ke baad Undo karne par Plan history me "Ended" aur "Replaced" rows aa jaati thi. Card par pata nahi chalta tha program gym ka hai ya kisne banaya. Cover frame tiles nakli the (rang + 0:04, 0:12). Program card ke ⋯ me kam options, "10 weeks" / "days / week" alignment kharab, builder se lautne par list update nahi hoti thi, "+ Add" par tooltip nahi, stepper text cut, Add exercise drawer me play icon.
 - **Ab:** Builder me Save changes / Discard; bahar jaane par "Save your changes?" (Save / Don't save / Cancel), browser tab band karne par bhi warning. Week ka ⋯ menu: Copy, Add empty week, Delete week. Same din assign + undo (kuch log nahi hua) = koi history nahi, purana plan wapas Current; Assign se hataya to "Unassigned". Card par Gym / By you / By Aman tag, builder me "Made by …". Cover frames video se asli stills (ffmpeg) ya YouTube ke stills. Card menu: Open, Rename, Assign, See assigned clients, Duplicate, Archive, Delete; cards same height; list refresh; tooltips; drawer rows me picture + "Dumbbell · 3 × 8–12".

@@ -223,6 +223,8 @@ abstract final class AppColors {
   // Nutrition & foods (`.nu-*`): macro bar protein / carbs / fat, group chip count on dark, file tile.
   static const nuProtein = Color(0xFF2563EB), nuCarbs = Color(0xFFF59E0B), nuFat = Color(0xFF10B981), nuGroupOnN = Color(0xFFC9C9C4);
   static const nuXlBg = Color(0xFFE3F4EA);
+  // Meal plan builder (`.mb-*`): target bars on target / over / under, the meal clock tile.
+  static const mbBarOk = Color(0xFF10B981), mbBarOver = Color(0xFFF59E0B), mbBarUnder = Color(0xFF93B4FF);
   // Exercise pages (`.ex-*`, `.media .play`): video length pill, YouTube pill, primary muscle block, body map box.
   static const playBadge = Color(0xB8171717), ytRed = Color(0xFFE02424);
   static const exPriBg = Color(0xFFEEF3FE), exPriLine = Color(0xFFC7D7FB);

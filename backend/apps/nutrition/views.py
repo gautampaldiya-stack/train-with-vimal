@@ -450,6 +450,19 @@ class MealPlanViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
                           if a.client.client_profile.trainer else None}
                          for a in rows if a.client_id in visible])
 
+    @action(detail=False, url_path="assign-options")
+    def assign_options(self, request):
+        """Assign to clients list in the Meal plan builder: every client this person can see and their meal plan."""
+        current = {a.client_id: (str(a.plan_id), a.plan.name) for a in
+                   MealPlanAssignment.objects.filter(status="active").select_related("plan")}
+        rows = visible_clients(request.user).filter(status__in=["active", "paused"]).select_related(
+            "client_profile__trainer").order_by("full_name")
+        return Response([{"id": str(u.id), "full_name": u.full_name, "initials": u.initials,
+                          "avatar_color": u.avatar_color,
+                          "trainer": u.client_profile.trainer.full_name if u.client_profile.trainer else None,
+                          "plan": current.get(u.id, (None, None))[0], "plan_name": current.get(u.id, (None, None))[1]}
+                         for u in rows])
+
     @action(detail=True, methods=["post"])
     def assign(self, request, pk=None):
         ids = request.data.get("clients")

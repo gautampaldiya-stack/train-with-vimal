@@ -104,3 +104,12 @@ def test_builtin_food_cannot_be_deleted_but_team_food_can(admin):
     assert new.status_code == 201, new.content
     assert new.json()["source_note"] == "Pack label"
     assert admin.delete(f"/api/v1/foods/{new.json()['id']}/").status_code == 204
+
+
+def test_assign_options_list_only_the_trainers_clients_with_their_plan(admin, trainer):
+    rows = trainer.get(M + "assign-options/").json()
+    aman = User.objects.get(email="aman@trainwithvimal.com")
+    assert rows and all(User.objects.get(id=r["id"]).client_profile.trainer_id == aman.id for r in rows)
+    on = [r for r in rows if r["plan"]]
+    assert on and on[0]["plan_name"]
+    assert len(admin.get(M + "assign-options/").json()) >= len(rows)

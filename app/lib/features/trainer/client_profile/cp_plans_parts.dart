@@ -444,15 +444,17 @@ Widget _quote(String label, String text) => Container(
 
 /// Exercise drawer (`exd`): video, Sets / Reps / Rest / Load / RPE / Tempo, what changed, superset, notes, how to
 /// do it, form cues, muscles. Prev / next walk the day. Footer: `Swap exercise` · `Edit for X` (the editor).
+/// The Program builder opens it without a client ([c] null) and gives its own [footer] (the exercise at `n`).
 Future<void> showExerciseDrawer(BuildContext context,
-    {required CpController c,
+    {CpController? c,
     required List<Map> list,
     required int start,
     required String dayLabel,
     required String dayNote,
     required String program,
     required String? Function(int) was,
-    required VoidCallback onEdit}) {
+    VoidCallback? onEdit,
+    List<Widget> Function(BuildContext ctx, int n)? footer}) {
   final i = ValueNotifier(start);
   final cache = <String, Future<Map>>{};
   Future<Map> detail(Map e) => cache.putIfAbsent('${e['exercise']}', () => Services.api.get<Map>('exercises/${e['exercise']}/'));
@@ -506,12 +508,12 @@ Future<void> showExerciseDrawer(BuildContext context,
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
                   child: Wrap(spacing: 8, runSpacing: 6, children: [
-                    if (w != null) Row(mainAxisSize: MainAxisSize.min, spacing: 6, children: [AppBadge('Changed for ${c.first}', tone: Tone.info, plain: true), Text(w, style: AppText.cap)]),
+                    if (w != null) Row(mainAxisSize: MainAxisSize.min, spacing: 6, children: [AppBadge('Changed for ${c?.first}', tone: Tone.info, plain: true), Text(w, style: AppText.cap)]),
                     if (e['edited'] == true) AppBadge('Edited in $program', tone: Tone.warn, plain: true),
                   ]),
                 ),
               if (mate != null) _quote('Superset ${e['superset_group']}', 'With $mate: one set of each, then rest.'),
-              if ('${e['note'] ?? ''}'.isNotEmpty) _quote('Note for ${c.first}', '${e['note']}'),
+              if ('${e['note'] ?? ''}'.isNotEmpty) _quote(c == null ? 'Note' : 'Note for ${c.first}', '${e['note']}'),
               if (dayNote.isNotEmpty) _quote('Coach note for this day', dayNote),
               if (how.isNotEmpty) ...[
                 _sub('How to do it'),
@@ -539,22 +541,31 @@ Future<void> showExerciseDrawer(BuildContext context,
         );
       },
     ),
-    footer: (ctx) => [
+    footer: footer != null
+        ? (ctx) => [
+              ValueListenableBuilder(
+                valueListenable: i,
+                builder: (_, n, _) => Row(mainAxisSize: ctx.isPhone ? MainAxisSize.max : MainAxisSize.min, spacing: 8, children: [
+                  for (final w in footer(ctx, n)) ctx.isPhone ? Expanded(child: w) : w,
+                ]),
+              ),
+            ]
+        : (ctx) => [
       _fnote(
         ctx,
         ValueListenableBuilder(
           valueListenable: i,
-          builder: (_, n, _) => Text(was(n) != null ? 'Changed for ${c.first} · master is the same' : 'Same as the master plan',
+          builder: (_, n, _) => Text(was(n) != null ? 'Changed for ${c?.first} · master is the same' : 'Same as the master plan',
               maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.cap),
         ),
       ),
       AppButton('Swap exercise', icon: AppIcons.swap, onPressed: () {
         Navigator.of(ctx).pop();
-        onEdit();
+        onEdit?.call();
       }),
-      AppButton.primary('Edit for ${c.first}', icon: AppIcons.edit, onPressed: () {
+      AppButton.primary('Edit for ${c?.first}', icon: AppIcons.edit, onPressed: () {
         Navigator.of(ctx).pop();
-        onEdit();
+        onEdit?.call();
       }),
     ],
   ).whenComplete(() => disposeLater([i]));

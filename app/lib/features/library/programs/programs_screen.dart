@@ -296,10 +296,10 @@ class _ProgramCard extends StatelessWidget {
     final tone = AppColors.pgTones['${p['id']}'.codeUnits.fold<int>(0, (a, c) => a + c) % 4];
     final pattern = [for (final x in (p['week_pattern'] as List? ?? const [])) x == true];
     final days = pattern.where((x) => x).length;
-    final icon = IconTile(AppIcons.dumbbell, size: phone ? 40 : 36, radius: 10, iconSize: 18, bg: tone.$1, fg: tone.$2);
+    final icon = IconTile(AppIcons.dumbbell, size: 40, radius: 10, iconSize: 18, bg: tone.$1, fg: tone.$2);
     final dots = Builder(builder: (a) => AppIconButton(AppIcons.dots, tooltip: 'More actions', small: true, ghost: true, fill: true, onPressed: () => onMenu(a)));
     final name = Text('${p['name']}',
-        maxLines: phone ? 1 : 2, overflow: TextOverflow.ellipsis, style: AppText.s(phone ? 15.5 : 16, W.w8, ls: -0.24, h: 1.3));
+        maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(phone ? 15.5 : 16, W.w8, ls: -0.24, h: 1.3));
     final goal = Text('${p['goal_line'] ?? ''}'.isEmpty ? '${p['level_label'] ?? ''}' : '${p['goal_line']}',
         maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(phone ? 12.5 : 13, W.w5, color: AppColors.muted));
     final tags = Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
@@ -310,6 +310,10 @@ class _ProgramCard extends StatelessWidget {
         child: Center(widthFactor: 1, child: Text('$days days / week', style: AppText.s(11.5, W.w7, color: AppColors.text2))),
       ),
       if (arch) const AppBadge('Archived', tone: Tone.warn, plain: true),
+    ]);
+    // who made it sits at the right end of the same line
+    final tagRow = Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 8, children: [
+      Expanded(child: tags),
       if (p['owner'] is Map) ownerTag(p['owner'] as Map),
     ]);
     return Semantics(
@@ -325,21 +329,14 @@ class _ProgramCard extends StatelessWidget {
             border: Border.all(color: h ? AppColors.line2 : AppColors.line),
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            if (phone)
-              Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 12, children: [
-                icon,
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [name, goal])),
-                Transform.translate(offset: const Offset(4, -2), child: dots),
-              ])
-            else ...[
-              Row(children: [icon, const Spacer(), dots]),
-              const SizedBox(height: 12),
-              name,
-              const SizedBox(height: 6),
-              goal,
-            ],
+            // name and level sit next to the icon (Gautam), ⋯ at the right
+            Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 12, children: [
+              icon,
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [name, goal])),
+              Transform.translate(offset: const Offset(4, -2), child: dots),
+            ]),
             SizedBox(height: phone ? 10 : 12),
-            tags,
+            tagRow,
             SizedBox(height: phone ? 6 : 14),
             WeekPattern(pattern.length == 7 ? pattern : List.filled(7, false), muted: arch),
             SizedBox(height: phone ? 10 : 12),
