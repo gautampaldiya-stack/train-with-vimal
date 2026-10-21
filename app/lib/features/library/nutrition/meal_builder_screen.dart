@@ -20,7 +20,7 @@ import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/tabs.dart';
 import '../../../core/widgets/tooltip.dart';
 import '../../trainer/client_profile/cp_plans_meal_edit.dart'
-    show DangerText, MatchBadge, MatchPill, MealItemMath, askFoodUnit, portionLabel, showFoodPicker, showPopover;
+    show DangerText, MatchBadge, MatchPill, MealItemMath, askFoodUnit, portionLabel, showFoodPicker;
 import '../lib_common.dart';
 import '../programs/builder_sheets.dart' show showNameModal;
 import 'meal_builder_model.dart';
@@ -486,7 +486,7 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
           'client_diet': m.diet,
           'exclude': [for (final x in MealItemMath.swapsOf(it)) x['food']].join(','),
         }).then((r) => [for (final x in r) x as Map]);
-    Widget body(VoidCallback close) => ValueListenableBuilder(
+    Widget body(VoidCallback close, {bool drawer = false}) => ValueListenableBuilder(
           valueListenable: scope,
           builder: (_, s, _) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Container(
@@ -494,7 +494,7 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
               margin: const EdgeInsets.only(bottom: 4),
               decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
               child: Row(spacing: 8, children: [
-                Expanded(child: Text('Pick an alternative', style: AppText.s(13, W.w7))),
+                if (drawer) const Spacer() else Expanded(child: Text('Pick an alternative', style: AppText.s(13, W.w7))),
                 SegmentedTabs(height: 28, items: const [TabItem('group', 'Same group'), TabItem('all', 'All foods')], value: s, onChanged: (v) => scope.value = v),
               ]),
             ),
@@ -551,7 +551,13 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
     if (anchor.isPhone) {
       await showAppSheet(context, title: 'Swap for ${f['name'] ?? ''}', sub: m.name, fixedBody: true, builder: (ctx) => body(() => Navigator.of(ctx).pop()));
     } else {
-      await showPopover(anchor, width: 400, alignRight: true, builder: body);
+      // the same "Pick an alternative" drawer the food library uses, on top of the portion panel
+      await showAppDrawer(context,
+          title: 'Pick an alternative',
+          sub: 'For ${f['name'] ?? ''} · ${m.name}',
+          icon: AppIcons.swap,
+          fixedBody: true,
+          builder: (ctx) => Padding(padding: const EdgeInsets.only(top: 12), child: body(() => Navigator.of(ctx).pop(), drawer: true)));
     }
     scope.dispose();
   }
@@ -1116,7 +1122,9 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
       Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
         _label('Amount', 'Changing the unit keeps the same amount in grams. Change the number to give more or less.'),
         Row(spacing: 8, children: [
-          Expanded(
+          // a compact − n + (the unit picker takes the rest)
+          SizedBox(
+            width: 132,
             child: Container(
               height: 36,
               decoration: BoxDecoration(color: AppColors.card, borderRadius: AppRadius.all(AppRadius.input), border: Border.all(color: AppColors.line2)),
@@ -1127,7 +1135,7 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
               ]),
             ),
           ),
-          unitSel,
+          Expanded(child: unitSel),
         ]),
         Container(
           margin: const EdgeInsets.only(top: 2),

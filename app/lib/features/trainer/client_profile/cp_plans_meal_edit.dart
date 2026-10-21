@@ -896,7 +896,8 @@ class _MealEditorState extends State<MealEditor> {
       Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
         _label('Amount', 'Changing the unit keeps the same amount in grams. Change the number to give more or less.'),
         Row(spacing: 8, children: [
-          Expanded(
+          SizedBox(
+            width: 132,
             child: Container(
               height: 36,
               decoration: BoxDecoration(color: AppColors.card, borderRadius: AppRadius.all(AppRadius.input), border: Border.all(color: AppColors.line2)),
@@ -907,7 +908,7 @@ class _MealEditorState extends State<MealEditor> {
               ]),
             ),
           ),
-          unitSel,
+          Expanded(child: unitSel),
         ]),
         Container(
           margin: const EdgeInsets.only(top: 2),

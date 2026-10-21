@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-22 · Meal builder: alternatives in a drawer, smaller amount stepper
+- **Pehle:** Portion panel me "Add alternative" ek chhota popover kholta tha; Amount ka − n + poori width me bahut lamba tha.
+- **Ab:** "Pick an alternative" drawer khulta hai (Same group / All foods, match %), phone par sheet. Amount stepper 132 wide, unit picker baaki jagah. Client profile ke meal editor me bhi same stepper.
+- **Kyun:** Gautam ka feedback (2026-10-22).
+- **Updated:** app/lib/features/library/nutrition/meal_builder_screen.dart, client_profile/cp_plans_meal_edit.dart
+
 ### 2026-10-21 · Debug-mode errors, value limits, meal plan menu, More page
 - **Pehle:** Food library tab tablet width par khali (Diet dropdown bina width ke Row me, debug me layout error). Meal builder me food click karne par "setState called after dispose" (text field focus listener), Assign modal build ke beech list set karta tha, aur portion drawer ka Done button desktop drawer me error deta tha. Edit exercise: cover frames chhoti width par overflow, "Shows on the How to tab" card ke beech me, tablet par fields poori width me lambe. Food drawer me calories / grams me koi limit nahi thi (1.99e+44 kcal tak dikhta tha). Meal plan ke stat cards me Fibre · Water do column le leta tha, aur ⋯ menu me kam options. Phone par page title upar chipka hua. Trainer More page saada tha. Raat 12 baje (IST) se pehle 5:30 ghante tak assign + Undo history chhod deta tha (UTC date se compare hota tha).
 - **Ab:** Same-day Undo ab gym ke time (IST) se check hota hai, program aur meal plan dono me. Diet dropdown ki width fixed; text field apna focus listener hata deta hai; Assign list aane par set hoti hai; Done button sirf phone par full width. Frames sideways scroll, card note title ke neeche, ek column me form 680 wide (left aligned). Food values: kcal / g max 9999.9, mg max 99999 typing me hi; save par per 100 g 900 kcal / 100 g / 50,000 mg se upar "Too high". Stat grid 3 + 3 (Fat · Fibre · Water). ⋯ menu: Rename, Edit targets, Add meal, Assign, Clients on this plan, Duplicate, Discard, Delete. Phone par page ke upar 16 px jagah. More page: har row ke neeche ek line, "You" group (My profile, Calendar), neeche app ka naam.
