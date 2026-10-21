@@ -14,11 +14,11 @@ class TrainerMoreScreen extends StatelessWidget {
   const TrainerMoreScreen({super.key});
 
   static const _library = [
-    ('Programs', '/programs', AppIcons.dumbbell, AppColors.mbGreenBg, AppColors.mbGreenFg),
-    ('Exercises', '/exercises', AppIcons.exercisesAlt, AppColors.mbAmberBg, AppColors.mbAmberFg),
-    ('Nutrition & foods', '/nutrition', AppIcons.apple, AppColors.mbPinkBg, AppColors.mbPinkFg),
-    ('Habits & supplements', '/habits', AppIcons.checkCircle, AppColors.mbTealBg, AppColors.mbTealFg),
-    ('Content library', '/content', AppIcons.library, AppColors.mbBlueBg, AppColors.accent),
+    ('Programs', 'Workout plans you assign', '/programs', AppIcons.dumbbell, AppColors.mbGreenBg, AppColors.mbGreenFg),
+    ('Exercises', 'Moves, videos and form cues', '/exercises', AppIcons.exercisesAlt, AppColors.mbAmberBg, AppColors.mbAmberFg),
+    ('Nutrition & foods', 'Meal plans and the food library', '/nutrition', AppIcons.apple, AppColors.mbPinkBg, AppColors.mbPinkFg),
+    ('Habits & supplements', 'Daily habits and supplement plans', '/habits', AppIcons.checkCircle, AppColors.mbTealBg, AppColors.mbTealFg),
+    ('Content library', 'Videos, PDFs and articles', '/content', AppIcons.library, AppColors.mbBlueBg, AppColors.accent),
   ];
 
   @override
@@ -32,9 +32,17 @@ class TrainerMoreScreen extends StatelessWidget {
         Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 16, children: [
           MoreMeCard(initials: me.initials, name: me.name, sub: 'Trainer · My profile', onTap: () => context.go('/me')),
           MoreGroup('Library', [
-            for (final (t, path, icon, bg, fg) in _library) MoreRow(t, icon: icon, bg: bg, fg: fg, onTap: () => context.go(path)),
+            for (final (t, sub, path, icon, bg, fg) in _library) MoreRow(t, sub: sub, icon: icon, bg: bg, fg: fg, onTap: () => context.go(path)),
+          ]),
+          MoreGroup('You', [
+            MoreRow('My profile', sub: 'Details, documents and your activity', icon: AppIcons.person, onTap: () => context.go('/me')),
+            MoreRow('Calendar', sub: 'Sessions and check-in days', icon: AppIcons.calendar, bg: AppColors.mbAmberBg, fg: AppColors.mbAmberFg, onTap: () => context.go('/calendar')),
           ]),
           MoreGroup(null, [MoreRow('Log out', icon: AppIcons.logout, red: true, onTap: () => confirmLogOut(context))]),
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text('Train With Vimal · Trainer workspace', textAlign: TextAlign.center, style: AppText.s(11.5, W.w5, color: AppColors.muted)),
+          ),
         ]),
       ],
     );
@@ -114,8 +122,11 @@ class MoreGroup extends StatelessWidget {
 
 /// `.mb-row` — 46 px row: coloured icon tile, title, chevron (no chevron on the red Log out row).
 class MoreRow extends StatelessWidget {
-  const MoreRow(this.title, {super.key, required this.icon, this.bg = AppColors.accentSoft, this.fg = AppColors.accent, this.red = false, required this.onTap});
+  const MoreRow(this.title, {super.key, this.sub, required this.icon, this.bg = AppColors.accentSoft, this.fg = AppColors.accent, this.red = false, required this.onTap});
   final String title;
+
+  /// Grey line under the title (the row grows to 58).
+  final String? sub;
   final AppIconData icon;
   final Color bg, fg;
   final bool red;
@@ -128,7 +139,7 @@ class MoreRow extends StatelessWidget {
         child: Hover(
           onTap: onTap,
           builder: (_, h, _) => Container(
-            height: 46,
+            height: sub == null ? 46 : 58,
             color: h && !red ? AppColors.hover : AppColors.white,
             padding: const EdgeInsets.symmetric(horizontal: 14),
             child: Row(spacing: 12, children: [
@@ -140,7 +151,10 @@ class MoreRow extends StatelessWidget {
                 child: AppIcon(icon, size: 18, color: red ? AppColors.mbRed : fg),
               ),
               Expanded(
-                child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w6, color: red ? AppColors.mbRed : AppColors.text)),
+                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+                  Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w6, color: red ? AppColors.mbRed : AppColors.text)),
+                  if (sub != null) Text(sub!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted)),
+                ]),
               ),
               if (!red) const AppIcon(AppIcons.chevronRight, size: 18, color: AppColors.muted),
             ]),

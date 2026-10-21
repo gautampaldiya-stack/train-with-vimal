@@ -58,11 +58,17 @@ class _AppTextFieldState extends State<AppTextField> {
   @override
   void initState() {
     super.initState();
-    _focus.addListener(() => setState(() {}));
+    _focus.addListener(_onFocus);
+  }
+
+  void _onFocus() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    // a focus node the parent passed in lives on: take our listener off it
+    _focus.removeListener(_onFocus);
     if (widget.focusNode == null) _focus.dispose();
     super.dispose();
   }

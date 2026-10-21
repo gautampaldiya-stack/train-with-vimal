@@ -789,7 +789,7 @@ class _MealEditorState extends State<MealEditor> {
           valueListenable: _tick,
           builder: (_, _, _) => Padding(padding: const EdgeInsets.only(top: 14), child: _panel(onRemoved: () => Navigator.of(ctx).pop(), sheet: true)),
         ),
-        footer: (ctx) => [AppButton.primary('Done', expand: true, onPressed: () => Navigator.of(ctx).pop())],
+        footer: (ctx) => [AppButton.primary('Done', expand: ctx.isPhone, onPressed: () => Navigator.of(ctx).pop())],
       );
 
   /// A swap's name (and [badge]) over its amount ("½ katori · 75 g") and what it gives ("82 kcal · P 5 g · C 14 g ·

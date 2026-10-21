@@ -209,10 +209,15 @@ Future<bool> showPublishModal(BuildContext context, MealBuilderModel m) async {
 /// Assign to clients: every client this person can see, ticked = on this plan; a client on another meal plan
 /// moves here. Gives back (added, removed, the clients before) after saving.
 Future<(int, int, List<String>)?> showMealAssignModal(BuildContext context, MealBuilderModel m) async {
-  final data = Services.api.get<List>('meal-plans/assign-options/');
   final picked = ValueNotifier<Set<String>?>(null);
   final q = ValueNotifier('');
   var before = <String>[];
+  // who is on this plan now: worked out when the list arrives, not while the modal builds
+  final data = Services.api.get<List>('meal-plans/assign-options/').then((all) {
+    before = [for (final c in all) if ('${(c as Map)['plan']}' == m.id) '${c['id']}'];
+    picked.value = before.toSet();
+    return all;
+  });
   var saving = false;
   final r = await showAppModal<(int, int, List<String>)>(
     context,
@@ -226,10 +231,6 @@ Future<(int, int, List<String>)?> showMealAssignModal(BuildContext context, Meal
         if (s.hasError) return const EmptyState('Could not load your clients');
         if (!s.hasData) return const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator(color: AppColors.accent, strokeWidth: 2.5)));
         final all = [for (final x in s.data!) x as Map];
-        if (picked.value == null) {
-          before = [for (final c in all) if ('${c['plan']}' == m.id) '${c['id']}'];
-          picked.value = before.toSet();
-        }
         return ListenableBuilder(
           listenable: Listenable.merge([picked, q]),
           builder: (ctx, _) {

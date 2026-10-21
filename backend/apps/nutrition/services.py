@@ -176,7 +176,7 @@ def unassign(a):
         p for p in (a.plan_id, a.custom_plan_id) if p]).exclude(status="").exists()
         or FoodLogEntry.objects.filter(client=a.client, date__gte=a.start_date, meal__plan_id__in=[
             p for p in (a.plan_id, a.custom_plan_id) if p]).exists())
-    if a.created_at.date() == timezone.localtime().date() and not logged:
+    if timezone.localtime(a.created_at).date() == timezone.localdate() and not logged:  # gym time, not UTC
         prev, custom = a.replaced, a.custom_plan
         a.delete()
         if custom is not None:

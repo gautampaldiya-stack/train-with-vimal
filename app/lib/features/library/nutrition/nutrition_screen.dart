@@ -409,7 +409,8 @@ class _NutritionScreenState extends State<NutritionScreen> {
       value: per100,
       onChanged: (v) => setState(() => per100 = v),
     );
-    final dietSel = AppSelect(
+    // AppSelect fills its width: it always needs one when it sits in a Row
+    final dietSel = SizedBox(width: 172, child: AppSelect(
       fdiet == 'any' ? 'Any diet' : dietLong[fdiet]!,
       lead: 'Diet',
       entries: [
@@ -422,7 +423,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
             _loadFoods();
           }),
       ],
-    );
+    ));
     final search = AppSearchField(placeholder: 'Search paneer, dal, chicken…', icon: AppIcons.search, onChanged: (v) => _search(v, food: true));
     final groups = [
       ('all', 'All', fCounts['all']),

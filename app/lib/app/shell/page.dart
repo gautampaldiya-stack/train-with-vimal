@@ -19,7 +19,7 @@ class StaffPage extends StatelessWidget {
     final list = SingleChildScrollView(
       controller: controller,
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: phone ? const EdgeInsets.fromLTRB(16, 6, 16, 24) : const EdgeInsets.fromLTRB(32, 24, 32, 48),
+      padding: phone ? const EdgeInsets.fromLTRB(16, 16, 16, 24) : const EdgeInsets.fromLTRB(32, 24, 32, 48),
       child: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: maxWidth),

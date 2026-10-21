@@ -215,7 +215,11 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
   void _planMenu(BuildContext anchor) => showAppMenu(anchor, width: 240, [
         MenuEntry.header(m.name),
         if (_edit) MenuEntry('Rename plan', icon: AppIcons.edit, onTap: _rename),
-        if (m.canCreate) MenuEntry('Duplicate plan', icon: AppIcons.copy, sub: 'Same meals, no clients', onTap: _duplicate),
+        if (_edit) MenuEntry('Edit targets', icon: AppIcons.target, sub: 'Calories, protein, carbs, fat, fibre, water', onTap: _editTargets),
+        if (_edit) MenuEntry('Add meal', icon: AppIcons.plus, onTap: _addMeal),
+        if (m.canAssign) MenuEntry('Assign to clients', icon: AppIcons.assign, onTap: _assign),
+        MenuEntry('Clients on this plan', icon: AppIcons.clientsAlt, sub: m.clientCount == 0 ? 'Not assigned yet' : plural(m.clientCount, 'client'), onTap: _manage),
+        if (m.canCreate) MenuEntry(_edit ? 'Duplicate plan' : 'Duplicate to edit', icon: AppIcons.copy, sub: 'Same meals, no clients', onTap: _duplicate),
         if (_edit && m.unsaved) MenuEntry('Discard changes', icon: AppIcons.undo, sub: 'Back to the published plan', onTap: _discard),
         if (_edit) const MenuEntry.separator(),
         if (_edit) MenuEntry('Delete plan', icon: AppIcons.trash, danger: true, onTap: _delete),
@@ -566,7 +570,7 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
         listenable: m,
         builder: (_, _) => Padding(padding: const EdgeInsets.only(top: 14), child: _panel(sheet: true, onRemoved: () => Navigator.of(ctx).pop())),
       ),
-      footer: (ctx) => [AppButton.primary('Done', expand: true, onPressed: () => Navigator.of(ctx).pop())],
+      footer: (ctx) => [AppButton.primary('Done', expand: ctx.isPhone, onPressed: () => Navigator.of(ctx).pop())],
     );
   }
 
@@ -746,6 +750,12 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
       Text('${kfmt(t['fibre_g'] ?? 0)} g · ${fq(water)} L', style: AppText.s(phone ? 14 : 20, W.w8, tabular: true, h: 1.25)),
       Text('Daily', style: AppText.s(phone ? 10.5 : 11.5, W.w6, color: AppColors.muted)),
     ]);
+    // grid: Fibre and Water get a cell each, so both rows have three even cells
+    Widget daily(String k, String v) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: phone ? 2 : 4, children: [
+          Text(k, style: AppText.s(phone ? 10.5 : 12, W.w6, color: AppColors.muted)),
+          Text(v, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(phone ? 15 : 20, W.w8, tabular: true)),
+          Text('Daily target', style: AppText.s(phone ? 10.5 : 11.5, W.w6, color: AppColors.muted)),
+        ]);
     final edit = AppButton('Edit targets', icon: AppIcons.edit, size: BtnSize.sm, expand: phone || grid, tooltip: 'Daily targets for every client on this plan', onPressed: _edit ? _editTargets : null);
     const line = BorderSide(color: AppColors.line);
     if (phone || grid) {
@@ -767,7 +777,8 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
           IntrinsicHeight(
             child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Expanded(child: box(cell(cells[3]))),
-              Expanded(flex: 2, child: box(fw, left: true)),
+              Expanded(child: box(daily('Fibre', '${kfmt(t['fibre_g'] ?? 0)} g'), left: true)),
+              Expanded(child: box(daily('Water', '${fq(water)} L'), left: true)),
             ]),
           ),
           if (_edit) Padding(padding: const EdgeInsets.fromLTRB(10, 8, 10, 8), child: phone ? edit : Center(child: edit)),

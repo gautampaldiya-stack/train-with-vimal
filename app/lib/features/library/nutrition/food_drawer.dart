@@ -208,6 +208,18 @@ class _FoodFormState extends State<_FoodForm> {
       setState(() => errors = {'kcal': 'Enter the calories.'});
       return null;
     }
+    // per 100 g nothing has more than 900 kcal (pure fat) or more than 100 g of one nutrient
+    final over = {
+      if (per100['kcal']! > 900) 'kcal': 'Too high: at most 900 kcal per 100 g.',
+      for (final k in ['protein', 'carbs', 'fat', 'fibre'])
+        if ((per100[k] ?? 0) > 100) k: 'Too high: at most 100 g per 100 g.',
+      for (final k in _minKeys)
+        if ((per100[k] ?? 0) > 50000) k: 'Too high: at most 50,000 mg per 100 g.',
+    };
+    if (over.isNotEmpty) {
+      setState(() => errors = over);
+      return null;
+    }
     final body = {
       'name': n,
       'brand': brand.text.trim(),
@@ -279,7 +291,11 @@ class _FoodFormState extends State<_FoodForm> {
           _nutrition(phone),
           _field(
             'More nutrients',
-            _grid([for (final k in _minKeys) _num(k, {'sodium_mg': 'Sodium', 'iron_mg': 'Iron', 'calcium_mg': 'Calcium', 'potassium_mg': 'Potassium'}[k]!, 'mg')], phone ? 2 : 4),
+            Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
+              _grid([for (final k in _minKeys) _num(k, {'sodium_mg': 'Sodium', 'iron_mg': 'Iron', 'calcium_mg': 'Calcium', 'potassium_mg': 'Potassium'}[k]!, 'mg')], phone ? 2 : 4),
+              for (final k in _minKeys)
+                if (errors[k] != null) Text(errors[k]!, style: AppText.s(12, W.w6, color: AppColors.badText)),
+            ]),
             extra: 'optional · ${perServing ? 'per $_unitLabel' : 'per 100 g'}',
           ),
           _swapField(),
@@ -492,7 +508,8 @@ class _FoodFormState extends State<_FoodForm> {
           controller: ctl[k],
           placeholder: '0',
           keyboard: const TextInputType.numberWithOptions(decimal: true),
-          formatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+          // at most 9999.9 (kcal, g) or 99999 mg: no runaway numbers anywhere the food shows up
+          formatters: [FilteringTextInputFormatter.allow(RegExp(unit == 'mg' ? r'^\d{0,5}([.,]\d{0,1})?' : r'^\d{0,4}([.,]\d{0,1})?'))],
           suffix: Text(unit, style: AppText.s(11.5, W.w6, color: AppColors.muted)),
           onChanged: (v) => _setNut(k, v),
         ),

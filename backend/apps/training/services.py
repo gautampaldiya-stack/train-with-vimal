@@ -239,7 +239,8 @@ def unassign(a):
     it never really ran, so it leaves no Plan history row and the plan it replaced comes back as it was (D-43).
     Otherwise it moves to Plan history as Unassigned."""
     today = timezone.localdate()
-    if a.created_at.date() == timezone.localtime().date() and not a.workouts.exists():
+    # compare in gym time: created_at is stored in UTC (5:30 behind IST)
+    if timezone.localtime(a.created_at).date() == today and not a.workouts.exists():
         prev = a.replaced
         custom = a.custom_program
         a.delete()

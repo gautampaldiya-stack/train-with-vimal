@@ -470,7 +470,16 @@ class _ExerciseEditScreenState extends State<ExerciseEditScreen> {
           final gap = phone ? 14.0 : 20.0;
           final left = [_basics(phone), _defaults(phone), _steps(phone), _cues(phone)];
           final right = [_media(phone), _muscles(phone)];
-          if (c.maxWidth < 820) return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: gap, children: [...left, ...right]);
+          // one column: kept to a readable width so the inputs do not stretch across a tablet
+          if (c.maxWidth < 820) {
+            return Align(
+              alignment: Alignment.topLeft,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 680),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: gap, children: [...left, ...right]),
+              ),
+            );
+          }
           return Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: gap, children: [
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: gap, children: left)),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: gap, children: right)),
@@ -504,8 +513,8 @@ class _ExerciseEditScreenState extends State<ExerciseEditScreen> {
   /// `.sec-h`: title left, caption right (stacked on a phone).
   Widget _secH(String t, String cap, bool phone, {String? extra}) {
     final head = Text.rich(TextSpan(text: t, children: [if (extra != null) TextSpan(text: ' $extra', style: AppText.cap.copyWith(fontWeight: FontWeight.w500))]), style: AppText.h3);
-    if (phone) return Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [head, Text(cap, style: AppText.cap)]);
-    return Row(spacing: 12, children: [Expanded(child: head), Flexible(child: Text(cap, textAlign: TextAlign.right, style: AppText.cap))]);
+    // the note sits under the title, never floating in the middle of the card
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [head, Text(cap, style: AppText.cap)]);
   }
 
   Widget _field(String label, Widget child, {String? hint, String? error, bool stretch = true}) => Column(crossAxisAlignment: stretch ? CrossAxisAlignment.stretch : CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, spacing: 6, children: [
@@ -733,8 +742,11 @@ class _ExerciseEditScreenState extends State<ExerciseEditScreen> {
     }
     final list = framesLoading ? <Map>[for (var i = 0; i < 4; i++) const {}] : frames;
     return LayoutBuilder(builder: (context, c) {
-      final w = phone ? (c.maxWidth - 24) / 4 : 84.0;
-      return Row(spacing: phone ? 8 : 10, children: [
+      final w = phone ? ((c.maxWidth - 24) / 4).clamp(72.0, 110.0) : 84.0;
+      // scrolls sideways when the card is too narrow for every frame
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(spacing: phone ? 8 : 10, children: [
         for (final (i, f) in list.indexed)
           Hover(
             onTap: f.isEmpty ? null : () => _set(() => frameKey = '${f['key']}'),
@@ -767,7 +779,8 @@ class _ExerciseEditScreenState extends State<ExerciseEditScreen> {
               ]);
             },
           ),
-      ]);
+        ]),
+      );
     });
   }
 
