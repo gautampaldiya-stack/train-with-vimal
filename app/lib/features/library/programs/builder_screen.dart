@@ -756,6 +756,7 @@ class _ProgramBuilderScreenState extends State<ProgramBuilderScreen> {
         final title = Text(dayTitle(d), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(compact ? 14 : 13.5, W.w7));
         final sum = Text(daySummary(d), maxLines: compact ? 1 : 2, overflow: TextOverflow.ellipsis, style: AppText.s(compact ? 12 : 11.5, W.w5, color: AppColors.muted));
         const moon = AppTooltip(message: 'Rest day', child: AppIcon(AppIcons.moon, size: 16, color: AppColors.muted));
+        const dumbbell = AppTooltip(message: 'Workout day', child: AppIcon(AppIcons.dumbbell, size: 16, color: AppColors.muted));
         final box = compact
             ? Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
@@ -765,26 +766,16 @@ class _ProgramBuilderScreenState extends State<ProgramBuilderScreen> {
                   if (rest) moon,
                 ]),
               )
+            // every day the same size: name, "4 exercises · 35 min" (or the rest note), and its icon
             : Container(
-                constraints: const BoxConstraints(minHeight: 132),
-                padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+                height: 104,
+                padding: const EdgeInsets.fromLTRB(10, 10, 10, 9),
                 decoration: deco,
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 3, children: [
                   title,
-                  Padding(padding: const EdgeInsets.only(bottom: 4), child: sum),
-                  if (!rest)
-                    for (final e in ex.take(3))
-                      Container(
-                        padding: const EdgeInsets.symmetric(vertical: 3),
-                        decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
-                        child: Row(spacing: 6, children: [
-                          Expanded(child: Text(exNameOf(e), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w5, color: AppColors.text2))),
-                          Text('${e['sets']}×${e['reps']}', style: AppText.s(11.5, W.w6, color: AppColors.muted)),
-                        ]),
-                      ),
-                  if (!rest && ex.length > 3)
-                    Padding(padding: const EdgeInsets.only(top: 2), child: Text('+${ex.length - 3} more', style: AppText.s(11.5, W.w6, color: AppColors.accentText))),
-                  if (rest) Padding(padding: const EdgeInsets.only(top: 10), child: Align(alignment: Alignment.centerLeft, child: moon)),
+                  sum,
+                  const Spacer(),
+                  Align(alignment: Alignment.centerLeft, child: rest ? moon : (ex.isEmpty ? const SizedBox(height: 16) : dumbbell)),
                 ]),
               );
         return Semantics(button: true, selected: on, label: '${weekdayNames[i]}, ${dayTitle(d)}', child: box);

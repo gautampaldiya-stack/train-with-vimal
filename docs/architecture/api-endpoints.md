@@ -152,7 +152,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `clients/<client_pk>[0-9a-f-]+)/content/library/` | GET | ClientContentView | Client profile → Content tab: what she sees and why (`?why=all/assigned/plan/everyone&q=&page=`), Assign |
 | `content-categories/` | GET, POST | CategoryViewSet |  |
 | `content-categories/<pk>/` | GET, PUT, PATCH, DELETE | CategoryViewSet |  |
-| `content/` | GET, POST | ContentViewSet |  |
+| `content/` | GET, POST | ContentViewSet | Rows carry `thumb_url`: the cover, else a video's first frame (ffmpeg, saved once), else the YouTube still. |
 | `content/<pk>/` | GET, PUT, PATCH, DELETE | ContentViewSet |  |
 | `content/<pk>/assign/` | GET, POST | ContentViewSet |  |
 | `content/<pk>/detail/` | GET | ContentViewSet |  |
@@ -339,7 +339,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `exercises/<pk>/cover/` | POST, DELETE | ExerciseViewSet | Upload image cover (multipart `file`, JPG/PNG ≤ 5 MB) or remove it. Built-in → 403. |
 | `exercises/<pk>/duplicate/` | POST | ExerciseViewSet |  |
 | `exercises/<pk>/restore/` | POST | ExerciseViewSet |  |
-| `exercises/<pk>/used-in/` | GET | ExerciseViewSet | Used in N programs: days, workouts, clients (trainer: own clients only). |
+| `exercises/<pk>/used-in/` | GET | ExerciseViewSet | Used in N programs: days, `weekdays` (Add to program marks those days Added), workouts, clients (trainer: own clients only). |
 | `exercises/facets/` | GET | ExerciseViewSet | Filter counts (muscle, equipment, level, source), built-in / custom totals, `can: {create}`. |
 | `exercises/youtube-info/` | GET | ExerciseViewSet | `?url=` → `{id, thumb, title, author}` (oEmbed, cached 24 h); not YouTube → 400. |
 | `exercises/frames/` | GET | ExerciseViewSet | `?video=<content id>` → four stills grabbed with ffmpeg (saved once), or `?url=<YouTube>` → YouTube's four stills: `{frames: [{key, at, label, url}]}`. Unknown video 404, not YouTube 400. Save the pick as `cover_frame` (D-42). |
@@ -363,7 +363,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `me/workouts/sync/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `programs/` | GET, POST | ProgramViewSet | Programs page (`tab`, `search`, paginated). Cards carry `can_edit`; trainers see only their own clients. POST needs Use templates (D-39). |
 | `programs/<pk>/` | GET, PUT, PATCH, DELETE | ProgramViewSet |  |
-| `programs/<pk>/add-exercise/` | POST | ProgramViewSet | Add to program: `{exercise, weekday}` → added to that weekday in every week (D-40). |
+| `programs/<pk>/add-exercise/` | POST | ProgramViewSet | Add to program: `{exercise, weekday}` → added to that weekday in every week (D-40). Weeks where that day already has it are skipped; 400 when every week has it. |
 | `programs/<pk>/archive/` | POST | ProgramViewSet |  |
 | `programs/<pk>/assign/` | POST | ProgramViewSet |  |
 | `programs/<pk>/clients/` | GET | ProgramViewSet |  |

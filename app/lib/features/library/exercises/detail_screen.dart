@@ -14,6 +14,7 @@ import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/tabs.dart';
 import '../../client/train/train_model.dart' show regionsOf;
 import '../../client/train/train_parts.dart' show BodyMap;
+import '../../../core/widgets/media.dart' show OpenInYoutube;
 import '../../trainer/client_profile/cp_plans_parts.dart' show ExMedia;
 import '../lib_common.dart';
 import 'ex_common.dart';
@@ -40,6 +41,13 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    // Add to program / delete / duplicate here change the library cards under this page
+    Future.microtask(() => exercisesChanged.value++);
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -155,17 +163,17 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
     final rest = (x['default_rest_seconds'] as num?)?.toInt() ?? 0;
     final (restV, restU) = rest == 0 ? ('0', 's') : (rest % 60 == 0 ? ('${rest ~/ 60}', 'min') : ('$rest', 's'));
     final rpe = x['default_rpe'];
+    // the numbers; how the client logs sits in the header as a pill, so no tile ever cuts its text
     final tiles = <(String, String, String?)>[
-      ('Client logs', logLabel(x['log_type']), null),
       ('Sets', '${x['default_sets'] ?? '–'}', null),
       (x['log_type'] == 'time' ? 'Time' : (x['log_type'] == 'distance' ? 'Minutes' : 'Reps'), '${x['default_reps'] ?? '–'}', null),
       ('Rest', restV, restU),
       ('RPE', rpe == null || rpe == 0 ? '–' : '$rpe', rpe == null || rpe == 0 ? null : '/ 10'),
       ('Tempo', '${x['default_tempo'] ?? ''}'.isEmpty ? '–' : '${x['default_tempo']}', null),
     ];
-    Widget tile((String, String, String?) t, {EdgeInsets? pad, Border? border}) => Container(
-          padding: pad,
-          decoration: BoxDecoration(border: border),
+    Widget tile((String, String, String?) t, {required bool first, required bool top}) => Container(
+          padding: EdgeInsets.fromLTRB(first ? 0 : (phone ? 10 : 16), top ? 0 : 10, 8, 0),
+          decoration: BoxDecoration(border: Border(left: first ? BorderSide.none : const BorderSide(color: AppColors.line))),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
             Text(t.$1, style: AppText.s(12, W.w6, color: AppColors.muted)),
             Text.rich(
@@ -175,49 +183,46 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
               ]),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppText.s(phone ? 15 : 17, W.w8),
+              style: AppText.s(phone ? 16 : 18, W.w8),
             ),
           ]),
         );
-    final head = Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-      Text('Default sets and reps', style: AppText.h3),
-      Text('Filled in when added to a program', style: AppText.cap),
-    ]);
-    // three tiles a row: a phone, and any card too narrow for the six side by side
-    Widget grid() => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
-          head,
-          for (var r = 0; r < 2; r++)
-            IntrinsicHeight(
-              child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                for (var c = 0; c < 3; c++)
-                  Expanded(
-                    child: tile(tiles[r * 3 + c],
-                        pad: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                        border: Border(
-                          left: c == 0 ? BorderSide.none : const BorderSide(color: AppColors.line),
-                          top: r == 0 ? BorderSide.none : const BorderSide(color: AppColors.line),
-                        )),
-                  ),
-              ]),
-            ),
-        ]);
-    if (phone) return AppCard(padding: const EdgeInsets.fromLTRB(14, 12, 14, 12), child: grid());
+    final logs = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(color: AppColors.sub, borderRadius: AppRadius.all(99), border: Border.all(color: AppColors.line)),
+      child: Text.rich(
+        TextSpan(children: [
+          TextSpan(text: 'Client logs  ', style: AppText.s(12, W.w5, color: AppColors.muted)),
+          TextSpan(text: logLabel(x['log_type']), style: AppText.s(12.5, W.w7)),
+        ]),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
     return AppCard(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: phone ? const EdgeInsets.fromLTRB(14, 12, 14, 14) : const EdgeInsets.fromLTRB(20, 16, 20, 18),
       child: LayoutBuilder(builder: (context, c) {
-        if (c.maxWidth < 760) return grid();
-        final wide = c.maxWidth >= 860;
-        final row = Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-          for (final (i, t) in tiles.indexed)
-            Flexible(
-              child: tile(t,
-                  pad: EdgeInsets.only(left: i == 0 && wide ? 0 : 28, right: i == tiles.length - 1 ? 4 : 28),
-                  border: i == 0 ? null : const Border(left: BorderSide(color: AppColors.line))),
-            ),
+        final narrow = c.maxWidth < 520;
+        final head = Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+          Text('Default sets and reps', style: AppText.h3),
+          Text('Filled in when added to a program', style: AppText.cap),
         ]);
-        return wide
-            ? Row(spacing: 24, children: [head, Expanded(child: row)])
-            : Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [head, row]);
+        // five in a row; a narrow card puts Sets · Reps · Rest over RPE · Tempo
+        final rows = narrow ? [tiles.sublist(0, 3), tiles.sublist(3)] : [tiles];
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [
+          narrow
+              ? Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [head, logs])
+              : Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 12, children: [Expanded(child: head), Flexible(child: logs)]),
+          Container(height: 1, color: AppColors.line),
+          for (final (r, row) in rows.indexed)
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              for (var i = 0; i < 3 || i < row.length; i++)
+                if (i < row.length)
+                  Expanded(child: tile(row[i], first: i == 0, top: r == 0))
+                else if (narrow)
+                  const Expanded(child: SizedBox()),
+            ]),
+        ]);
       }),
     );
   }
@@ -341,7 +346,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
         ? 'Uploaded image'
         : none
             ? 'Dumbbell tile'
-            : fk.startsWith('yt/')
+            : fk.startsWith('yt/') || (m == null && yt.isNotEmpty && fk.isEmpty)
                 ? 'YouTube frame'
                 : 'Frame at ${clock(x['cover_at_seconds'])}';
     Widget line(String k, String v) => Container(
@@ -351,12 +356,32 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
             Expanded(child: Text(v, textAlign: TextAlign.right, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6))),
           ]),
         );
-    final src = m != null ? 'From content library' : (yt.isNotEmpty ? 'YouTube link' : null);
-    final title = m != null ? '${m['title'] ?? 'Video'}${((m['duration'] as num?) ?? 0) > 0 ? ' · ${clock(m['duration'])}' : ''}' : (yt.isNotEmpty ? yt : 'None yet');
+    final title = m != null ? '${m['title'] ?? 'Video'}${((m['duration'] as num?) ?? 0) > 0 ? ' · ${clock(m['duration'])}' : ''}' : null;
+    // a YouTube link: the header says so and has "Open in YouTube"; the player has no footer line of its own
+    final ytOnly = m == null && yt.isNotEmpty;
     return AppCard(
       padding: EdgeInsets.all(phone ? 14 : 20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-        _cardHead('Video', end: src),
+        if (ytOnly)
+          Row(spacing: 8, children: [
+            Text('Video', softWrap: false, style: AppText.h3.copyWith(fontSize: 16)),
+            const Spacer(),
+            Flexible(
+              flex: 20,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: Row(mainAxisSize: MainAxisSize.min, spacing: 6, children: [
+                  const AppIcon(AppIcons.video, size: 15, color: AppColors.muted),
+                  Text('YouTube link', style: AppText.s(12.5, W.w7)),
+                  const SizedBox(width: 4),
+                  OpenInYoutube(yt),
+                ]),
+              ),
+            ),
+          ])
+        else
+          _cardHead('Video', end: m != null ? 'From content library' : null),
         if (none)
           AspectRatio(
             aspectRatio: 16 / 9,
@@ -372,8 +397,11 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
             ]),
           )
         else
-          ClipRRect(borderRadius: AppRadius.all(10), child: ExMedia(media: m, link: yt, name: '${x['name']}', tone: exTone(x))),
-        Column(children: [line('Video', title), Container(height: 1, color: AppColors.line), line('Cover image', cover)]),
+          ClipRRect(borderRadius: AppRadius.all(10), child: ExMedia(media: m, link: yt, name: '${x['name']}', tone: exTone(x), footer: !ytOnly)),
+        Column(children: [
+          if (title != null) ...[line('Video', title), Container(height: 1, color: AppColors.line)],
+          line('Cover image', cover),
+        ]),
       ]),
     );
   }

@@ -148,10 +148,12 @@ def copy_week(program, number):
 @transaction.atomic
 def add_exercise_to_day(program, exercise, weekday):
     """Exercise page → Add to program: the exercise goes to the end of that weekday in every week where it is a
-    workout day, with the exercise's default sets and reps. Returns how many weeks got it."""
+    workout day, with the exercise's default sets and reps. A day that already has it is left alone (no doubles).
+    Returns how many weeks got it."""
     from django.db.models import Max
 
-    days = ProgramDay.objects.filter(week__program=program, weekday=weekday, is_rest=False)
+    days = ProgramDay.objects.filter(week__program=program, weekday=weekday, is_rest=False).exclude(
+        exercises__exercise=exercise)
     n = 0
     for d in days:
         last = d.exercises.aggregate(m=Max("order"))["m"]

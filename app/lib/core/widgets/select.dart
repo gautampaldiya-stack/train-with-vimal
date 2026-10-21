@@ -20,7 +20,7 @@ class AppSelect extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Builder(
         builder: (b) => Hover(
-          onTap: entries.isEmpty ? null : () => showAppMenu(b, entries, width: (b.findRenderObject() as RenderBox).size.width, alignRight: false),
+          onTap: entries.isEmpty ? null : () => showAppMenu(b, entries, width: (b.findRenderObject() as RenderBox).size.width.clamp(180.0, double.infinity), alignRight: false),
           builder: (_, h, _) => Container(
             height: 36,
             padding: const EdgeInsets.fromLTRB(12, 0, 10, 0),

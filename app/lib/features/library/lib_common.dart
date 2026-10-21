@@ -83,6 +83,9 @@ class LibStepper extends StatelessWidget {
 /// Bumped when the Program builder closes, so the Programs page (still alive under it) reloads its cards.
 final programsChanged = ValueNotifier<int>(0);
 
+/// Bumped when an Exercise page or the Add / Edit exercise page closes, so the Exercise library reloads its cards.
+final exercisesChanged = ValueNotifier<int>(0);
+
 // ─────────────────────────────── Library filter (`ExerciseLibrary` Filter panel)
 
 /// One filter category ("Muscle") with its options (value, label, count).
@@ -136,8 +139,8 @@ Future<void> showLibFilter(BuildContext anchor, {required List<LibFacet> facets,
   final overlay = Overlay.of(anchor, rootOverlay: true).context.findRenderObject() as RenderBox;
   final at = box.localToGlobal(Offset.zero, ancestor: overlay);
   final phone = anchor.isPhone;
-  var cat = facets.indexWhere((f) => (picked.value[f.key] ?? const {}).isNotEmpty);
-  if (cat < 0) cat = 0;
+  // No option list until a category is hovered or clicked.
+  int? cat;
   return showGeneralDialog(
     context: anchor,
     barrierDismissible: true,
@@ -150,7 +153,6 @@ Future<void> showLibFilter(BuildContext anchor, {required List<LibFacet> facets,
       builder: (ctx, set) => ValueListenableBuilder(
         valueListenable: picked,
         builder: (ctx, p, _) {
-          final f = facets[cat];
           Widget item({required Widget child, bool on = false, VoidCallback? onTap}) => Hover(
                 onTap: onTap,
                 builder: (_, h, _) => Container(
@@ -166,7 +168,9 @@ Future<void> showLibFilter(BuildContext anchor, {required List<LibFacet> facets,
             decoration: deco,
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 3, children: [
               for (final (i, c) in facets.indexed)
-                item(
+                MouseRegion(
+                  onEnter: phone ? null : (_) => set(() => cat = i),
+                  child: item(
                   on: i == cat,
                   onTap: () => set(() => cat = i),
                   child: Row(spacing: 6, children: [
@@ -175,6 +179,7 @@ Future<void> showLibFilter(BuildContext anchor, {required List<LibFacet> facets,
                     const AppIcon(AppIcons.chevronRight, size: 14, color: AppColors.muted),
                   ]),
                 ),
+                ),
               Container(height: 1, color: AppColors.line, margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2)),
               item(
                 onTap: () => picked.value = {for (final c in facets) c.key: <String>{}},
@@ -182,7 +187,10 @@ Future<void> showLibFilter(BuildContext anchor, {required List<LibFacet> facets,
               ),
             ]),
           );
-          final opts = Container(
+          final f = cat == null ? null : facets[cat!];
+          final opts = f == null
+              ? const SizedBox.shrink()
+              : Container(
             padding: const EdgeInsets.all(6),
             decoration: deco,
             constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height - at.dy - box.size.height - 24),
@@ -224,7 +232,7 @@ Future<void> showLibFilter(BuildContext anchor, {required List<LibFacet> facets,
             Positioned(
               left: left,
               top: top,
-              child: Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 6, children: [SizedBox(width: 210, child: cats), SizedBox(width: 220, child: opts)]),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 6, children: [SizedBox(width: 210, child: cats), if (f != null) SizedBox(width: 220, child: opts)]),
             ),
           ]);
         },

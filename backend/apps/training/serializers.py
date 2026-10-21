@@ -85,8 +85,8 @@ class ExerciseSerializer(serializers.ModelSerializer):
 
     def get_thumb(self, obj):
         """Picture for the exercise tile: an uploaded cover, else the chosen video frame, else the video's cover, else
-        the YouTube still, else none (icon)."""
-        from .frames import key_url
+        the video's first frame, else the YouTube still, else none (icon)."""
+        from .frames import first_frame, key_url
 
         if obj.cover_image:
             return self._url(obj.cover_image)
@@ -100,6 +100,10 @@ class ExerciseSerializer(serializers.ModelSerializer):
         if v and v.cover:
             req = self.context.get("request")
             return req.build_absolute_uri(v.cover.url) if req else v.cover.url
+        if v and v.kind == "video" and v.file:
+            frame = first_frame(v, self.context.get("request"))
+            if frame:
+                return frame
         return youtube_thumb(obj.youtube_url or (v.youtube_url if v else ""))
 
     def validate_cover_frame(self, v):

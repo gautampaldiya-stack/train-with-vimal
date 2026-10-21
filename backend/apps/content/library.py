@@ -153,5 +153,9 @@ def media_of(item, request=None):
                  "duration": item.duration_seconds or 0} if item.youtube_url else None)
     url = request.build_absolute_uri(item.file.url) if request else item.file.url
     cover = (request.build_absolute_uri(item.cover.url) if request else item.cover.url) if item.cover else ""
+    if not cover and item.kind == "video":
+        from apps.training.frames import first_frame
+
+        cover = first_frame(item, request) or ""
     return {"id": str(item.id), "kind": item.kind, "url": url, "title": item.title, "cover": cover,
             "duration": item.duration_seconds or 0}

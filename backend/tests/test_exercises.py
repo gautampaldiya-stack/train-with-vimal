@@ -97,6 +97,12 @@ def test_add_to_program_every_week(trainer):
     assert r.status_code == 200, r.content and r.json()["weeks"] == 3
     rows = ProgramExercise.objects.filter(day__week__program_id=pid, day__weekday=1, exercise=b)
     assert rows.count() == 3 and all(x.sets == b.default_sets and x.reps == b.default_reps for x in rows)
+    # the same day again adds no double; Used in names the day so the modal can mark it
+    r = trainer.post(f"/api/v1/programs/{pid}/add-exercise/", {"exercise": str(b.id), "weekday": 1}, format="json")
+    assert r.status_code == 400 and r.json()["error"]["fields"]["weekday"]
+    assert rows.count() == 3
+    used = {u["id"]: u for u in trainer.get(f"{E}{b.id}/used-in/").json()}
+    assert used[pid]["weekdays"] == [1]
     # a rest day (weekday 5) is refused, and so is someone else's program
     assert trainer.post(f"/api/v1/programs/{pid}/add-exercise/", {"exercise": str(b.id), "weekday": 5},
                         format="json").status_code == 400

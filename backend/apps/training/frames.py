@@ -84,6 +84,26 @@ def video_frames(item, request=None):
     return out
 
 
+def first_frame(item, request=None):
+    """Picture for a library video that has no cover: its first frame (grabbed once with ffmpeg, then reused), or
+    None when ffmpeg is missing or the file cannot be read."""
+    times = frame_times(item.duration_seconds)
+    for at in times:
+        key = f"{FRAME_DIR}/{item.id}-{at}.jpg"
+        if default_storage.exists(key):
+            return key_url(key, request)
+    exe = ffmpeg_exe()
+    if not exe:
+        return None
+    key = f"{FRAME_DIR}/{item.id}-{times[0]}.jpg"
+    with _source(item) as source:
+        data = _grab(exe, source, times[0]) if source else None
+    if not data:
+        return None
+    default_storage.save(key, ContentFile(data))
+    return key_url(key, request)
+
+
 @contextmanager
 def _source(item):
     """Something ffmpeg can read: the file on disk, the storage URL (S3), or a temporary copy (other storages)."""

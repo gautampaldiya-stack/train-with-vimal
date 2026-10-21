@@ -106,6 +106,8 @@ class _ExerciseEditScreenState extends State<ExerciseEditScreen> {
 
   @override
   void dispose() {
+    // after the tree settles: the library under this page reloads its cards
+    Future.microtask(() => exercisesChanged.value++);
     LeaveGuard.unregister(this);
     _unwatch();
     _ytDebounce?.cancel();
@@ -151,8 +153,8 @@ class _ExerciseEditScreenState extends State<ExerciseEditScreen> {
     } on ApiError catch (e) {
       loadErr = e;
     }
-    steps.add(_line());
-    cues.add(_line());
+    if (steps.isEmpty) steps.add(_line());
+    if (cues.isEmpty) cues.add(_line());
     if (!mounted) return;
     setState(() {
       ready = true;
@@ -547,7 +549,12 @@ class _ExerciseEditScreenState extends State<ExerciseEditScreen> {
       if (phone)
         ...[equip, lvl]
       else
-        Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 16, children: [Expanded(child: equip), lvl]),
+        // side by side only when Equipment still gets room for its longest word
+        LayoutBuilder(
+          builder: (_, b) => b.maxWidth < 500
+              ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 16, children: [equip, Align(alignment: Alignment.centerLeft, child: lvl)])
+              : Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 16, children: [Expanded(child: equip), lvl]),
+        ),
     ]);
   }
 
@@ -589,11 +596,12 @@ class _ExerciseEditScreenState extends State<ExerciseEditScreen> {
     ]);
   }
 
-  /// How to / Form cues: one input per line, × to remove; the last empty line takes the next one.
+  /// How to / Form cues: one input per line, × to remove. "Add step" / "Add cue" adds the next line (typing never
+  /// adds one by itself); empty lines are dropped on save.
   Widget _lines(List<TextEditingController> list, {required bool numbered, required String ph, required String removeTip}) {
     final rows = <Widget>[];
     for (final (i, c) in list.indexed) {
-      final last = i == list.length - 1;
+      final last = c.text.trim().isEmpty;
       rows.add(Row(key: ObjectKey(c), spacing: 10, children: [
         if (numbered)
           Container(
@@ -610,13 +618,13 @@ class _ExerciseEditScreenState extends State<ExerciseEditScreen> {
           child: AppTextField(
             controller: c,
             focusNode: _focus.putIfAbsent(c, FocusNode.new),
-            placeholder: last ? ph : null,
+            placeholder: ph,
             onChanged: (v) {
-              if (last && v.trim().isNotEmpty) setState(() => list.add(_line()));
+              if (v.trim().isEmpty != last) setState(() {});
             },
           ),
         ),
-        if (last)
+        if (list.length == 1)
           const SizedBox(width: 30)
         else
           AppIconButton(AppIcons.close, tooltip: removeTip, small: true, ghost: true, onPressed: () => _set(() {
@@ -643,9 +651,9 @@ class _ExerciseEditScreenState extends State<ExerciseEditScreen> {
         Align(alignment: Alignment.centerLeft, child: AppButton('Add cue', icon: AppIcons.plus, kind: BtnKind.text, onPressed: () => _addLine(cues))),
       ]);
 
-  /// "Add step": a filled last line gets a new empty one under it; the cursor goes to the empty line.
+  /// "Add step": a new empty line under the last one (or the empty last line); the cursor goes to it.
   void _addLine(List<TextEditingController> list) {
-    if (list.last.text.trim().isNotEmpty) setState(() => list.add(_line()));
+    if (list.isEmpty || list.last.text.trim().isNotEmpty) setState(() => list.add(_line()));
     WidgetsBinding.instance.addPostFrameCallback((_) => _focus[list.last]?.requestFocus());
   }
 
@@ -974,10 +982,13 @@ Future<Map?> showModalVideoPicker(BuildContext context, String? current) async {
     icon: AppIcons.play,
     width: 520,
     content: (_) => _VideoList(current: current, pick: pick),
-    lead: Align(alignment: Alignment.centerLeft, child: AppButton('Upload to library', kind: BtnKind.text, onPressed: () {
-      Navigator.of(context, rootNavigator: true).maybePop();
-      router.go('/content');
-    })),
+    // Builder: the modal's own context, so pop closes the modal and not the page under it
+    lead: Builder(
+      builder: (mctx) => Align(alignment: Alignment.centerLeft, child: AppButton('Upload to library', kind: BtnKind.text, onPressed: () {
+        Navigator.of(mctx).pop();
+        router.go('/content');
+      })),
+    ),
     actions: (ctx) => [
       if (ctx.isPhone)
         AppButton('Upload to library', kind: BtnKind.text, onPressed: () {
@@ -1066,7 +1077,7 @@ class _VideoListState extends State<_VideoList> {
                   final v = list[i], on = p != null && '${p['id']}' == '${v['id']}';
                   final at = DateTime.tryParse('${v['created_at'] ?? ''}');
                   final (a, b) = AppColors.mediaTiles[exTone(v)];
-                  final cover = '${v['cover_url'] ?? ''}';
+                  final cover = '${v['thumb_url'] ?? v['cover_url'] ?? ''}';
                   return Hover(
                     onTap: () => widget.pick.value = v,
                     builder: (_, h, _) => Container(

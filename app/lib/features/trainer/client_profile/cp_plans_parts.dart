@@ -575,10 +575,13 @@ Future<void> showExerciseDrawer(BuildContext context,
 /// guide): a video and a YouTube video play right here, a picture opens full screen, a web link opens the
 /// browser. The line under it says which one it is.
 class ExMedia extends StatefulWidget {
-  const ExMedia({super.key, required this.media, required this.link, required this.name, this.tone = 0});
+  const ExMedia({super.key, required this.media, required this.link, required this.name, this.tone = 0, this.footer = true});
   final Map? media;
   final String link, name;
   final int tone;
+
+  /// The "YouTube link · Open in YouTube" line under the player; off when the card header shows it.
+  final bool footer;
   @override
   State<ExMedia> createState() => _ExMediaState();
 }
@@ -621,7 +624,8 @@ class _ExMediaState extends State<ExMedia> {
         Expanded(child: Text('No video yet. Add one in the exercise library.', style: AppText.s(12.5, W.w6, color: AppColors.muted))),
       ]);
     }
-    final title = '${m?['title'] ?? ''}'.isNotEmpty ? '${m!['title']}' : widget.name;
+    // a bare link has no title of its own (the exercise name is already on the page)
+    final title = '${m?['title'] ?? ''}'.isNotEmpty ? '${m!['title']}' : '';
     final (AppIconData icon, String what) = switch (kind) {
       'video' => (AppIcons.video, 'Video'),
       'image' => (AppIcons.photo, 'Picture'),
@@ -661,13 +665,14 @@ class _ExMediaState extends State<ExMedia> {
       decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.line)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         face,
+        if (widget.footer)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           child: Row(spacing: 8, children: [
             AppIcon(icon, size: 15, color: AppColors.muted),
             Expanded(
               child: Text.rich(
-                TextSpan(text: what, style: AppText.s(12.5, W.w7), children: [TextSpan(text: ' · $title', style: AppText.s(12.5, W.w5, color: AppColors.text2))]),
+                TextSpan(text: what, style: AppText.s(12.5, W.w7), children: [if (title.isNotEmpty) TextSpan(text: ' · $title', style: AppText.s(12.5, W.w5, color: AppColors.text2))]),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),

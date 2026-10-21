@@ -230,12 +230,14 @@ class ExerciseViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
         progs = {}
         for pe in rows:
             p = pe.day.week.program
-            item = progs.setdefault(p.id, {"id": str(p.id), "name": p.name, "days": set()})
+            item = progs.setdefault(p.id, {"id": str(p.id), "name": p.name, "days": set(), "weekdays": set()})
+            item["weekdays"].add(pe.day.weekday)
             if pe.day.name:
                 item["days"].add(pe.day.name)
         out = []
         for pid, item in progs.items():
             item["days"] = sorted(item["days"])
+            item["weekdays"] = sorted(item["weekdays"])  # Add to program marks these days "Already added"
             # a trainer counts only their own clients (D-39)
             item["clients"] = ProgramAssignment.objects.filter(
                 program_id=pid, status="active", client__in=visible_clients(request.user)).count()
@@ -450,6 +452,8 @@ class ProgramViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
         if not p.program_weeks.filter(days__weekday=wd, days__is_rest=False).exists():
             raise serializers.ValidationError({"weekday": ["Pick a workout day."]})
         n = services.add_exercise_to_day(p, ex, wd)
+        if n == 0:
+            raise serializers.ValidationError({"weekday": [f"{ex.name} is already on this day in every week."]})
         return Response({"weeks": n, "program": str(p.id), "name": p.name})
 
     @action(detail=True)

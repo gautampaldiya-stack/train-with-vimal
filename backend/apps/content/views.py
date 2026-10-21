@@ -53,12 +53,13 @@ class ContentSerializer(serializers.ModelSerializer):
     shared_count = serializers.IntegerField(read_only=True, source="n_shares", default=0)
     file_url = serializers.SerializerMethodField()
     cover_url = serializers.SerializerMethodField()
+    thumb_url = serializers.SerializerMethodField()
     usage = serializers.SerializerMethodField()
 
     class Meta:
         model = ContentItem
         fields = ["id", "kind", "title", "category", "category_name", "description", "file", "file_url",
-                  "youtube_url", "link_url", "cover", "cover_url", "body", "read_minutes", "duration_seconds", "pages",
+                  "youtube_url", "link_url", "cover", "cover_url", "thumb_url", "body", "read_minutes", "duration_seconds", "pages",
                   "file_size", "resolution", "share_everyone", "chapters", "outline", "shared_count", "added_by", "usage", "created_at",
                   "updated_at"]
         read_only_fields = ["file_size"]
@@ -76,6 +77,17 @@ class ContentSerializer(serializers.ModelSerializer):
 
     def get_cover_url(self, obj):
         return self._url(obj.cover)
+
+    def get_thumb_url(self, obj):
+        """Picture for a list tile: the cover, else a video's first frame, else the YouTube still, else none."""
+        from apps.training.frames import first_frame
+        from apps.training.serializers import youtube_thumb
+
+        if obj.cover:
+            return self._url(obj.cover)
+        if obj.kind == "video" and obj.file:
+            return first_frame(obj, self.context.get("request"))
+        return youtube_thumb(obj.youtube_url) if obj.youtube_url else None
 
     def get_usage(self, obj):
         n = getattr(obj, "n_exercises", None)

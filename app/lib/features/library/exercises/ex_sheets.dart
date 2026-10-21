@@ -15,12 +15,18 @@ import '../lib_common.dart';
 /// Actions an exercise card and the Exercise page share: Add to program, Duplicate to edit, Delete.
 
 /// "Add to program": pick one of the programs you may change, then a workout day. The exercise goes to the end of
-/// that day in every week, with its default sets and reps (`POST programs/<id>/add-exercise/`).
+/// that day in every week, with its default sets and reps (`POST programs/<id>/add-exercise/`). Days that already
+/// have it show "Added" and cannot be picked, so a day never gets the same exercise twice.
 Future<void> showAddToProgram(BuildContext context, Map e) async {
+  // program id → weekdays that already have this exercise (`exercises/<id>/used-in/`)
+  final usedOn = Services.api.get<List>('exercises/${e['id']}/used-in/').then((r) => {
+        for (final u in r) '${(u as Map)['id']}': {for (final d in (u['weekdays'] as List? ?? const [])) (d as num).toInt()},
+      }).catchError((_) => <String, Set<int>>{});
   final programs = Services.api.get<Map>('programs/', query: {'tab': 'active', 'page_size': 100}).then((r) => [
         for (final p in r['results'] as List)
           if ((p as Map)['can_edit'] == true) p,
       ]);
+  final data = Future.wait<Object>([programs, usedOn]);
   final prog = ValueNotifier<Map?>(null);
   final days = ValueNotifier<List<Map>?>(null);
   final day = ValueNotifier<int?>(null);
@@ -47,12 +53,13 @@ Future<void> showAddToProgram(BuildContext context, Map e) async {
     body: '${e['name']} · added to the day in every week, with its default sets and reps',
     icon: AppIcons.plus,
     width: 480,
-    content: (ctx) => FutureBuilder<List<Map>>(
-      future: programs,
+    content: (ctx) => FutureBuilder<List<Object>>(
+      future: data,
       builder: (ctx, s) {
         if (s.hasError) return const EmptyState('Could not load your programs');
         if (!s.hasData) return const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator(color: AppColors.accent, strokeWidth: 2.5)));
-        final list = s.data!;
+        final list = s.data![0] as List<Map>;
+        final used = s.data![1] as Map<String, Set<int>>;
         if (list.isEmpty) {
           return Text('No program you can change yet. Make one, or duplicate one, on the Programs page.', style: AppText.s(13, W.w5, color: AppColors.muted));
         }
@@ -64,13 +71,16 @@ Future<void> showAddToProgram(BuildContext context, Map e) async {
               for (final p in list)
                 DrOpt(
                   title: '${p['name']}',
-                  sub: '${plural((p['weeks'] as num?)?.toInt() ?? 0, 'week')} · ${p['days_per_week']} days / week',
+                  sub: '${plural((p['weeks'] as num?)?.toInt() ?? 0, 'week')} · ${p['days_per_week']} days / week'
+                      '${(used['${p['id']}'] ?? const {}).isEmpty ? '' : ' · Already on ${[for (final d in (used['${p['id']}']!.toList()..sort())) weekdayShort[d]].join(', ')}'}',
                   on: prog.value?['id'] == p['id'],
                   onTap: () => pick(p),
                 ),
             ]),
             if (prog.value != null) ...[
               Text('Day', style: AppText.label),
+              if ((used['${prog.value!['id']}'] ?? const {}).isNotEmpty)
+                Text('Days marked Added already have this exercise.', style: AppText.s(12.5, W.w5, color: AppColors.muted)),
               if (days.value == null)
                 const Padding(padding: EdgeInsets.all(12), child: Center(child: CircularProgressIndicator(color: AppColors.accent, strokeWidth: 2.5)))
               else if (days.value!.isEmpty)
@@ -81,7 +91,10 @@ Future<void> showAddToProgram(BuildContext context, Map e) async {
                     () {
                       final wd = (d['weekday'] as num).toInt(), on = day.value == wd;
                       final n = '${d['name'] ?? ''}'.trim();
-                      return ChoiceChipX('${weekdayShort[wd]} · ${n.isEmpty ? 'Workout' : n}', on: on, onTap: () => day.value = wd);
+                      final has = (used['${prog.value!['id']}'] ?? const {}).contains(wd);
+                      final chip = ChoiceChipX('${weekdayShort[wd]} · ${n.isEmpty ? 'Workout' : n}${has ? ' · Added' : ''}',
+                          on: on, done: has, onTap: () => day.value = wd);
+                      return has ? Tooltip(message: '${e['name']} is already on this day', child: chip) : chip;
                     }(),
                 ]),
             ],
@@ -165,12 +178,25 @@ Future<bool> deleteExercise(BuildContext context, Map e, {VoidCallback? onUndo})
 
 /// `.chip`-like pick (one of a few): outlined, blue when picked.
 class ChoiceChipX extends StatelessWidget {
-  const ChoiceChipX(this.label, {super.key, required this.on, required this.onTap, this.tick = false});
+  const ChoiceChipX(this.label, {super.key, required this.on, required this.onTap, this.tick = false, this.done = false});
   final String label;
   final bool on, tick;
+
+  /// Already there: greyed with a tick, cannot be picked.
+  final bool done;
   final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => GestureDetector(
+  Widget build(BuildContext context) => done
+      ? Container(
+          height: 30,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(color: AppColors.sub, borderRadius: AppRadius.all(AppRadius.chip), border: Border.all(color: AppColors.line)),
+          child: Row(mainAxisSize: MainAxisSize.min, spacing: 5, children: [
+            const AppIcon(AppIcons.check, size: 13, color: AppColors.okText, stroke: 2.2),
+            Text(label, style: AppText.s(13, W.w6, color: AppColors.muted)),
+          ]),
+        )
+      : GestureDetector(
         onTap: onTap,
         child: MouseRegion(
           cursor: SystemMouseCursors.click,

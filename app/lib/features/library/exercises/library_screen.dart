@@ -49,12 +49,14 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
   void initState() {
     super.initState();
     picked.addListener(_load);
+    exercisesChanged.addListener(_load);
     _load();
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
+    exercisesChanged.removeListener(_load);
     picked.dispose();
     super.dispose();
   }
@@ -232,7 +234,8 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
   }
 }
 
-/// `.ex-c` card: cover, name, "Chest · Barbell", then level badge, "2 programs" and ⋯.
+/// `.ex-c` card: cover (the exercise's picture or video frame, ⋯ on its corner), name, "Chest · Barbell", then the
+/// level badge and how many programs use it. The ⋯ sits on the cover so the bottom line never gets cut.
 class _ExCard extends StatelessWidget {
   const _ExCard(this.e, {required this.phone, required this.onMenu});
   final Map e;
@@ -240,45 +243,76 @@ class _ExCard extends StatelessWidget {
   final void Function(BuildContext) onMenu;
 
   @override
-  Widget build(BuildContext context) => Hover(
-        onTap: () => context.go('/exercises/${e['id']}'),
-        builder: (_, h, _) => Container(
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(color: AppColors.card, borderRadius: AppRadius.all(AppRadius.card), border: Border.all(color: h ? AppColors.line2 : AppColors.line)),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            AspectRatio(aspectRatio: phone ? 16 / 9 : 16 / 10, child: ExCover(e, radius: 0)),
-            Padding(
-              padding: phone ? const EdgeInsets.fromLTRB(10, 8, 10, 8) : const EdgeInsets.fromLTRB(12, 10, 12, 10),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: phone ? 3 : 4, children: [
-                SizedBox(
-                  height: phone ? 34 : null,
-                  child: Text('${e['name']}',
-                      maxLines: phone ? 2 : 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppText.s(phone ? 13 : 13.5, W.w7, color: h ? AppColors.accentText : AppColors.text, h: 1.3)),
+  Widget build(BuildContext context) {
+    final n = (e['programs'] as num?)?.toInt() ?? 0;
+    return Hover(
+      onTap: () => context.go('/exercises/${e['id']}'),
+      builder: (_, h, _) => Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(color: AppColors.card, borderRadius: AppRadius.all(AppRadius.card), border: Border.all(color: h ? AppColors.line2 : AppColors.line)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          AspectRatio(
+            aspectRatio: phone ? 16 / 10 : 16 / 10,
+            child: Stack(fit: StackFit.expand, children: [
+              ExCover(e, radius: 0, iconSize: phone ? 26 : 30),
+              Positioned(
+                top: 6,
+                right: 6,
+                child: Builder(
+                  builder: (b) => Tooltip(
+                    message: 'More actions',
+                    child: Hover(
+                      onTap: () => onMenu(b),
+                      builder: (_, mh, _) => Container(
+                        width: 28,
+                        height: 28,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: mh ? AppColors.card : AppColors.card.withValues(alpha: .88),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.line),
+                        ),
+                        child: const AppIcon(AppIcons.dots, size: 15, color: AppColors.text2, fill: true),
+                      ),
+                    ),
+                  ),
                 ),
-                Text.rich(
-                  TextSpan(children: [
-                    TextSpan(text: exMuscleLabel(e), style: AppText.s(phone ? 11.5 : 12.5, W.w6, color: AppColors.text2)),
-                    TextSpan(text: '  ·  ${exEquipLabel(e)}'),
-                  ]),
-                  maxLines: 1,
+              ),
+            ]),
+          ),
+          Padding(
+            padding: phone ? const EdgeInsets.fromLTRB(10, 9, 10, 10) : const EdgeInsets.fromLTRB(12, 11, 12, 12),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: phone ? 3 : 4, children: [
+              Text('${e['name']}',
+                  maxLines: phone ? 2 : 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppText.s(phone ? 11.5 : 12.5, W.w5, color: AppColors.muted),
-                ),
-                Container(
-                  margin: const EdgeInsets.only(top: 4),
-                  padding: EdgeInsets.only(top: phone ? 6 : 8),
-                  decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
-                  child: Row(spacing: phone ? 6 : 8, children: [
-                    AppBadge(exLevelLabel(e), tone: levelTone('${e['level']}'), plain: true),
-                    Expanded(child: Text(usedLabel(e['programs']), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted))),
-                    Builder(builder: (b) => SizedBox(height: 22, child: AppIconButton(AppIcons.dots, tooltip: 'More actions', small: true, ghost: true, onPressed: () => onMenu(b)))),
+                  style: AppText.s(phone ? 13 : 14, W.w7, color: h ? AppColors.accentText : AppColors.text, h: 1.3)),
+              Text.rich(
+                TextSpan(children: [
+                  TextSpan(text: exMuscleLabel(e), style: AppText.s(phone ? 11.5 : 12.5, W.w6, color: AppColors.text2)),
+                  TextSpan(text: '  ·  ${exEquipLabel(e)}'),
+                ]),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppText.s(phone ? 11.5 : 12.5, W.w5, color: AppColors.muted),
+              ),
+              const SizedBox(height: 4),
+              LayoutBuilder(builder: (context, b) {
+                // narrow cards show just the number; the tooltip says the rest
+                final short = b.maxWidth < 168;
+                final used = Tooltip(
+                  message: n == 0 ? 'Not in any program yet' : 'Used in ${usedLabel(n)}',
+                  child: Row(mainAxisSize: MainAxisSize.min, spacing: 4, children: [
+                    AppIcon(AppIcons.programs, size: 13, color: AppColors.muted),
+                    Text(short ? '$n' : (n == 0 ? 'Not used' : usedLabel(n)), style: AppText.s(12, W.w6, color: AppColors.muted)),
                   ]),
-                ),
-              ]),
-            ),
-          ]),
-        ),
-      );
+                );
+                return Row(children: [AppBadge(exLevelLabel(e), tone: levelTone('${e['level']}'), plain: true), const Spacer(), used]);
+              }),
+            ]),
+          ),
+        ]),
+      ),
+    );
+  }
 }
