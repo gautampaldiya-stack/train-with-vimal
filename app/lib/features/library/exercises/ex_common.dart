@@ -48,10 +48,13 @@ bool hasVideo(Map e) => e['media'] != null || '${e['youtube_url'] ?? ''}'.isNotE
 /// `.media` cover: the exercise's picture when it has one, else the tinted tile with the dumbbell. Bottom left:
 /// "▶ 0:42" for a video (red for YouTube), "Image" for a picture. [radius] 0 for the card top.
 class ExCover extends StatelessWidget {
-  const ExCover(this.e, {super.key, this.radius = 10, this.iconSize = 30, this.badge = true, this.inset = 8});
+  const ExCover(this.e, {super.key, this.radius = 10, this.iconSize = 30, this.badge = true, this.inset = 8, this.mini = false});
   final Map e;
   final double radius, iconSize, inset;
   final bool badge;
+
+  /// Small list tiles: the pill shows only ▶ and the length ("YouTube" and "Image" are left out).
+  final bool mini;
 
   @override
   Widget build(BuildContext context) {
@@ -67,16 +70,17 @@ class ExCover extends StatelessWidget {
     );
     Widget? tag;
     if (badge && (media != null || yt)) {
+      final label = mini ? (yt || dur == 0 ? null : clock(dur)) : (yt ? 'YouTube' : (dur > 0 ? clock(dur) : 'Video'));
       tag = Container(
-        height: 18,
-        padding: const EdgeInsets.fromLTRB(4, 0, 6, 0),
+        height: mini ? 15 : 18,
+        padding: EdgeInsets.fromLTRB(mini ? 3 : 4, 0, label == null ? 3 : (mini ? 4 : 6), 0),
         decoration: BoxDecoration(color: yt ? AppColors.ytRed : AppColors.playBadge, borderRadius: AppRadius.all(9)),
         child: Row(mainAxisSize: MainAxisSize.min, spacing: 2, children: [
-          const AppIcon(AppIcons.play, size: 10, color: AppColors.white, fill: true),
-          Text(yt ? 'YouTube' : (dur > 0 ? clock(dur) : 'Video'), style: AppText.s(10, W.w7, color: AppColors.white)),
+          AppIcon(AppIcons.play, size: mini ? 8 : 10, color: AppColors.white, fill: true),
+          if (label != null) Text(label, style: AppText.s(mini ? 9 : 10, W.w7, color: AppColors.white)),
         ]),
       );
-    } else if (badge && thumb != null) {
+    } else if (badge && thumb != null && !mini) {
       tag = Container(
         height: 18,
         padding: const EdgeInsets.symmetric(horizontal: 7),

@@ -179,6 +179,7 @@ def assign_program(client, program_id, *, actor=None, start_date=None, when="now
     today = timezone.localdate()
     current = _current(client)
     status = AssignmentStatus.ACTIVE
+    replaced = None
     if when == "after_current" and current:
         cur_end = current.end_date or current.start_date + timedelta(weeks=current.effective_program.weeks)
         start_date = cur_end + timedelta(days=1)
@@ -190,9 +191,11 @@ def assign_program(client, program_id, *, actor=None, start_date=None, when="now
         elif current:
             current.status = AssignmentStatus.ENDED
             current.end_date = today
-            current.save(update_fields=["status", "end_date", "updated_at"])
+            current.end_reason = "replaced"
+            current.save(update_fields=["status", "end_date", "end_reason", "updated_at"])
+            replaced = current
     a = ProgramAssignment.objects.create(
-        client=client, program=program, start_date=start_date, status=status, assigned_by=actor,
+        client=client, program=program, start_date=start_date, status=status, assigned_by=actor, replaced=replaced,
         end_date=start_date + timedelta(weeks=program.weeks) - timedelta(days=1),
     )
     activity_log("assigned a workout plan", "plan", actor=actor, target=client, target_label=program.name,
@@ -224,11 +227,30 @@ def set_program_clients(program, client_ids, *, actor):
     for cid in added:
         if cid in clients:
             assign_program(clients[cid], program, actor=actor, start_date=timezone.localdate())
-    if removed:
-        ProgramAssignment.objects.filter(program=program, status=AssignmentStatus.ACTIVE,
-                                         client_id__in=removed).update(status=AssignmentStatus.ENDED,
-                                                                       end_date=timezone.localdate())
+    for a in ProgramAssignment.objects.filter(program=program, status=AssignmentStatus.ACTIVE, client_id__in=removed):
+        unassign(a)
     return len([c for c in added if c in clients]), len(removed)
+
+
+def unassign(a):
+    """Take a client off a program. Assigned and taken off the same day with nothing logged (an Undo, a slip):
+    it never really ran, so it leaves no Plan history row and the plan it replaced comes back as it was (D-43).
+    Otherwise it moves to Plan history as Unassigned."""
+    today = timezone.localdate()
+    if a.created_at.date() == timezone.localtime().date() and not a.workouts.exists():
+        prev = a.replaced
+        custom = a.custom_program
+        a.delete()
+        if custom is not None:
+            custom.soft_delete()
+        if prev is not None and prev.status == AssignmentStatus.ENDED and prev.end_date == today \
+                and not ProgramAssignment.objects.filter(client=prev.client, status=AssignmentStatus.ACTIVE).exists():
+            prev.status, prev.end_reason = AssignmentStatus.ACTIVE, ""
+            prev.end_date = prev.start_date + timedelta(weeks=prev.effective_program.weeks) - timedelta(days=1)
+            prev.save(update_fields=["status", "end_reason", "end_date", "updated_at"])
+        return
+    a.status, a.end_date, a.end_reason = AssignmentStatus.ENDED, today, "unassigned"
+    a.save(update_fields=["status", "end_date", "end_reason", "updated_at"])
 
 
 @transaction.atomic
@@ -273,7 +295,8 @@ def reset_to_master(assignment, *, actor):
 def end_assignment(assignment, *, actor):
     assignment.status = AssignmentStatus.ENDED
     assignment.end_date = timezone.localdate()
-    assignment.save(update_fields=["status", "end_date", "updated_at"])
+    assignment.end_reason = "ended"
+    assignment.save(update_fields=["status", "end_date", "end_reason", "updated_at"])
     activity_log("ended a plan", "plan", actor=actor, target=assignment.client,
                  target_label=assignment.effective_program.name, client=assignment.client)
 

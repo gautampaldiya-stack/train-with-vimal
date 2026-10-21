@@ -12,6 +12,7 @@ import '../../../app/services.dart';
 import '../../../app/shell/page.dart';
 import '../../../core/api/api_error.dart';
 import '../../../core/icons/app_icons.dart';
+import '../../../core/leave/leave_guard.dart';
 import '../../../core/theme/theme.dart';
 import '../../../core/widgets/button.dart';
 import '../../../core/widgets/card.dart';
@@ -63,7 +64,6 @@ const _logs = {
   't': ('time', 'Time per set', '30 s', 'Client logs seconds per set, for holds like plank or wall sit.'),
   'c': ('distance', 'Minutes', '20 min', 'Client logs minutes and distance (km). Speed, incline or level go in the program note.'),
 };
-const _frames = [4, 12, 21, 33];
 
 class _ExerciseEditScreenState extends State<ExerciseEditScreen> {
   Map? old;
@@ -85,7 +85,10 @@ class _ExerciseEditScreenState extends State<ExerciseEditScreen> {
   Map? ytInfo;
   bool ytLoading = false;
   Timer? _ytDebounce;
-  int frame = 1;
+  // "Frame from the video": real stills from the picked video (exercises/frames/, D-42)
+  List<Map> frames = const [];
+  bool framesLoading = false;
+  String? frameKey, _framesFor;
   (String, Uint8List)? coverFile;
   String? coverUrl; // the uploaded cover the exercise has now
   bool dragging = false;
@@ -97,11 +100,13 @@ class _ExerciseEditScreenState extends State<ExerciseEditScreen> {
     for (final c in [name, reps, tempo]) {
       c.addListener(_touch);
     }
+    LeaveGuard.register(this, _askLeave);
     _load();
   }
 
   @override
   void dispose() {
+    LeaveGuard.unregister(this);
     _unwatch();
     _ytDebounce?.cancel();
     for (final c in [name, reps, tempo, yt, ...steps, ...cues, ...notes.values]) {
@@ -153,6 +158,7 @@ class _ExerciseEditScreenState extends State<ExerciseEditScreen> {
       ready = true;
       dirty = false;
     });
+    _loadFrames();
     if (kIsWeb) {
       _unwatch = watchDrops(onOver: (o) => setState(() => dragging = o && cover == 'up'), onFile: (f) {
         if (cover == 'up') _takeCover(f);
@@ -195,12 +201,36 @@ class _ExerciseEditScreenState extends State<ExerciseEditScreen> {
     }
     coverUrl = x['cover_image'] as String?;
     cover = coverUrl != null ? 'up' : 'frame';
-    final at = (x['cover_at_seconds'] as num?)?.toInt() ?? 12;
-    var best = 0;
-    for (var i = 1; i < _frames.length; i++) {
-      if ((_frames[i] - at).abs() < (_frames[best] - at).abs()) best = i;
+    final f = '${x['cover_frame'] ?? ''}';
+    frameKey = f.isEmpty ? null : f;
+  }
+
+  /// Loads the stills of the video now picked (library upload or YouTube link). A frame key the new video doesn't
+  /// have falls back to its second still, like the board's default.
+  Future<void> _loadFrames() async {
+    final q = vsrc == 'lib'
+        ? (video == null ? null : {'video': '${video!['id']}'})
+        : (ytInfo == null ? null : {'url': yt.text.trim()});
+    final sig = q?.toString();
+    if (sig == _framesFor) return;
+    _framesFor = sig;
+    if (q == null) {
+      setState(() => frames = const []);
+      return;
     }
-    frame = best;
+    setState(() => framesLoading = true);
+    try {
+      final r = await Services.api.get<Map>('exercises/frames/', query: q);
+      if (!mounted || _framesFor != sig) return;
+      final list = [for (final f in (r['frames'] as List? ?? const [])) f as Map];
+      setState(() {
+        frames = list;
+        if (list.isNotEmpty && !list.any((f) => f['key'] == frameKey)) frameKey = '${list[list.length > 1 ? 1 : 0]['key']}';
+      });
+    } on ApiError {
+      if (mounted && _framesFor == sig) setState(() => frames = const []);
+    }
+    if (mounted && _framesFor == sig) setState(() => framesLoading = false);
   }
 
   // ─────────────────────────────── muscles
@@ -269,7 +299,10 @@ class _ExerciseEditScreenState extends State<ExerciseEditScreen> {
     setState(() => ytLoading = true);
     try {
       final r = await Services.api.get<Map>('exercises/youtube-info/', query: {'url': url});
-      if (mounted && yt.text.trim() == url) setState(() => ytInfo = r);
+      if (mounted && yt.text.trim() == url) {
+        setState(() => ytInfo = r);
+        _loadFrames();
+      }
     } on ApiError catch (e) {
       if (mounted && yt.text.trim() == url) setState(() => ytErr = e.field('url') ?? e.message);
     }
@@ -278,7 +311,10 @@ class _ExerciseEditScreenState extends State<ExerciseEditScreen> {
 
   Future<void> _pickVideo() async {
     final r = await showModalVideoPicker(context, video?['id']?.toString());
-    if (r != null) _set(() => video = r);
+    if (r != null) {
+      _set(() => video = r);
+      _loadFrames();
+    }
   }
 
   Future<void> _pickCover() async {
@@ -306,12 +342,17 @@ class _ExerciseEditScreenState extends State<ExerciseEditScreen> {
   String get _back => widget.id == null ? '/exercises' : '/exercises/${widget.id}';
 
   Future<void> _cancel() async {
-    if (dirty) {
-      final ok = await confirmAction(context,
-          title: 'Leave without saving?', body: 'Your changes to this exercise are not saved.', confirm: 'Leave', danger: true, icon: AppIcons.alert);
-      if (!ok || !mounted) return;
-    }
+    if (!await _askLeave(context) || !mounted) return;
     context.go(_back);
+  }
+
+  /// Also asked by the router when the page closes another way (sidebar, tabs, back) (D-43).
+  Future<bool> _askLeave(BuildContext context) async {
+    if (!dirty) return true;
+    final ok = await confirmAction(context,
+        title: 'Leave without saving?', body: 'Your changes to this exercise are not saved.', confirm: 'Leave', danger: true, icon: AppIcons.alert);
+    if (ok) dirty = false;
+    return ok;
   }
 
   Future<void> _save() async {
@@ -344,7 +385,8 @@ class _ExerciseEditScreenState extends State<ExerciseEditScreen> {
       'form_cues': [for (final c in cues) if (c.text.trim().isNotEmpty) c.text.trim()],
       'video': vsrc == 'lib' ? (video?['id']) : null,
       'youtube_url': vsrc == 'yt' ? yt.text.trim() : '',
-      'cover_at_seconds': _frames[frame],
+      'cover_frame': cover == 'frame' && frames.isNotEmpty ? (frameKey ?? '') : '',
+      if (cover == 'frame' && _frameAt != null) 'cover_at_seconds': _frameAt,
     };
     setState(() => saving = true);
     try {
@@ -380,6 +422,8 @@ class _ExerciseEditScreenState extends State<ExerciseEditScreen> {
   }
 
   bool _coverRemoved = false;
+
+  int? get _frameAt => (frames.firstWhere((f) => f['key'] == frameKey, orElse: () => const {})['at'] as num?)?.toInt();
 
   // ─────────────────────────────── build
 
@@ -608,7 +652,6 @@ class _ExerciseEditScreenState extends State<ExerciseEditScreen> {
   // ─────────────────────────────── right column
 
   Widget _media(bool phone) {
-    final tones = [0, 1, 2, 3];
     final tone = vsrc == 'lib' && video != null ? exTone(video!) : 2;
     return _card(phone, [
       _secH('Video and image', 'Shows at the top of the exercise page', phone),
@@ -616,7 +659,10 @@ class _ExerciseEditScreenState extends State<ExerciseEditScreen> {
         'Video',
         Align(
           alignment: Alignment.centerLeft,
-          child: _tabs(const [('lib', 'From content library'), ('yt', 'YouTube link')], vsrc, (v) => _set(() => vsrc = v), expand: phone, height: 30),
+          child: _tabs(const [('lib', 'From content library'), ('yt', 'YouTube link')], vsrc, (v) {
+            _set(() => vsrc = v);
+            _loadFrames();
+          }, expand: phone, height: 30),
         ),
       ),
       if (vsrc == 'lib') ...[
@@ -645,6 +691,7 @@ class _ExerciseEditScreenState extends State<ExerciseEditScreen> {
             trailing: AppIconButton(AppIcons.close, tooltip: 'Remove video', small: true, ghost: true, onPressed: () {
               yt.clear();
               _set(() => ytInfo = null);
+              _loadFrames();
             }),
             phone: phone,
           ),
@@ -661,38 +708,59 @@ class _ExerciseEditScreenState extends State<ExerciseEditScreen> {
         ),
       ),
       if (cover == 'frame')
-        LayoutBuilder(builder: (context, c) {
-          final w = phone ? (c.maxWidth - 24) / 4 : 84.0;
-          return Row(spacing: phone ? 8 : 10, children: [
-            for (final (i, t) in _frames.indexed)
-              Hover(
-                onTap: () => _set(() => frame = i),
-                builder: (_, h, _) {
-                  final on = frame == i;
-                  final (a, b) = AppColors.mediaTiles[i == 1 ? tone : tones[(tone + i) % 4]];
-                  return Column(mainAxisSize: MainAxisSize.min, spacing: 4, children: [
-                    Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(borderRadius: AppRadius.all(11), border: Border.all(color: on ? AppColors.accent : Colors.transparent, width: 2)),
-                      child: Container(
-                        width: w - 8,
-                        height: (w - 8) * (phone ? 10 / 16 : 54 / 84),
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(borderRadius: AppRadius.all(8), gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [a, b])),
-                        child: const AppIcon(AppIcons.dumbbell, size: 20, color: AppColors.mediaFg, stroke: 1.6),
-                      ),
-                    ),
-                    Text(clock(t), style: AppText.s(11.5, W.w6, color: on ? AppColors.accentText : AppColors.muted)),
-                  ]);
-                },
-              ),
-          ]);
-        })
+        _frameTiles(phone, tone)
       else
         _drop(phone),
       if (coverErr != null) Text(coverErr!, style: AppText.s(12, W.w6, color: AppColors.badText)),
       Text('The cover shows in the exercise library, the program builder and the client app.', style: AppText.cap),
     ]);
+  }
+
+  /// Four stills from the video to pick the cover from; tinted tiles while they load or when one couldn't be grabbed.
+  Widget _frameTiles(bool phone, int tone) {
+    if (frames.isEmpty && !framesLoading) {
+      final none = vsrc == 'lib' ? video == null : ytInfo == null;
+      return Text(none ? 'Pick a video first, then choose a frame from it.' : 'No frames could be taken from this video. Upload an image instead.',
+          style: AppText.s(12.5, W.w5, color: AppColors.muted));
+    }
+    final list = framesLoading ? <Map>[for (var i = 0; i < 4; i++) const {}] : frames;
+    return LayoutBuilder(builder: (context, c) {
+      final w = phone ? (c.maxWidth - 24) / 4 : 84.0;
+      return Row(spacing: phone ? 8 : 10, children: [
+        for (final (i, f) in list.indexed)
+          Hover(
+            onTap: f.isEmpty ? null : () => _set(() => frameKey = '${f['key']}'),
+            builder: (_, h, _) {
+              final on = f.isNotEmpty && frameKey == f['key'];
+              final (a, b) = AppColors.mediaTiles[(tone + i) % 4];
+              final tile = Container(
+                alignment: Alignment.center,
+                decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [a, b])),
+                child: framesLoading
+                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.mediaFg))
+                    : const AppIcon(AppIcons.dumbbell, size: 20, color: AppColors.mediaFg, stroke: 1.6),
+              );
+              final url = f['url'] as String?;
+              return Column(mainAxisSize: MainAxisSize.min, spacing: 4, children: [
+                Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                      borderRadius: AppRadius.all(11), border: Border.all(color: on ? AppColors.accent : (h && f.isNotEmpty ? AppColors.line2 : Colors.transparent), width: 2)),
+                  child: ClipRRect(
+                    borderRadius: AppRadius.all(8),
+                    child: SizedBox(
+                      width: w - 8,
+                      height: (w - 8) * (phone ? 10 / 16 : 54 / 84),
+                      child: url == null ? tile : Image.network(url, fit: BoxFit.cover, errorBuilder: (_, _, _) => tile),
+                    ),
+                  ),
+                ),
+                Text(f.isEmpty ? ' ' : '${f['label']}', style: AppText.s(11.5, W.w6, color: on ? AppColors.accentText : AppColors.muted)),
+              ]);
+            },
+          ),
+      ]);
+    });
   }
 
   String _libSub(Map v) {

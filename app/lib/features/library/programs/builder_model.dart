@@ -8,9 +8,10 @@ import '../../../core/api/api_error.dart';
 import '../lib_common.dart';
 
 /// Program builder state (boards `ProgramBuilder` / `ProgramBuilderMobile`).
-/// The whole week → day → exercise tree lives here; every change edits it locally, shows at once and is sent
-/// with `PUT programs/<id>/structure/` (one request at a time, the newest tree wins). Undo puts back a copy of
-/// the tree from before the change. Ids from the server keep logged workouts linked to their day.
+/// The whole week → day → exercise tree lives here; every change edits it locally and shows at once. Nothing
+/// reaches clients until Save changes sends the tree with `PUT programs/<id>/structure/` (D-43); Discard reloads
+/// the saved program. Undo puts back a copy of the tree from before the change. Ids from the server keep logged
+/// workouts linked to their day.
 class BuilderModel extends ChangeNotifier {
   BuilderModel(this.id);
   final String id;
@@ -23,7 +24,11 @@ class BuilderModel extends ChangeNotifier {
   ApiError? error, saveError;
   Map can = const {};
 
-  bool _dirty = false, _disposed = false;
+  bool _disposed = false;
+
+  /// Changes made since the last save. [_rev] counts edits, so an edit made while a save is running stays unsaved.
+  bool unsaved = false;
+  int _rev = 0;
 
   String get name => '${program?['name'] ?? ''}';
   bool get archived => program?['archived'] == true;
@@ -46,7 +51,8 @@ class BuilderModel extends ChangeNotifier {
   String get sub {
     final w1 = weeks.where((w) => w['number'] == 1).firstOrNull;
     final n = [for (final d in (w1?['days'] as List? ?? const [])) d as Map].where((d) => d['is_rest'] != true).length;
-    return '${plural(weeks.length, 'week')} · $n days / week · ${editedOn(program?['updated_at']).replaceFirst('Edited', 'edited')}';
+    final by = '${(program?['owner'] as Map?)?['label'] ?? ''}';
+    return '${plural(weeks.length, 'week')} · $n days / week${by.isEmpty ? '' : ' · $by'} · ${editedOn(program?['updated_at']).replaceFirst('Edited', 'edited')}';
   }
 
   String get dayHead => 'Week $week · ${weekdayNames[(day?['weekday'] as num?)?.toInt() ?? 0]}';
@@ -111,22 +117,29 @@ class BuilderModel extends ChangeNotifier {
   }
 
   void _changed() {
+    unsaved = true;
+    _rev++;
     _notify();
-    _dirty = true;
-    _flush();
   }
 
-  Future<void> _flush() async {
-    if (saving || !_dirty) return;
-    _dirty = false;
+  /// Save changes: sends the whole tree. True when everything is saved (also when nothing had changed).
+  Future<bool> save() async {
+    while (saving) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+    if (!unsaved) return true;
+    final rev = _rev;
     saving = true;
     _notify();
     try {
       final r = await Services.api.put<Map>('programs/$id/structure/', {'weeks': _payload()});
-      // Newer edits are waiting: keep the local tree (they go next). Otherwise take the server's ids.
       // Copy the new ids onto the local tree (same shape as what was sent). The maps stay the same objects,
-      // so a sheet that is open on a day or an exercise still edits the live tree.
-      if (!_dirty) _takeIds(r);
+      // so a sheet that is open on a day or an exercise still edits the live tree. An edit made meanwhile
+      // keeps the page unsaved, and its tree goes with the next save.
+      if (rev == _rev) {
+        _takeIds(r);
+        unsaved = false;
+      }
       program = {...?program, 'updated_at': r['updated_at'], 'weeks': r['weeks'], 'days_per_week': r['days_per_week']};
       saveError = null;
     } on ApiError catch (e) {
@@ -134,7 +147,17 @@ class BuilderModel extends ChangeNotifier {
     }
     saving = false;
     _notify();
-    if (_dirty) _flush();
+    return !unsaved;
+  }
+
+  /// Discard: back to the saved program.
+  Future<void> discard() async {
+    final r = await Services.api.get<Map>('programs/$id/');
+    _apply(r);
+    unsaved = false;
+    saveError = null;
+    _rev++;
+    _notify();
   }
 
   void _takeIds(Map r) {
@@ -190,25 +213,21 @@ class BuilderModel extends ChangeNotifier {
           },
       ];
 
-  /// "Try again" after a failed save: sends the tree as it is now.
-  void retry() {
-    _dirty = true;
-    _flush();
-  }
-
-  /// Saves the waiting change now (leaving the page).
+  /// Saves first, for calls that work on the saved program (Copy week, Duplicate, Assign).
   Future<void> flushNow() async {
-    while (saving) {
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-    }
-    await _flush();
+    if (!await save()) throw saveError!;
   }
 
   // ─────────────────────────────── program-level calls
 
+  /// Fresh program details. With unsaved changes the local tree stays; only names, counts and dates update.
   Future<void> reload() async {
     final r = await Services.api.get<Map>('programs/$id/');
-    _apply(r);
+    if (unsaved) {
+      program = r;
+    } else {
+      _apply(r);
+    }
     _notify();
   }
 
@@ -224,12 +243,45 @@ class BuilderModel extends ChangeNotifier {
     _notify();
   }
 
-  Future<Map> copyWeek() async {
-    await flushNow();
-    final r = await Services.api.post<Map>('programs/$id/copy-week/', {'week': week});
-    _apply(r);
-    _notify();
-    return r;
+  /// Add empty week: a new last week with no days. Returns its number.
+  int addWeek() {
+    final n = weeks.length + 1;
+    weeks.add({'number': n, 'days': []});
+    week = n;
+    sel = 0;
+    _changed();
+    return n;
+  }
+
+  /// Delete the open week; the weeks after it move up one number.
+  void deleteWeek() {
+    if (weeks.length <= 1) return;
+    weeks.removeWhere((w) => w['number'] == week);
+    for (final w in weeks) {
+      if ((w['number'] as num) > week) w['number'] = (w['number'] as num).toInt() - 1;
+    }
+    if (week > weeks.length) week = weeks.length;
+    sel = 0;
+    _changed();
+  }
+
+  /// Copy week N → N+1 (replacing its days), or on the last week a new week. Done on the local tree, so it is
+  /// saved with Save changes like any other edit; the copied days and rows get new ids when saved.
+  void copyWeek() {
+    final src = jsonDecode(jsonEncode(weekMap['days'] ?? const [])) as List;
+    for (final d in src) {
+      (d as Map).remove('id');
+      for (final e in (d['exercises'] as List? ?? const [])) {
+        (e as Map).remove('id');
+      }
+    }
+    final next = weeks.where((w) => w['number'] == week + 1).firstOrNull;
+    if (next == null) {
+      weeks.add({'number': week + 1, 'days': src});
+    } else {
+      next['days'] = src;
+    }
+    _changed();
   }
 }
 

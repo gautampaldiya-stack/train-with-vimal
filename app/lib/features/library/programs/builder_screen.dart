@@ -7,6 +7,7 @@ import '../../../app/services.dart';
 import '../../../app/shell/page.dart';
 import '../../../core/api/api_error.dart';
 import '../../../core/icons/app_icons.dart';
+import '../../../core/leave/leave_guard.dart';
 import '../../../core/theme/theme.dart';
 import '../../../core/widgets/badge.dart';
 import '../../../core/widgets/button.dart';
@@ -15,6 +16,7 @@ import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/input.dart';
 import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
+import '../../../core/widgets/tooltip.dart';
 import '../../trainer/client_profile/cp_plans_edit.dart' show showExercisePicker;
 import '../lib_common.dart';
 import 'builder_model.dart';
@@ -25,8 +27,11 @@ import 'builder_sheets.dart';
 /// Every change shows at once and is saved in the background ([BuilderModel]); most have Undo on the toast.
 /// People who may not change the program (D-39) see it read-only with a Duplicate button.
 class ProgramBuilderScreen extends StatefulWidget {
-  const ProgramBuilderScreen({super.key, required this.id});
+  const ProgramBuilderScreen({super.key, required this.id, this.open});
   final String id;
+
+  /// Opened from a Programs card menu: 'assign' (Assign to clients) or 'clients' (Assigned clients).
+  final String? open;
   @override
   State<ProgramBuilderScreen> createState() => _ProgramBuilderScreenState();
 }
@@ -35,19 +40,25 @@ class _ProgramBuilderScreenState extends State<ProgramBuilderScreen> {
   late final m = BuilderModel(widget.id);
   final _note = TextEditingController();
   Object? _noteFor;
-  Timer? _noteTimer;
   final _pills = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    m.load();
+    LeaveGuard.register(this, _askLeave);
+    m.addListener(_syncTab);
+    m.load().then((_) {
+      if (!mounted) return;
+      if (widget.open == 'assign' && m.canAssign) _assign();
+      if (widget.open == 'clients') _clients();
+    });
   }
 
   @override
   void dispose() {
-    _saveNote();
-    m.flushNow().whenComplete(m.dispose);
+    LeaveGuard.unregister(this);
+    m.dispose();
+    programsChanged.value++;
     _note.dispose();
     _pills.dispose();
     super.dispose();
@@ -91,33 +102,70 @@ class _ProgramBuilderScreenState extends State<ProgramBuilderScreen> {
 
   List _exList(Map d) => (d['exercises'] as List?) ?? (d['exercises'] = []);
 
-  /// Coach note: saved 600 ms after typing stops, and when another day opens or the page closes.
+  /// Coach note: goes into the open day as you type and is saved with Save changes.
   void _syncNote() {
     final d = m.day;
-    final key = d == null ? null : (m.week, m.sel, d['id']);
+    final key = d == null ? null : (m.week, m.sel, d['id'], d['rest_note']);
     if (key == _noteFor) return;
-    _saveNote();
     _noteFor = key;
-    _note.text = '${d?['rest_note'] ?? ''}';
+    if (_note.text != '${d?['rest_note'] ?? ''}') _note.text = '${d?['rest_note'] ?? ''}';
   }
 
   void _typed(String v) {
-    _noteTimer?.cancel();
-    _noteTimer = Timer(const Duration(milliseconds: 600), _saveNote);
+    final d = m.day;
+    if (d == null) return;
+    m.edit(() => d['rest_note'] = v);
   }
 
-  void _saveNote() {
-    if (_noteTimer == null) return;
-    _noteTimer!.cancel();
-    _noteTimer = null;
-    final d = m.day;
-    if (d == null || '${d['rest_note'] ?? ''}' == _note.text) return;
-    if (mounted) {
-      m.edit(() => d['rest_note'] = _note.text);
-    } else {
-      d['rest_note'] = _note.text;
-      m.retry();
+  // ─────────────────────────────── save / leave (D-43)
+
+  bool _tabWarn = false;
+
+  void _syncTab() {
+    if (_tabWarn == m.unsaved) return;
+    _tabWarn = m.unsaved;
+    LeaveGuard.unsaved(m.unsaved);
+  }
+
+  Future<bool> _save({bool toast = true}) async {
+    final ok = await m.save();
+    if (!mounted) return ok;
+    if (ok && toast) showToast(context, 'Changes saved', sub: m.clientCount > 0 ? '${plural(m.clientCount, 'client')} see the new plan' : m.name);
+    if (!ok) showToast(context, 'Could not save your changes', sub: m.saveError?.message, kind: ToastKind.err);
+    return ok;
+  }
+
+  Future<void> _discard() async {
+    final ok = await confirmAction(context,
+        title: 'Discard your changes?', body: 'The program goes back to how it was when you last saved it.', confirm: 'Discard', danger: true, icon: AppIcons.undo);
+    if (!ok || !mounted) return;
+    _run(() async {
+      await m.discard();
+      if (mounted) showToast(context, 'Changes discarded', sub: m.name);
+    }, fail: 'Could not discard');
+  }
+
+  /// Asked by the router before the builder closes: Save / Don't save / Cancel.
+  Future<bool> _askLeave(BuildContext context) async {
+    if (!m.unsaved) return true;
+    final r = await showAppModal<String>(
+      context,
+      title: 'Save your changes?',
+      body: 'You changed ${m.name}. Clients following it only see the changes after you save.',
+      icon: AppIcons.alert,
+      actions: (ctx) => [
+        AppButton('Cancel', onPressed: () => Navigator.of(ctx).pop(), expand: ctx.isPhone),
+        AppButton("Don't save", kind: BtnKind.danger, onPressed: () => Navigator.of(ctx).pop('drop'), expand: ctx.isPhone),
+        AppButton.primary('Save', onPressed: () => Navigator.of(ctx).pop('save'), expand: ctx.isPhone),
+      ],
+    );
+    if (r == 'drop') {
+      m.unsaved = false;
+      _syncTab();
+      return true;
     }
+    if (r == 'save') return _save(toast: true);
+    return false;
   }
 
   // ─────────────────────────────── program actions
@@ -165,7 +213,8 @@ class _ProgramBuilderScreenState extends State<ProgramBuilderScreen> {
     if (!ok || !mounted) return;
     final name = m.name, id = m.id;
     _run(() async {
-      await m.flushNow();
+      m.unsaved = false; // the program is going away: nothing to save
+      _syncTab();
       await Services.api.delete('programs/$id/');
       if (!mounted) return;
       final router = GoRouter.of(context);
@@ -180,6 +229,7 @@ class _ProgramBuilderScreenState extends State<ProgramBuilderScreen> {
   }
 
   void _programMenu(BuildContext anchor) => showAppMenu(anchor, width: 220, [
+        if (_edit && m.unsaved) MenuEntry('Discard changes', icon: AppIcons.undo, onTap: _discard),
         if (_edit) MenuEntry('Rename', icon: AppIcons.edit, onTap: _rename),
         if (m.canCreate) MenuEntry('Duplicate program', icon: AppIcons.copy, onTap: _duplicate),
         if (_edit) MenuEntry(m.archived ? 'Restore' : 'Archive', icon: m.archived ? AppIcons.undo : AppIcons.archive, onTap: _archive),
@@ -188,6 +238,9 @@ class _ProgramBuilderScreenState extends State<ProgramBuilderScreen> {
       ]);
 
   Future<void> _assign() async {
+    // Clients get the saved plan, so unsaved changes are saved first.
+    if (m.unsaved && !await _save(toast: false)) return;
+    if (!mounted) return;
     final before = Services.api.get<List>('programs/${m.id}/clients/').then((r) => [
           for (final x in r) '${((x as Map)['client'] as Map?)?['id'] ?? x['client']}',
         ]);
@@ -219,16 +272,55 @@ class _ProgramBuilderScreenState extends State<ProgramBuilderScreen> {
 
   // ─────────────────────────────── week actions
 
+  /// Week ⋯ menu (next to the week pills): copy, add an empty week, delete.
+  void _weekMenu(BuildContext anchor) {
+    final w = m.week, last = w == m.weeks.length;
+    showAppMenu(anchor, width: 250, [
+      MenuEntry.header('Week $w'),
+      MenuEntry(last ? 'Copy to a new week' : 'Copy to week ${w + 1}',
+          icon: AppIcons.copy, sub: last ? 'Adds week ${w + 1} with the same days' : 'Replaces the days of week ${w + 1}', onTap: _copyWeek),
+      MenuEntry('Add empty week', icon: AppIcons.plus, sub: 'Week ${m.weeks.length + 1}, no days yet', onTap: _addWeek),
+      if (m.weeks.length > 1) ...[
+        const MenuEntry.separator(),
+        MenuEntry('Delete week $w', icon: AppIcons.trash, danger: true, onTap: _deleteWeek),
+      ],
+    ]);
+  }
+
+  void _addWeek() {
+    final snap = m.snapshot(), keep = m.week;
+    final n = m.addWeek();
+    showToast(context, 'Week $n added', sub: 'Add days to it, or copy a week into it', action: 'Undo', onAction: () {
+      m.week = keep;
+      m.restore(snap);
+    });
+  }
+
+  Future<void> _deleteWeek() async {
+    final w = m.week;
+    final n = m.days.where((d) => d['is_rest'] != true).length;
+    final ok = await confirmAction(context,
+        title: 'Delete week $w?',
+        body: '${n > 0 ? '${plural(n, 'workout day')} and their exercises go. ' : ''}The weeks after it move up. Workouts clients already logged stay safe.',
+        confirm: 'Delete week',
+        danger: true,
+        icon: AppIcons.trash);
+    if (!ok || !mounted) return;
+    final snap = m.snapshot();
+    m.deleteWeek();
+    showToast(context, 'Week $w deleted', sub: '${plural(m.weeks.length, 'week')} left', action: 'Undo', onAction: () {
+      m.week = w;
+      m.restore(snap);
+    });
+  }
+
   void _copyWeek() {
     final last = m.week == m.weeks.length;
     final snap = m.snapshot();
     final n = m.days.length, w = m.week;
-    _run(() async {
-      await m.copyWeek();
-      if (!mounted) return;
-      showToast(context, last ? 'Week ${w + 1} added' : 'Week $w copied to week ${w + 1}',
-          sub: '${plural(n, 'day')} · all exercises and notes', action: 'Undo', onAction: () => m.restore(snap));
-    }, fail: 'Could not copy the week');
+    m.copyWeek();
+    showToast(context, last ? 'Week ${w + 1} added' : 'Week $w copied to week ${w + 1}',
+        sub: '${plural(n, 'day')} · all exercises and notes', action: 'Undo', onAction: () => m.restore(snap));
   }
 
   // ─────────────────────────────── day actions
@@ -468,11 +560,17 @@ class _ProgramBuilderScreenState extends State<ProgramBuilderScreen> {
     final narrow = compactTop(context);
     return PageTop(
       title: m.name,
-      sub: m.sub,
+      sub: m.unsaved ? '${m.sub} · unsaved changes' : m.sub,
       actions: [
         if (_edit || m.canCreate) Builder(builder: (b) => AppIconButton(AppIcons.dots, tooltip: 'Program options', onPressed: () => _programMenu(b))),
-        AppButton(clientsL, icon: AppIcons.clientsAlt, iconOnly: phone || narrow, onPressed: _clients),
-        if (m.canAssign && !m.archived) AppButton.primary('Assign', icon: AppIcons.plus, iconOnly: phone, onPressed: _assign),
+        AppButton(clientsL, icon: AppIcons.clientsAlt, iconOnly: phone || narrow, tooltip: 'Clients on this program', onPressed: _clients),
+        if (m.canAssign && !m.archived)
+          m.unsaved
+              ? AppButton('Assign', icon: AppIcons.plus, iconOnly: true, tooltip: 'Assign to clients', onPressed: _assign)
+              : AppButton.primary('Assign', icon: AppIcons.plus, iconOnly: phone, tooltip: 'Assign to clients', onPressed: _assign),
+        if (_edit && m.unsaved && !phone && !narrow) AppButton('Discard', tooltip: 'Go back to the last saved version', onPressed: m.saving ? null : _discard),
+        if (_edit && m.unsaved)
+          AppButton.primary(phone ? 'Save' : 'Save changes', icon: AppIcons.check, tooltip: 'Save and send the changes to clients', onPressed: m.saving ? null : _save),
       ],
     );
   }
@@ -501,17 +599,15 @@ class _ProgramBuilderScreenState extends State<ProgramBuilderScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(color: AppColors.badBg, borderRadius: AppRadius.all(AppRadius.card)),
         child: Wrap(spacing: 10, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
-          Text('Your last change is not saved. ${m.saveError!.message}', style: AppText.s(13, W.w6, color: AppColors.badText)),
-          AppButton('Try again', size: BtnSize.sm, onPressed: m.retry),
+          Text('Your changes are not saved. ${m.saveError!.message}', style: AppText.s(13, W.w6, color: AppColors.badText)),
+          AppButton('Try again', size: BtnSize.sm, onPressed: _save),
         ]),
       );
 
   // ─────────────────────────────── week card
 
   Widget _weekCard(bool phone) {
-    final last = m.week == m.weeks.length;
-    final copy = AppButton(last ? 'Copy week ${m.week} → new week' : 'Copy week ${m.week} → ${m.week + 1}',
-        size: BtnSize.sm, icon: AppIcons.copy, onPressed: _edit ? _copyWeek : null);
+    final copy = Builder(builder: (b) => AppIconButton(AppIcons.dots, tooltip: 'Week ${m.week} options', onPressed: () => _weekMenu(b)));
     final pills = SingleChildScrollView(
       controller: _pills,
       scrollDirection: Axis.horizontal,
@@ -519,7 +615,9 @@ class _ProgramBuilderScreenState extends State<ProgramBuilderScreen> {
         for (final w in m.weeks)
           () {
             final n = (w['number'] as num).toInt(), on = n == m.week;
-            return Hover(
+            return AppTooltip(
+              message: 'Show week $n',
+              child: Hover(
               onTap: () => m.pickWeek(n),
               builder: (_, h, _) => Container(
                 height: 30,
@@ -529,6 +627,7 @@ class _ProgramBuilderScreenState extends State<ProgramBuilderScreen> {
                 decoration: BoxDecoration(color: on ? AppColors.text : (h ? AppColors.pbPillHover : AppColors.sub), borderRadius: AppRadius.all(8)),
                 child: Text('W$n', style: AppText.s(12.5, W.w7, color: on ? Colors.white : AppColors.text2)),
               ),
+            ),
             );
           }(),
       ]),
@@ -536,10 +635,8 @@ class _ProgramBuilderScreenState extends State<ProgramBuilderScreen> {
     return AppCard(
       padding: phone ? const EdgeInsets.all(12) : const EdgeInsets.fromLTRB(16, 14, 16, 16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: phone ? 10 : 14, children: [
-        if (phone)
-          Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 8, children: [pills, if (_edit) copy])
-        else
-          Row(spacing: 12, children: [Expanded(child: pills), if (_edit) copy]),
+        // week pills scroll sideways; Copy week stays on the same line, at the right
+        Row(spacing: phone ? 8 : 12, children: [Expanded(child: pills), if (_edit) copy]),
         LayoutBuilder(builder: (context, c) => c.maxWidth >= 840 ? _grid() : _dayRows()),
       ]),
     );
@@ -555,7 +652,7 @@ class _ProgramBuilderScreenState extends State<ProgramBuilderScreen> {
             if (i < ds.length) ...[
               _dayCard(ds[i], i),
               if (_edit && ds[i]['is_rest'] != true)
-                Align(alignment: Alignment.centerLeft, child: _addText(() => _addExercises(i), height: 26)),
+                Align(alignment: Alignment.centerLeft, child: _addText(() => _addExercises(i), i, height: 26)),
             ] else if (i == ds.length && _edit)
               _slot(132),
           ]),
@@ -570,7 +667,7 @@ class _ProgramBuilderScreenState extends State<ProgramBuilderScreen> {
         Row(spacing: 8, children: [
           SizedBox(width: 38, child: Text(weekdayShort[i].toUpperCase(), style: AppText.over)),
           Expanded(child: _dayCard(ds[i], i, compact: true)),
-          if (_edit && ds[i]['is_rest'] != true) _addText(() => _addExercises(i), height: 32),
+          if (_edit && ds[i]['is_rest'] != true) _addText(() => _addExercises(i), i, height: 32),
         ]),
       if (ds.length < 7 && _edit)
         Row(spacing: 8, children: [
@@ -580,7 +677,9 @@ class _ProgramBuilderScreenState extends State<ProgramBuilderScreen> {
     ]);
   }
 
-  Widget _addText(VoidCallback onTap, {required double height}) => Hover(
+  Widget _addText(VoidCallback onTap, int day, {required double height}) => AppTooltip(
+        message: 'Add exercises to ${weekdayNames[day]}',
+        child: Hover(
         onTap: onTap,
         builder: (_, h, _) => Container(
           height: height,
@@ -591,9 +690,12 @@ class _ProgramBuilderScreenState extends State<ProgramBuilderScreen> {
             Text('Add', style: AppText.s(12, W.w7, color: AppColors.accentText)),
           ]),
         ),
+      ),
       );
 
-  Widget _slot(double h) => Hover(
+  Widget _slot(double h) => AppTooltip(
+        message: 'Add another training day',
+        child: Hover(
         onTap: _addDay,
         builder: (_, hv, _) => Container(
           constraints: BoxConstraints(minHeight: h),
@@ -608,6 +710,7 @@ class _ProgramBuilderScreenState extends State<ProgramBuilderScreen> {
             Text('Day', style: AppText.s(13, W.w6, color: hv ? AppColors.accentText : AppColors.muted)),
           ]),
         ),
+      ),
       );
 
   Widget _dayCard(Map d, int i, {bool compact = false}) {
@@ -625,7 +728,7 @@ class _ProgramBuilderScreenState extends State<ProgramBuilderScreen> {
         );
         final title = Text(dayTitle(d), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(compact ? 14 : 13.5, W.w7));
         final sum = Text(daySummary(d), maxLines: compact ? 1 : 2, overflow: TextOverflow.ellipsis, style: AppText.s(compact ? 12 : 11.5, W.w5, color: AppColors.muted));
-        final moon = AppIcon(AppIcons.moon, size: 16, color: AppColors.muted);
+        const moon = AppTooltip(message: 'Rest day', child: AppIcon(AppIcons.moon, size: 16, color: AppColors.muted));
         final box = compact
             ? Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
@@ -671,7 +774,7 @@ class _ProgramBuilderScreenState extends State<ProgramBuilderScreen> {
     final sets = ex.fold<int>(0, (a, e) => a + ((e['sets'] as num?)?.toInt() ?? 0));
     final sumL = rest ? 'Rest day' : (ex.isEmpty ? 'No exercises yet' : '≈ ${dayMinutes(ex)} min · $sets sets · ${plural(ex.length, 'exercise')}');
     final menu = Builder(builder: (b) => AppIconButton(AppIcons.dots, tooltip: 'Day options', onPressed: () => _dayMenu(b)));
-    final add = AppButton('Add exercise', icon: AppIcons.plus, expand: phone, onPressed: () => _addExercises());
+    final add = AppButton('Add exercise', icon: AppIcons.plus, expand: phone, tooltip: 'Pick exercises from the library for ${weekdayNames[m.sel]}', onPressed: () => _addExercises());
     final titles = Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 3, children: [
       Text(m.dayHead.toUpperCase(), style: AppText.over),
       Text(dayTitle(d), style: AppText.h2.copyWith(fontSize: phone ? 18 : 20)),
@@ -683,8 +786,9 @@ class _ProgramBuilderScreenState extends State<ProgramBuilderScreen> {
           padding: phone ? const EdgeInsets.fromLTRB(14, 14, 14, 12) : const EdgeInsets.fromLTRB(20, 16, 20, 14),
           child: phone
               ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
-                  titles,
-                  if (_edit) Row(spacing: 10, children: [menu, if (!rest) Expanded(child: add)]),
+                  // ⋯ sits next to the day name; Add exercise takes the full width under it
+                  Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [Expanded(child: titles), if (_edit) menu]),
+                  if (_edit && !rest) add,
                 ])
               : Row(crossAxisAlignment: CrossAxisAlignment.end, spacing: 10, children: [Expanded(child: titles), if (_edit) menu, if (_edit && !rest) add]),
         ),
@@ -878,7 +982,7 @@ class _ProgramBuilderScreenState extends State<ProgramBuilderScreen> {
             placeholder: rest ? 'e.g. 8k steps and 10 minutes of mobility' : 'e.g. Slow on the way down, pause at the bottom',
             onChanged: _typed,
           ),
-          Text('Saved as you type. Clients see it on this day.', style: AppText.cap),
+          Text('Saved with Save changes. Clients see it on this day.', style: AppText.cap),
         ]),
       );
 }

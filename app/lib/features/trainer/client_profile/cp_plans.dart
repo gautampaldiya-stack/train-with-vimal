@@ -358,7 +358,13 @@ class _CpPlansTabState extends State<CpPlansTab> {
     } else {
       final full = s != null && e != null && cpParse(a['end_date']) != null && !cpParse(a['end_date'])!.isBefore(s.add(Duration(days: ((a['weeks'] as num?) ?? 1).toInt() * 7 - 1)));
       final replaced = all.any((o) => o != a && cpParse(o['start_date']) != null && e != null && (cpParse(o['start_date'])!.difference(e).inDays).abs() <= 1);
-      badge = full ? 'Completed' : (replaced ? 'Replaced' : 'Ended');
+      // The server says why it stopped (D-43); older rows fall back to the dates.
+      badge = switch ('${a['end_reason'] ?? ''}') {
+        'unassigned' => 'Unassigned',
+        'replaced' => full ? 'Completed' : 'Replaced',
+        'ended' => full ? 'Completed' : 'Ended',
+        _ => full ? 'Completed' : (replaced ? 'Replaced' : 'Ended'),
+      };
     }
     return ('${a['program_name']}', '${cpDm(a['start_date'])} – ${status == 'active' ? cpDm(e?.toIso8601String()) : cpDm(a['end_date'])}', badge);
   }

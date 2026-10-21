@@ -57,7 +57,7 @@ class ExerciseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Exercise
         fields = ["id", "name", "muscle_group", "primary_muscle", "also_works", "equipment", "level", "is_builtin",
-                  "source", "video", "video_title", "youtube_url", "thumb", "media", "cover_at_seconds", "cover_image",
+                  "source", "video", "video_title", "youtube_url", "thumb", "media", "cover_at_seconds", "cover_image", "cover_frame",
                   "how_to", "form_cues", "log_type", "default_sets", "default_reps", "default_rest_seconds",
                   "default_rpe", "default_tempo", "duplicated_from", "programs", "can_edit", "created_at", "updated_at"]
         read_only_fields = ["is_builtin", "duplicated_from"]
@@ -84,10 +84,15 @@ class ExerciseSerializer(serializers.ModelSerializer):
         return media_of(obj.video, self.context.get("request"))
 
     def get_thumb(self, obj):
-        """Picture for the exercise tile: an uploaded cover, else the video's cover, else the YouTube still, else
-        none (icon)."""
+        """Picture for the exercise tile: an uploaded cover, else the chosen video frame, else the video's cover, else
+        the YouTube still, else none (icon)."""
+        from .frames import key_url
+
         if obj.cover_image:
             return self._url(obj.cover_image)
+        frame = key_url(obj.cover_frame, self.context.get("request"))
+        if frame:
+            return frame
         v = obj.video
         if v and v.kind == "image" and v.file:
             req = self.context.get("request")
@@ -96,6 +101,14 @@ class ExerciseSerializer(serializers.ModelSerializer):
             req = self.context.get("request")
             return req.build_absolute_uri(v.cover.url) if req else v.cover.url
         return youtube_thumb(obj.youtube_url or (v.youtube_url if v else ""))
+
+    def validate_cover_frame(self, v):
+        from .frames import KEY_RE
+
+        v = (v or "").strip()
+        if v and not KEY_RE.match(v):
+            raise serializers.ValidationError("Pick one of the frames.")
+        return v
 
     def validate_name(self, v):
         v = " ".join(v.split())
@@ -201,13 +214,24 @@ class ProgramCardSerializer(serializers.ModelSerializer):
         model = Program
         fields = ["id", "name", "goal_line", "weeks", "days_per_week", "level", "level_label", "is_master",
                   "archived", "archived_at", "client_count", "clients", "week_pattern", "can_edit", "updated_at",
-                  "created_at"]
+                  "created_at", "owner"]
         read_only_fields = ["archived_at", "is_master"]
 
     can_edit = serializers.SerializerMethodField()
+    owner = serializers.SerializerMethodField()
 
     def get_archived(self, obj):
         return obj.archived_at is not None
+
+    def get_owner(self, obj):
+        """Who made it (card tag, builder line): the gym's own (Vimal / seeded), the viewer, or another trainer."""
+        u = obj.created_by
+        req = self.context.get("request")
+        if u is None or u.is_admin:
+            return {"kind": "gym", "name": "Gym", "label": "Gym program"}
+        if req and u.id == req.user.id:
+            return {"kind": "you", "name": "You", "label": "Made by you"}
+        return {"kind": "trainer", "name": u.first_name or u.full_name, "label": f"Made by {u.full_name}"}
 
     def get_can_edit(self, obj):
         """Rename, days, archive, delete (D-39). False without a request (e.g. a background job)."""
@@ -299,7 +323,7 @@ class AssignmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProgramAssignment
         fields = ["id", "client", "program", "custom_program", "program_name", "weeks", "custom", "start_date",
-                  "end_date", "status", "created_at", "master_name", "days_per_week", "assigned_by", "week"]
+                  "end_date", "status", "end_reason", "created_at", "master_name", "days_per_week", "assigned_by", "week"]
 
     def get_assigned_by(self, obj):
         return obj.assigned_by.full_name if obj.assigned_by_id and obj.assigned_by else None

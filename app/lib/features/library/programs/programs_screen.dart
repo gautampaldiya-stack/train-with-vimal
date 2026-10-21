@@ -19,6 +19,7 @@ import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/tabs.dart';
 import '../../trainer/me/me_common.dart' show meField;
 import '../lib_common.dart';
+import 'builder_sheets.dart' show showNameModal;
 
 /// Programs page (boards `Programs` / `ProgramsMobile`): master plans as cards, Active / Archived, search,
 /// New program, and each card's ⋯ (Open · Duplicate · Archive / Restore · Delete). A card opens the builder.
@@ -45,11 +46,13 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
   @override
   void initState() {
     super.initState();
+    programsChanged.addListener(_load);
     _load();
   }
 
   @override
   void dispose() {
+    programsChanged.removeListener(_load);
     _debounce?.cancel();
     super.dispose();
   }
@@ -154,11 +157,25 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
     }, fail: 'Could not delete it');
   }
 
+  Future<void> _rename(Map p) async {
+    final v = await showNameModal(context,
+        title: 'Rename program', sub: 'Clients see the new name in their app', label: 'Program name', initial: '${p['name']}', button: 'Save');
+    if (v == null || v == p['name']) return;
+    _run(() async {
+      await Services.api.patch('programs/${p['id']}/', {'name': v});
+      if (mounted) showToast(context, 'Program renamed', sub: v);
+    }, fail: 'Could not rename it');
+  }
+
   void _menu(BuildContext anchor, Map p) {
     final arch = p['archived'] == true, edit = p['can_edit'] == true;
-    showAppMenu(anchor, [
+    final n = (p['client_count'] as num?)?.toInt() ?? 0;
+    showAppMenu(anchor, width: 230, [
       MenuEntry('Open', icon: AppIcons.open, onTap: () => context.go('/programs/${p['id']}')),
-      if (canCreate) MenuEntry('Duplicate', icon: AppIcons.copy, onTap: () => _duplicate(p)),
+      if (edit) MenuEntry('Rename', icon: AppIcons.edit, onTap: () => _rename(p)),
+      if (_can['assign'] == true && !arch) MenuEntry('Assign to clients', icon: AppIcons.clientsAlt, onTap: () => context.go('/programs/${p['id']}?open=assign')),
+      if (n > 0) MenuEntry('See assigned clients', icon: AppIcons.eye, sub: plural(n, 'client'), onTap: () => context.go('/programs/${p['id']}?open=clients')),
+      if (canCreate) MenuEntry(edit ? 'Duplicate' : 'Duplicate to edit', icon: AppIcons.copy, onTap: () => _duplicate(p)),
       if (edit) MenuEntry(arch ? 'Restore' : 'Archive', icon: arch ? AppIcons.undo : AppIcons.archive, onTap: () => _archive(p)),
       if (edit) const MenuEntry.separator(),
       if (edit) MenuEntry('Delete', icon: AppIcons.trash, danger: true, onTap: () => _delete(p)),
@@ -285,16 +302,15 @@ class _ProgramCard extends StatelessWidget {
         maxLines: phone ? 1 : 2, overflow: TextOverflow.ellipsis, style: AppText.s(phone ? 15.5 : 16, W.w8, ls: -0.24, h: 1.3));
     final goal = Text('${p['goal_line'] ?? ''}'.isEmpty ? '${p['level_label'] ?? ''}' : '${p['goal_line']}',
         maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(phone ? 12.5 : 13, W.w5, color: AppColors.muted));
-    final tags = Wrap(spacing: 6, runSpacing: 6, children: [
+    final tags = Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
       AppBadge('${p['weeks']} weeks', tone: Tone.info, plain: true),
       // `.badge.plain` with no tone: no fill, dark bold text.
-      Container(
+      SizedBox(
         height: 22,
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        alignment: Alignment.center,
-        child: Text('$days days / week', style: AppText.s(11.5, W.w7)),
+        child: Center(widthFactor: 1, child: Text('$days days / week', style: AppText.s(11.5, W.w7, color: AppColors.text2))),
       ),
       if (arch) const AppBadge('Archived', tone: Tone.warn, plain: true),
+      if (p['owner'] is Map) ownerTag(p['owner'] as Map),
     ]);
     return Semantics(
       button: true,
@@ -340,7 +356,8 @@ class _ProgramCard extends StatelessWidget {
     final n = (p['client_count'] as num?)?.toInt() ?? 0;
     final avs = [for (final c in (p['clients'] as List? ?? const [])) c as Map];
     final muted = AppText.s(12.5, W.w5, color: AppColors.muted);
-    return Row(spacing: 8, children: [
+    // Fixed height: "Not assigned" and the avatar row keep every card the same height.
+    return SizedBox(height: 26, child: Row(spacing: 8, children: [
       if (n > 0) ...[
         SizedBox(
           height: 26,
@@ -367,7 +384,7 @@ class _ProgramCard extends StatelessWidget {
         Text('Not assigned', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
       ],
       Expanded(child: Text(editedOn(p['updated_at']), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.right, style: muted)),
-    ]);
+    ]));
   }
 
   Widget _ring(Widget av) => Container(

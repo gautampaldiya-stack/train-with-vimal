@@ -55,6 +55,8 @@ class Exercise(SoftDeleteModel):
     cover_at_seconds = models.PositiveIntegerField(default=0)
     # "Upload image" cover (board ExerciseAdd); when empty the library shows the video's frame / cover.
     cover_image = models.ImageField(upload_to="exercises/covers/", null=True, blank=True)
+    # "Frame from the video": key of the chosen still (exercises/frames/<video>-<s>.jpg or yt/<id>/<n>), D-42.
+    cover_frame = models.CharField(max_length=80, blank=True, default="")
     how_to = ArrayField(models.CharField(max_length=300), default=list, blank=True)
     form_cues = ArrayField(models.CharField(max_length=300), default=list, blank=True)
     log_type = models.CharField(max_length=16, choices=LogType.choices, default=LogType.WEIGHT_REPS)
@@ -152,6 +154,10 @@ class ProgramAssignment(TimeStampedModel):
     status = models.CharField(max_length=10, choices=AssignmentStatus.choices, default=AssignmentStatus.ACTIVE,
                               db_index=True)
     assigned_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+    # Why it stopped (Plan history badge): ended / replaced / unassigned; blank while it runs (D-43).
+    end_reason = models.CharField(max_length=12, blank=True, default="")
+    # The plan this one took over from: it comes back if this one is taken off the same day, unused.
+    replaced = models.ForeignKey("self", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
 
     class Meta:
         ordering = ["-start_date"]

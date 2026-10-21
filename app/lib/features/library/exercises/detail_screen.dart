@@ -336,7 +336,14 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
     final m = x['media'] as Map?;
     final yt = '${x['youtube_url'] ?? ''}';
     final none = m == null && yt.isEmpty;
-    final cover = x['cover_image'] != null ? 'Uploaded image' : (none ? 'Dumbbell tile' : 'Frame at ${clock(x['cover_at_seconds'])}');
+    final fk = '${x['cover_frame'] ?? ''}';
+    final cover = x['cover_image'] != null
+        ? 'Uploaded image'
+        : none
+            ? 'Dumbbell tile'
+            : fk.startsWith('yt/')
+                ? 'YouTube frame'
+                : 'Frame at ${clock(x['cover_at_seconds'])}';
     Widget line(String k, String v) => Container(
           padding: const EdgeInsets.symmetric(vertical: 7),
           child: Row(spacing: 12, children: [

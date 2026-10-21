@@ -19,6 +19,7 @@ import '../../../core/widgets/tooltip.dart';
 import 'cp_common.dart';
 import 'cp_plans_model.dart';
 import 'cp_plans_parts.dart';
+import '../../library/exercises/ex_common.dart' show ExCover, exEquipLabel;
 
 /// Workout plan editor for one client (`pe.workout`): `Edit X for Y` (saves Y's own copy through
 /// `custom-structure`) or `New plan for Y: copy of X` (`new-from` + name, start, `Also save to the library`).
@@ -769,7 +770,8 @@ Future<List<Map>?> showExercisePicker(BuildContext context,
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Row(spacing: 12, children: [
                       single ? AppRadio(selected: on) : AppCheckbox(value: on),
-                      MediaTile(tone: i, size: 40),
+                      // the exercise's picture (or the dumbbell tile), with ▶ and the length only when it has a video
+                      SizedBox(width: 52, height: 40, child: ExCover(x, radius: 8, iconSize: 16, inset: 3, mini: true)),
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
                           Text('${x['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7, color: h && !on2 ? AppColors.accentText : AppColors.text)),
@@ -777,7 +779,10 @@ Future<List<Map>?> showExercisePicker(BuildContext context,
                               maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.text2)),
                         ]),
                       ),
-                      on2 ? const AppBadge('On this day', tone: Tone.info, plain: true) : Text('${x['equipment'] ?? ''}'.capFirst, style: AppText.cap),
+                      Column(crossAxisAlignment: CrossAxisAlignment.end, mainAxisSize: MainAxisSize.min, spacing: 3, children: [
+                        if (on2) const AppBadge('On this day', tone: Tone.info, plain: true),
+                        Text('${exEquipLabel(x)} · ${x['default_sets'] ?? 3} × ${x['default_reps'] ?? '10'}', style: AppText.cap),
+                      ]),
                     ]),
                   ),
                 ),

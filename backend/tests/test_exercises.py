@@ -108,3 +108,50 @@ def test_add_to_program_every_week(trainer):
 
 def test_youtube_info_checks_the_link(trainer):
     assert trainer.get(E + "youtube-info/", {"url": "https://example.com/x"}).status_code == 400
+
+
+def test_cover_frames_from_youtube_and_saved_on_the_exercise(trainer):
+    """D-42: the "Frame from the video" tiles are real stills; the chosen key becomes the exercise's picture."""
+    assert trainer.get(E + "frames/", {"url": "https://example.com/x"}).status_code == 400
+    assert trainer.get(E + "frames/", {"video": "nope"}).status_code == 404
+    r = trainer.get(E + "frames/", {"url": "https://youtu.be/dQw4w9WgXcQ"})
+    assert r.status_code == 200, r.content
+    fr = r.json()["frames"]
+    assert [f["key"] for f in fr] == [f"yt/dQw4w9WgXcQ/{k}" for k in ("hq", "1", "2", "3")]
+    assert fr[1]["url"] == "https://img.youtube.com/vi/dQw4w9WgXcQ/1.jpg"
+    c = trainer.post(f"{E}{_bench().id}/duplicate/").json()
+    bad = trainer.patch(f"{E}{c['id']}/", {"cover_frame": "../../etc/passwd"}, format="json")
+    assert bad.status_code == 400 and "cover_frame" in bad.json()["error"]["fields"]
+    ok = trainer.patch(f"{E}{c['id']}/", {"cover_frame": fr[2]["key"]}, format="json")
+    assert ok.status_code == 200, ok.content
+    assert ok.json()["cover_frame"] == fr[2]["key"] and ok.json()["thumb"] == fr[2]["url"]
+
+
+def test_cover_frames_grabbed_from_an_uploaded_video(trainer, tmp_path):
+    import subprocess
+
+    import pytest
+    from django.core.files import File
+
+    from apps.content.models import ContentItem
+    from apps.training.frames import ffmpeg_exe
+
+    exe = ffmpeg_exe()
+    if not exe:
+        pytest.skip("no ffmpeg")
+    src = tmp_path / "clip.mp4"
+    subprocess.run([exe, "-v", "error", "-f", "lavfi", "-i", "testsrc=size=160x120:rate=10", "-t", "3",
+                    "-pix_fmt", "yuv420p", str(src)], check=True, timeout=60)
+    item = ContentItem(kind="video", title="Clip", duration_seconds=3)
+    with open(src, "rb") as fh:
+        item.file.save("clip.mp4", File(fh), save=False)
+    item.save()
+    from apps.training.frames import _grab
+    fr = trainer.get(E + "frames/", {"video": str(item.id)}).json()["frames"]
+    assert fr and all(f["url"] and f["key"].startswith("exercises/frames/") for f in fr)
+    assert [f["label"] for f in fr][0] == "0:00"
+    from django.core.files.storage import default_storage
+
+    for f in fr:
+        default_storage.delete(f["key"])
+    item.file.delete(save=False)

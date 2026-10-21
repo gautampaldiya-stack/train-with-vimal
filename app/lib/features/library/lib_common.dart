@@ -7,6 +7,7 @@ import '../../core/widgets/badge.dart';
 import '../../core/widgets/button.dart';
 import '../../core/widgets/hover.dart';
 import '../../core/widgets/responsive.dart';
+import '../../core/widgets/tooltip.dart';
 
 /// Shared bits of the Library pages (Programs, Exercises, Nutrition & foods, Habits & supplements, Content library).
 /// They are the same pages for Vimal and trainers; what a trainer may change comes from the API (D-39).
@@ -67,14 +68,20 @@ class LibStepper extends StatelessWidget {
         decoration: BoxDecoration(borderRadius: AppRadius.all(AppRadius.input), border: Border.all(color: AppColors.line2)),
         child: Row(spacing: 8, children: [
           AppIconButton(AppIcons.minus, tooltip: 'Less', small: true, onPressed: value > min ? () => onChanged((value - step).clamp(min, max)) : null),
-          const Spacer(),
-          Text('$value', style: AppText.s(16, W.w8, tabular: true)),
-          Flexible(child: Text(unit, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted))),
-          const Spacer(),
+          // the value and its unit share all the room between the buttons, so "8 weeks" never shortens to "8 w…"
+          Expanded(
+            child: Row(mainAxisAlignment: MainAxisAlignment.center, spacing: 5, children: [
+              Text('$value', style: AppText.s(16, W.w8, tabular: true)),
+              if (unit.isNotEmpty) Flexible(child: Text(unit, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted))),
+            ]),
+          ),
           AppIconButton(AppIcons.plus, tooltip: 'More', small: true, onPressed: value < max ? () => onChanged((value + step).clamp(min, max)) : null),
         ]),
       );
 }
+
+/// Bumped when the Program builder closes, so the Programs page (still alive under it) reloads its cards.
+final programsChanged = ValueNotifier<int>(0);
 
 // ─────────────────────────────── Library filter (`ExerciseLibrary` Filter panel)
 
@@ -254,4 +261,12 @@ class LibFilterChips extends StatelessWidget {
       ?trailing,
     ]);
   }
+}
+
+
+/// Who made a program (card tag): "Gym", "By you" or "By Aman", with the full line as a tooltip.
+Widget ownerTag(Map o) {
+  final kind = '${o['kind']}';
+  final text = kind == 'gym' ? 'Gym' : (kind == 'you' ? 'By you' : 'By ${o['name']}');
+  return AppTooltip(message: '${o['label']}', child: AppBadge(text, tone: kind == 'you' ? Tone.ok : Tone.neutral, plain: true));
 }

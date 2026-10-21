@@ -146,6 +146,31 @@ class ExerciseViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
         ex.save(update_fields=["cover_image", "updated_at"])
         return Response(ExerciseSerializer(ex, context={"request": request}).data)
 
+    @action(detail=False, url_path="frames")
+    def frames(self, request):
+        """Cover frames to pick from: `?video=<content library id>` (stills grabbed from the upload) or `?url=<YouTube
+        link>` (YouTube's own stills). → {frames: [{key, at, label, url}]} (D-42)."""
+        from apps.content.library import youtube_id
+        from apps.content.models import ContentItem
+
+        from .frames import video_frames, youtube_frames
+
+        vid_id = request.query_params.get("video")
+        if vid_id:
+            item = ContentItem.objects.filter(id=vid_id, kind="video").first() if _is_uuid(vid_id) else None
+            if item is None:
+                return Response({"error": {"code": "not_found", "message": "That video is not in the library.",
+                                           "fields": {}}}, status=404)
+            if not item.file:
+                yid = youtube_id(item.youtube_url)
+                return Response({"frames": youtube_frames(yid) if yid else []})
+            return Response({"frames": video_frames(item, request)})
+        yid = youtube_id((request.query_params.get("url") or "").strip())
+        if not yid:
+            return Response({"error": {"code": "invalid", "message": "Paste a YouTube link.",
+                                       "fields": {"url": ["Paste a YouTube link."]}}}, status=400)
+        return Response({"frames": youtube_frames(yid)})
+
     @action(detail=False, url_path="youtube-info")
     def youtube_info(self, request):
         """Title and channel of a YouTube link for the 'YouTube link' preview (YouTube oEmbed; blank when offline)."""
@@ -256,7 +281,7 @@ class ProgramViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
         return qs
 
     def get_queryset(self):
-        qs = Program.objects.filter(is_master=True)
+        qs = Program.objects.filter(is_master=True).select_related("created_by")
         if self.action == "list":
             tab = self.request.query_params.get("tab", "active")
             qs = qs.filter(archived_at__isnull=tab != "archived")
@@ -1005,3 +1030,13 @@ class MyWorkoutViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewset
         ids = [int(i) for i in request.data.get("ids", []) if str(i).isdigit()]
         wl.sets.filter(id__in=ids).update(done=True, done_at=timezone.now())
         return Response({"reticked": len(ids)})
+
+
+def _is_uuid(v):
+    import uuid
+
+    try:
+        uuid.UUID(str(v))
+    except ValueError:
+        return False
+    return True

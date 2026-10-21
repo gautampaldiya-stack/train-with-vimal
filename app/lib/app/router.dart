@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/icons/app_icons.dart';
+import '../core/leave/leave_guard.dart';
 import '../core/widgets/button.dart';
 import '../core/widgets/card.dart';
 import '../core/widgets/overlays.dart';
@@ -118,7 +119,7 @@ final Map<String, Widget Function(GoRouterState)> trainerScreens = {
   '/calendar': (_) => const TrainerCalendarScreen(),
   '/more': (_) => const TrainerMoreScreen(),
   '/programs': (_) => const ProgramsScreen(),
-  '/programs/:id': (st) => ProgramBuilderScreen(key: ValueKey(st.pathParameters['id']), id: st.pathParameters['id']!),
+  '/programs/:id': (st) => ProgramBuilderScreen(key: ValueKey(st.uri.toString()), id: st.pathParameters['id']!, open: st.uri.queryParameters['open']),
   '/exercises': (_) => const ExerciseLibraryScreen(),
   '/exercises/:id': (st) {
     final id = st.pathParameters['id']!;
@@ -185,6 +186,8 @@ final appRouter = GoRouter(
           routes: [
             GoRoute(
               path: ':id',
+              // A page with unsaved work (program builder, exercise form) is asked before it closes (D-43).
+              onExit: (context, _) => LeaveGuard.ask(context),
               pageBuilder: (_, st) => NoTransitionPage(child: _screen('/${st.pathParameters['section']}/:id', st)),
             ),
           ],

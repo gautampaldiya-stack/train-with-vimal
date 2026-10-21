@@ -340,6 +340,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `exercises/<pk>/used-in/` | GET | ExerciseViewSet | Used in N programs: days, workouts, clients (trainer: own clients only). |
 | `exercises/facets/` | GET | ExerciseViewSet | Filter counts (muscle, equipment, level, source), built-in / custom totals, `can: {create}`. |
 | `exercises/youtube-info/` | GET | ExerciseViewSet | `?url=` → `{id, thumb, title, author}` (oEmbed, cached 24 h); not YouTube → 400. |
+| `exercises/frames/` | GET | ExerciseViewSet | `?video=<content id>` → four stills grabbed with ffmpeg (saved once), or `?url=<YouTube>` → YouTube's four stills: `{frames: [{key, at, label, url}]}`. Unknown video 404, not YouTube 400. Save the pick as `cover_frame` (D-42). |
 | `me/train/` | GET | MyTrainView | Train tab: week strip, today's workout with targets, last time and PRs, the running workout. |
 | `me/workouts/` | GET, POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/<pk>/` | GET | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
@@ -364,7 +365,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `programs/<pk>/archive/` | POST | ProgramViewSet |  |
 | `programs/<pk>/assign/` | POST | ProgramViewSet |  |
 | `programs/<pk>/clients/` | GET | ProgramViewSet |  |
-| `programs/<pk>/copy-week/` | POST | ProgramViewSet |  |
+| `programs/<pk>/copy-week/` | POST | ProgramViewSet | Kept for old clients; the builder now copies weeks locally and saves with `structure/` (D-43). |
 | `programs/<pk>/delete-preview/` | GET | ProgramViewSet |  |
 | `programs/<pk>/duplicate/` | POST | ProgramViewSet |  |
 | `programs/<pk>/restore/` | POST | ProgramViewSet | Undo of Delete: brings back the program and its clients (within one hour). |

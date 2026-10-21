@@ -1262,6 +1262,7 @@ Trainer Me → "Ask for more access".
 | `video` | ForeignKey | → ContentItem; optional; indexed |
 | `youtube_url` | CharField |  |
 | `cover_at_seconds` | PositiveIntegerField |  |
+| `cover_frame` | CharField | key of the chosen video still (D-42); blank |
 | `how_to` | ArrayField |  |
 | `form_cues` | ArrayField |  |
 | `log_type` | CharField | choices: weight_reps, bodyweight_reps, time, distance |
@@ -1351,6 +1352,8 @@ Constraints: uniq_week_weekday
 | `end_date` | DateField | optional |
 | `status` | CharField | choices: up_next, active, ended; indexed |
 | `assigned_by` | ForeignKey | → User; optional; indexed |
+| `end_reason` | CharField | blank, replaced, unassigned, ended (D-43) |
+| `replaced` | ForeignKey | → ProgramAssignment it took over from; optional (D-43) |
 
 ### WorkoutLog
 One workout the client did (or is doing) — the logger screen.

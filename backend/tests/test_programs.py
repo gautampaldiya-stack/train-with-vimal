@@ -110,3 +110,39 @@ def test_delete_then_undo_puts_the_clients_back(admin):
     if before:
         ProgramAssignment.objects.filter(id=before.id).update(status="active", end_date=None)
     Program.all_objects.filter(id=pid).delete()
+
+
+def test_assign_then_undo_leaves_no_history_and_brings_the_old_plan_back(admin):
+    """D-43: assigned and taken off the same day with nothing logged = it never ran; a real unassign says so."""
+    r = admin.post(P, {"name": "Undo block", "weeks": 2, "days_per_week": 2}, format="json")
+    pid = r.json()["id"]
+    riya = User.objects.get(email="riya@example.com")
+    before = ProgramAssignment.objects.filter(client=riya, status="active").first()
+    assert before is not None
+    assert admin.post(f"{P}{pid}/assign/", {"clients": [str(riya.id)]}, format="json").json()["added"] == 1
+    before.refresh_from_db()
+    assert before.status == "ended" and before.end_reason == "replaced"
+    assert admin.post(f"{P}{pid}/assign/", {"clients": []}, format="json").json()["removed"] == 1
+    assert not ProgramAssignment.objects.filter(program_id=pid).exists()
+    before.refresh_from_db()
+    assert before.status == "active" and before.end_reason == ""
+    # a plan that already ran is kept in history as Unassigned
+    assert admin.post(f"{P}{pid}/assign/", {"clients": [str(riya.id)]}, format="json").json()["added"] == 1
+    a = ProgramAssignment.objects.get(program_id=pid)
+    ProgramAssignment.objects.filter(id=a.id).update(created_at=a.created_at - __import__("datetime").timedelta(days=3))
+    admin.post(f"{P}{pid}/assign/", {"clients": []}, format="json")
+    a.refresh_from_db()
+    assert a.status == "ended" and a.end_reason == "unassigned"
+    # tidy up: Riya goes back to her own plan
+    ProgramAssignment.objects.filter(program_id=pid).delete()
+    ProgramAssignment.objects.filter(id=before.id).update(status="active", end_reason="", end_date=None)
+
+
+def test_cards_say_who_made_the_program(admin, trainer):
+    """Gautam: a card shows if it is the gym's program, yours, or another trainer's."""
+    mine = trainer.post(P, {"name": "Aman block", "weeks": 1, "days_per_week": 2}, format="json").json()
+    assert mine["owner"]["kind"] == "you"
+    assert admin.get(f"{P}{mine['id']}/").json()["owner"] == {"kind": "trainer", "name": "Aman",
+                                                               "label": "Made by Aman Verma"}
+    assert trainer.get(f"{P}{_fat_loss().id}/").json()["owner"]["kind"] == "gym"
+    trainer.delete(f"{P}{mine['id']}/")

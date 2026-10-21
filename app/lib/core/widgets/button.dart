@@ -12,9 +12,13 @@ enum BtnSize { sm, md, lg }
 /// Web button `.btn` (docs/design.md §3.1): 36 high (sm 30, lg 42), radius 8, 700/13.5.
 class AppButton extends StatelessWidget {
   const AppButton(this.label,
-      {super.key, this.onPressed, this.kind = BtnKind.outline, this.size = BtnSize.md, this.icon, this.trailingIcon, this.expand = false, this.loading = false, this.iconOnly = false});
-  const AppButton.primary(this.label, {super.key, this.onPressed, this.size = BtnSize.md, this.icon, this.trailingIcon, this.expand = false, this.loading = false, this.iconOnly = false})
+      {super.key, this.onPressed, this.kind = BtnKind.outline, this.size = BtnSize.md, this.icon, this.trailingIcon, this.expand = false, this.loading = false, this.iconOnly = false, this.tooltip});
+  const AppButton.primary(this.label,
+      {super.key, this.onPressed, this.size = BtnSize.md, this.icon, this.trailingIcon, this.expand = false, this.loading = false, this.iconOnly = false, this.tooltip})
       : kind = BtnKind.primary;
+
+  /// What the button does, shown on hover / long press (an icon-only button shows its label when this is empty).
+  final String? tooltip;
   final String label;
   final VoidCallback? onPressed;
   final BtnKind kind;
@@ -70,7 +74,8 @@ class AppButton extends StatelessWidget {
           child: content,
         );
         final out = Opacity(opacity: disabled && !loading ? 0.45 : 1, child: btn);
-        return iconOnly ? AppTooltip(message: label, child: out) : out;
+        final tip = tooltip ?? (iconOnly ? label : null);
+        return tip != null ? AppTooltip(message: tip, child: out) : out;
       },
     );
   }
