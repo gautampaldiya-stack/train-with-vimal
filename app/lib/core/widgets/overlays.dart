@@ -14,11 +14,14 @@ import 'responsive.dart';
 // ─────────────────────────────── Menu (docs/design.md §4.1)
 
 class MenuEntry {
-  const MenuEntry(this.label, {this.icon, this.onTap, this.danger = false, this.selected = false, this.end, this.header = false, this.separator = false, this.sub});
+  const MenuEntry(this.label, {this.icon, this.lead, this.onTap, this.danger = false, this.selected = false, this.end, this.header = false, this.separator = false, this.sub});
   const MenuEntry.header(this.label)
-      : icon = null, onTap = null, danger = false, selected = false, end = null, header = true, separator = false, sub = null;
+      : icon = null, lead = null, onTap = null, danger = false, selected = false, end = null, header = true, separator = false, sub = null;
   const MenuEntry.separator()
-      : label = '', icon = null, onTap = null, danger = false, selected = false, end = null, header = false, separator = true, sub = null;
+      : label = '', icon = null, lead = null, onTap = null, danger = false, selected = false, end = null, header = false, separator = true, sub = null;
+
+  /// A small widget in place of the icon (e.g. the diet mark in the Diet select).
+  final Widget? lead;
   final String label;
 
   /// Grey line under the label (`.pb-ms`, e.g. "Swap with Monday"); the row grows to fit it.
@@ -118,6 +121,7 @@ class _MenuBoxState extends State<_MenuBox> {
                         decoration: BoxDecoration(color: h ? (e.danger ? AppColors.badBg : AppColors.sub) : null, borderRadius: AppRadius.all(AppRadius.item)),
                         child: Row(spacing: 10, children: [
                           if (e.icon != null) AppIcon(e.icon!, size: 16, color: e.danger ? AppColors.badText : AppColors.muted),
+                          ?e.lead,
                           Expanded(
                             child: e.sub == null
                                 ? Text(e.label, style: AppText.s(13.5, e.selected ? W.w7 : W.w5, color: fg), overflow: TextOverflow.ellipsis)
@@ -161,6 +165,7 @@ Future<void> showActionSheet(BuildContext context, List<MenuEntry> entries, {Str
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
                 child: Row(spacing: 12, children: [
                   if (e.icon != null) AppIcon(e.icon!, size: 18, color: e.danger ? AppColors.badText : AppColors.text2),
+                  ?e.lead,
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                       Text(e.label, style: AppText.s(14.5, e.selected ? W.w7 : W.w6, color: e.danger ? AppColors.badText : AppColors.text)),
@@ -263,6 +268,7 @@ Future<T?> showAppDrawer<T>(
   Widget? headerAction,
   AppIconData? icon,
   bool fixedBody = false,
+  double? width,
 }) {
   // [fixedBody]: the body does not scroll as a whole. It gets a bounded height, so a builder can keep a
   // header (search, tabs) fixed and scroll only its list (`Expanded(ListView)`), as `.pb-pk` boards do.
@@ -284,7 +290,7 @@ Future<T?> showAppDrawer<T>(
       child: Material(
         color: Colors.transparent,
         child: Container(
-          width: wide ? 640 : 520,
+          width: width ?? (wide ? 640 : 520),
           height: double.infinity,
           // `.drawer` as the boards draw it: square edge, header 10/12/10/16 with a 32 icon tile, body 0 16 16.
           decoration: const BoxDecoration(color: AppColors.card, boxShadow: AppShadows.modal),

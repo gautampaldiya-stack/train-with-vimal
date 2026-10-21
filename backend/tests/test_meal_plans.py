@@ -83,3 +83,24 @@ def test_delete_then_undo_puts_the_clients_back(admin):
     MealPlanAssignment.objects.filter(plan_id=new["id"]).delete()
     if before:
         MealPlanAssignment.objects.filter(id=before.id).update(status="active", end_reason="", end_date=None)
+
+
+def test_cards_list_meal_names_and_foods_say_where_they_are_used(admin):
+    card = next(c for c in admin.get(M).json()["results"] if c["name"] == "Veg fat loss · 1,800")
+    assert card["meal_names"] and all(isinstance(n, str) for n in card["meal_names"])
+    foods = admin.get("/api/v1/foods/", {"search": "paneer"}).json()["results"]
+    used = [f for f in foods if f["used_in"]]
+    assert used and used[0]["used_tip"][0].startswith(used[0]["used_in"][0] + " · ")
+
+
+def test_builtin_food_cannot_be_deleted_but_team_food_can(admin):
+    from apps.nutrition.models import Food
+    b = Food.objects.filter(source="builtin").first()
+    r = admin.delete(f"/api/v1/foods/{b.id}/")
+    assert r.status_code == 403 and "Duplicate" in r.json()["error"]["message"]
+    new = admin.post("/api/v1/foods/", {"name": "Test thali", "diet": "veg", "group": "other", "kcal": 120,
+                                        "protein": 4, "carbs": 18, "fat": 3, "source_note": "Pack label"},
+                     format="json")
+    assert new.status_code == 201, new.content
+    assert new.json()["source_note"] == "Pack label"
+    assert admin.delete(f"/api/v1/foods/{new.json()['id']}/").status_code == 204

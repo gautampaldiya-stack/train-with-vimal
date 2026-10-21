@@ -100,8 +100,30 @@ class FoodViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
                          **{g: by.get(g, 0) for g in FOOD_GROUPS}, "unit_suggestions": UNIT_SUGGESTIONS})
 
     def list(self, request, *args, **kwargs):
-        resp = super().list(request, *args, **kwargs)
-        return resp
+        qs = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(qs)
+        rows = page if page is not None else list(qs)
+        # "Used in" for the whole page in one query: master plans and the meals that use each food.
+        used = {}
+        for fid, plan, meal in (MealItem.objects.filter(food__in=rows, option__meal__plan__is_master=True,
+                                                        option__meal__plan__deleted_at__isnull=True)
+                                .order_by("option__meal__plan__name", "option__meal__time")
+                                .values_list("food_id", "option__meal__plan__name", "option__meal__name").distinct()):
+            meals = used.setdefault(fid, {}).setdefault(plan, [])
+            if meal not in meals:
+                meals.append(meal)
+        for f in rows:
+            u = used.get(f.id, {})
+            f._used_in = list(u)
+            f._used_tip = [f"{p} · {', '.join(m)}" for p, m in u.items()]
+        data = self.get_serializer(rows, many=True).data
+        return self.get_paginated_response(data) if page is not None else Response(data)
+
+    def perform_destroy(self, instance):
+        if instance.source == Food.Source.BUILTIN:
+            raise PermissionDenied("Built-in foods can't be deleted. Duplicate it to make your own.")
+        instance.soft_delete()
+        activity_log("deleted a food", "plan", actor=self.request.user, target=instance, target_label=instance.name)
 
     def perform_create(self, serializer):
         food = serializer.save(source=Food.Source.TEAM, created_by=self.request.user)
@@ -283,8 +305,12 @@ class MealPlanViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
             lst = prev.setdefault(a.plan_id, [])
             if len(lst) < 3:
                 lst.append(a.client)
+        names = {}
+        for pid, name in Meal.objects.filter(plan_id__in=ids, weekday__isnull=True).values_list("plan_id", "name"):
+            names.setdefault(pid, []).append(name)
         for p in plans:
             p.n_clients, p.n_custom, p._preview_clients = n.get(p.id, 0), custom.get(p.id, 0), prev.get(p.id, [])
+            p._meal_names = names.get(p.id, [])
 
     def list(self, request, *args, **kwargs):
         qs = self.filter_queryset(self.get_queryset())

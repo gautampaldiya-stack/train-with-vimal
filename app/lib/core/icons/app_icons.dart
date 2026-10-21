@@ -152,6 +152,7 @@ abstract final class AppIcons {
   static const key = Ic.i93a85d;
   static const arrowRightAlt = Ic.ice80d0;
   static const upload = Ic.i71203f;
+  static const importFile = Ic.i1aecbb; // Import from Excel (`M12 16V4…` tray)
   static const mobile = Ic.ie50d87;
   static const zoomOut = Ic.i31f6a0;
   static const zoomIn = Ic.ifef2cc;

@@ -62,8 +62,12 @@ class SegmentedTabs<T> extends StatelessWidget {
 /// Underline `.utabs`: 1px line below, gap 20, active dark text + 2px underline. Scrolls sideways when the tabs
 /// do not fit (phone); the active tab is scrolled into view, so a tab opened by link is never cut off.
 class UnderlineTabs<T> extends StatefulWidget {
-  const UnderlineTabs({super.key, required this.items, required this.value, required this.onChanged});
+  const UnderlineTabs({super.key, required this.items, required this.value, required this.onChanged, this.pillCounts = false, this.gap = 20});
   final List<TabItem<T>> items;
+
+  /// Counts in a grey pill (`.utab .n`, Nutrition & foods) instead of plain grey text.
+  final bool pillCounts;
+  final double gap;
   final T value;
   final ValueChanged<T> onChanged;
 
@@ -119,7 +123,7 @@ class _UnderlineTabsState<T> extends State<UnderlineTabs<T>> {
         child: SingleChildScrollView(
           controller: _scroll,
           scrollDirection: Axis.horizontal,
-          child: Row(spacing: 20, children: [
+          child: Row(spacing: widget.gap, children: [
             for (final it in widget.items)
               Hover(
                 key: it.value == widget.value ? _active : null,
@@ -131,7 +135,14 @@ class _UnderlineTabsState<T> extends State<UnderlineTabs<T>> {
                     decoration: BoxDecoration(border: Border(bottom: BorderSide(color: on ? AppColors.text : Colors.transparent, width: 2))),
                     child: Row(spacing: 6, children: [
                       Text(it.label, style: AppText.s(13.5, W.w6, color: on || h ? AppColors.text : AppColors.muted)),
-                      if (it.count != null) Text('${it.count}', style: AppText.s(12, W.w6, color: AppColors.muted)),
+                      if (it.count != null && widget.pillCounts)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                          decoration: BoxDecoration(color: AppColors.sub, borderRadius: AppRadius.all(9)),
+                          child: Text('${it.count}', style: AppText.s(11, W.w7, color: AppColors.muted)),
+                        )
+                      else if (it.count != null)
+                        Text('${it.count}', style: AppText.s(12, W.w6, color: AppColors.muted)),
                     ]),
                   );
                 },

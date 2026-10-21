@@ -220,6 +220,9 @@ abstract final class AppColors {
   static const pbOnBg = Color(0xFFF5F8FF), pbRestBg = Color(0xFFFAFAF8), pbPillHover = Color(0xFFE6E6E1), pbDayHover = Color(0xFFBDBDB6);
   static const pbSsTagBg = Color(0xFFF1EAFE), pbSsTagText = Color(0xFF5B21B6), pbSsRow = Color(0xFFFBF9FF), pbSsBar = Color(0xFFA78BFA);
   static const pbSlotHover = Color(0xFFF7FAFF);
+  // Nutrition & foods (`.nu-*`): macro bar protein / carbs / fat, group chip count on dark, file tile.
+  static const nuProtein = Color(0xFF2563EB), nuCarbs = Color(0xFFF59E0B), nuFat = Color(0xFF10B981), nuGroupOnN = Color(0xFFC9C9C4);
+  static const nuXlBg = Color(0xFFE3F4EA);
   // Exercise pages (`.ex-*`, `.media .play`): video length pill, YouTube pill, primary muscle block, body map box.
   static const playBadge = Color(0xB8171717), ytRed = Color(0xFFE02424);
   static const exPriBg = Color(0xFFEEF3FE), exPriLine = Color(0xFFC7D7FB);

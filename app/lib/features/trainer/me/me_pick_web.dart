@@ -4,11 +4,11 @@ import 'dart:typed_data';
 
 import 'package:web/web.dart' as web;
 
-/// Web: the browser's file picker for a PDF, JPG or PNG. Returns (file name, bytes).
-Future<(String, Uint8List)?> pickDocument() async {
+/// Web: the browser's file picker for a PDF, JPG or PNG, or the [ext] given. Returns (file name, bytes).
+Future<(String, Uint8List)?> pickDocument({List<String>? ext}) async {
   final input = web.HTMLInputElement()
     ..type = 'file'
-    ..accept = '.pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png';
+    ..accept = ext == null ? '.pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png' : ext.map((e) => '.$e').join(',');
   final done = Completer<(String, Uint8List)?>();
   input.onchange = (web.Event _) {
     final f = input.files?.item(0);

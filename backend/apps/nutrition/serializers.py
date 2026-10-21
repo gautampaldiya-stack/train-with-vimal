@@ -32,6 +32,7 @@ class FoodSerializer(serializers.ModelSerializer):
     calories_match = serializers.BooleanField(read_only=True)
     calories_from_macros = serializers.FloatField(read_only=True)
     used_in = serializers.SerializerMethodField()
+    used_tip = serializers.SerializerMethodField()
     mine = serializers.SerializerMethodField()
 
     class Meta:
@@ -39,8 +40,8 @@ class FoodSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "brand", "diet", "group", "source", "source_note", "kcal", "protein", "carbs", "fat",
                   "fibre", "sodium_mg", "iron_mg", "calcium_mg", "potassium_mg", "units", "default_unit",
                   "default_unit_name", "default_quantity", "swaps", "calories_match", "calories_from_macros",
-                  "used_in", "mine", "created_at", "updated_at"]
-        read_only_fields = ["source", "source_note"]
+                  "used_in", "used_tip", "mine", "created_at", "updated_at"]
+        read_only_fields = ["source"]
 
     def get_default_unit(self, obj):
         u = obj.default_unit
@@ -52,6 +53,10 @@ class FoodSerializer(serializers.ModelSerializer):
             names = list(MealPlan.objects.filter(meals__options__items__food=obj, is_master=True).distinct()
                          .values_list("name", flat=True)[:10])
         return names
+
+    def get_used_tip(self, obj):
+        """"Cut · Eggetarian · Lunch, Dinner" per plan (the Used in pill's tooltip); filled by the list view."""
+        return getattr(obj, "_used_tip", None) or []
 
     def get_mine(self, obj):
         return obj.owner_client_id is not None
@@ -227,13 +232,14 @@ class MealPlanCardSerializer(serializers.ModelSerializer):
     custom_count = serializers.IntegerField(read_only=True, source="n_custom", default=0)
     meal_count = serializers.IntegerField(read_only=True, source="n_meals", default=0)
     option_count = serializers.IntegerField(read_only=True, source="n_options", default=0)
+    meal_names = serializers.SerializerMethodField()
 
     class Meta:
         model = MealPlan
         fields = ["id", "name", "diet", "kcal_target", "protein_g", "carbs_g", "fat_g", "fibre_g", "water_ml",
                   "status", "published_at", "has_unpublished_changes", "allow_swaps", "allow_search_any",
                   "allow_switch_options", "allow_off_plan", "client_count", "custom_count", "meal_count",
-                  "option_count", "clients", "can_edit", "owner", "updated_at", "created_at"]
+                  "option_count", "meal_names", "clients", "can_edit", "owner", "updated_at", "created_at"]
         read_only_fields = ["status", "published_at", "has_unpublished_changes"]
 
     can_edit = serializers.SerializerMethodField()
@@ -252,6 +258,10 @@ class MealPlanCardSerializer(serializers.ModelSerializer):
             rows = [a.client for a in qs[:3]]
         return [{"id": str(u.id), "initials": u.initials, "avatar_color": u.avatar_color, "full_name": u.full_name}
                 for u in rows]
+
+    def get_meal_names(self, obj):
+        names = getattr(obj, "_meal_names", None)
+        return names if names is not None else list(obj.meals.filter(weekday__isnull=True).values_list("name", flat=True))
 
     def get_can_edit(self, obj):
         from .services import can_edit_meal_plan

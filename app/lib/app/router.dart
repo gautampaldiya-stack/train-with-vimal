@@ -31,6 +31,7 @@ import '../features/client/train/workout_screen.dart';
 import '../features/library/exercises/detail_screen.dart';
 import '../features/library/exercises/edit_screen.dart';
 import '../features/library/exercises/library_screen.dart';
+import '../features/library/nutrition/nutrition_screen.dart';
 import '../features/library/programs/builder_screen.dart';
 import '../features/library/programs/programs_screen.dart';
 import '../features/trainer/more/more_screen.dart';
@@ -120,6 +121,7 @@ final Map<String, Widget Function(GoRouterState)> trainerScreens = {
   '/more': (_) => const TrainerMoreScreen(),
   '/programs': (_) => const ProgramsScreen(),
   '/programs/:id': (st) => ProgramBuilderScreen(key: ValueKey(st.uri.toString()), id: st.pathParameters['id']!, open: st.uri.queryParameters['open']),
+  '/nutrition': (st) => NutritionScreen(tab: st.uri.queryParameters['tab']),
   '/exercises': (_) => const ExerciseLibraryScreen(),
   '/exercises/:id': (st) {
     final id = st.pathParameters['id']!;
