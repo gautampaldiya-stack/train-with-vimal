@@ -131,3 +131,23 @@ def _source(item):
 def youtube_frames(vid):
     return [{"key": f"yt/{vid}/{k}", "at": None, "label": label, "url": f"https://img.youtube.com/vi/{vid}/{f}.jpg"}
             for k, f, label in YT_FRAMES]
+
+
+def probe(item):
+    """(seconds, "1080p") of an uploaded library video, read from ffmpeg's own report; (None, "") when unknown."""
+    exe = ffmpeg_exe()
+    if not exe or not item.file:
+        return None, ""
+    with _source(item) as source:
+        if not source:
+            return None, ""
+        try:
+            r = subprocess.run([exe, "-hide_banner", "-i", source], capture_output=True, timeout=20, check=False)  # noqa: S603
+        except (OSError, subprocess.TimeoutExpired):
+            return None, ""
+    out = r.stderr.decode("utf-8", "ignore")
+    m = re.search(r"Duration: (\d+):(\d+):(\d+(?:\.\d+)?)", out)
+    secs = round(int(m.group(1)) * 3600 + int(m.group(2)) * 60 + float(m.group(3))) if m else None
+    v = re.search(r"Video:.*?(\d{2,5})x(\d{2,5})", out)
+    res = f"{min(int(v.group(1)), int(v.group(2)))}p" if v else ""
+    return secs, res

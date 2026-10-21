@@ -5,6 +5,7 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
 **Last updated:** 2026-10-21 · branch `working`
 
 ## Done
+- 2026-10-21 (night, last): Content library built (`/content`, boards Content / ContentMobile); trainer side complete. **Next: admin screens, 1-2 at a time, done well** (admin router map is empty today; start with the admin Dashboard). Parked: Daily summary design, Gym news admin screen.
 - 2026-10-21 (late night, later): Habits & supplements built (`/habits`, boards Habits / HabitsMobile). **Next: Content library** (Content / ContentMobile; wire "Upload to library" and "Open in library"), then admin, 1-2 screens at a time, done well (Gautam). Parked: Daily summary design, Gym news admin screen.
 - 2026-10-21 (late night): Gautam's debug-mode round — Food library blank on tablet, meal builder errors, food value limits, meal plan ⋯ menu and stat grid, edit exercise layout, phone top space, trainer More page. **Next: Habits & supplements**, then Content library, then admin.
 - 2026-10-21 (night, later): Gautam's Exercise fixes — card layout, first-frame thumbnails, Add to program without doubles, filter submenu on hover, edit page lines / dropdown / upload modal, stats and video card, same-size builder day cards. **Next: Habits & supplements**, then Content library, then admin.

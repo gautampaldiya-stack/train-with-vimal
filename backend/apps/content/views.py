@@ -28,6 +28,38 @@ LIMITS_MB = {"pdf": 25, "image": 10, "video": 500}
 EXT = {"pdf": {"pdf"}, "image": set(IMAGE_EXTENSIONS), "video": {"mp4", "mov", "m4v", "webm"}}
 
 
+def uses_of(item):
+    """Where an item is used: exercises that show it and programs whose exercise has it as its own video."""
+    from apps.training.models import Exercise, ProgramExercise
+
+    used = [{"type": "exercise", "id": str(e.id), "name": e.name} for e in Exercise.objects.filter(video=item)]
+    seen = set()
+    for pe in ProgramExercise.objects.filter(override__video=str(item.id)).select_related("day__week__program"):
+        p = pe.day.week.program
+        if p.id not in seen:
+            seen.add(p.id)
+            used.append({"type": "program", "id": str(p.id), "name": p.name})
+    return used
+
+
+def _fill_media(item):
+    """After an upload: a video's length and size (1080p), a PDF's page count."""
+    if not item.file:
+        return
+    if item.kind == "video":
+        from apps.training.frames import probe
+
+        secs, res = probe(item)
+        ContentItem.objects.filter(id=item.id).update(duration_seconds=secs, resolution=res)
+        item.duration_seconds, item.resolution = secs, res
+    elif item.kind == "pdf":
+        from .pdf_pages import count_pages
+
+        n = count_pages(item)
+        ContentItem.objects.filter(id=item.id).update(pages=n)
+        item.pages = n
+
+
 class CategorySerializer(serializers.ModelSerializer):
     count = serializers.IntegerField(read_only=True, source="n", default=0)
 
@@ -55,16 +87,21 @@ class ContentSerializer(serializers.ModelSerializer):
     cover_url = serializers.SerializerMethodField()
     thumb_url = serializers.SerializerMethodField()
     usage = serializers.SerializerMethodField()
+    length_label = serializers.SerializerMethodField()
+    uses = serializers.SerializerMethodField()
+    who = serializers.SerializerMethodField()
+    file_name = serializers.SerializerMethodField()
 
     class Meta:
         model = ContentItem
         fields = ["id", "kind", "title", "category", "category_name", "description", "file", "file_url",
                   "youtube_url", "link_url", "cover", "cover_url", "thumb_url", "body", "read_minutes", "duration_seconds", "pages",
                   "file_size", "resolution", "share_everyone", "chapters", "outline", "shared_count", "added_by", "usage", "created_at",
-                  "updated_at"]
+                  "updated_at", "frame", "length_label", "uses", "who", "file_name"]
         read_only_fields = ["file_size"]
         extra_kwargs = {"file": {"write_only": True, "required": False},
-                        "cover": {"write_only": True, "required": False}}
+                        "cover": {"write_only": True, "required": False},
+                        "read_minutes": {"min_value": 1, "max_value": 120}}
 
     def _url(self, f):
         req = self.context.get("request")
@@ -83,8 +120,12 @@ class ContentSerializer(serializers.ModelSerializer):
         from apps.training.frames import first_frame
         from apps.training.serializers import youtube_thumb
 
+        from apps.training.frames import key_url
+
         if obj.cover:
             return self._url(obj.cover)
+        if obj.frame:
+            return key_url(obj.frame, self.context.get("request"))
         if obj.kind == "video" and obj.file:
             return first_frame(obj, self.context.get("request"))
         return youtube_thumb(obj.youtube_url) if obj.youtube_url else None
@@ -93,10 +134,41 @@ class ContentSerializer(serializers.ModelSerializer):
         n = getattr(obj, "n_exercises", None)
         return {"exercises": n if n is not None else obj.exercises.count()}
 
+    def get_length_label(self, obj):
+        from .library import length_label
+
+        return length_label(obj)
+
+    def get_uses(self, obj):
+        return uses_of(obj)
+
+    def get_who(self, obj):
+        """The card's footer: Everyone / the one client / N clients / Not assigned."""
+        if obj.share_everyone:
+            return "Everyone"
+        n = getattr(obj, "n_shares", None)
+        n = n if n is not None else ContentShare.objects.filter(item=obj).filter(LIVE).count()
+        if n == 1:
+            s = ContentShare.objects.filter(item=obj).filter(LIVE).select_related("client").first()
+            return s.client.full_name if s else "1 client"
+        return f"{n} clients" if n else "Not assigned"
+
+    def get_file_name(self, obj):
+        from .library import _file_name
+
+        return _file_name(obj)
+
     def validate_title(self, v):
         v = " ".join(v.split())
         if len(v) < 2:
             raise serializers.ValidationError("Enter a name.")
+        return v
+
+    def validate_frame(self, v):
+        from apps.training.frames import KEY_RE
+
+        if v and not KEY_RE.match(v):
+            raise serializers.ValidationError("Pick one of the frames.")
         return v
 
     def validate_youtube_url(self, v):
@@ -157,8 +229,28 @@ class ContentViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
             qs = qs.filter(category_id=p["category"])
         return qs
 
+    @action(detail=False)
+    def summary(self, request):
+        """Content library page: item count, storage used of the gym's allowance, and what this person may do
+        (`manage` = add / edit / delete / assign, `everyone` = share with every client, Vimal only)."""
+        from django.conf import settings
+        from django.db.models import Sum
+
+        u = request.user
+        used = ContentItem.objects.aggregate(s=Sum("file_size"))["s"] or 0
+        return Response({"total": ContentItem.objects.count(),
+                         "storage": {"used": used, "limit": getattr(settings, "CONTENT_STORAGE_GB", 20) * 1024 ** 3},
+                         "can": {"manage": u.is_admin or (u.is_trainer and u.trainer_profile.has_perm("content.manage")),
+                                 "everyone": u.is_admin}})
+
+    def perform_update(self, serializer):
+        item = serializer.save()
+        if "file" in serializer.validated_data:
+            _fill_media(item)
+
     def perform_create(self, serializer):
         item = serializer.save(created_by=self.request.user)
+        _fill_media(item)
         activity_log("added content", "content", actor=self.request.user, target=item, target_label=item.title)
         if item.share_everyone:
             self._announce(item, None)
@@ -170,19 +262,15 @@ class ContentViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
             notify(clients, "content_shared", f"New in your library: {item.title}", item.description[:140],
                    actor=self.request.user, data={"route": f"/library/{item.id}"})
 
-    @action(detail=True)
-    def detail(self, request, pk=None):
-        """Detail drawer: shared with, used in, stats."""
+    @action(detail=True, url_path="detail")
+    def full(self, request, pk=None):
+        """Detail drawer: shared with, used in, stats. (Not named `detail`: DRF sets `self.detail` on the view.)"""
         item = self.get_object()
         shares = ContentShare.objects.filter(item=item).filter(LIVE).select_related("client")[:50]
         views = ContentView.objects.filter(item=item)
         opened = views.count()
         finished = views.filter(finished=True).count()
-        from apps.training.models import Exercise, ProgramExercise
-
-        used = [{"type": "exercise", "id": str(e.id), "name": e.name} for e in Exercise.objects.filter(video=item)]
-        for pe in ProgramExercise.objects.filter(override__video=str(item.id)).select_related("day__week__program"):
-            used.append({"type": "program", "id": str(pe.day.week.program_id), "name": pe.day.week.program.name})
+        used = uses_of(item)
         return Response({
             **ContentSerializer(item, context={"request": request}).data,
             "shared_with": {"everyone": item.share_everyone,
@@ -237,7 +325,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
     http_method_names = ["get", "post", "patch", "delete"]
 
     def get_queryset(self):
-        return Category.objects.annotate(n=Count("items", filter=Q(items__deleted_at__isnull=True)))
+        return Category.objects.annotate(n=Count("items", filter=Q(items__deleted_at__isnull=True))).order_by("order", "name")
 
 
 class ClientContentView(viewsets.GenericViewSet):

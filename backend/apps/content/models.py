@@ -36,6 +36,8 @@ class ContentItem(SoftDeleteModel):
     youtube_url = models.URLField(blank=True, default="")
     link_url = models.URLField(max_length=500, blank=True, default="")  # kind=link
     cover = models.ImageField(upload_to="content/covers/", null=True, blank=True)
+    # A frame picked from the video (Edit content → Cover image), a key from training.frames; empty = the first frame.
+    frame = models.CharField(max_length=80, blank=True, default="")
     body = models.TextField(blank=True, default="", max_length=50000)  # article
     read_minutes = models.PositiveSmallIntegerField(null=True, blank=True)
     duration_seconds = models.PositiveIntegerField(null=True, blank=True)

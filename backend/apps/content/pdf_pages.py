@@ -58,3 +58,14 @@ def _draw(item):
         type(item).objects.filter(id=item.id).update(pages=total)
         item.pages = total
     return names
+
+
+def count_pages(item):
+    """Page count of an uploaded PDF (the card says "6 pages"); None when it cannot be read."""
+    try:
+        import pypdfium2 as pdfium
+
+        with item.file.open("rb") as fh:
+            return len(pdfium.PdfDocument(fh.read()))
+    except Exception:  # noqa: BLE001 - a broken upload must not stop the save
+        return None

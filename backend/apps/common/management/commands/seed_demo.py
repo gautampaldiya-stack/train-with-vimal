@@ -583,6 +583,7 @@ class Command(BaseCommand):
             _refresh_shipped_pdfs(ContentItem)
             ContentItem.objects.filter(title="How to warm up for leg day", body__startswith="Start with 5").update(
                 body=LEG_WARMUP)
+            _file_content()
             return
         aman = User.objects.get(email="aman@trainwithvimal.com")
         vimal = User.objects.get(email="vimal@trainwithvimal.com")
@@ -675,6 +676,7 @@ class Command(BaseCommand):
             if x.get("seen"):
                 ContentView.objects.create(item=it, user=riya, finished=x.get("done", False),
                                            saved=x.get("saved", False), progress=100 if x.get("done") else 0)
+        _file_content()
         del today
 
     def riya_checkins(self):
@@ -1289,3 +1291,24 @@ def _video(slug, seconds):
             return None
         with open(out, "rb") as fh:
             return ContentFile(fh.read(), name=f"{slug}.mp4")
+
+
+def _file_content():
+    """Content library board: file the demo items under the default categories and record file sizes, so the
+    rail counts and the storage bar have something to show. Only fills what is empty."""
+    from apps.content.models import Category, ContentItem
+
+    cats = {c.name: c for c in Category.objects.all()}
+    by_word = [("welcome", "Onboarding"), ("check-in", "Onboarding"), ("eat", "Nutrition guides"),
+               ("macro", "Nutrition guides"), ("snack", "Nutrition guides"), ("protein", "Nutrition guides"),
+               ("warm up", "Form tutorials"), ("how to", "Form tutorials"), ("walkthrough", "Exercise videos")]
+    for it in ContentItem.objects.filter(category__isnull=True):
+        t = it.title.lower()
+        name = next((c for w, c in by_word if w in t), "Exercise videos" if it.kind in ("video", "image") else None)
+        if name in cats:
+            ContentItem.objects.filter(id=it.id).update(category=cats[name])
+    for it in ContentItem.objects.filter(file_size__isnull=True).exclude(file=""):
+        try:
+            ContentItem.objects.filter(id=it.id).update(file_size=it.file.size)
+        except OSError:
+            pass

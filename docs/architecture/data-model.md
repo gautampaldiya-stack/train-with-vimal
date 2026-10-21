@@ -551,12 +551,13 @@ Constraints: uniq_idempotency_key
 | `youtube_url` | CharField |  |
 | `link_url` | CharField |  |
 | `cover` | FileField | optional |
+| `frame` | CharField | key of the video still picked as the card picture (Edit content → Cover image); blank = first frame |
 | `body` | TextField |  |
-| `read_minutes` | PositiveSmallIntegerField | optional |
+| `read_minutes` | PositiveSmallIntegerField | optional; 1–120 |
 | `duration_seconds` | PositiveIntegerField | optional |
-| `pages` | PositiveSmallIntegerField | optional |
+| `pages` | PositiveSmallIntegerField | optional; counted from the PDF on upload |
 | `file_size` | PositiveBigIntegerField | optional |
-| `resolution` | CharField |  |
+| `resolution` | CharField | "1080p", read with ffmpeg on upload (with `duration_seconds`) |
 | `share_everyone` | BooleanField |  |
 | `chapters` | JSONField |  |
 | `outline` | JSONField |  |

@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-21 · Content library page
+- **Pehle:** `/content` "This page is on the way" dikhata tha; exercise ke "Upload to library" se khali page khulta tha. Content API me card ke liye length, used in, who has it aur storage nahi tha; `content/<id>/detail/` crash karta tha (action ka naam `detail` DRF ke `self.detail` se takrata tha).
+- **Ab:** Content library board ke jaisa: categories rail + storage, search, kind tabs, cards 8 per page, item drawer, New / Edit content (upload / YouTube / cover frame / article), Assign to clients (Everyone sirf Vimal), New category, Delete + Undo. Phone par chips aur 2 column. API: `content/summary/`, rows me `length_label`, `uses`, `who`, `file_name`, `frame`; upload par length / resolution / pages bharte hain. Demo items categories me file hue.
+- **Kyun:** Gautam: habits ke baad content library, phir admin.
+- **Updated:** app/lib/features/library/content/, app/lib/app/router.dart, backend/apps/content/, backend/tests/test_content_library.py, docs/screens/status.md, docs/architecture/*
+
 ### 2026-10-21 · Habits & supplements page; Pre-workout supplement timing
 - **Pehle:** Trainer ke Library me "Habits & supplements" par "This page is on the way" aata tha. Supplement timing me Pre-workout nahi tha (board me hai).
 - **Ab:** `/habits` page board jaisa: Habits (list, editor, Save / Discard, client preview, Assigned to, Assign, Duplicate / Delete + Undo, New habit) aur Supplements (plans, dose and timing modal, quick add, Custom, note, Client sees, Rename / Duplicate / Delete + Undo, New plan). Phone par list → sheet. Unsaved changes ke saath page chhodne ya doosra habit kholne par pehle poochta hai. Daily target max 100,000. Nayi timing `pre_workout` (client app me "before training"). `habits/counts/` batata hai page par kya kar sakte hain.

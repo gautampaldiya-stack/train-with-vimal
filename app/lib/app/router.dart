@@ -29,6 +29,7 @@ import '../features/client/more/about_screen.dart';
 import '../features/client/more/more_screen.dart';
 import '../features/client/train/train_screen.dart';
 import '../features/client/train/workout_screen.dart';
+import '../features/library/content/content_screen.dart';
 import '../features/library/exercises/detail_screen.dart';
 import '../features/library/exercises/edit_screen.dart';
 import '../features/library/exercises/library_screen.dart';
@@ -127,6 +128,8 @@ final Map<String, Widget Function(GoRouterState)> trainerScreens = {
   '/nutrition/:id': (st) => MealPlanBuilderScreen(key: ValueKey(st.uri.toString()), id: st.pathParameters['id']!, open: st.uri.queryParameters['open']),
   '/habits': (st) => HabitsScreen(tab: st.uri.queryParameters['tab']),
   '/exercises': (_) => const ExerciseLibraryScreen(),
+  '/content': (st) => ContentScreen(newKind: st.uri.queryParameters['new']),
+  '/content/:id': (st) => ContentScreen(key: ValueKey(st.uri.toString()), open: st.pathParameters['id']),
   '/exercises/:id': (st) {
     final id = st.pathParameters['id']!;
     if (id == 'new') return ExerciseEditScreen(key: ValueKey(st.uri.toString()));

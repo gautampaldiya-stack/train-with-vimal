@@ -999,14 +999,14 @@ Future<Map?> showModalVideoPicker(BuildContext context, String? current) async {
     lead: Builder(
       builder: (mctx) => Align(alignment: Alignment.centerLeft, child: AppButton('Upload to library', kind: BtnKind.text, onPressed: () {
         Navigator.of(mctx).pop();
-        router.go('/content');
+        router.go('/content?new=video');
       })),
     ),
     actions: (ctx) => [
       if (ctx.isPhone)
         AppButton('Upload to library', kind: BtnKind.text, onPressed: () {
           Navigator.of(ctx).pop();
-          router.go('/content');
+          router.go('/content?new=video');
         }),
       AppButton('Cancel', expand: ctx.isPhone, onPressed: () => Navigator.of(ctx).pop()),
       ValueListenableBuilder(

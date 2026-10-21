@@ -238,6 +238,9 @@ abstract final class AppColors {
   ];
   static const hbOnLine = Color(0xFFD5E1FB), hbDot = Color(0xFFD97706), hbSaveBg = Color(0xFFFBFBF9), hbPhone = Color(0xFFF4F4F1);
   static const hbDoneLine = Color(0xFFBFE5CF), hbIcoHover = Color(0xFFBDBDB6), hbDayOff = Color(0xFFB5B5B0);
+  // Content library (`.ct-*`): kind badge on a card, round play button on the hero, article text box, phone
+  // category chip count when picked.
+  static const ctKbBg = Color(0xEBFFFFFF), ctPlayBtn = Color(0xB3171717), ctTextBg = Color(0xFFFBFBF9), ctChipOnN = Color(0xFFC9C9C4);
 }
 
 enum Tone { ok, warn, bad, info, neutral }
