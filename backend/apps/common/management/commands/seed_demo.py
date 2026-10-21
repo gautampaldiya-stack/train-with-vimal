@@ -61,6 +61,7 @@ class Command(BaseCommand):
         with transaction.atomic():
             vimal = self.people()
             program, plan = self.plans(vimal)
+            self.more_meal_plans(vimal)
             self.more_programs(vimal)
             self.history(program, plan)
             self.riya_home()
@@ -292,6 +293,55 @@ class Command(BaseCommand):
                                                        rpe=e.default_rpe, tempo=e.default_tempo)
             if archived:
                 Program.objects.filter(id=p.id).update(archived_at=timezone.now())
+
+    # Nutrition & foods (board Nutrition): more master meal plans so the cards, diet chips and Draft have content.
+    # [name, diet, kcal, published, {meal: [option name, [(food, quantity)]]...}]
+    MORE_MEAL_PLANS = [
+        ("Cut · Eggetarian", "egg", 2150, True, {
+            "Breakfast": [("Veg", [("Oats", 1), ("Whey protein", 1), ("Banana", 1), ("Peanut butter", 1)]),
+                          ("Eggs", [("Boiled egg", 3), ("Multigrain bread", 2), ("Apple", 1)])],
+            "Lunch": [("Veg", [("Paneer", 1), ("Whole wheat roti", 2), ("Moong dal (cooked)", 1)]),
+                      ("Non-veg", [("Chicken breast (cooked)", 1), ("Brown rice (cooked)", 1)])],
+            "Snack": [("Quick", [("Greek yogurt", 1), ("Roasted chana", 1)]), ("Shake", [("Whey protein", 1), ("Milk (toned)", 1)])],
+            "Dinner": [("Eggetarian", [("Egg white", 6), ("Boiled egg", 1), ("Brown rice (cooked)", 1), ("Mixed veg sabzi", 1)]),
+                       ("Veg", [("Tofu (firm)", 1), ("Whole wheat roti", 2), ("Spinach (cooked)", 1)])]}),
+        ("Lean gain · Non-veg", "nonveg", 2800, True, {
+            "Breakfast": [("Eggs", [("Boiled egg", 4), ("Multigrain bread", 3), ("Banana", 1)])],
+            "Lunch": [("Chicken", [("Chicken breast (cooked)", 1), ("White rice (cooked)", 2), ("Dal tadka", 1)])],
+            "Snack": [("Pre-workout", [("Banana", 1), ("Peanut butter", 1), ("Whey protein", 1)])],
+            "Dinner": [("Fish", [("Fish curry", 1), ("White rice (cooked)", 1), ("Cucumber salad", 1)]),
+                       ("Chicken", [("Chicken breast (cooked)", 1), ("Whole wheat roti", 3)])]}),
+        ("Fat loss · Veg", "veg", 1700, False, {
+            "Breakfast": [("Veg", [("Poha", 1), ("Curd", 1)]), ("Quick", [("Oats", 1), ("Milk (toned)", 1)])],
+            "Lunch": [("Veg", [("Whole wheat roti", 2), ("Rajma (cooked)", 1), ("Cucumber salad", 1)])],
+            "Snack": [("Light", [("Makhana", 1), ("Papaya", 1)])],
+            "Dinner": [("Veg", [("Paneer bhurji", 1), ("Whole wheat roti", 1), ("Mixed veg sabzi", 1)])]}),
+        ("Maintenance · Vegan", "vegan", 2200, False, {
+            "Breakfast": [("Vegan", [("Idli", 3), ("Sambar", 1)])],
+            "Lunch": [("Vegan", [("Brown rice (cooked)", 1), ("Chana (cooked)", 1), ("Spinach (cooked)", 1)])],
+            "Snack": [("Vegan", [("Sprouts chaat", 1), ("Almonds", 1)])],
+            "Dinner": [("Vegan", [("Tofu (firm)", 1), ("Whole wheat roti", 2), ("Mixed veg sabzi", 1)])]}),
+    ]
+
+    def more_meal_plans(self, vimal):
+        from apps.nutrition.models import Food, MealItem, MealOption, MealPlan
+        from apps.nutrition.services import new_plan
+
+        foods = {f.name: f for f in Food.objects.filter(owner_client__isnull=True).select_related("default_unit")}
+        for name, diet, kcal, published, meals in self.MORE_MEAL_PLANS:
+            if MealPlan.all_objects.filter(name=name, is_master=True).exists():
+                continue
+            p = new_plan(name=name, diet=diet, kcal_target=kcal, actor=vimal)
+            for meal in p.meals.all():
+                meal.options.all().delete()
+                for o_order, (oname, items) in enumerate(meals.get(meal.name, [])):
+                    opt = MealOption.objects.create(meal=meal, name=oname, is_default=o_order == 0, order=o_order)
+                    for order, (n, qty) in enumerate(i for i in items if i[0] in foods):
+                        f = foods[n]
+                        MealItem.objects.create(option=opt, food=f, quantity=qty, unit=f.default_unit, order=order)
+            if published:
+                p.status, p.published_at = MealPlan.Status.PUBLISHED, timezone.now()
+                p.save(update_fields=["status", "published_at"])
 
     def history(self, program, plan):
         """Weights, finished workouts, eaten meals, water and habits for the last 3 weeks."""

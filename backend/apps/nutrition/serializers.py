@@ -233,15 +233,41 @@ class MealPlanCardSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "diet", "kcal_target", "protein_g", "carbs_g", "fat_g", "fibre_g", "water_ml",
                   "status", "published_at", "has_unpublished_changes", "allow_swaps", "allow_search_any",
                   "allow_switch_options", "allow_off_plan", "client_count", "custom_count", "meal_count",
-                  "option_count", "clients", "updated_at", "created_at"]
+                  "option_count", "clients", "can_edit", "owner", "updated_at", "created_at"]
         read_only_fields = ["status", "published_at", "has_unpublished_changes"]
 
+    can_edit = serializers.SerializerMethodField()
+    owner = serializers.SerializerMethodField()
+
     def get_clients(self, obj):
+        """Up to 3 avatars: only clients the viewer can see (a trainer sees their own)."""
         rows = getattr(obj, "_preview_clients", None)
         if rows is None:
-            rows = [a.client for a in obj.assignments.filter(status="active").select_related("client")[:3]]
+            qs = obj.assignments.filter(status="active").select_related("client").order_by("-created_at")
+            req = self.context.get("request")
+            if req and req.user.is_trainer:
+                from apps.clients.services import visible_clients
+
+                qs = qs.filter(client__in=visible_clients(req.user))
+            rows = [a.client for a in qs[:3]]
         return [{"id": str(u.id), "initials": u.initials, "avatar_color": u.avatar_color, "full_name": u.full_name}
                 for u in rows]
+
+    def get_can_edit(self, obj):
+        from .services import can_edit_meal_plan
+
+        req = self.context.get("request")
+        return bool(req and can_edit_meal_plan(req.user, obj))
+
+    def get_owner(self, obj):
+        """Who made it (card tag, builder line), as for programs (D-43)."""
+        u = obj.created_by
+        req = self.context.get("request")
+        if u is None or u.is_admin:
+            return {"kind": "gym", "name": "Gym", "label": "Gym plan"}
+        if req and u.id == req.user.id:
+            return {"kind": "you", "name": "You", "label": "Made by you"}
+        return {"kind": "trainer", "name": u.first_name or u.full_name, "label": f"Made by {u.full_name}"}
 
     def validate_name(self, v):
         v = " ".join(v.split())

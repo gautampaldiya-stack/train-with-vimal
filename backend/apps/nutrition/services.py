@@ -118,27 +118,76 @@ def new_plan(*, name, diet, kcal_target, actor):
     return p
 
 
+def can_edit_meal_plan(user, plan):
+    """Same rule as programs (D-39): Vimal changes every master plan; a trainer changes one with "Edit gym
+    templates", or one they made themselves when they may make meal plans."""
+    if user.is_admin:
+        return True
+    if not user.is_trainer:
+        return False
+    tp = user.trainer_profile
+    if tp.has_perm("training.edit_templates"):
+        return True
+    return plan.created_by_id == user.id and tp.has_perm("nutrition.meal_plans")
+
+
+def _end_current(client, *, today):
+    """The client's running meal plan ends today because another one takes over. Returns it (or None)."""
+    cur = MealPlanAssignment.objects.filter(client=client, status="active").first()
+    if cur is not None:
+        cur.status, cur.end_date, cur.end_reason = "ended", today, "replaced"
+        cur.save(update_fields=["status", "end_date", "end_reason", "updated_at"])
+    return cur
+
+
 @transaction.atomic
 def set_plan_clients(plan, client_ids, *, actor):
+    """Assign drawer: the plan's followers become exactly `client_ids`. Only clients this person can see are
+    touched, so a trainer never takes the plan away from another trainer's clients."""
     from apps.clients.services import visible_clients
 
-    current = set(MealPlanAssignment.objects.filter(plan=plan, status="active").values_list("client_id", flat=True))
-    wanted = set(client_ids)
-    added, removed = wanted - current, current - wanted
-    clients = list(visible_clients(actor).filter(id__in=added))
+    visible = visible_clients(actor)
+    current = set(MealPlanAssignment.objects.filter(plan=plan, status="active", client__in=visible)
+                  .values_list("client_id", flat=True))
+    wanted = {str(c) for c in client_ids}
+    current_s = {str(c) for c in current}
+    added, removed = wanted - current_s, current_s - wanted
+    clients = list(visible.filter(id__in=added))
     today = timezone.localdate()
     for c in clients:
         # "Clients on another meal plan move to this one. Their logged meals stay."
-        MealPlanAssignment.objects.filter(client=c, status="active").update(status="ended", end_date=today)
-        MealPlanAssignment.objects.create(client=c, plan=plan, start_date=today, assigned_by=actor)
+        prev = _end_current(c, today=today)
+        MealPlanAssignment.objects.create(client=c, plan=plan, start_date=today, assigned_by=actor, replaced=prev)
         activity_log("assigned a meal plan", "plan", actor=actor, target=c, target_label=plan.name, client=c)
     if clients and plan.status == MealPlan.Status.PUBLISHED:
         notify(clients, "meal_plan_assigned", f"New meal plan: {plan.name}", "Open Food to see today's meals.",
                actor=actor, data={"route": "/food"})
-    if removed:
-        MealPlanAssignment.objects.filter(plan=plan, status="active", client_id__in=removed).update(
-            status="ended", end_date=today)
+    for a in MealPlanAssignment.objects.filter(plan=plan, status="active", client_id__in=removed):
+        unassign(a)
     return len(clients), len(removed)
+
+
+def unassign(a):
+    """Take a client off a meal plan. Assigned and taken off the same day with nothing logged (an Undo, a slip):
+    it never really ran, so it leaves no Plan history row and the plan it replaced comes back (D-43). Otherwise it
+    moves to Plan history as Unassigned."""
+    today = timezone.localdate()
+    logged = (MealDayState.objects.filter(client=a.client, date__gte=a.start_date, meal__plan__in=[
+        p for p in (a.plan_id, a.custom_plan_id) if p]).exclude(status="").exists()
+        or FoodLogEntry.objects.filter(client=a.client, date__gte=a.start_date, meal__plan_id__in=[
+            p for p in (a.plan_id, a.custom_plan_id) if p]).exists())
+    if a.created_at.date() == timezone.localtime().date() and not logged:
+        prev, custom = a.replaced, a.custom_plan
+        a.delete()
+        if custom is not None:
+            custom.soft_delete()
+        if prev is not None and prev.status == "ended" and prev.end_date == today \
+                and not MealPlanAssignment.objects.filter(client=prev.client, status="active").exists():
+            prev.status, prev.end_reason, prev.end_date = "active", "", None
+            prev.save(update_fields=["status", "end_reason", "end_date", "updated_at"])
+        return
+    a.status, a.end_date, a.end_reason = "ended", today, "unassigned"
+    a.save(update_fields=["status", "end_date", "end_reason", "updated_at"])
 
 
 @transaction.atomic
@@ -473,12 +522,14 @@ def assign_plan_to_client(client, plan, *, actor, start_date=None, notify_client
     if start_date and start_date > today + timedelta(days=92):
         raise ValidationError({"start_date": ["Pick a date up to 3 months ahead."]})
     later = bool(start_date and start_date > today)
+    prev = None
     if later:
-        MealPlanAssignment.objects.filter(client=client, status="up_next").update(status="ended", end_date=today)
+        MealPlanAssignment.objects.filter(client=client, status="up_next").update(status="ended", end_date=today,
+                                                                                  end_reason="replaced")
     else:
-        MealPlanAssignment.objects.filter(client=client, status="active").update(status="ended", end_date=today)
+        prev = _end_current(client, today=today)
     a = MealPlanAssignment.objects.create(client=client, plan=plan, start_date=start_date if later else today,
-                                          status="up_next" if later else "active", assigned_by=actor)
+                                          status="up_next" if later else "active", assigned_by=actor, replaced=prev)
     activity_log("assigned a meal plan", "plan", actor=actor, target=client, target_label=plan.name, client=client)
     if notify_client and not later and plan.status == MealPlan.Status.PUBLISHED:
         notify(client, "meal_plan_assigned", f"New meal plan: {plan.name}", "Open Food to see today's meals.",
@@ -489,7 +540,8 @@ def assign_plan_to_client(client, plan, *, actor, start_date=None, notify_client
 def end_client_plan(a, *, actor):
     a.status = "ended"
     a.end_date = timezone.localdate()
-    a.save(update_fields=["status", "end_date", "updated_at"])
+    a.end_reason = "ended"
+    a.save(update_fields=["status", "end_date", "end_reason", "updated_at"])
     activity_log("ended a meal plan", "plan", actor=actor, target=a.client, target_label=a.plan.name, client=a.client)
 
 

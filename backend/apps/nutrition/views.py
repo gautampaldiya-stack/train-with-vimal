@@ -1,6 +1,7 @@
 from datetime import timedelta
 from decimal import Decimal
 
+from django.core.cache import cache
 from django.db import transaction
 from django.db.models import Count, Q
 from django.http import HttpResponse
@@ -248,22 +249,58 @@ class MealPlanViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
     ordering = ["-updated_at"]
     http_method_names = ["get", "post", "patch", "put", "delete"]
 
+    # Making, duplicating and assigning need "Meal plans"; changing a plan needs `can_edit_meal_plan` (D-39 rule).
+    _TEAM_ACTIONS = ("create", "duplicate", "assign", "version_note", "reset_client", "remove_client")
+
     def check_permissions(self, request):
         super().check_permissions(request)
         u = request.user
-        if u.is_trainer and request.method not in ("GET", "HEAD", "OPTIONS"):
-            needed = "nutrition.meal_plans" if self.action in ("assign", "version_note", "reset_client",
-                                                               "remove_client") else "training.edit_templates"
-            if self.action in ("create", "duplicate"):
-                needed = "nutrition.meal_plans"
-            if not u.trainer_profile.has_perm(needed):
-                raise PermissionDenied("Your access does not include this. Ask Vimal for more access.")
+        if u.is_trainer and request.method not in ("GET", "HEAD", "OPTIONS") and self.action in self._TEAM_ACTIONS:
+            if not u.trainer_profile.has_perm("nutrition.meal_plans"):
+                raise PermissionDenied("Your access does not include meal plans. Ask Vimal for more access.")
+
+    def check_object_permissions(self, request, obj):
+        super().check_object_permissions(request, obj)
+        if request.method not in ("GET", "HEAD", "OPTIONS") and self.action not in self._TEAM_ACTIONS \
+                and not services.can_edit_meal_plan(request.user, obj):
+            raise PermissionDenied("Only Vimal or a trainer with “Edit gym templates” can change this plan. "
+                                   "Duplicate it to make your own.")
+
+    def _visible_assignments(self):
+        qs = MealPlanAssignment.objects.filter(status="active")
+        if self.request.user.is_trainer:
+            qs = qs.filter(client__in=visible_clients(self.request.user))
+        return qs
+
+    def _counts_for(self, plans):
+        """Clients, custom versions and 3 avatars per plan, counting only clients the viewer can see."""
+        ids = [p.id for p in plans]
+        n, custom, prev = {}, {}, {}
+        for a in self._visible_assignments().filter(plan_id__in=ids).select_related("client").order_by("-created_at"):
+            n[a.plan_id] = n.get(a.plan_id, 0) + 1
+            if a.version_note or a.custom_plan_id:
+                custom[a.plan_id] = custom.get(a.plan_id, 0) + 1
+            lst = prev.setdefault(a.plan_id, [])
+            if len(lst) < 3:
+                lst.append(a.client)
+        for p in plans:
+            p.n_clients, p.n_custom, p._preview_clients = n.get(p.id, 0), custom.get(p.id, 0), prev.get(p.id, [])
+
+    def list(self, request, *args, **kwargs):
+        qs = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(qs)
+        rows = page if page is not None else list(qs)
+        self._counts_for(rows)
+        data = MealPlanCardSerializer(rows, many=True, context=self.get_serializer_context()).data
+        return self.get_paginated_response(data) if page is not None else Response(data)
+
+    def retrieve(self, request, *args, **kwargs):
+        p = self.get_object()
+        self._counts_for([p])
+        return Response(MealPlanDetailSerializer(p, context=self.get_serializer_context()).data)
 
     def get_queryset(self):
-        custom = ~Q(assignments__version_note="") | Q(assignments__custom_plan__isnull=False)
-        qs = MealPlan.objects.filter(is_master=True).annotate(  # client copies never show in the library
-            n_clients=Count("assignments", filter=Q(assignments__status="active"), distinct=True),
-            n_custom=Count("assignments", filter=Q(assignments__status="active") & custom, distinct=True),
+        qs = MealPlan.objects.filter(is_master=True).select_related("created_by").annotate(  # client copies never show
             n_meals=Count("meals", distinct=True),
             n_options=Count("meals__options", distinct=True),
         )
@@ -280,7 +317,13 @@ class MealPlanViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
     @action(detail=False)
     def counts(self, request):
         by = dict(MealPlan.objects.filter(is_master=True).values_list("diet").annotate(n=Count("id")))
-        return Response({"all": sum(by.values()), **by})
+        u = request.user
+        can = lambda k: u.is_admin or (u.is_trainer and u.trainer_profile.has_perm(k))  # noqa: E731
+        foods = Food.objects.filter(owner_client__isnull=True).count()
+        # what the page offers this person: New plan / Duplicate / Assign, Create food / Import, edit every plan
+        return Response({"all": sum(by.values()), **by, "foods": foods,
+                         "can": {"create": can("nutrition.meal_plans"), "assign": can("nutrition.meal_plans"),
+                                 "foods": can("nutrition.foods"), "edit_all": can("training.edit_templates")}})
 
     def create(self, request, *args, **kwargs):
         s = MealPlanCardSerializer(data=request.data)
@@ -289,21 +332,51 @@ class MealPlanViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
         p = services.new_plan(name=d["name"], diet=d.get("diet", "veg"), kcal_target=d.get("kcal_target", 2000),
                               actor=request.user)
         activity_log("created a meal plan", "plan", actor=request.user, target=p, target_label=p.name)
-        return Response(MealPlanDetailSerializer(self.get_queryset().get(id=p.id)).data, status=201)
+        p = self.get_queryset().get(id=p.id)
+        self._counts_for([p])
+        return Response(MealPlanDetailSerializer(p, context=self.get_serializer_context()).data, status=201)
 
     def perform_update(self, serializer):
         p = serializer.save()
         if p.status == MealPlan.Status.PUBLISHED:
             p.has_unpublished_changes = True
             p.save(update_fields=["has_unpublished_changes"])
+        self._counts_for([p])
 
     def perform_destroy(self, instance):
+        ended = list(MealPlanAssignment.objects.filter(plan=instance, status__in=["active", "up_next"])
+                     .values_list("id", "status"))
         with transaction.atomic():
             instance.soft_delete()
-            MealPlanAssignment.objects.filter(plan=instance, status="active").update(
-                status="ended", end_date=timezone.localdate())
+            MealPlanAssignment.objects.filter(id__in=[i for i, _ in ended]).update(
+                status="ended", end_date=timezone.localdate(), end_reason="ended")
+        # Undo (restore) puts these clients back on the plan.
+        cache.set(f"meal-plan-unassigned:{instance.id}", [(i, st) for i, st in ended], 60 * 60)
         activity_log("deleted a meal plan", "plan", actor=self.request.user, target=instance,
                      target_label=instance.name)
+
+    @action(detail=True, methods=["post"])
+    def restore(self, request, pk=None):
+        """The delete toast's Undo: the plan comes back and the clients it was taken from follow it again."""
+        p = MealPlan.all_objects.filter(pk=pk, is_master=True, deleted_at__isnull=False).first()
+        if p is None:
+            return Response({"error": {"code": "not_found", "message": "Nothing to restore."}}, status=404)
+        self.check_object_permissions(request, p)
+        ended = cache.get(f"meal-plan-unassigned:{p.id}") or []
+        with transaction.atomic():
+            p.restore()
+            for aid, st in ended:
+                MealPlanAssignment.objects.filter(id=aid, plan=p, status="ended").update(
+                    status=st, end_date=None, end_reason="")
+        cache.delete(f"meal-plan-unassigned:{p.id}")
+        p = self.get_queryset().get(id=p.id)
+        self._counts_for([p])
+        return Response(MealPlanCardSerializer(p, context=self.get_serializer_context()).data)
+
+    @action(detail=True, url_path="delete-preview")
+    def delete_preview(self, request, pk=None):
+        p = self.get_object()
+        return Response({"clients": MealPlanAssignment.objects.filter(plan=p, status="active").count()})
 
     @extend_schema(request=MealStructureSerializer)
     @action(detail=True, methods=["put"])
@@ -312,17 +385,26 @@ class MealPlanViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
         s = MealStructureSerializer(data=request.data)
         s.is_valid(raise_exception=True)
         services.sync_meals(plan, s.validated_data["meals"])
-        return Response(MealPlanDetailSerializer(self.get_queryset().get(id=plan.id)).data)
+        if plan.status == MealPlan.Status.PUBLISHED and not plan.has_unpublished_changes:
+            plan.has_unpublished_changes = True
+            plan.save(update_fields=["has_unpublished_changes"])
+        p = self.get_queryset().get(id=plan.id)
+        self._counts_for([p])
+        return Response(MealPlanDetailSerializer(p, context=self.get_serializer_context()).data)
 
     @action(detail=True, methods=["post"])
     def duplicate(self, request, pk=None):
         p = services.duplicate_plan(self.get_object(), actor=request.user)
-        return Response(MealPlanCardSerializer(self.get_queryset().get(id=p.id)).data, status=201)
+        p = self.get_queryset().get(id=p.id)
+        self._counts_for([p])
+        return Response(MealPlanCardSerializer(p, context=self.get_serializer_context()).data, status=201)
 
     @action(detail=True, url_path="publish-preview")
     def publish_preview(self, request, pk=None):
         p = self.get_object()
-        return Response({"clients": p.n_clients, "custom": p.n_custom})
+        rows = MealPlanAssignment.objects.filter(plan=p, status="active")
+        return Response({"clients": rows.count(),
+                         "custom": rows.filter(~Q(version_note="") | Q(custom_plan__isnull=False)).count()})
 
     @action(detail=True, methods=["post"])
     def publish(self, request, pk=None):
@@ -375,10 +457,7 @@ class MealPlanViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path=r"clients/(?P<client_id>[0-9a-f-]+)/remove")
     def remove_client(self, request, pk=None, client_id=None):
-        a = self._assignment(pk, client_id)
-        a.status = "ended"
-        a.end_date = timezone.localdate()
-        a.save(update_fields=["status", "end_date", "updated_at"])
+        services.unassign(self._assignment(pk, client_id))
         return Response(status=204)
 
 

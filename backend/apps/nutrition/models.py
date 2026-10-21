@@ -196,6 +196,10 @@ class MealPlanAssignment(TimeStampedModel):
     status = models.CharField(max_length=10, default="active", db_index=True,
                               choices=[("up_next", "Up next"), ("active", "Active"), ("ended", "Ended")])
     assigned_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+    # Why it stopped (Plan history badge): ended / replaced / unassigned; blank while it runs (D-43).
+    end_reason = models.CharField(max_length=12, blank=True, default="")
+    # The plan this one took over from: it comes back if this one is taken off the same day, unused.
+    replaced = models.ForeignKey("self", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
 
     class Meta:
         indexes = [models.Index(fields=["client", "status"])]
