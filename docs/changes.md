@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-22 · Admin Dashboard and admin More page
+- **Pehle:** Admin login karke har page par "This page is on the way" aata tha (admin ka router map khali tha). Dashboard API ke Needs action rows me sub line nahi thi, titles "1 programs" jaise the, aur Trainer performance ka "This week" select kuch nahi badalta tha.
+- **Ab:** `/dashboard` board AdminDashboard / AdminDashboardMobile jaisa: 4 stats, 6 at-a-glance tiles (phone par ek list card), Needs action (kind chips, CTA, × dismiss, Show all), Trainer performance (table; phone par rows; This week / This month), At-risk clients (Remind + Undo, Remind all modal skip-24h ke saath), Recent activity (View all). Header: client search modal, bell (notifications), Add client, account menu (Settings, Log out). Phone More page (AdminMoreMobile). Library pages (Programs, Exercises, Nutrition, Habits, Content) admin ke liye bhi khulte hain. API: `dashboard/admin/` me `subline`, `notices`, `unread`, `onboarding_pending.forms_missing`, har Needs action row me `sub`, `?period=month`.
+- **Kyun:** Gautam: trainer side poora, ab admin 1-2 screens ache se.
+- **Updated:** app/lib/features/admin/, app/lib/app/router.dart, app/lib/features/trainer/dashboard (bell dropdown shared), backend/apps/activity/dashboard.py, backend/tests/test_admin_dashboard.py, docs/screens/status.md, docs/architecture/api-endpoints.md, docs/phases/CURRENT.md
+
 ### 2026-10-21 · Content library page
 - **Pehle:** `/content` "This page is on the way" dikhata tha; exercise ke "Upload to library" se khali page khulta tha. Content API me card ke liye length, used in, who has it aur storage nahi tha; `content/<id>/detail/` crash karta tha (action ka naam `detail` DRF ke `self.detail` se takrata tha).
 - **Ab:** Content library board ke jaisa: categories rail + storage, search, kind tabs, cards 8 per page, item drawer, New / Edit content (upload / YouTube / cover frame / article), Assign to clients (Everyone sirf Vimal), New category, Delete + Undo. Phone par chips aur 2 column. API: `content/summary/`, rows me `length_label`, `uses`, `who`, `file_name`, `frame`; upload par length / resolution / pages bharte hain. Demo items categories me file hue.

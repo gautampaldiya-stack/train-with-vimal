@@ -33,6 +33,19 @@ def _delta(a, b):
     return None if a is None or b is None else round(a - b)
 
 
+def _names(names, more=0):
+    """"Ishaan and Rohit", "Ishaan, Rohit and Pooja", "Ishaan, Rohit and 3 more"."""
+    names = [n for n in names if n]
+    if more:
+        return f"{', '.join(names)} and {more} more"
+    return names[0] if len(names) == 1 else f"{', '.join(names[:-1])} and {names[-1]}"
+
+
+def _ago(t, now):
+    d = (now - t).days
+    return "today" if d < 1 else ("1 day" if d == 1 else f"{d} days")
+
+
 # ---------------------------------------------------------------- admin
 def needs_action(user):
     from apps.automations.models import TrainerTask
@@ -49,50 +62,69 @@ def needs_action(user):
     n = waiting.count()
     if n:
         oldest = waiting.first().created_at
+        first = [a.client.first_name for a in waiting.select_related("client")[:2]]
+        sub = f"{_names(first, max(n - 2, 0))} {'is' if n == 1 else 'are'} waiting · oldest {_ago(oldest, now)}"
         rows.append({"key": f"approvals:{n}:{oldest.date()}", "kind": "approvals", "since": oldest,
-                     "title": f"{n} sign-ups waiting", "cta": "Review", "route": "/approvals"})
+                     "title": f"{n} sign-up{'s' if n != 1 else ''} waiting", "sub": sub.replace("oldest today", "since today"),
+                     "cta": "Review", "route": "/approvals"})
     late = Submission.objects.filter(reviewed_at__isnull=True, form_type="weekly",
                                      created_at__lt=now - timedelta(hours=48)).order_by("created_at")
     n = late.count()
     if n:
+        per = late.values("client__client_profile__trainer__full_name").annotate(c=Count("id")).order_by("-c")
+        sub = " · ".join(f"{r['client__client_profile__trainer__full_name'] or 'No trainer'} ({r['c']})" for r in per[:3])
         rows.append({"key": f"checkins48:{n}:{late.first().created_at.date()}", "kind": "checkins",
-                     "since": late.first().created_at, "title": f"{n} check-ins waiting over 48 hours",
-                     "cta": "Open", "route": "/checkins"})
+                     "since": late.first().created_at, "title": f"{n} check-in{'s' if n != 1 else ''} waiting over 48 hours",
+                     "sub": sub, "cta": "Open", "route": "/checkins"})
     no_trainer = ClientProfile.objects.filter(trainer__isnull=True, removed_at__isnull=True,
                                               user__status=AccountStatus.ACTIVE)
     n = no_trainer.count()
     if n:
-        rows.append({"key": f"notrainer:{n}", "kind": "clients", "since": no_trainer.order_by("created_at")
-                     .first().created_at, "title": f"{n} clients need a trainer", "cta": "Assign",
-                     "route": "/clients?badge=no_trainer"})
+        first = no_trainer.order_by("created_at").first()
+        rows.append({"key": f"notrainer:{n}", "kind": "clients", "since": first.created_at,
+                     "title": f"{n} client{'s' if n != 1 else ''} need{'s' if n == 1 else ''} a trainer",
+                     "sub": f"Joined {_ago(first.created_at, now)} ago · not assigned yet".replace("Joined today ago",
+                                                                                                 "Joined today"),
+                     "cta": "Assign", "route": "/clients?badge=no_trainer"})
     for t in trainers_queryset().filter(status=AccountStatus.ACTIVE, n_clients__gt=F("trainer_profile__max_clients")):
         rows.append({"key": f"over:{t.id}:{t.n_clients}", "kind": "trainers", "since": None,
-                     "title": f"{t.full_name} is over capacity ({t.n_clients} of {t.trainer_profile.max_clients})",
+                     "title": f"{t.full_name} is over capacity",
+                     "sub": f"{t.n_clients} of {t.trainer_profile.max_clients} clients · move "
+                            f"{t.n_clients - t.trainer_profile.max_clients} to another trainer",
                      "cta": "Rebalance", "route": f"/trainers/{t.id}"})
     ending = ProgramAssignment.objects.filter(status="active", end_date__range=(today, today + timedelta(days=7)))
     n = ending.count()
     if n:
+        who = [a.client.full_name for a in ending.select_related("client")[:2]]
         rows.append({"key": f"ending:{today.isocalendar()[1]}:{n}", "kind": "programs", "since": None,
-                     "title": f"{n} programs end this week", "cta": "Plan", "route": "/clients?plan=ending"})
+                     "title": f"{n} program{'s' if n != 1 else ''} end{'s' if n == 1 else ''} this week",
+                     "sub": " · ".join(who + ([f"{n - 2} more"] if n > 2 else [])) + " · pick what comes next",
+                     "cta": "Plan", "route": "/clients?plan=ending"})
     low = Submission.objects.filter(created_at__gte=now - timedelta(days=3), metrics__energy__lte=2) \
-        .select_related("client")[:3]
+        .select_related("client__client_profile__trainer")[:3]
     for s in low:
+        coach = getattr(getattr(s.client, "client_profile", None), "trainer", None)
         rows.append({"key": f"low:{s.id}", "kind": "clients", "since": s.created_at,
-                     "title": f"{s.client.full_name} flagged low energy", "cta": "View",
-                     "route": f"/clients/{s.client_id}"})
+                     "title": f"{s.client.full_name} flagged low energy",
+                     "sub": f"Energy {s.metrics.get('energy')}/5 in the {s.form_type} check-in"
+                            + (f" · {coach.full_name}" if coach else ""),
+                     "cta": "View", "route": f"/clients/{s.client_id}"})
     inactive = ClientProfile.objects.filter(removed_at__isnull=True, user__status=AccountStatus.ACTIVE,
                                             user__last_seen_at__lt=now - timedelta(days=7)).count()
     if inactive:
         rows.append({"key": f"inactive:{today}:{inactive}", "kind": "clients", "since": None,
-                     "title": f"{inactive} clients have not logged in 7 days", "cta": "View",
+                     "title": f"{inactive} client{'s' if inactive != 1 else ''} {'has' if inactive == 1 else 'have'} "
+                              f"not logged in 7 days",
+                     "sub": "Remind them or check with their trainer", "cta": "View",
                      "route": "/clients?badge=at_risk"})
     for r in AccessRequest.objects.filter(status="open").select_related("trainer__user"):
         rows.append({"key": f"access:{r.id}", "kind": "trainers", "since": r.created_at,
-                     "title": f"{r.trainer.user.full_name} asked for more access", "cta": "Review",
+                     "title": f"{r.trainer.user.full_name} asked for more access",
+                     "sub": "Approve it or say no on their profile", "cta": "Review",
                      "route": f"/trainers/{r.trainer.user_id}/access"})
     for t in TrainerTask.objects.filter(assignee=user, done_at__isnull=True)[:5]:
         rows.append({"key": f"task:{t.id}", "kind": "clients", "since": t.created_at, "title": t.title,
-                     "cta": "Open", "route": f"/clients/{t.client_id}" if t.client_id else "/"})
+                     "sub": "Task for you", "cta": "Open", "route": f"/clients/{t.client_id}" if t.client_id else "/"})
     dismissed = set(DismissedItem.objects.filter(user=user).values_list("key", flat=True))
     rows = [r for r in rows if r["key"] not in dismissed]
     rows.sort(key=lambda r: (r["since"] is None, r["since"] or now))
@@ -131,22 +163,37 @@ class AdminDashboardView(APIView):
         no_meal = active.exclude(user__meal_plan_assignments__status="active").count()
         ending = ProgramAssignment.objects.filter(status="active",
                                                   end_date__range=(today, today + timedelta(days=7))).count()
+        # Trainer performance "This week" / "This month": the clients' 7-day or 30-day adherence.
+        month = request.query_params.get("period") == "month"
+        a30 = dict(ClientProfile.objects.filter(user__status=AccountStatus.ACTIVE, removed_at__isnull=True,
+                                                trainer__isnull=False).order_by().values("trainer")
+                   .annotate(a=Avg("adherence_30d")).values_list("trainer", "a")) if month else {}
         perf = []
         for t in trainers:
             if t.status != AccountStatus.ACTIVE:
                 continue
             st = trainer_stats(t)
             perf.append({**_person(t), "clients": t.n_clients, "max_clients": t.trainer_profile.max_clients,
-                         "adherence": round(t.avg_adherence) if t.avg_adherence is not None else None,
+                         "adherence": (lambda a: round(a) if a is not None else None)(
+                             a30.get(t.id) if month else t.avg_adherence),
                          "reply_hours": st["reply_hours"]})
         perf.sort(key=lambda r: (r["adherence"] is None, r["adherence"] or 0))
         at_risk = active.filter(at_risk=True).select_related("user", "trainer").order_by("-updated_at")
         recent = ActivityEvent.objects.select_related("client").order_by("-created_at")[:5]
         actions = needs_action(request.user)
+        from .trainer_home import notices
+
+        nts = notices(request.user)
+        local = timezone.localtime(now)
+        n = len(actions)
         return Response({
             "greeting": _greeting(request.user),
             "date": today,
-            "things_need_you": len(actions),
+            "things_need_you": n,
+            "subline": f"{local:%A}, {local.day} {local:%B} · "
+                       + (f"{n} thing{'s' * (n != 1)} need{'s' * (n == 1)} you today" if n else "Nothing needs you today"),
+            "notices": nts,
+            "unread": sum(1 for x in nts if not x["read"]),
             "stats": {
                 "active_clients": {"value": n_active, "new_this_month": clients.filter(
                     user__date_joined__date__gte=month_start).count()},
@@ -163,7 +210,8 @@ class AdminDashboardView(APIView):
                     1 for t in trainers if t.n_clients > t.trainer_profile.max_clients)},
                 "checkins_to_review": {"value": to_review.count(), "over_48h": to_review.filter(
                     created_at__lt=now - timedelta(hours=48)).count()},
-                "onboarding_pending": {"value": len(onboarding_pending)},
+                "onboarding_pending": {"value": len(onboarding_pending), "forms_missing": sum(
+                    1 for cp in onboarding_pending if "health" not in (cp.onboarding_done or []))},
                 "nutrition_pending": {"value": no_meal},
                 "programs_ending": {"value": ending},
             },

@@ -83,9 +83,9 @@ Status: **Done** (built and checked in a browser against the board, phone and de
 |---|---|---|
 | Activity | Not started |  |
 | ActivityMobile | Not started |  |
-| AdminDashboard | Not started |  |
-| AdminDashboardMobile | Not started |  |
-| AdminMoreMobile | Not started |  |
+| AdminDashboard | Done | `/dashboard` (admin). Checked 1440 / 1280 / 1024 / 768. CTAs open Approvals, Clients, Trainers, Check-ins, Activity log, Settings: not built yet (holding page). |
+| AdminDashboardMobile | Done | Checked at 390 in debug mode. |
+| AdminMoreMobile | Done | `/more` (admin). Trainers, Activity log, Forms, Automations, Emails, Settings rows open pages not built yet. |
 | Approvals | Not started |  |
 | ApprovalsMobile | Not started |  |
 | AutomationBuilder | Not started |  |

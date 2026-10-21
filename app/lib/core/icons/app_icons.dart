@@ -162,4 +162,8 @@ abstract final class AppIcons {
   static const expand = AppIconData('0 0 24 24', '<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>');
   static const archive = Ic.i0d0a27; // Programs card menu: Archive
   static const open = Ic.if97013; // Programs card menu: Open
+  // Admin dashboard
+  static const trendUp = Ic.i56375b; // stat delta "+8 this month"
+  static const personAdd = Ic.ia79c5d; // glance: Onboarding pending
+  static const client = Ic.i89b1dd; // stat: Active clients; Needs action client row
 }

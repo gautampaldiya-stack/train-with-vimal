@@ -2,9 +2,10 @@
 
 Updated with every push, so anyone (another Claude session, local Claude Code, a developer) can pick up from here.
 
-**Last updated:** 2026-10-21 · branch `working`
+**Last updated:** 2026-10-22 · branch `working`
 
 ## Done
+- 2026-10-22: Admin Dashboard (`/dashboard`, boards AdminDashboard / AdminDashboardMobile) and admin More page (AdminMoreMobile) built; admin router map `adminScreens` now has these plus the shared library pages. **Next admin screens (ask Gautam which first): Approvals, Clients, Trainers, Activity log**, which the dashboard buttons already open. Parked: Daily summary design, Gym news admin screen.
 - 2026-10-21 (night, last): Content library built (`/content`, boards Content / ContentMobile); trainer side complete. **Next: admin screens, 1-2 at a time, done well** (admin router map is empty today; start with the admin Dashboard). Parked: Daily summary design, Gym news admin screen.
 - 2026-10-21 (late night, later): Habits & supplements built (`/habits`, boards Habits / HabitsMobile). **Next: Content library** (Content / ContentMobile; wire "Upload to library" and "Open in library"), then admin, 1-2 screens at a time, done well (Gautam). Parked: Daily summary design, Gym news admin screen.
 - 2026-10-21 (late night): Gautam's debug-mode round — Food library blank on tablet, meal builder errors, food value limits, meal plan ⋯ menu and stat grid, edit exercise layout, phone top space, trainer More page. **Next: Habits & supplements**, then Content library, then admin.

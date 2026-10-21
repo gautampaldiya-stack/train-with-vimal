@@ -33,7 +33,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `activity/` | GET | ActivityViewSet | GET /activity/?range=7d&kind=plan&who=team&person=<id> |
 | `activity/counts/` | GET | ActivityViewSet | GET /activity/?range=7d&kind=plan&who=team&person=<id> |
 | `activity/export/` | GET | ActivityViewSet | GET /activity/?range=7d&kind=plan&who=team&person=<id> |
-| `dashboard/admin/` | GET | AdminDashboardView |  |
+| `dashboard/admin/` | GET | AdminDashboardView | Admin Dashboard in one call: greeting, `subline`, stats, glance (`onboarding_pending.forms_missing`), `needs_action` rows `{key, kind, title, sub, cta, route}`, trainer performance (`?period=month` = 30-day adherence), at-risk, recent activity, bell `notices` + `unread`. |
 | `dashboard/dismiss/` | POST | DismissView | × on a Needs action row. |
 | `dashboard/trainer/` | GET | TrainerDashboardView | Trainer dashboard: stats, Today, Clients who need you, Check-ins to review, This week, bell list. |
 | `dashboard/trainer/activity/` | GET | TrainerActivityView | Next page of the dashboard's Activity card: `?before=<next>` from the previous page. |

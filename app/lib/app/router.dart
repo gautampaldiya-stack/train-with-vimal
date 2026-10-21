@@ -6,6 +6,8 @@ import '../core/leave/leave_guard.dart';
 import '../core/widgets/button.dart';
 import '../core/widgets/card.dart';
 import '../core/widgets/overlays.dart';
+import '../features/admin/dashboard/admin_dashboard_screen.dart';
+import '../features/admin/more/admin_more_screen.dart';
 import '../features/auth/setup/setup_state.dart';
 import '../features/auth/join_screen.dart';
 import '../features/auth/login_screen.dart';
@@ -141,6 +143,14 @@ final Map<String, Widget Function(GoRouterState)> trainerScreens = {
   '/clients/:id': (st) => TrainerClientProfileScreen(key: ValueKey(st.uri.toString()), id: st.pathParameters['id']!, tab: st.uri.queryParameters['tab']),
 };
 
+/// Admin pages built so far; the library pages are shared with trainers (admin sees every item).
+final Map<String, Widget Function(GoRouterState)> adminScreens = {
+  '/dashboard': (_) => const AdminDashboardScreen(),
+  '/more': (_) => const AdminMoreScreen(),
+  for (final k in ['/programs', '/programs/:id', '/nutrition', '/nutrition/:id', '/habits', '/exercises', '/exercises/:id', '/content', '/content/:id'])
+    k: trainerScreens[k]!,
+};
+
 final appRouter = GoRouter(
   initialLocation: '/',
   refreshListenable: Services.session,
@@ -209,7 +219,7 @@ final appRouter = GoRouter(
 );
 
 Widget _screen(String key, GoRouterState st) {
-  final map = switch (Services.session.me?.role) { Role.trainer => trainerScreens, Role.admin => const <String, Widget Function(GoRouterState)>{}, _ => screens };
+  final map = switch (Services.session.me?.role) { Role.trainer => trainerScreens, Role.admin => adminScreens, _ => screens };
   return map[key]?.call(st) ?? _Holding(key);
 }
 

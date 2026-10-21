@@ -19,7 +19,7 @@ import 'dashboard_model.dart';
 // ─────────────────────────────── Bell dropdown (`.td-notes`)
 
 /// 340 wide under the bell (phone: full width, 16 from the edges, under the hero's top row).
-Future<void> showNotesDropdown(BuildContext anchor, TrainerHomeController c, {required void Function(TdNotice) onOpen}) {
+Future<void> showNotesDropdown(BuildContext anchor, NoticesSource c, {required void Function(TdNotice) onOpen}) {
   final box = anchor.findRenderObject() as RenderBox;
   final overlay = Overlay.of(anchor, rootOverlay: true).context.findRenderObject() as RenderBox;
   final at = box.localToGlobal(Offset.zero, ancestor: overlay);
@@ -48,13 +48,13 @@ Future<void> showNotesDropdown(BuildContext anchor, TrainerHomeController c, {re
             child: ListenableBuilder(
               listenable: c,
               builder: (ctx, _) {
-                final list = c.data?.notices ?? const <TdNotice>[];
+                final list = c.notices;
                 return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   Padding(
                     padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
                     child: Row(children: [
                       Expanded(child: Text('Notifications', style: AppText.s(14, W.w7))),
-                      if ((c.data?.unread ?? 0) > 0)
+                      if (c.unread > 0)
                         Hover(
                           onTap: () => c.readAll().catchError((_) {}),
                           builder: (_, h, _) => SizedBox(

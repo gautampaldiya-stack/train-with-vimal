@@ -131,8 +131,20 @@ class TrainerHome {
 
 /// Trainer dashboard (boards `TrainerDashboard` + `TrainerDashboardMobile`): loads `dashboard/trainer/` and runs
 /// the row actions. Reminders wait for the toast's Undo (10 s) before they go out.
-class TrainerHomeController extends ChangeNotifier {
+/// What the bell dropdown reads: the trainer and admin dashboards both carry the latest notices.
+abstract interface class NoticesSource implements Listenable {
+  List<TdNotice> get notices;
+  int get unread;
+  Future<void> readAll();
+}
+
+class TrainerHomeController extends ChangeNotifier implements NoticesSource {
   TrainerHome? data;
+
+  @override
+  List<TdNotice> get notices => data?.notices ?? const [];
+  @override
+  int get unread => data?.unread ?? 0;
   ApiError? error;
   final _pending = <String, Timer>{};
 
@@ -192,6 +204,7 @@ class TrainerHomeController extends ChangeNotifier {
     Services.api.post('clients/$id/remind/', {}).ignore();
   }
 
+  @override
   Future<void> readAll() async {
     for (final n in data?.notices ?? <TdNotice>[]) {
       n.read = true;
