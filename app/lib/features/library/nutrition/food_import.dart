@@ -260,6 +260,7 @@ class _ImportState extends State<_Import> {
       ('Portion_g', 'Weight of that serving in grams. ml counts as g.', true),
       ('Calories_kcal', 'For that serving', true),
       ('Protein, carbs, fat, fibre, minerals', 'For that serving. Blank is fine.', false),
+      ('Category, Main_Category, Source', 'Food group, veg / non-veg, and where the numbers came from. Blank is fine.', false),
     ];
     final phone = context.isPhone;
     return [

@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-22 · Food import template = Vimal's sheet
+- **Pehle:** Download template me sirf 10 columns the (Food, Portion_g, Calories_kcal, Portion, Protein, Carbs, Fat, Fibre, Group, Diet). Vimal ki sheet ka Main_Category (veg / non-veg) aur Source column import nahi hota tha; "100 g" jaisa portion bhi ek unit ban jata tha.
+- **Ab:** Template me Vimal ki sheet ke saare 15 columns usi order me (Category … Potassium_mg, Source, Main_Category) aur 4 sample rows. Main_Category diet ki tarah padha jata hai, Source food ka source note banta hai (IFCT / USDA), Legumes / Chicken / Fish groups protein me jaate hain, "Sodium (mg)" jaise headers bhi match hote hain, "100 g" unit nahi banta. Import drawer me "Category, Main_Category, Source" row.
+- **Kyun:** Gautam: template me import wale fields kam the; uski sheet me itni details hain.
+- **Updated:** backend/apps/nutrition/importer.py, tests/test_food_import.py, app/lib/features/library/nutrition/food_import.dart, docs/screens/behaviour.md
+
 ### 2026-10-22 · Client profile missing parts; toolbars wrap, chip rows scroll
 - **Pehle:** Client profile me target date, health over time, form-check video, supplement stock history aur body map "Not built" the. Nutrition / Food library ~850 px par overflow stripes aate the; chip rows wrap ho jati thi. Trainer dashboard Today rows me client ka avatar (RS) tha. Content drawer me "Plays in the app" row tap karne par kuch kaam ka nahi hota tha.
 - **Ab:** Edit details me Target date; History me target date change aur health lines (Since… / … cleared); stock 0 hone par "ran out of" save hota hai aur Compare me "Ran out of stock" row; client logger ke set menu me "Send a form video" (trainer ko notification, Logs workout detail me Watch); Plans exercise drawer me body map. Chip / badge rows ek line me sideways scroll, upar ka toolbar (search, tabs, dropdown) wrap ho sakta hai, tabs scroll. Today rows se avatar hata. Video file row ka tap hata, label rehta hai. Phone par Import from Excel kholne par layout error aata tha (footer phone par stretch hota hai), ab theek.

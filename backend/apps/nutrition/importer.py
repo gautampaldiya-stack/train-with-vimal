@@ -1,6 +1,8 @@
 """Food library → Import from Excel (2 steps: check, then import).
 
 Columns are matched by name. Required: Food, Portion_g, Calories_kcal. Everything is stored per 100 g.
+Optional: Category (group), Portion/Quantity (unit), Protein_g, Carbs_g, Fat_g, Fiber_g, Sodium_mg, Iron_mg,
+Calcium_mg, Potassium_mg, Source (saved as the food's source note), Main_Category (veg / non-veg).
 """
 import csv
 import io
@@ -27,18 +29,22 @@ ALIASES = {
     "calcium_mg": ["calcium", "calcium_mg"],
     "potassium_mg": ["potassium", "potassium_mg"],
     "group": ["group", "category", "food_group"],
-    "diet": ["diet", "type", "veg/non-veg"],
+    "diet": ["diet", "main_category", "type", "veg/non-veg"],
+    "source": ["source", "data_source"],
 }
 GROUP_MAP = {"grains": "carbs", "cereals": "carbs", "egg": "protein", "eggs": "protein", "meat": "protein",
-             "pulses": "protein", "non-veg": "indian", "dishes": "indian", "beverages": "beverages",
+             "pulses": "protein", "legumes": "protein", "chicken": "protein", "fish": "protein", "seafood": "protein",
+             "fats": "fats", "fruits": "fruits", "dairy": "dairy", "non-veg": "indian", "dishes": "indian", "beverages": "beverages",
              "vegetables": "veg", "fruit": "fruits", "milk": "dairy", "nuts": "fats", "oils": "fats"}
 DIET_MAP = {"vegetarian": "veg", "veg": "veg", "non-vegetarian": "nonveg", "non-veg": "nonveg", "nonveg": "nonveg",
             "dairy": "veg", "egg": "egg", "eggetarian": "egg", "vegan": "vegan"}
+PLAIN_RE = re.compile(r"^\s*[\d.]+\s*(g|gm|grams?|ml)\s*$", re.I)  # "100 g" is not a unit
 UNIT_RE = re.compile(r"^(?P<name>.+?)\s*\((?P<g>[\d.]+)\s*g\)\s*$")
 
 
 def _norm(h):
-    return re.sub(r"\s+", "_", str(h or "").strip().lower())
+    """"Sodium (mg)" → "sodium_mg", "Portion/Quantity" → "portion/quantity"."""
+    return re.sub(r"[\s()]+", "_", str(h or "").strip().lower()).strip("_")
 
 
 def _num(v):
@@ -122,7 +128,7 @@ def check(f, *, user):
             m = UNIT_RE.match(str(cell("portion") or ""))
             if m:
                 unit = {"name": m.group("name").strip()[:40], "grams": float(m.group("g"))}
-            elif cell("portion"):
+            elif cell("portion") and not PLAIN_RE.match(str(cell("portion"))):
                 unit = {"name": str(cell("portion")).strip()[:40], "grams": float(portion)}
             key = name.lower()
             row.update({
@@ -130,7 +136,7 @@ def check(f, *, user):
                     15, 0.1 * per100["kcal"]) and any(k in per100 for k in ("protein", "carbs", "fat")),
                 "diet_raw": diet_raw, "group_raw": group_raw, "is_egg": is_egg, "unit": unit,
                 "existing": str(existing[key]) if key in existing else None,
-                "dupe_in_file": key in seen,
+                "dupe_in_file": key in seen, "source": str(cell("source") or "").strip()[:40],
             })
             seen.add(key)
         out.append(row)
@@ -192,7 +198,8 @@ def run(job, *, duplicates="skip", kcal_choice=None, eggs_eggetarian=True, group
             food.save()
             updated.append(food.id)
         else:
-            food = Food.objects.create(name=r["name"], source=Food.Source.IMPORTED, source_note="Excel",
+            food = Food.objects.create(name=r["name"], source=Food.Source.IMPORTED,
+                                       source_note=r.get("source") or "Excel",
                                        created_by=user, **fields)
             created.append(food.id)
         if r.get("unit"):
@@ -210,14 +217,30 @@ def run(job, *, duplicates="skip", kcal_choice=None, eggs_eggetarian=True, group
 
 
 def template_xlsx():
+    """Same columns as Vimal's own food sheet, so a filled sheet imports as it is."""
     from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill
 
     wb = Workbook()
     ws = wb.active
     ws.title = "Foods"
-    ws.append(["Food", "Portion_g", "Calories_kcal", "Portion", "Protein", "Carbs", "Fat", "Fibre", "Group", "Diet"])
-    ws.append(["Paneer", 100, 265, "1 cube (25 g)", 18.3, 1.2, 20.8, 0, "Dairy", "Vegetarian"])
-    ws.append(["Boiled egg", 50, 78, "1 egg (50 g)", 6.3, 0.6, 5.3, 0, "Egg", "Non-Vegetarian"])
+    head = ["Category", "Food", "Portion/Quantity", "Portion_g", "Protein_g", "Carbs_g", "Fat_g", "Calories_kcal",
+            "Fiber_g", "Sodium_mg", "Iron_mg", "Calcium_mg", "Potassium_mg", "Source", "Main_Category"]
+    ws.append(head)
+    ws.append(["Grains", "Rice, Basmati (raw)", "100 g", 100, 7.8, 80.67, 2.5, 367.5, 2.86, 5.1, 1.05, 21, 92.8,
+               "IFCT/USDA", "Vegetarian"])
+    ws.append(["Egg", "Egg (whole, raw)", "1 egg (50 g)", 50, 6.3, 0.36, 5.3, 72, 0, 71, 0.88, 28, 63,
+               "IFCT/USDA", "Non-Vegetarian"])
+    ws.append(["Dairy", "Paneer", "1 cube (25 g)", 25, 4.6, 0.3, 5.2, 66, 0, 4, 0.05, 120, 35, "IFCT",
+               "Vegetarian"])
+    ws.append(["Legumes", "Dal (cooked)", "1 cup (150 g)", 150, 9, 23, 3.5, 180, 7, 350, 2, 40, 350, "IFCT",
+               "Vegetarian"])
+    for c in ws[1]:
+        c.font = Font(bold=True)
+        c.fill = PatternFill("solid", fgColor="F4CCCC")
+    for col, w in zip("ABCDEFGHIJKLMNO", [12, 26, 18, 10, 10, 9, 8, 13, 9, 11, 9, 11, 13, 12, 16]):
+        ws.column_dimensions[col].width = w
+    ws.freeze_panes = "A2"
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()
