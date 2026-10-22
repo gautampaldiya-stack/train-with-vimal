@@ -107,3 +107,15 @@ def test_vimals_full_sheet_imports_cleanly(admin):
     assert (muesli.group, muesli.category) == ("other", "Cereals") and float(muesli.default_quantity) == 30
     apple = Food.objects.get(name="Apple (medium)")
     assert (apple.default_unit.name, float(apple.default_unit.grams)) == ("1 piece", 150)
+
+
+def test_activity_says_imported_or_updated(admin, django_capture_on_commit_callbacks):
+    from apps.activity.models import ActivityEvent
+    rows = [HEAD, ["Protein", "Test tofu block", "100 g", 100, 15, 2, 8, 140, 1, 10, 2, 300, 120, "Pack label", "Vegan"]]
+    for duplicates in ("skip", "update"):
+        with django_capture_on_commit_callbacks(execute=True):
+            body = admin.post("/api/v1/foods/import/check/", {"file": _xlsx(rows)}, format="multipart").json()
+            admin.post(f"/api/v1/foods/import/{body['id']}/run/", {"duplicates": duplicates}, format="json")
+    first, second = ActivityEvent.objects.filter(meta__has_key="updated").order_by("created_at")[:2]
+    assert (first.verb, first.target_label) == ("imported", "1 food from Excel")
+    assert (second.verb, second.target_label) == ("updated", "1 food from Excel")

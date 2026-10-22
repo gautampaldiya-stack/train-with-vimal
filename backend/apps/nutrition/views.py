@@ -245,8 +245,16 @@ class FoodViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
                                    diet_map=d.get("diet_map"), user=request.user)
         except ValueError as e:
             raise serializers.ValidationError(str(e))
-        activity_log("imported foods", "plan", actor=request.user, target_label=f"{c} foods",
-                     meta={"created": c, "updated": u})
+        # "imported 3 foods", "updated 16 foods from Excel", "imported 3 foods · updated 16" (never "0 foods")
+        def n(x):
+            return f"{x} food{'' if x == 1 else 's'}"
+        if c and u:
+            verb, label = "imported", f"{n(c)} · updated {u}"
+        elif u:
+            verb, label = "updated", f"{n(u)} from Excel"
+        else:
+            verb, label = "imported", f"{n(c)} from Excel" if c else "no new foods from Excel"
+        activity_log(verb, "plan", actor=request.user, target_label=label, meta={"created": c, "updated": u})
         return Response({"created": c, "updated": u, "skipped": s})
 
     @action(detail=False, methods=["post"], url_path=r"import/(?P<job_id>[0-9a-f-]+)/undo")

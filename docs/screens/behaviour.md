@@ -85,9 +85,9 @@ Admin ka ghar. Title greeting hai: **"Good evening, Vimal"**, neeche *"Thursday,
 |---|---|
 | Kind chips: `All` · `Approvals` · `Clients` · `Check-ins` · `Trainers` · `Programs` | List us kind pe filter ho jaati hai. Chip pe count hota hai; jis kind ki ek bhi row nahi, wo chip dikhta hi nahi. Dobara All pe aa ke clear. |
 | Row ka CTA (`Review` / `Open` / `Assign` / `Rebalance` / `Plan` / `View`) | Us kaam ki screen. |
-| Row ka × (hover pe) | Row list se hat jaati hai (dismiss), count ghat jaata hai. Wapas laane ka rasta nahi — mock me permanent. |
-| `Show all N` / `Show less` | 5 rows ↔ poori list. |
-| Sab dismiss ho jaayein | Empty state: *"All clear. Nothing needs you right now."* |
+| Row ka × | Hata diya (Gautam, 22 Oct): row tab tak rehti hai jab tak kaam ho na jaaye. |
+| 5 se zyada rows | Card ke andar hi scroll (5 rows ki height, scrollbar dikhta hai); `Show all` button nahi. |
+| Koi row nahi | Empty state: *"All clear. Nothing needs you right now."* |
 
 Rows oldest first. Mock: 5 sign-ups waiting · 4 check-ins waiting over 48 hours · 3 clients need a trainer · Arjun Rao is over capacity (24 of 20) · 2 programs end this week · Aisha Sheikh flagged low energy · 2 clients have not logged in 7 days · Neha Jain asked to change trainer · Meera Shah has 5 replies pending.
 

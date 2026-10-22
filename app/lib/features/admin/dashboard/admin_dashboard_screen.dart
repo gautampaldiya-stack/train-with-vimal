@@ -34,7 +34,8 @@ class AdminDashboardScreen extends StatefulWidget {
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   final c = AdminHomeController();
   String _kind = '';
-  bool _allNeeds = false, _allTrainers = false, _allRisk = false;
+  bool _allTrainers = false, _allRisk = false;
+  final _needsScroll = ScrollController();
 
   @override
   void initState() {
@@ -45,6 +46,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   @override
   void dispose() {
     c.dispose();
+    _needsScroll.dispose();
     super.dispose();
   }
 
@@ -165,7 +167,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         child: Row(spacing: 10, crossAxisAlignment: CrossAxisAlignment.start, children: [
           for (final (icon, label, value, delta, color, trend) in _statRows(d))
             Container(
-              height: 80,
+              constraints: const BoxConstraints(minHeight: 80),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(color: AppColors.card, borderRadius: AppRadius.all(AppRadius.card), border: Border.all(color: AppColors.line)),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 6, children: [
@@ -286,7 +288,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final all = d.needs;
     final kind = all.any((n) => n.kind == _kind) ? _kind : '';
     final list = all.where((n) => kind.isEmpty || n.kind == kind).toList();
-    final shown = _allNeeds ? list : list.take(5).toList();
     final chips = [
       FilterChipX('All', selected: kind.isEmpty, count: all.length, onTap: () => setState(() => _kind = '')),
       for (final (k, label) in _kinds)
@@ -294,10 +295,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           FilterChipX(label,
               selected: kind == k,
               count: all.where((n) => n.kind == k).length,
-              onTap: () => setState(() {
-                    _kind = k;
-                    _allNeeds = false;
-                  })),
+              onTap: () => setState(() => _kind = k)),
     ];
     return AppCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -312,8 +310,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           padding: const EdgeInsets.fromLTRB(8, 4, 8, 10),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 4, children: [
             if (all.isEmpty) Padding(padding: const EdgeInsets.fromLTRB(12, 14, 12, 14), child: Text('All clear. Nothing needs you right now.', style: AppText.cap)),
-            for (final n in shown) _needRow(n),
-            if (list.length > 5) _More(_allNeeds ? 'Show less' : 'Show all ${list.length}', () => setState(() => _allNeeds = !_allNeeds)),
+            // more than 5: the list scrolls inside the card (about 5 rows tall) (Gautam, 22 Oct)
+            if (list.length <= 5)
+              for (final n in list) _needRow(n)
+            else
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 5 * 66),
+                child: Scrollbar(
+                  controller: _needsScroll,
+                  thumbVisibility: true,
+                  child: ListView(controller: _needsScroll, padding: const EdgeInsets.only(right: 8), shrinkWrap: true, children: [
+                    for (final n in list) Padding(padding: const EdgeInsets.only(bottom: 4), child: _needRow(n)),
+                  ]),
+                ),
+              ),
           ]),
         ),
       ]),
@@ -336,18 +346,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ]),
           ),
           AppButton(n.cta, size: BtnSize.sm, onPressed: () => context.go(n.route)),
-          Opacity(
-            opacity: h || _phone ? 1 : 0,
-            child: AppIconButton(AppIcons.close, tooltip: 'Dismiss', small: true, ghost: true, onPressed: () => _dismiss(n)),
-          ),
         ]),
       ),
     );
-  }
-
-  void _dismiss(AdNeed n) {
-    c.dismiss(n).catchError(_fail);
-    showToast(context, 'Removed from Needs action', sub: n.title);
   }
 
   // ─────────────────────────────── Trainer performance
@@ -379,7 +380,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: const BoxDecoration(color: AppColors.tableHead, border: Border(bottom: BorderSide(color: AppColors.line), top: BorderSide(color: AppColors.line))),
                 child: _cells([
-                  for (final h in ['Trainer', 'Clients', 'Adherence', 'Avg reply']) Text(h, style: AppText.s(12, W.w7, color: AppColors.muted)),
+                  for (final h in ['Trainer', 'Clients', 'Adherence', 'Avg reply']) CutText(h, maxLines: 1, style: AppText.s(12, W.w7, color: AppColors.muted)),
                 ]),
               ),
               for (final (i, t) in shown.indexed) _perfRow(t, last: i == shown.length - 1 && all.length <= 5),
@@ -413,8 +414,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               Flexible(child: CutText(t.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
             ]),
             Text(t.load, style: t.over ? AppText.s(13.5, W.w7, color: AppColors.badText, tabular: true) : AppText.s(13.5, W.w5, tabular: true)),
+            // the bar gives up width first (at most 90), so a narrow column never overflows
             Row(spacing: 8, children: [
-              ProgressBar(value: (t.adherence ?? 0) / 100, width: 90),
+              Flexible(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 90), child: ProgressBar(width: double.infinity, value: (t.adherence ?? 0) / 100))),
               Text(t.adherence == null ? '—' : '${t.adherence}%', style: AppText.cap),
             ]),
             Text(t.replyLabel, style: AppText.s(13.5, W.w5, tabular: true)),
