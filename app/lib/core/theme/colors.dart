@@ -242,6 +242,20 @@ abstract final class AppColors {
   // Emails & alerts (D-52, `.em-*`): channel dots, push card, WhatsApp chat (header, wall, bubble time, text).
   static const emDotOff = Color(0xFFDADAD5), emDotOn = Color(0xFF10B981), emPushBg = Color(0xEBFFFFFF);
   static const emWaHead = Color(0xFF075E54), emWaWall = Color(0xFFECE5DD), emWaTime = Color(0xFF8A8A85), emWaText = Color(0xFF111111);
+
+  // Settings (D-53): the brand colour swatches (`.st-sw`), the client app preview (`.st-app`, `.st-app.dark`) and the
+  // integration initials (`.st-ib.whatsapp / .email / .health`).
+  static const stSwatches = [
+    Color(0xFF2563EB), Color(0xFF4F46E5), Color(0xFF0D9488), Color(0xFF16A34A),
+    Color(0xFFEA580C), Color(0xFFDC2626), Color(0xFFDB2777), Color(0xFF111111),
+  ];
+  static const stApp = Color(0xFFFAFAF8), stAppDark = Color(0xFF16181D), stAppDarkLine = Color(0xFF23262D);
+  static const stDarkText = Color(0xFFF2F2EF), stDarkCard = Color(0xFF20232A), stDarkCardLine = Color(0xFF2C3038);
+  static const stIntTones = {
+    'whatsapp': (Color(0xFFDCF8E7), Color(0xFF0B6B3A)),
+    'email_domain': (Color(0xFFE0EAFF), Color(0xFF1E40AF)),
+    'health': (Color(0xFFFDE7EE), Color(0xFFA3123E)),
+  };
   static const hbDoneLine = Color(0xFFBFE5CF), hbIcoHover = Color(0xFFBDBDB6), hbDayOff = Color(0xFFB5B5B0);
   // Content library (`.ct-*`): kind badge on a card, round play button on the hero, article text box, phone
   // category chip count when picked.

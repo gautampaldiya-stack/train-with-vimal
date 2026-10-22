@@ -785,6 +785,8 @@ Sub: *"Who clients see as the sender of emails and WhatsApp messages."* **Sender
 
 ### 2.22 Settings — `Settings` / `SettingsMobile`
 
+**Built (D-53), route `/settings` (`?tab=b` Branding, `r` Roles & access, `i` Integrations):** Gym profile saves name (required), email, phone, address and Website / Instagram; footer "Last saved 2 Oct" / "Saved just now". Regional & defaults save at once (Units toast + Undo) and are what every **new** client starts with (units, week start, timezone; plus the branding theme). Side card "Where these details show" opens Branding, Emails & alerts → Sender, Approvals, Forms. Branding: colour / theme are a draft until `Apply`; `Reset` = blue + light at once; logo PNG / JPG / WebP / SVG at least 512 x 512. The client app does not use the colour / dark theme yet (asked Gautam). Roles & access: counts are real; only the trainer cells the app enforces can be ticked (View all clients, Create programs & meal plans, Daily + weekly check-ins, Manage content library, Schedule sessions); the rest are dimmed with a tooltip. Integrations: WhatsApp Disconnect stops WhatsApp sends; Email sending checks SPF / DKIM / DMARC and switches emails to hello@domain once all three are found (owner gets an email); Health saves which data types may be read (phone side not built: "No clients linked yet"). Under 860 px of content everything is one column; on a phone the modal is a bottom sheet.
+
 Title **Settings**, tabs ke saath.
 
 **Gym profile** — naam · email · phone · address (`2nd floor, Linking Road, Bandra West, Mumbai 400050`) · Instagram. Button `Save changes`.

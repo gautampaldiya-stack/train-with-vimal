@@ -68,7 +68,9 @@ def send_login_link(user, token, template_key="client-invite"):
         _queue(user.email, subject, f"{body}\n\n{url}")
     # The WhatsApp text of the invite (Emails & alerts → Client invite), when it is on and we have a number.
     wa = tpl.channels.get("whatsapp", {}) if tpl else {}
-    if wa.get("on") and wa.get("body") and getattr(user, "phone", ""):
+    from apps.gym.models import Integration
+
+    if wa.get("on") and wa.get("body") and getattr(user, "phone", "") and Integration.is_on(Integration.Kind.WHATSAPP):
         text = f"{render(wa['body'], ctx)} {url}"
         transaction.on_commit(lambda: send_whatsapp_task.delay(user.phone, text))
 

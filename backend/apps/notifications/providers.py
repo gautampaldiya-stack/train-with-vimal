@@ -22,8 +22,13 @@ class ProviderError(Exception):
 
 # ------------------------------------------------------------------ email
 def send_email(to, subject, body, reply_to=None, sender_name=None):
+    from apps.gym.models import Integration
+
     from_email = settings.DEFAULT_FROM_EMAIL
-    if sender_name and "<" in from_email:
+    own = Integration.from_email()  # Settings → Integrations: verified own domain
+    if own:
+        from_email = f"{sender_name or from_email.split('<', 1)[0].strip() or 'Train With Vimal'} <{own}>"
+    elif sender_name and "<" in from_email:
         from_email = f"{sender_name} <{from_email.split('<', 1)[1]}"
     msg = EmailMultiAlternatives(
         subject=subject, body=body, from_email=from_email, to=[to], reply_to=[reply_to] if reply_to else None

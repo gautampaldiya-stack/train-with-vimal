@@ -622,6 +622,9 @@ Singleton: Settings → Gym profile, Regional & defaults, Branding.
 | `coach_stats` | JSONField |  |
 | `timezone` | CharField |  |
 | `language` | CharField |  |
+| `default_units` | CharField | choices: metric, imperial (new clients) |
+| `week_start` | CharField | choices: mon, sun (new clients) |
+| `profile_saved_at` | DateTimeField | optional; "Last saved" |
 | `logo` | FileField | optional |
 | `accent_color` | CharField |  |
 | `theme` | CharField | choices: light, dark, system |
@@ -639,7 +642,7 @@ Singleton holding the trainer and client columns of the permission matrix.
 | `updated_at` | DateTimeField |  |
 
 ### Integration
-
+Settings → Integrations. config: whatsapp {}, email_domain {domain, records, checked_at}, health {types}. WhatsApp number lives in NotificationSettings.whatsapp_number.
 
 | Field | Type | Notes |
 |---|---|---|

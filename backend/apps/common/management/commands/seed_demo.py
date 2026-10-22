@@ -960,6 +960,11 @@ class Command(BaseCommand):
 
         NotificationSettings.objects.filter(pk=NotificationSettings.load().pk, whatsapp_number="").update(
             whatsapp_number="+91 98200 12345")  # Emails & alerts → Sender (board value)
+        from apps.gym.models import GymSettings
+
+        GymSettings.objects.filter(pk=GymSettings.load().pk, address="").update(
+            address="2nd floor, Linking Road, Bandra West, Mumbai 400050")  # Settings → Gym profile (board values)
+        GymSettings.objects.filter(pk=1, instagram="").update(instagram="instagram.com/trainwithvimal")
         if Automation.all_objects.exists():
             return
         forms = {f.name: str(f.id) for f in Form.objects.filter(client__isnull=True).exclude(status="client")}

@@ -187,4 +187,6 @@ abstract final class AppIcons {
   static const dragDots = Ic.i03db81;
   static const chevronUpAlt = Ic.i35b43a;
   static const formArchive = Ic.if60d32;
+  static const palette = Ic.i8ecbaf; // Settings → Branding
+  static const uploadAlt = Ic.i1aecbb; // Settings → Upload logo
 }

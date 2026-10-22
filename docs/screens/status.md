@@ -85,17 +85,17 @@ Status: **Done** (built and checked in a browser against the board, phone and de
 |---|---|---|
 | Activity | Done | `/activity` (D-48): search, Filter (Who, Person), range, kind chips, day groups, Show more, Export CSV. Checked 390–1440 on 2026-10-22. |
 | ActivityMobile | Done | Phone layout of `/activity` (D-48), Export icon only. Checked 390 on 2026-10-22. |
-| AdminDashboard | Done | `/dashboard` (admin). Checked 1440 / 1280 / 1024 / 768. CTAs open Approvals, Clients, Trainers, Activity log (built); Check-ins and Settings not built yet (holding page). |
+| AdminDashboard | Done | `/dashboard` (admin). Checked 1440 / 1280 / 1024 / 768. CTAs open Approvals, Clients, Trainers, Activity log (built); Check-ins not built yet (holding page); Settings built (D-53). |
 | AdminDashboardMobile | Done | Checked at 390 in debug mode. |
-| AdminMoreMobile | Done | `/more` (admin). Trainers, Activity log, Forms & check-ins, Automations and Emails & alerts rows open built pages; Settings not built yet. |
+| AdminMoreMobile | Done | `/more` (admin). Trainers, Activity log, Forms & check-ins, Automations and Emails & alerts and Settings rows open built pages. |
 | Approvals | Done | `/approvals` (`?tab=history`), D-47: Waiting / History tabs with counts, search, Filter (5 groups / 3 groups) with chips, table (sideways scroll when narrow, as on the board), Review drawer (‹ › step, trainer pick, approve switches), Reject, Ask for info, Move back modals, toasts with Undo / View, pager 20 a page, sidebar badge. Not built: the board's invite-link summary card (same data in Invite link → All links). Checked 390, 768, 900, 1024, 1280, 1440 in debug mode on 2026-10-22, no overflow. |
 | ApprovalsMobile | Done | One line per person (avatar, name, inviter, waiting, health note, Review), History rows with badge, reason, date and Move back; drawer as a tall sheet. Checked 390. |
-| AutomationBuilder | Done | `/automations/<id>` (and `/automations/new?starter=`) (D-51). Checked 390–1440 in debug. Message templates opens Emails & alerts (D-52); Sender settings opens Settings (not built yet). |
-| AutomationBuilderMobile | Done | `/automations/<id>` (and `/automations/new?starter=`) (D-51). Checked 390–1440 in debug. Message templates opens Emails & alerts (D-52); Sender settings opens Settings (not built yet). |
-| AutomationNew | Done | `/automations/new` (D-51). Checked 390–1440 in debug. Message templates opens Emails & alerts (D-52); Sender settings opens Settings (not built yet). |
-| AutomationNewMobile | Done | `/automations/new` (D-51). Checked 390–1440 in debug. Message templates opens Emails & alerts (D-52); Sender settings opens Settings (not built yet). |
-| Automations | Done | `/automations` (D-51). Checked 390–1440 in debug. Message templates opens Emails & alerts (D-52); Sender settings opens Settings (not built yet). |
-| AutomationsMobile | Done | `/automations` (D-51). Checked 390–1440 in debug. Message templates opens Emails & alerts (D-52); Sender settings opens Settings (not built yet). |
+| AutomationBuilder | Done | `/automations/<id>` (and `/automations/new?starter=`) (D-51). Checked 390–1440 in debug. Message templates opens Emails & alerts (D-52); Sender settings opens Settings (D-53). |
+| AutomationBuilderMobile | Done | `/automations/<id>` (and `/automations/new?starter=`) (D-51). Checked 390–1440 in debug. Message templates opens Emails & alerts (D-52); Sender settings opens Settings (D-53). |
+| AutomationNew | Done | `/automations/new` (D-51). Checked 390–1440 in debug. Message templates opens Emails & alerts (D-52); Sender settings opens Settings (D-53). |
+| AutomationNewMobile | Done | `/automations/new` (D-51). Checked 390–1440 in debug. Message templates opens Emails & alerts (D-52); Sender settings opens Settings (D-53). |
+| Automations | Done | `/automations` (D-51). Checked 390–1440 in debug. Message templates opens Emails & alerts (D-52); Sender settings opens Settings (D-53). |
+| AutomationsMobile | Done | `/automations` (D-51). Checked 390–1440 in debug. Message templates opens Emails & alerts (D-52); Sender settings opens Settings (D-53). |
 | Calendar | Done | `/calendar` for admin (D-48): All trainers pick, Busiest trainer, trainer on blocks, Trainer in the session panel, New session with Client + Trainer, Availability per trainer. Checked 390–1440 on 2026-10-22. |
 | CalendarMobile | Done | Phone layout of admin `/calendar` (D-48): All trainers + Week / Day on one row. Checked 390 on 2026-10-22. |
 | Clients | Done | `/clients` (admin), My clients code with admin extras (D-47): sub line with need-a-trainer count, Invite link (modal with QR) and Add client (drawer) at the top, Trainer + Joined columns, Trainer filter, row ⋯ Change trainer / Pause / Resume / Delete with Undo. Export and select boxes off, same as My clients (D-33). Checked 390, 768, 900, 1024, 1280, 1440 in debug mode on 2026-10-22, no overflow. |
@@ -125,8 +125,8 @@ Status: **Done** (built and checked in a browser against the board, phone and de
 | ProgramBuilderMobile | Done | Same page under 600: day rows with Add, exercise cards with Sets / Reps / RPE / Tempo / Rest chips, sheets for modals. Checked against the board at 390, 900, 1024, 1440 and in DEBUG mode at 390 and 1024 with no console errors (2026-10-20). |
 | Programs | Done | `/programs`: cards (week pattern, clients, edited date), Active / Archived, search, Show more (24 a page), New program modal, card ⋯ Open / Rename / Assign to clients / See assigned clients / Duplicate / Archive / Restore / Delete with Undo, Gym / By you / By … tag (D-42, D-43). Trainers see only their own clients on cards. Checked 600, 1024, 1440 (2026-10-20), 390 and 1440 (2026-10-21). |
 | ProgramsMobile | Done | One column of cards, + button for New program. Checked 390 (2026-10-20). |
-| Settings | Not started |  |
-| SettingsMobile | Not started |  |
+| Settings | Done | `/settings` (D-53), tabs General / Branding / Roles & access / Integrations (`?tab=b/r/i`). Checked 390–1440 in debug. Client app does not use the brand colour / dark theme yet (Gautam 2026-10-23: later); health data reading on phones not built. |
+| SettingsMobile | Done | `/settings` (D-53), same page under 600 px: one column, controls under the words, modal as sheet. Checked 390 in debug. |
 
 Staff shell (sidebar, bottom bar, toasts, tooltips) is built; the pages inside it are not.
 

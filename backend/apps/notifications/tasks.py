@@ -74,6 +74,10 @@ def send_delivery(self, delivery_id):
         if d.channel == Channel.WHATSAPP:
             if not user.phone:
                 return mark_delivery(d, Delivery.Status.SKIPPED, error="No mobile number")
+            from apps.gym.models import Integration
+
+            if not Integration.is_on(Integration.Kind.WHATSAPP):
+                return mark_delivery(d, Delivery.Status.SKIPPED, error="WhatsApp is disconnected in Settings")
             pid = providers.send_whatsapp(user.phone, d.body)
             return mark_delivery(d, Delivery.Status.SENT, pid)
         if d.channel == Channel.PUSH:

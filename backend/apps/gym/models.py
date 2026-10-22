@@ -22,6 +22,11 @@ class GymSettings(models.Model):
     coach_stats = models.JSONField(default=list, blank=True)  # [["10+", "Years coaching"], ...]
     timezone = models.CharField(max_length=40, default="Asia/Kolkata")
     language = models.CharField(max_length=10, default="en")
+    # Regional & defaults: what every new client starts with (they can change their own units later).
+    default_units = models.CharField(max_length=8, choices=[("metric", "Metric"), ("imperial", "Imperial")],
+                                     default="metric")
+    week_start = models.CharField(max_length=3, choices=[("mon", "Monday"), ("sun", "Sunday")], default="mon")
+    profile_saved_at = models.DateTimeField(null=True, blank=True)  # "Last saved 2 Oct" under Gym profile
 
     logo = models.ImageField(upload_to="branding/", null=True, blank=True, validators=[validate_file_size(5)])
     accent_color = models.CharField(max_length=7, default="#2563EB")
@@ -40,8 +45,17 @@ class GymSettings(models.Model):
         obj, _ = cls.objects.get_or_create(pk=1)
         return obj
 
+    def client_defaults(self):
+        """Fields a new client account starts with (Regional & defaults, Branding theme)."""
+        imperial = self.default_units == "imperial"
+        return {"unit_weight": "lb" if imperial else "kg", "unit_length": "in" if imperial else "cm",
+                "unit_water": "oz" if imperial else "l", "week_start": self.week_start, "timezone": self.timezone,
+                "theme": self.theme}
+
 
 # Settings → Roles & permissions matrix. Admin is always on and locked.
+# Cells the owner cannot change (D-53): admin-only work stays admin-only, every trainer sees their own clients,
+# and clients only ever see their own plan and data (they keep their check-ins).
 ROLE_PERMISSIONS = [
     ("view_all_clients", "View all clients"),
     ("view_assigned_clients", "View assigned clients"),
@@ -68,6 +82,13 @@ DEFAULT_ROLE_MATRIX = {
 }
 
 
+LOCKED_CELLS = {
+    "trainer": {"view_assigned_clients": True, "assign_clients": False, "add_trainers": False,
+                "automations_settings": False},
+    "client": dict(DEFAULT_ROLE_MATRIX["client"]),
+}
+
+
 class RoleMatrix(models.Model):
     """Singleton holding the trainer and client columns of the permission matrix."""
 
@@ -91,8 +112,25 @@ class Integration(models.Model):
         PENDING = "pending", "Waiting"
         CONNECTED = "connected", "Connected"
 
+    ORDER = ["whatsapp", "email_domain", "health"]
+
     kind = models.CharField(max_length=20, choices=Kind.choices, unique=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.NOT_CONNECTED)
     config = models.JSONField(default=dict, blank=True)  # never secrets: those live in .env
     connected_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def is_on(cls, kind):
+        """True when the service may be used. No row yet = the install default (WhatsApp on)."""
+        row = cls.objects.filter(kind=kind).only("status").first()
+        if row is None:
+            return kind == cls.Kind.WHATSAPP
+        return row.status == cls.Status.CONNECTED
+
+    @classmethod
+    def from_email(cls):
+        """Own-domain sender ("hello@trainwithvimal.com") once its DNS records are verified, else None."""
+        row = cls.objects.filter(kind=cls.Kind.EMAIL_DOMAIN, status=cls.Status.CONNECTED).first()
+        domain = (row.config or {}).get("domain") if row else None
+        return f"hello@{domain}" if domain else None

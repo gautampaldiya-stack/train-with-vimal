@@ -42,7 +42,7 @@
    every active trainer with email on get one email: check-ins to review, at-risk clients and plans ending in
    the next 7 days, each for their own clients (`staff_digests` task). **It starts Off** (migration 0005), not
    Daily as the board shows: it is close to the trainer's Daily summary, whose design Gautam parked, so nothing
-   new is sent until he decides (asked on 2026-10-22).
+   new is sent until he decides. **Gautam, 2026-10-23: keep it Off**; it comes back with the Daily summary design.
 9. **Sender** saves From name (required), Reply-to email and WhatsApp display number (digits, spaces and +).
    Emails already use the name and reply-to; the Clients see card follows what is typed. The invite's WhatsApp
    text is now sent too when it is on and the client has a mobile number.

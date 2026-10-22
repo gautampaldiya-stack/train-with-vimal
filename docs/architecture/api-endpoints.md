@@ -174,14 +174,14 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | Path | Methods | View | Notes |
 |---|---|---|---|
 | `gym/` | GET | PublicGymView | Gym name, contact and live branding. Public: the signed-out "Need help logging in?" sheet uses it too. |
-| `settings/branding/` | GET, PATCH | BrandingView | PATCH saves a draft ("Not applied yet"); POST apply makes it live for every client. |
-| `settings/branding/apply/` | POST | BrandingApplyView |  |
-| `settings/branding/logo/` | POST, DELETE | LogoView |  |
-| `settings/branding/reset/` | POST | BrandingResetView |  |
-| `settings/gym/` | GET, PATCH | GymProfileView |  |
-| `settings/integrations/` | GET | IntegrationListView |  |
-| `settings/integrations/<str:kind>/<str:op>/` | POST | IntegrationActionView | POST connect / disconnect / check. Real provider keys stay in .env; this records state. |
-| `settings/roles/` | GET, PUT | RoleMatrixView |  |
+| `settings/branding/` | GET, PATCH | BrandingView | PATCH saves a draft ("Not applied yet"); picking the live value again clears it. GET also gives `logo_name`, `logo_px`, `name`. |
+| `settings/branding/apply/` | POST | BrandingApplyView | Makes the draft live. |
+| `settings/branding/logo/` | POST, DELETE | LogoView | PNG / JPG / WebP / SVG, at least 512 x 512, max 5 MB; live at once. |
+| `settings/branding/reset/` | POST | BrandingResetView | Blue + light, live at once. |
+| `settings/gym/` | GET, PATCH | GymProfileView | Gym profile (moves `profile_saved_at`) and Regional & defaults (`default_units`, `week_start`, `timezone`, `language`); GET adds `timezones`, `languages`. |
+| `settings/integrations/` | GET | IntegrationListView | whatsapp, email_domain, health with `status`, `config`, `meta` (card line) and `used` (Used in links). |
+| `settings/integrations/<str:kind>/<str:op>/` | POST | IntegrationActionView | op connect / save (`config`: number, domain or types), check (email DNS), disconnect, undo (`status`). WhatsApp off skips WhatsApp sends; a verified domain is the from-address. |
+| `settings/roles/` | GET, PUT | RoleMatrixView | Matrix plus `defaults`, `locked` cells and `counts` (active trainers, active clients). Locked cells keep their value on PUT. |
 
 ## habits
 
