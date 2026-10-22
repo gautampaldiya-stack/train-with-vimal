@@ -8,7 +8,7 @@ import '../../../core/theme/theme.dart';
 import '../../../core/widgets/badge.dart';
 import '../../../core/widgets/button.dart';
 import '../../../core/widgets/card.dart';
-import '../../../core/widgets/media.dart' show showImageViewer;
+import '../../../core/widgets/media.dart' show mediaClock, playVideoFull, showImageViewer;
 import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
 import 'cp_common.dart';
@@ -214,6 +214,8 @@ Widget _workout(CpController c, Map r, Map d, _Nav nav) {
   final secs = (d['duration_seconds'] as num?)?.toInt() ?? 0;
   final note = '${d['note'] ?? ''}'.trim();
   final total = (d['sets_planned'] as num?)?.toInt() ?? 0;
+  final videos = [for (final v in (d['form_videos'] as List? ?? const [])) v as Map];
+  bool filmed(Map s) => videos.any((v) => '${v['exercise']}' == '${s['exercise']}' && v['set_number'] == s['set_number']);
   return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
     CpKpis([
       ('Sets', total > 0 ? '${d['sets_done']} / $total' : '${d['sets_done']}'),
@@ -229,13 +231,17 @@ Widget _workout(CpController c, Map r, Map d, _Nav nav) {
           i + 1,
           '${e.value.first['exercise_name']}',
           done >= n ? Tone.ok : (done == 0 ? Tone.neutral : Tone.warn),
-          Wrap(spacing: 6, runSpacing: 6, children: [for (final s in e.value) _chip(_setText(s), s['done'] == true)]),
+          Wrap(spacing: 6, runSpacing: 6, children: [
+            for (final s in e.value) _chip(_setText(s), s['done'] == true),
+            if (e.value.any(filmed)) const AppBadge('Form video', tone: Tone.info),
+          ]),
           '$done / $n sets',
           last: i == order.length - 1,
         );
       }(),
     if (order.isEmpty) const EmptyState('No sets logged'),
     if (note.isNotEmpty) cpQuote('${c.first}’s note', note),
+    for (final v in videos) _FormVideoRow(v),
     CpReplyBox(
       hint: 'Comment on this workout…',
       first: c.first,
@@ -639,4 +645,42 @@ Widget _ticks(Map r) {
         ]),
       ),
   ]);
+}
+
+/// A form check the client filmed: length, which set, when it came, Watch (full screen player).
+class _FormVideoRow extends StatelessWidget {
+  const _FormVideoRow(this.v);
+  final Map v;
+
+  @override
+  Widget build(BuildContext context) {
+    final secs = (v['duration_seconds'] as num?)?.toInt();
+    final what = '${v['exercise_name']}${v['set_number'] == null ? '' : ', set ${v['set_number']}'}';
+    final url = '${v['url'] ?? ''}';
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(borderRadius: AppRadius.all(10), border: Border.all(color: AppColors.line)),
+      child: Row(spacing: 12, children: [
+        Container(
+          width: 64,
+          height: 44,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(color: AppColors.black, borderRadius: AppRadius.all(8)),
+          child: Row(mainAxisSize: MainAxisSize.min, spacing: 3, children: [
+            const AppIcon(AppIcons.play, size: 11, color: AppColors.white),
+            Text(secs == null ? 'Video' : mediaClock(secs), style: AppText.s(11.5, W.w7, color: AppColors.white)),
+          ]),
+        ),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+            Text(what, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
+            Text('Form check video · sent ${cpTime(v['created_at'])}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.cap),
+            if ('${v['note'] ?? ''}'.isNotEmpty) Text('${v['note']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.text2)),
+          ]),
+        ),
+        AppButton('Watch', size: BtnSize.sm, icon: AppIcons.play, onPressed: url.isEmpty ? null : () => playVideoFull(context, url, title: what)),
+      ]),
+    );
+  }
 }

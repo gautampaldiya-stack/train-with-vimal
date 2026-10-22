@@ -321,6 +321,22 @@ Future<void> showVideoFull(BuildContext context, VideoCtl ctl, {required String 
       ),
     );
 
+/// A clip on its own, full screen and playing (form check videos). The player goes when it closes.
+Future<void> playVideoFull(BuildContext context, String url, {required String title}) async {
+  final ctl = VideoCtl(url);
+  void start() {
+    if (ctl.ready) {
+      ctl.removeListener(start);
+      ctl.toggle();
+    }
+  }
+
+  ctl.addListener(start);
+  await showVideoFull(context, ctl, label: () => title);
+  ctl.removeListener(start);
+  ctl.dispose();
+}
+
 // ─────────────────────────────── YouTube
 
 /// The video id in a youtu.be / youtube.com/watch / shorts / embed link ('' when it is not one).

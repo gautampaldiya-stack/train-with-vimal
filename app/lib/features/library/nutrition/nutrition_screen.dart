@@ -376,7 +376,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
     );
     final search = AppSearchField(placeholder: 'Search plans', icon: AppIcons.search, onChanged: (v) => _search(v, food: false));
     return [
-      if (phone) ...[search, SingleChildScrollView(scrollDirection: Axis.horizontal, child: tabs)] else Row(children: [SizedBox(width: 320, child: search), const Spacer(), tabs]),
+      if (phone) ...[search, SingleChildScrollView(scrollDirection: Axis.horizontal, child: tabs)] else SearchTabsRow(search: search, tabs: tabs),
       if (loading)
         const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator(color: AppColors.accent, strokeWidth: 2.5)))
       else if (error != null)
@@ -453,14 +453,14 @@ class _NutritionScreenState extends State<NutritionScreen> {
                     search,
                     Row(children: [basis, const Spacer(), dietSel]),
                   ])
-                : Row(spacing: 8, children: [SizedBox(width: 320, child: search), const Spacer(), basis, dietSel]),
+                : SearchTabsRow(search: search, tabs: Row(mainAxisSize: MainAxisSize.min, spacing: 8, children: [basis, dietSel])),
           ),
           Container(
             padding: EdgeInsets.fromLTRB(phone ? 0 : 16, 0, phone ? 0 : 16, 14),
             decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
-            child: phone
-                ? SingleChildScrollView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), child: Row(spacing: 6, children: chips))
-                : Wrap(spacing: 6, runSpacing: 6, children: chips),
+            // One line that scrolls sideways at every width (Gautam, 22 Oct: chip rows never wrap)
+            child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal, padding: EdgeInsets.symmetric(horizontal: phone ? 12 : 0), child: Row(spacing: 6, children: chips)),
           ),
           if (fLoading)
             const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator(color: AppColors.accent, strokeWidth: 2.5)))

@@ -305,9 +305,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         if (all.isNotEmpty)
           Padding(
             padding: EdgeInsets.fromLTRB(_phone ? 16 : 20, 2, _phone ? 0 : 20, 8),
-            child: _phone
-                ? SingleChildScrollView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.only(right: 28), child: Row(spacing: 6, children: chips))
-                : Wrap(spacing: 6, runSpacing: 6, children: chips),
+            // Chip rows stay on one line and scroll sideways (Gautam, 22 Oct)
+            child: SingleChildScrollView(scrollDirection: Axis.horizontal, padding: EdgeInsets.only(right: _phone ? 28 : 0), child: Row(spacing: 6, children: chips)),
           ),
         Padding(
           padding: const EdgeInsets.fromLTRB(8, 4, 8, 10),

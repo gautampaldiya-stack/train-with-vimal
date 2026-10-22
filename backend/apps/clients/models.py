@@ -52,6 +52,7 @@ class ClientProfile(TimeStampedModel):
     start_weight_kg = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
     current_weight_kg = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
     target_weight_kg = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
+    target_date = models.DateField(null=True, blank=True)  # when they hope to reach the goal (History: "Feb 2027")
     health_notes = models.TextField(blank=True, default="", max_length=2000)
     start_date = models.DateField(null=True, blank=True)  # day 1 of workout and meal plans
     package_name = models.CharField(max_length=80, blank=True, default="")

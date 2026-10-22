@@ -278,7 +278,7 @@ class LibFilterChips extends StatelessWidget {
     final p = picked.value;
     return Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 8, children: [
       Expanded(
-        child: Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        child: ChipScroll(children: [
           for (final f in facets)
             for (final (v, l, _) in f.options.where((o) => (p[f.key] ?? const {}).contains(o.$1)))
               SetChip(label: f.label, value: l, onRemove: () => picked.value = {...p, f.key: {...?p[f.key]}..remove(v)}),
@@ -302,4 +302,36 @@ Widget ownerTag(Map o) {
   final kind = '${o['kind']}';
   final text = kind == 'gym' ? 'Gym' : (kind == 'you' ? 'By you' : 'By ${o['name']}');
   return AppTooltip(message: '${o['label']}', child: AppBadge(text, tone: kind == 'you' ? Tone.ok : Tone.neutral, plain: true));
+}
+
+/// Top toolbar: search on the left, filter tabs on the right. When there is no room the tabs go to the next line
+/// (Gautam, 22 Oct: toolbars may wrap, chip rows never), and tabs wider than the page scroll sideways.
+class SearchTabsRow extends StatelessWidget {
+  const SearchTabsRow({super.key, required this.search, required this.tabs, this.searchWidth = 320});
+  final Widget search, tabs;
+  final double searchWidth;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (_, b) => Wrap(alignment: WrapAlignment.spaceBetween, crossAxisAlignment: WrapCrossAlignment.center, spacing: 12, runSpacing: 10, children: [
+          SizedBox(width: searchWidth.clamp(0.0, b.maxWidth), child: search),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: b.maxWidth),
+            child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: tabs),
+          ),
+        ]),
+      );
+}
+
+/// A chip row (categories, kinds, picked filters): always one line, scrolls sideways (Gautam, 22 Oct).
+class ChipScroll extends StatelessWidget {
+  const ChipScroll({super.key, required this.children, this.spacing = 8});
+  final List<Widget> children;
+  final double spacing;
+
+  @override
+  Widget build(BuildContext context) => SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(spacing: spacing, children: children),
+      );
 }

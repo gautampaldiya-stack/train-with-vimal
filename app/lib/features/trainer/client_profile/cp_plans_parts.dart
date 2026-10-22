@@ -15,6 +15,8 @@ import '../../../core/widgets/media.dart';
 import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/tabs.dart';
+import '../../client/train/train_model.dart' show regionsOf;
+import '../../client/train/train_parts.dart' show BodyMap;
 import 'cp_common.dart';
 import 'cp_model.dart';
 import 'cp_plans_model.dart';
@@ -531,10 +533,7 @@ Future<void> showExerciseDrawer(BuildContext context,
                   ),
               ],
               _sub('Muscles'),
-              Wrap(spacing: 6, runSpacing: 6, children: [
-                AppBadge('${x['primary_muscle'] ?? x['muscle_group'] ?? ''}'.ifEmpty('Main muscle'), tone: Tone.info),
-                for (final a in also) AppBadge(a),
-              ]),
+              _ExMap(primary: '${x['primary_muscle'] ?? x['muscle_group'] ?? ''}'.ifEmpty('Main muscle'), also: also),
               const SizedBox(height: 8),
             ]);
           },
@@ -947,4 +946,45 @@ Future<List<String>?> _pickHabits(BuildContext context, {required Set<String> ha
 
 extension on String {
   String ifEmpty(String other) => isEmpty ? other : this;
+}
+
+/// `cp-exmap`: the body map (84 wide figures) next to Primary and Also works chips; stacked when the drawer is narrow.
+class _ExMap extends StatelessWidget {
+  const _ExMap({required this.primary, required this.also});
+  final String primary;
+  final List<String> also;
+
+  @override
+  Widget build(BuildContext context) {
+    final map = <String, String>{};
+    for (final r in regionsOf(primary)) {
+      map[r] = 'p';
+    }
+    for (final a in also) {
+      for (final r in regionsOf(a)) {
+        map.putIfAbsent(r, () => 's');
+      }
+    }
+    Widget chip(String t, {bool pri = false}) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(color: pri ? AppColors.accent : AppColors.sub, borderRadius: AppRadius.all(6)),
+          child: Text(t, style: AppText.s(12.5, pri ? W.w7 : W.w6, color: pri ? AppColors.white : AppColors.text2)),
+        );
+    Widget k(String t) => Text(t, style: AppText.s(11.5, W.w7, color: AppColors.muted));
+    final text = Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 6, children: [
+      k('Primary'),
+      chip(primary, pri: true),
+      if (also.isNotEmpty) ...[
+        const SizedBox(height: 2),
+        k('Also works'),
+        Wrap(spacing: 6, runSpacing: 6, children: [for (final a in also) chip(a)]),
+      ],
+    ]);
+    final bm = BodyMap(map, figWidth: 84, twoKeys: true);
+    return LayoutBuilder(
+      builder: (_, box) => box.maxWidth >= 400
+          ? Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 14, children: [bm, Expanded(child: text)])
+          : Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 12, children: [bm, text]),
+    );
+  }
 }

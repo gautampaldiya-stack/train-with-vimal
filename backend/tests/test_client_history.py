@@ -155,3 +155,23 @@ def test_past_day_weigh_in_is_a_body_row_too(client_user, trainer, django_captur
 def test_other_trainer_cannot_read_history(db):
     neha = login("neha@trainwithvimal.com")
     assert neha.get(f"/api/v1/clients/{_riya().id}/history/").status_code == 404
+
+
+def test_target_date_and_health_over_time(trainer, django_capture_on_commit_callbacks):
+    rid = _riya().id
+    url = f"/api/v1/clients/{rid}/"
+    with django_capture_on_commit_callbacks(execute=True):
+        assert trainer.patch(url, {"target_date": "2026-12-01", "health_notes": "Lower back stiffness"},
+                             format="json").status_code == 200
+        assert trainer.patch(url, {"target_date": "2027-02-01",
+                                   "health_notes": "Right knee pain on deep squats · box squats instead"},
+                             format="json").status_code == 200
+    assert trainer.get(url).json()["profile"]["target_date"] == "2027-02-01"
+    d = trainer.get(f"/api/v1/clients/{rid}/history/", {"months": 99}).json()
+    td = next(a["value"] for a in d["about"] if a["label"] == "Target date")
+    assert td == "Feb 2027 · was Dec 2026"
+    knee = next(h for h in d["health"] if h["title"] == "Right knee pain on deep squats")
+    assert knee["tone"] == "warn" and knee["detail"].startswith("Since ") and knee["detail"].endswith("box squats instead")
+    back = next(h for h in d["health"] if h["title"] == "Lower back stiffness")
+    assert back["tone"] == "ok" and back["detail"].endswith("cleared")
+    assert any(i["title"] == "Target date changed" for m in d["months"] for i in m["items"])

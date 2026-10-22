@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:dio/dio.dart' show FormData, MultipartFile;
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
@@ -106,6 +107,28 @@ class WorkoutController extends ChangeNotifier {
 
   String? id;
   bool local = false;
+
+  /// Sets whose form video went to the coach this time ("exercise id:set number").
+  final filmed = <String>{};
+  bool isFilmed(WSet s) => filmed.contains('${s.exId}:${s.number}');
+
+  /// Form check: a short clip of one set goes to the coach, who watches it in the workout log. Needs the internet.
+  Future<void> sendFormVideo(WSet s, String exName, String file, Uint8List bytes) async {
+    if (id == null || local) {
+      toast?.call('Could not send the video', sub: 'Connect to the internet, then try again', kind: ToastKind.warn);
+      return;
+    }
+    toast?.call('Sending your form video…', sub: '$exName · set ${s.number}', kind: ToastKind.info);
+    try {
+      await Services.api.upload<Map>('me/workouts/$id/form-video/',
+          FormData.fromMap({'file': MultipartFile.fromBytes(bytes, filename: file), 'exercise': s.exId, 'set_number': s.number}));
+      filmed.add('${s.exId}:${s.number}');
+      notifyListeners();
+      toast?.call('Form video sent', sub: 'Your coach will check your form', kind: ToastKind.ok);
+    } on ApiError catch (e) {
+      toast?.call('Could not send the video', sub: e.field('file') ?? e.message, kind: ToastKind.warn);
+    }
+  }
   String name = '';
   DateTime date = DateTime.now();
   DateTime startedAt = DateTime.now();

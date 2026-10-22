@@ -230,3 +230,19 @@ class SetLog(models.Model):
         if self.is_warmup or not self.done or self.weight_kg is None or not self.reps:
             return 0
         return float(self.weight_kg) * self.reps
+
+
+class FormVideo(models.Model):
+    """A short clip the client films of one set so the coach can check the form (workout log → "Form check video")."""
+
+    workout = models.ForeignKey(WorkoutLog, on_delete=models.CASCADE, related_name="form_videos")
+    exercise = models.ForeignKey(Exercise, on_delete=models.PROTECT, related_name="+")
+    set_number = models.PositiveSmallIntegerField(null=True, blank=True)
+    file = models.FileField(upload_to="form_videos/")
+    file_size = models.PositiveBigIntegerField(default=0)
+    duration_seconds = models.PositiveIntegerField(null=True, blank=True)
+    note = models.CharField(max_length=300, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]

@@ -718,6 +718,12 @@ class MyHabitLogView(APIView):
         return Response({"value": log.value, "done": log.done, "target": h.target})
 
 
+def _ran_out(client, item):
+    """Stock history: every time a supplement runs out at home (Compare plans → "Ran out of stock")."""
+    activity_log("ran out of", "plan", actor=client, target_label=item.name, client=client,
+                 meta={"history": "stock_out", "item": item.name})
+
+
 class MySupplementView(APIView):
     """POST take / untake (Undo), PATCH stock."""
 
@@ -741,6 +747,8 @@ class MySupplementView(APIView):
             if created and stock and stock.quantity > 0:
                 stock.quantity -= 1
                 stock.save(update_fields=["quantity"])
+                if stock.quantity == 0:
+                    _ran_out(request.user, it)
         else:
             deleted, _ = SupplementLog.objects.filter(item=it, client=request.user, date=day).delete()
             if deleted and stock:
@@ -757,7 +765,10 @@ class MySupplementView(APIView):
             raise serializers.ValidationError({"quantity": ["Enter a number."]})
         if not 0 <= q <= 10000:
             raise serializers.ValidationError({"quantity": ["Check this number."]})
+        had = SupplementStock.objects.filter(item=it, client=request.user).values_list("quantity", flat=True).first()
         st, _ = SupplementStock.objects.update_or_create(
             item=it, client=request.user,
             defaults={"quantity": q, "unit": (request.data.get("unit") or "scoops")[:20]})
+        if q == 0 and had:
+            _ran_out(request.user, it)
         return Response({"quantity": st.quantity, "unit": st.unit})

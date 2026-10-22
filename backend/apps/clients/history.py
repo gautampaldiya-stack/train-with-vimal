@@ -71,7 +71,12 @@ def _span(a, b):
 
 def goal_snapshot(user):
     cp = user.client_profile
-    return {"goal": cp.goal, "target": _f(cp.target_weight_kg), "health": cp.health_notes or ""}
+    return {"goal": cp.goal, "target": _f(cp.target_weight_kg), "health": cp.health_notes or "",
+            "date": cp.target_date.isoformat() if cp.target_date else ""}
+
+
+def _month(iso):
+    return dfmt(date.fromisoformat(iso), "%b %Y") if iso else "Not set"
 
 
 def log_goal_changes(user, before, actor):
@@ -92,9 +97,14 @@ def log_goal_changes(user, before, actor):
         lbl = dict(Goal.choices)
         log("changed goal", "client", actor=actor, target=user, target_label=user.full_name, client=user,
             change=(lbl.get(before["goal"], "Not set"), lbl.get(after["goal"], "Not set")), meta={"history": "goal"})
+    if before.get("date", "") != after["date"]:
+        log("changed target date", "client", actor=actor, target=user, target_label=user.full_name, client=user,
+            change=(_month(before.get("date", "")), _month(after["date"])), meta={"history": "target_date"})
     if before["health"].strip() != after["health"].strip():
+        # The whole text is kept, so Health over time can tell when each line came and went.
         log("updated health notes", "client", actor=actor, target=user, target_label=user.full_name, client=user,
-            meta={"history": "health", "note": after["health"].strip().split("\n")[0][:200]})
+            meta={"history": "health", "note": after["health"].strip().split("\n")[0][:200],
+                  "before": before["health"].strip()[:2000], "text": after["health"].strip()[:2000]})
 
 
 # ─────────────────────────────── building blocks
@@ -349,6 +359,9 @@ def _milestones(ctx):
         if h == "goal_weight":
             items.append(_item("goal", "Goal weight changed", f"{e.change_from} became {e.change_to}.",
                                _local(e.created_at), e.actor_label, "Goal", "warn"))
+        elif h == "target_date":
+            items.append(_item("goal", "Target date changed", f"{e.change_from} became {e.change_to}.",
+                               _local(e.created_at), e.actor_label, "Goal", "warn"))
         elif h == "goal":
             items.append(_item("goal", "Goal changed", f"{e.change_from} became {e.change_to}.",
                                _local(e.created_at), e.actor_label, "Goal", "warn"))
@@ -580,6 +593,10 @@ def _about(ctx):
     gw = _kg0(cp.target_weight_kg) if cp.target_weight_kg else "Not set"
     if gws:
         gw += f" · was {gws[-1].change_from} until {dfmt(_local(gws[-1].created_at), '%b')}"
+    tds = [e for e in ctx.events if (e.meta or {}).get("history") == "target_date"]
+    td = dfmt(cp.target_date, "%b %Y") if cp.target_date else "Not set"
+    if tds and tds[-1].change_from != "Not set":
+        td += f" · was {tds[-1].change_from}"
     trainer = cp.trainer.full_name if cp.trainer else "No trainer"
     names = {e.change_from for e in changes if e.change_from and e.change_from != "No trainer"} - {trainer}
     if cp.trainer:
@@ -589,9 +606,53 @@ def _about(ctx):
         {"label": "Came from", "value": _came_from(ctx)},
         {"label": "Goal", "value": goal},
         {"label": "Goal weight", "value": gw},
-        {"label": "Target date", "value": "Not set"},
+        {"label": "Target date", "value": td},
         {"label": "Trainer", "value": trainer},
     ]
+
+
+def _lines(text):
+    return [x.strip() for x in (text or "").split("\n") if x.strip()]
+
+
+def _health_lines(ctx):
+    """Health notes over time: each line of the notes from the day it was added to the day it was taken out
+    ("Since 14 Mar · box squats instead", "Feb – Apr · cleared"). A line can carry a note after " · " or " - "."""
+    spans = {}  # line → [since, until]
+    evs = [e for e in ctx.events if (e.meta or {}).get("history") == "health" and "text" in (e.meta or {})]
+    if evs:
+        for line in _lines(evs[0].meta.get("before")):
+            spans[line] = [ctx.joined, None]
+    for e in evs:
+        day = _local(e.created_at)
+        now = _lines(e.meta.get("text"))
+        for line in now:
+            if line not in spans or spans[line][1] is not None:
+                spans[line] = [day, None]
+        for line, sp in spans.items():
+            if line not in now and sp[1] is None:
+                sp[1] = day
+    notes_at = next((_local(e.created_at) for e in reversed(ctx.events) if (e.meta or {}).get("history") == "health"),
+                    None)
+    for line in _lines(ctx.cp.health_notes):
+        if line not in spans or spans[line][1] is not None:
+            spans[line] = [notes_at or ctx.joined, None]
+    rows = []
+    for line, (since, until) in spans.items():
+        title, _, extra = line.replace(" - ", " · ").replace(" — ", " · ").partition(" · ")
+        if until is None:
+            detail = " · ".join(x for x in (f"Since {_dm(since)}", extra) if x)
+            rows.append({"title": title[:90], "detail": detail, "tone": "warn", "at": since})
+        else:
+            a, b = dfmt(since, "%b"), dfmt(until, "%b")
+            when = a if a == b else f"{a} – {b}"
+            rows.append({"title": title[:90], "detail": " · ".join(x for x in (when, extra, "cleared") if x),
+                         "tone": "ok", "at": since})
+    # Ongoing first, then the ones that cleared, newest first within each
+    rows.sort(key=lambda r: (r["tone"] == "ok", -r["at"].toordinal()))
+    for r in rows:
+        r.pop("at")
+    return rows[:6]
 
 
 def _health(ctx):
@@ -601,11 +662,7 @@ def _health(ctx):
     on = cp.onboarding or {}
     health = on.get("health") or {}
     rows = []
-    notes_at = next((_local(e.created_at) for e in reversed(ctx.events) if (e.meta or {}).get("history") == "health"),
-                    None)
-    for line in [x.strip() for x in (cp.health_notes or "").split("\n") if x.strip()][:4]:
-        rows.append({"title": line[:90], "detail": f"Since {_dm(notes_at or ctx.joined)} · from the profile",
-                     "tone": "warn"})
+    rows.extend(_health_lines(ctx))
     for x in (cp.injury_areas or health.get("injuries") or []) + (cp.conditions or health.get("conditions") or []):
         if x and x != "none":
             rows.append({"title": x.replace("_", " ").capitalize(), "detail": f"Since {_dm(ctx.joined)} · from onboarding",

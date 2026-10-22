@@ -85,8 +85,14 @@ String _hex(Color c) => '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(
 
 /// `bm`: front and back figure with the worked muscles filled, and the legend.
 class BodyMap extends StatelessWidget {
-  const BodyMap(this.regions, {super.key, this.onTap});
+  const BodyMap(this.regions, {super.key, this.onTap, this.figWidth = 102, this.twoKeys = false});
   final Map<String, String> regions;
+
+  /// Figure width (the client profile's exercise drawer uses 84); the height keeps the 120 × 244 shape.
+  final double figWidth;
+
+  /// Legend Primary · Also works (`cp-exmap`) instead of Primary · Strong · Light.
+  final bool twoKeys;
 
   /// `.bm.click` (board ExerciseAdd): tapping a muscle gives its region ("chest", "lowback"…).
   final ValueChanged<String>? onTap;
@@ -124,18 +130,19 @@ class BodyMap extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = figWidth, h = figWidth * 208 / 102;
     Widget fig(String body, String cap) => Column(mainAxisSize: MainAxisSize.min, spacing: 2, children: [
           if (onTap == null)
-            SizedBox(width: 102, height: 208, child: SvgPicture.string(_svg(body)))
+            SizedBox(width: w, height: h, child: SvgPicture.string(_svg(body)))
           else
             MouseRegion(
               cursor: SystemMouseCursors.click,
               child: GestureDetector(
                 onTapUp: (d) {
-                  final r = _hit(body == bodyFront ? _front : _back, Offset(d.localPosition.dx * 120 / 102, d.localPosition.dy * 244 / 208));
+                  final r = _hit(body == bodyFront ? _front : _back, Offset(d.localPosition.dx * 120 / w, d.localPosition.dy * 244 / h));
                   if (r != null) onTap!(r);
                 },
-                child: SizedBox(width: 102, height: 208, child: SvgPicture.string(_svg(body))),
+                child: SizedBox(width: w, height: h, child: SvgPicture.string(_svg(body))),
               ),
             ),
           Text(cap, style: AppText.s(11.5, W.w6, color: AppColors.muted)),
@@ -149,7 +156,10 @@ class BodyMap extends StatelessWidget {
       decoration: BoxDecoration(color: AppColors.caWebBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.line)),
       child: Column(mainAxisSize: MainAxisSize.min, spacing: 10, children: [
         Row(mainAxisSize: MainAxisSize.min, spacing: 14, children: [fig(bodyFront, 'Front'), fig(bodyBack, 'Back')]),
-        Row(mainAxisSize: MainAxisSize.min, spacing: 10, children: [key(AppColors.accent, 'Primary'), key(AppColors.bmStrong, 'Strong'), key(AppColors.bmLight, 'Light')]),
+        Row(mainAxisSize: MainAxisSize.min, spacing: 10, children: [
+          key(AppColors.accent, 'Primary'),
+          if (twoKeys) key(AppColors.bmStrong, 'Also works') else ...[key(AppColors.bmStrong, 'Strong'), key(AppColors.bmLight, 'Light')],
+        ]),
       ]),
     );
   }

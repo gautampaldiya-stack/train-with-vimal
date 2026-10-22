@@ -201,6 +201,7 @@ class ClientUpdateSerializer(serializers.Serializer):
                                                 min_value=20, max_value=400)
     current_weight_kg = serializers.DecimalField(max_digits=5, decimal_places=1, required=False, allow_null=True,
                                                 min_value=20, max_value=400)
+    target_date = serializers.DateField(required=False, allow_null=True)
     health_notes = serializers.CharField(required=False, allow_blank=True, max_length=2000)
     start_date = serializers.DateField(required=False, allow_null=True)
     package_name = serializers.CharField(required=False, allow_blank=True, max_length=80)

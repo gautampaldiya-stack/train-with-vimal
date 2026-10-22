@@ -249,7 +249,11 @@ def _supps(client, start, end):
                 took[d] += 1
             n += 1
             out.append({"key": it.name.strip().lower(), "name": it.name, "pct": _pct(len(done), len(due))})
-    return {"items": out, "all": _pct(sum(1 for d in days if n and took[d] >= n), len(days)) if n else None}
+    from apps.activity.models import ActivityEvent
+
+    ran_out = ActivityEvent.objects.filter(client=client, meta__history="stock_out", created_at__date__range=(start, end))
+    return {"items": out, "all": _pct(sum(1 for d in days if n and took[d] >= n), len(days)) if n else None,
+            "ran_out": ran_out.count()}
 
 
 def _body(client, start, end):

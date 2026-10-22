@@ -381,6 +381,7 @@ Send a form to one client later or again and again (Client profile → Send a fo
 | `start_weight_kg` | DecimalField | optional |
 | `current_weight_kg` | DecimalField | optional |
 | `target_weight_kg` | DecimalField | optional |
+| `target_date` | DateField | optional; when the client wants to reach the goal (D-46) |
 | `health_notes` | TextField |  |
 | `start_date` | DateField | optional |
 | `package_name` | CharField |  |
@@ -1404,3 +1405,19 @@ One workout the client did (or is doing) — the logger screen.
 | `done` | BooleanField |  |
 | `done_at` | DateTimeField | optional |
 | `is_pr` | BooleanField |  |
+
+### FormVideo
+
+A short video the client films of one set so the coach can check the form (D-46).
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | BigAutoField |  |
+| `workout` | ForeignKey | → WorkoutLog; related_name `form_videos`; indexed |
+| `exercise` | ForeignKey | → Exercise; indexed |
+| `set_number` | PositiveSmallIntegerField |  |
+| `file` | FileField | `form_videos/`; mp4 / mov / m4v / webm, up to 100 MB |
+| `file_size` | PositiveBigIntegerField |  |
+| `duration_seconds` | PositiveIntegerField | optional; from ffprobe |
+| `note` | CharField |  |
+| `created_at` | DateTimeField |  |

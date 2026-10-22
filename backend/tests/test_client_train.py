@@ -140,3 +140,23 @@ def test_exercise_thumb_from_youtube():
     assert youtube_thumb("https://youtu.be/dQw4w9WgXcQ") == "https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg"
     assert youtube_thumb("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=3") .endswith("/dQw4w9WgXcQ/mqdefault.jpg")
     assert youtube_thumb("") is None
+
+
+def test_form_video_reaches_the_coach(client_user, trainer):
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    from apps.notifications.models import Notification
+
+    wid = _start(client_user)
+    rdl = Exercise.objects.get(name="Romanian Deadlift", is_builtin=True)
+    r = client_user.post(f"{W}{wid}/form-video/", {"file": SimpleUploadedFile("set3.mp4", b"\x00" * 4096, "video/mp4"),
+                                                   "exercise": str(rdl.id), "set_number": 3}, format="multipart")
+    assert r.status_code == 201, r.content
+    assert r.json()["exercise_name"] == "Romanian Deadlift" and r.json()["set_number"] == 3
+    bad = client_user.post(f"{W}{wid}/form-video/", {"file": SimpleUploadedFile("a.txt", b"x"), "exercise": str(rdl.id)},
+                           format="multipart")
+    assert bad.status_code == 400
+    riya = WorkoutLog.objects.get(id=wid).client
+    d = trainer.get(f"/api/v1/clients/{riya.id}/workouts/{wid}/").json()
+    assert d["form_videos"][0]["url"] and d["form_videos"][0]["set_number"] == 3
+    assert Notification.objects.filter(recipient=riya.client_profile.trainer, event="form_video").exists()

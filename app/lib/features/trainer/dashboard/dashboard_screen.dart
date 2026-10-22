@@ -296,8 +296,7 @@ class _TrainerDashboardScreenState extends State<TrainerDashboardScreen> {
               SizedBox(width: 28, child: menu),
             ])
           : Row(spacing: 10, children: [
-              SizedBox(width: 52, child: time),
-              _Av(s.client),
+              SizedBox(width: 52, child: time), // no client avatar here (Gautam, 22 Oct)
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [name, where])),
               ?status,
               ?next,

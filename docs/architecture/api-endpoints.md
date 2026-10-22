@@ -352,6 +352,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `me/workouts/<pk>/clear-sets/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/<pk>/discard/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/<pk>/feedback/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
+| `me/workouts/<pk>/form-video/` | POST | MyWorkoutViewSet | Logger set menu → Send a form video. Multipart `file`, `exercise`, `set_number`, `note`. Tells the trainer (`form_video`); shows in the client profile Logs → workout detail (`form_videos`). D-46 |
 | `me/workouts/<pk>/finish/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/<pk>/pause/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/<pk>/reopen/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |

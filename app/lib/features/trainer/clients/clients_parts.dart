@@ -33,7 +33,7 @@ const _bools = ['doctor_ok', 'takes_supplements', 'takes_medicines'];
 class _EditState extends ChangeNotifier {
   bool loaded = false, busy = false;
   String gender = '', goal = '';
-  DateTime? dob;
+  DateTime? dob, target;
   Map<String, String> errors = {};
 
   /// Choice, yes / no, list and days answers by field key; option lists by field key.
@@ -85,6 +85,7 @@ Future<bool?> showClientDetailsDrawer(BuildContext context,
       s.gender = '${d['gender'] ?? ''}';
       s.goal = '${p['goal'] ?? ''}';
       s.dob = DateTime.tryParse(b);
+      s.target = DateTime.tryParse('${p['target_date'] ?? ''}');
       s.options = {
         for (final e in ((d['options'] as Map?) ?? const {}).entries)
           '${e.key}': [for (final o in (e.value as List)) ('${o['value']}', '${o['label']}')],
@@ -134,6 +135,7 @@ Future<bool?> showClientDetailsDrawer(BuildContext context,
         'city': city.text.trim(),
         'goal': s.goal,
         'target_weight_kg': n(goalW),
+        'target_date': s.target == null ? null : DateFormat('yyyy-MM-dd').format(s.target!),
         'height_cm': n(height),
         'current_weight_kg': n(weight),
         'health_notes': notes.text.trim(),
@@ -281,11 +283,16 @@ Future<bool?> showClientDetailsDrawer(BuildContext context,
                 ),
                 two(
                   ctx,
+                  field('Target date', _DateBox(s.target, future: true, onPick: (v) => s.set(() => s.target = v)), error: e['target_date']),
+                  field('Enrolled for', other('enrolled_for')),
+                ),
+                two(
+                  ctx,
                   field('Height', AppTextField(controller: height, keyboard: const TextInputType.numberWithOptions(decimal: true), suffix: _unit('cm')), error: e['height_cm']),
                   field('Current weight', AppTextField(controller: weight, keyboard: const TextInputType.numberWithOptions(decimal: true), suffix: _unit('kg')),
                       error: e['current_weight_kg']),
                 ),
-                two(ctx, field('Training experience', choice('experience')), field('Enrolled for', other('enrolled_for'))),
+                field('Training experience', choice('experience')),
                 text('goal_detail', 'Anything specific about the goal', lines: 1, hint: 'A wedding in March, lose belly fat…'),
               ]),
               sec('Training', 'From the coaching form. Change them when their routine changes.', [
@@ -348,20 +355,31 @@ Widget _unit(String u) => Text(u, style: AppText.s(13, W.w6, color: AppColors.mu
 
 /// Date of birth: a box like the other inputs that opens the date picker (no typing).
 class _DateBox extends StatelessWidget {
-  const _DateBox(this.value, {required this.onPick});
+  const _DateBox(this.value, {required this.onPick, this.future = false});
   final DateTime? value;
   final ValueChanged<DateTime> onPick;
+
+  /// Target date: today to 5 years ahead, shown as "Feb 2027" (date of birth: past, with the age).
+  final bool future;
 
   @override
   Widget build(BuildContext context) => Hover(
         onTap: () async {
           final now = DateTime.now();
-          final v = await showDatePicker(
-            context: context,
-            initialDate: value ?? DateTime(now.year - 25),
-            firstDate: DateTime(now.year - 100),
-            lastDate: DateTime(now.year - 10, now.month, now.day),
-          );
+          final today = DateTime(now.year, now.month, now.day);
+          final v = future
+              ? await showDatePicker(
+                  context: context,
+                  initialDate: value != null && !value!.isBefore(today) ? value! : DateTime(now.year, now.month + 3, now.day),
+                  firstDate: today,
+                  lastDate: DateTime(now.year + 5, now.month, now.day),
+                )
+              : await showDatePicker(
+                  context: context,
+                  initialDate: value ?? DateTime(now.year - 25),
+                  firstDate: DateTime(now.year - 100),
+                  lastDate: DateTime(now.year - 10, now.month, now.day),
+                );
           if (v != null) onPick(v);
         },
         builder: (_, h, _) => Container(
@@ -370,7 +388,12 @@ class _DateBox extends StatelessWidget {
           decoration: BoxDecoration(color: AppColors.white, borderRadius: AppRadius.all(AppRadius.input), border: Border.all(color: h ? AppColors.lineHover : AppColors.line2)),
           child: Row(spacing: 8, children: [
             Expanded(
-              child: Text(value == null ? 'Pick a date' : '${DateFormat('d MMM yyyy').format(value!)} · ${_age(value!)} years',
+              child: Text(
+                  value == null
+                      ? 'Pick a date'
+                      : future
+                          ? DateFormat('d MMM yyyy').format(value!)
+                          : '${DateFormat('d MMM yyyy').format(value!)} · ${_age(value!)} years',
                   style: AppText.s(14, value == null ? W.w5 : W.w6, color: value == null ? AppColors.muted : AppColors.text)),
             ),
             const AppIcon(AppIcons.calendar, size: 16, color: AppColors.muted),

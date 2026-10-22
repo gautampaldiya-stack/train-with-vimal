@@ -205,7 +205,7 @@ class _DetailState extends State<_Detail> {
           meField(
             'Video',
             hasFile
-                ? _FileRow(icon: AppIcons.video, name: '${d['file_name']}', sub: _fileSub(d), badge: 'Plays in the app', onTap: _play)
+                ? _FileRow(icon: AppIcons.video, name: '${d['file_name']}', sub: _fileSub(d), badge: 'Plays in the app')
                 : _FileRow(icon: AppIcons.youtube, name: '${d['youtube_url'] ?? ''}', sub: 'YouTube link', badge: 'Plays in the app'),
           ),
         if ((kind == 'pdf' || kind == 'image') && hasFile)

@@ -16,6 +16,7 @@ import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/tabs.dart';
 import '../../../core/widgets/tooltip.dart';
+import '../lib_common.dart' show SearchTabsRow;
 import 'content_drawers.dart';
 import 'ct_common.dart';
 
@@ -303,7 +304,7 @@ class _ContentScreenState extends State<ContentScreen> {
         final cw = (w - gap * (cols - 1)) / cols;
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: phone ? 12 : 14, children: [
           if (w >= 640)
-            Row(children: [SizedBox(width: 300, child: search), const Spacer(), tabs])
+            SearchTabsRow(search: search, tabs: tabs, searchWidth: 300)
           else ...[
             search,
             Align(alignment: Alignment.centerLeft, child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: tabs)),

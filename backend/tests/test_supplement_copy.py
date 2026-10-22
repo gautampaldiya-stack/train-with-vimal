@@ -135,3 +135,22 @@ def test_stock_at_home_is_saved_for_the_client(trainer):
     assert r.status_code == 200, r.content
     first = next(i for i in r.json()["items"] if i["name"] == items[0]["name"])
     assert first["stock"] == {"quantity": 12, "unit": "scoops"}
+
+
+def test_running_out_of_stock_is_counted_in_compare(trainer, client_user, django_capture_on_commit_callbacks):
+    from datetime import timedelta
+
+    master, riya, other, rows = _on_same_master(trainer)
+    first = rows[riya]["items"][0]
+    url = f"/api/v1/me/supplements/{first['id']}/"
+    with django_capture_on_commit_callbacks(execute=True):
+        assert client_user.patch(url, {"quantity": 1, "unit": "scoops"}, format="json").status_code == 200
+        r = client_user.post(url, {"taken": True}, format="json")  # last scoop → ran out
+        assert r.json()["stock"]["quantity"] == 0
+        client_user.patch(url, {"quantity": 5}, format="json")
+        client_user.patch(url, {"quantity": 0}, format="json")  # says none left → ran out again
+    today = timezone.localdate()
+    q = {"a_from": str(today - timedelta(days=20)), "a_to": str(today - timedelta(days=10)),
+         "b_from": str(today - timedelta(days=9)), "b_to": str(today)}
+    d = trainer.get(f"/api/v1/clients/{riya}/logs/compare/", q).json()
+    assert d["b"]["supps"]["ran_out"] == 2 and d["a"]["supps"]["ran_out"] == 0

@@ -17,6 +17,7 @@ from apps.activity.services import log as activity_log
 from apps.clients.services import get_visible_client, visible_clients
 from apps.common.mixins import SoftDeleteViewMixin
 from apps.common.permissions import HasTrainerPermission, IsClient, IsStaff
+from apps.notifications.services import notify
 
 from . import services
 from .services import can_edit_program
@@ -810,6 +811,50 @@ class MyWorkoutViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewset
 
     def get_serializer_class(self):
         return WorkoutRowSerializer if self.action == "list" else WorkoutLogSerializer
+
+    @action(detail=True, methods=["post"], url_path="form-video")
+    def form_video(self, request, pk=None):
+        """A form check: a short clip of one set (MP4 / MOV, up to 100 MB). The coach gets a notice and sees it in
+        the workout log with Watch."""
+        from apps.training.frames import ffmpeg_exe, probe_source
+
+        from .models import FormVideo
+        from .serializers import form_video_json
+
+        w = self.get_object()
+        f = request.FILES.get("file")
+        ext = f.name.rsplit(".", 1)[-1].lower() if f and "." in f.name else ""
+        if not f or ext not in ("mp4", "mov", "m4v", "webm"):
+            raise serializers.ValidationError({"file": ["Send an MP4 or MOV video."]})
+        if f.size > 100 * 1024 * 1024:
+            raise serializers.ValidationError({"file": ["Up to 100 MB. Film just one set."]})
+        ex = request.data.get("exercise")
+        if not ex or not Exercise.objects.filter(id=ex).exists():  # the sets may still be in the outbox
+            raise serializers.ValidationError({"exercise": ["Pick an exercise from this workout."]})
+        try:
+            n = int(request.data.get("set_number") or 0) or None
+        except ValueError:
+            n = None
+        v = FormVideo.objects.create(workout=w, exercise_id=ex, set_number=n, file=f, file_size=f.size,
+                                     note=(request.data.get("note") or "")[:300])
+        exe = ffmpeg_exe()
+        if exe:
+            try:
+                src = v.file.path
+            except NotImplementedError:
+                src = v.file.url
+            secs = probe_source(exe, src)[0]
+            if secs is not None:
+                FormVideo.objects.filter(id=v.id).update(duration_seconds=secs)
+                v.duration_seconds = secs
+        u = request.user
+        what = f"{v.exercise.name}" + (f", set {n}" if n else "")
+        activity_log("sent a form video", "workout", actor=u, target=u, target_label=what, client=u)
+        trainer = getattr(u.client_profile, "trainer", None)
+        if trainer:
+            notify([trainer], "form_video", f"{u.full_name.split(' ')[0]} sent a form video", what, actor=u,
+                   data={"route": f"/clients/{u.id}?tab=logs&workout={w.id}"})
+        return Response(form_video_json(v, request), status=201)
 
     def create(self, request):
         """Start workout (returns the open one if a workout is already running)."""

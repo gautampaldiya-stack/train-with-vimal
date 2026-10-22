@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/icons/app_icons.dart';
@@ -551,7 +553,22 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               borderRadius: BorderRadius.circular(9),
               border: h ? Border.all(color: AppColors.text2, width: 1.5) : null,
             ),
-            child: Text(lbl, style: AppText.s(13, W.w8, color: s.wu ? AppColors.amberText : (s.done ? AppColors.avGreenText : AppColors.text2))),
+            child: Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
+              Text(lbl, style: AppText.s(13, W.w8, color: s.wu ? AppColors.amberText : (s.done ? AppColors.avGreenText : AppColors.text2))),
+              // Form video sent for this set
+              if (c.isFilmed(s))
+                Positioned(
+                  right: -9,
+                  top: -9,
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(color: AppColors.accent, shape: BoxShape.circle, border: Border.all(color: AppColors.white, width: 1.5)),
+                    child: const AppIcon(AppIcons.camera, size: 9, color: AppColors.white),
+                  ),
+                ),
+            ]),
           ),
         ),
       ),
@@ -996,9 +1013,48 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 close();
                 c.warmup(k);
               }),
+          _mi('Send a form video', icon: AppIcons.camera, sub: 'Film this set for your coach to check', onTap: () {
+            close();
+            _formVideo(anchor, c, k);
+          }),
           _mi('Delete set', icon: AppIcons.trash, danger: true, onTap: () {
             close();
             c.deleteSet(k);
+          }),
+        ]));
+  }
+
+  /// Form check video (Gautam, 22 Oct: from the logger, per set): record on a phone or pick a clip, up to 100 MB.
+  void _formVideo(BuildContext anchor, WorkoutController c, int k) {
+    final s = c.sets[c.cur][k];
+    final exName = c.ex[c.cur].name;
+    Future<void> pick(ImageSource src) async {
+      try {
+        final x = await ImagePicker().pickVideo(source: src, maxDuration: const Duration(seconds: 60));
+        if (x == null) return;
+        final b = await x.readAsBytes();
+        if (b.length > 100 * 1024 * 1024) {
+          c.toast?.call('This video is too big', sub: 'Up to 100 MB. Film just one set.', kind: ToastKind.warn);
+          return;
+        }
+        await c.sendFormVideo(s, exName, x.name.contains('.') ? x.name : '${x.name}.mp4', b);
+      } catch (_) {
+        c.toast?.call('Could not open the camera', sub: 'Allow camera and video access for the app in your phone settings', kind: ToastKind.warn);
+      }
+    }
+
+    if (kIsWeb) {
+      pick(ImageSource.gallery);
+      return;
+    }
+    _popover(anchor, width: 240, builder: (ctx, close) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          _mi('Record a video', icon: AppIcons.camera, sub: 'Up to 60 seconds', onTap: () {
+            close();
+            pick(ImageSource.camera);
+          }),
+          _mi('Choose a video', icon: AppIcons.video, sub: 'From your gallery', onTap: () {
+            close();
+            pick(ImageSource.gallery);
           }),
         ]));
   }

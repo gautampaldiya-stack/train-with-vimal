@@ -378,14 +378,26 @@ class SetLogSerializer(serializers.ModelSerializer):
 
 class WorkoutLogSerializer(serializers.ModelSerializer):
     sets = SetLogSerializer(many=True, read_only=True)
+    form_videos = serializers.SerializerMethodField()
 
     class Meta:
         model = WorkoutLog
         fields = ["id", "assignment", "program_day", "name", "date", "status", "started_at", "finished_at",
                   "duration_seconds", "time_breakdown", "effort", "note", "sets_done", "sets_planned", "auto_saved",
-                  "paused_at", "reopened_at", "sets"]
+                  "paused_at", "reopened_at", "sets", "form_videos"]
         read_only_fields = ["status", "finished_at", "sets_done", "sets_planned", "auto_saved", "assignment",
                             "started_at", "paused_at", "reopened_at"]
+
+    def get_form_videos(self, obj):
+        return [form_video_json(v, self.context.get("request")) for v in obj.form_videos.select_related("exercise")]
+
+
+def form_video_json(v, request=None):
+    url = v.file.url if v.file else None
+    if url and request:
+        url = request.build_absolute_uri(url)
+    return {"id": v.id, "exercise": str(v.exercise_id), "exercise_name": v.exercise.name, "set_number": v.set_number,
+            "url": url, "duration_seconds": v.duration_seconds, "note": v.note, "created_at": v.created_at}
 
 
 class WorkoutRowSerializer(serializers.ModelSerializer):

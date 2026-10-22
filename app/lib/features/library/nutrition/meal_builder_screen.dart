@@ -851,10 +851,14 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
         if (_edit) Builder(builder: (b) => AppIconButton(AppIcons.dots, tooltip: 'Meal options', small: true, ghost: true, onPressed: () => _mealMenu(b, meal))),
       ]),
     );
-    final tabs = Wrap(spacing: 4, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
-      for (final (i, o) in os.indexed) _optTab(meal, i, o, i == oi),
-      if (_edit) Builder(builder: (b) => _optAdd(() => _addOptionMenu(b, meal))),
-    ]);
+    // Option tabs: one line, sideways scroll when there are many (Gautam, 22 Oct)
+    final tabs = SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(spacing: 4, children: [
+        for (final (i, o) in os.indexed) _optTab(meal, i, o, i == oi),
+        if (_edit) Builder(builder: (b) => _optAdd(() => _addOptionMenu(b, meal))),
+      ]),
+    );
     final optRow = Container(
       padding: phone ? const EdgeInsets.fromLTRB(12, 0, 12, 10) : const EdgeInsets.fromLTRB(16, 0, 16, 10),
       decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),

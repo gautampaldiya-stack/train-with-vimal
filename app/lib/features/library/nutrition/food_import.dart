@@ -573,8 +573,8 @@ class _ImportFooterState extends State<_ImportFooter> {
     final st = s;
     final two = st?.step.value == 2;
     final phone = context.isPhone;
-    return Expanded(
-      child: Row(spacing: 8, children: [
+    // On a phone the sheet stacks its footer in a Column, so the row can't be Expanded there.
+    final row = Row(spacing: 8, children: [
         if (two) AppButton('Back', kind: BtnKind.text, icon: AppIcons.chevronLeft, onPressed: st?.back),
         if (!phone) Expanded(child: Text(st?.note ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted))) else const Spacer(),
         AppButton('Cancel', onPressed: () => Navigator.of(context).pop()),
@@ -583,7 +583,7 @@ class _ImportFooterState extends State<_ImportFooter> {
           child: AppButton.primary(two ? 'Import ${plural(st?.newCount ?? 0, 'food')}' : 'Next',
               icon: AppIcons.check, loading: st?.busy.value == true, onPressed: st?.next),
         ),
-      ]),
-    );
+      ]);
+    return phone ? row : Expanded(child: row);
   }
 }

@@ -290,6 +290,8 @@ class _CpLogsCompareState extends State<CpLogsCompare> {
                       nb: _d(ib[k]?['pct']), bars: true, change: ia[k] == null ? 'New' : 'Stopped')
                   : _pct('${ib[k]!['name']}', ia[k]!['pct'], ib[k]!['pct']),
             _pct('All taken', x['all'], y['all']),
+            // Stock history: times a supplement ran out at home (fewer is better).
+            _val('Ran out of stock', x['ran_out'], y['ran_out'], (v) => v == 1 ? '1 time' : '${v.round()} times', better: false),
           ]),
         ];
       default: // body
