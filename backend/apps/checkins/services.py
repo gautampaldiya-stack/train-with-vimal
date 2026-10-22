@@ -317,12 +317,18 @@ def unreview(sub):
     return sub
 
 
+def form_route(req):
+    """Where a form notification opens in the client app: its own card's page, or the form to fill."""
+    t = req.form.type
+    return "/checkins/weekly" if t == "weekly" else "/checkins/daily" if t == "daily" else f"/checkins/forms/{req.id}"
+
+
 def send_form(client, form, *, actor=None, automation_run=None, due_at=None, channels=None):
     """Client profile → Send a form (or an automation step)."""
     req = FormRequest.objects.create(form=form, client=client, sent_by=actor, automation_run=automation_run,
                                      due_at=due_at)
     notify(client, "form_request", f"{form.name}", "Your coach sent you a form. It takes a few minutes.",
-           actor=actor, channels=channels, data={"route": "/checkins", "request": str(req.id)})
+           actor=actor, channels=channels, data={"route": form_route(req), "request": str(req.id)})
     activity_log(f"sent {form.name}", "checkin", actor=actor, target=client, target_label=form.name, client=client)
     return req
 

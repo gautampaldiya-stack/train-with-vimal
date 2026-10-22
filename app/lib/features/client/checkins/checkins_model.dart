@@ -19,6 +19,7 @@ class CheckinsController extends ChangeNotifier {
     };
     Services.outbox.pending.addListener(_sent);
     _draftBus.addListener(_draftChanged);
+    _formDraftBus.addListener(_formDraftChanged);
     // Something sent from another page (a check-in, a workout, a meal): show it here too.
     _results = Services.outbox.results.listen((r) {
       if (r.error == null && data != null) load();
@@ -55,11 +56,29 @@ class CheckinsController extends ChangeNotifier {
   }
   final _details = <String, Map<String, dynamic>>{};
 
+  /// Coach forms with a draft on this phone: request id → questions answered.
+  final formDrafts = <String, int>{};
+  Future<void> _formDraftChanged() async {
+    await _readFormDrafts();
+    notifyListeners();
+  }
+
+  Future<void> _readFormDrafts() async {
+    formDrafts.clear();
+    for (final f in data?.forms ?? const <CkSentForm>[]) {
+      if (f.filled) continue;
+      final d = await Services.cache.read('form:draft:${f.id}');
+      final n = d is Map ? (d['answered'] as num?)?.toInt() ?? 0 : 0;
+      if (n > 0) formDrafts[f.id] = n;
+    }
+  }
+
   @override
   void dispose() {
     Services.outbox.pending.removeListener(_sent);
     _results.cancel();
     _draftBus.removeListener(_draftChanged);
+    _formDraftBus.removeListener(_formDraftChanged);
     super.dispose();
   }
 
@@ -68,6 +87,7 @@ class CheckinsController extends ChangeNotifier {
     if (c is Map && data == null) {
       _take(c.cast<String, dynamic>());
       await _readDraft();
+      await _readFormDrafts();
       notifyListeners();
     }
     await load();
@@ -104,6 +124,7 @@ class CheckinsController extends ChangeNotifier {
       if (t == 'weekly') unawaited(Services.cache.write(_cacheKey, j));
       _take(j);
       await _readDraft();
+      await _readFormDrafts();
       if (data!.daily.sent != null) queuedDaily = null;
       if (data!.weekly.sent != null) queuedWeekly = null;
       error = null;
@@ -258,6 +279,20 @@ class CheckinsController extends ChangeNotifier {
   }
 }
 
+/// Drafts of coach forms, kept on the phone by request id. The Check-ins card reads `answered` to show
+/// "Draft · 2 of 3 answered" and "Continue form".
+Future<Map<String, dynamic>?> formDraft(String id) async {
+  final d = await Services.cache.read('form:draft:$id');
+  return d is Map ? d.cast<String, dynamic>() : null;
+}
+
+final _formDraftBus = ValueNotifier<int>(0);
+
+Future<void> saveFormDraft(String id, Map<String, dynamic>? d) async {
+  await Services.cache.write('form:draft:$id', d);
+  _formDraftBus.value++;
+}
+
 String ymd(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
 
 double? _num(Object? v) => v is num ? v.toDouble() : (v is String ? double.tryParse(v) : null);
@@ -281,6 +316,9 @@ class CheckinsData {
   final Map<String, dynamic> j;
   final CkDaily daily;
   final CkWeekly weekly;
+
+  /// Forms the coach sent: waiting ones, then the ones sent in the last two weeks (D-49).
+  List<CkSentForm> get forms => [for (final f in (j['forms'] as List? ?? [])) CkSentForm((f as Map).cast<String, dynamic>())];
 
   Map<String, dynamic>? get _coach => j['coach'] as Map<String, dynamic>?;
   String get coachFirst => (_coach?['first_name'] as String?) ?? 'Your coach';
@@ -308,6 +346,22 @@ class CheckinsData {
       (ch == null ? '—' : kgChange(ch, zero: '0.0 kg'), 'Last weekly change'),
     ];
   }
+}
+
+/// A form the coach sent, as a card on Check-ins (boards ClientForm / ClientFormWeb).
+class CkSentForm {
+  CkSentForm(this.j);
+  final Map<String, dynamic> j;
+  String get id => '${j['id']}';
+  String get name => '${j['name']}';
+  String get from => '${j['from'] ?? 'Your coach'}';
+  String get why => '${j['why'] ?? ''}';
+  int get count => (j['question_count'] as num?)?.toInt() ?? 0;
+  List<String> get chips => [for (final c in (j['chips'] as List? ?? [])) '$c'];
+  DateTime? get sentAt => DateTime.tryParse('${j['sent_at']}')?.toLocal();
+  DateTime? get dueAt => DateTime.tryParse('${j['due_at']}')?.toLocal();
+  DateTime? get filledAt => DateTime.tryParse('${j['filled_at']}')?.toLocal();
+  bool get filled => filledAt != null;
 }
 
 class CkDaily {

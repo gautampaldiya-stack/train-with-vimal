@@ -19,6 +19,7 @@ import '../features/auth/verify_email_screen.dart';
 import '../features/auth/setup/checklist_screen.dart';
 import '../features/auth/setup/done_screen.dart';
 import '../features/auth/setup/setup_screen.dart';
+import '../features/client/checkins/checkins_form.dart';
 import '../features/client/checkins/checkins_screen.dart';
 import '../features/client/food/food_log_screen.dart';
 import '../features/client/food/food_screen.dart';
@@ -90,6 +91,7 @@ final Map<String, Widget Function(GoRouterState)> screens = {
       ? FoodLogScreen(key: ValueKey(st.uri.toString()), meal: st.uri.queryParameters['meal'], at: st.uri.queryParameters['at'])
       : const ClientFoodScreen(),
   '/checkins': (_) => const ClientCheckinsScreen(),
+  '/checkins/forms/:sub': (st) => ClientFormScreen(key: ValueKey(st.uri.toString()), id: st.pathParameters['sub']!),
   '/checkins/:id': (st) => ClientCheckinsScreen(
         key: ValueKey(st.uri.toString()),
         id: st.pathParameters['id'],
@@ -229,6 +231,14 @@ final appRouter = GoRouter(
               // A page with unsaved work (program builder, exercise form) is asked before it closes (D-43).
               onExit: (context, _) => LeaveGuard.ask(context),
               pageBuilder: (_, st) => NoTransitionPage(child: _screen('/${st.pathParameters['section']}/:id', st)),
+              routes: [
+                // Three-part paths: `/checkins/forms/<id>` (a form the coach sent, D-49).
+                GoRoute(
+                  path: ':sub',
+                  onExit: (context, _) => LeaveGuard.ask(context),
+                  pageBuilder: (_, st) => NoTransitionPage(child: _screen('/${st.pathParameters['section']}/${st.pathParameters['id']}/:sub', st)),
+                ),
+              ],
             ),
           ],
         ),

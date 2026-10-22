@@ -263,7 +263,7 @@ def run_schedules(now=None):
 
 def remind(req):
     notify(req.client, "form_reminder", req.form.name, "A quick reminder: your coach is waiting for this form.",
-           data={"route": "/checkins", "request": str(req.id)})
+           data={"route": services.form_route(req), "request": str(req.id)})
     req.reminded_at = timezone.now()
     req.save(update_fields=["reminded_at", "updated_at"])
 

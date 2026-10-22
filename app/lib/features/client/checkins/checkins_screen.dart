@@ -110,7 +110,7 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 12,
-        children: [_top(d, web: false), _cells(d), ?_daily(d), ?_weekly(d), _history(d)],
+        children: [_top(d, web: false), _cells(d), ?_daily(d), ?_weekly(d), ..._forms(d), _history(d)],
       ),
     ),
   );
@@ -143,11 +143,18 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
                           Expanded(
                             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: left),
                           ),
-                          Expanded(child: _history(d)),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              spacing: 14,
+                              children: [..._forms(d), _history(d)],
+                            ),
+                          ),
                         ],
                       )
                     else ...[
                       ...left,
+                      ..._forms(d),
                       _history(d),
                     ],
                   ],
@@ -339,6 +346,59 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
       }
     }
     return n;
+  }
+
+  // ─────────────────────────────── Forms the coach sent (D-49)
+
+  List<Widget> _forms(CheckinsData d) => [for (final f in d.forms) _form(f)];
+
+  Widget _form(CkSentForm f) {
+    final now = DateTime.now();
+    String when(DateTime t) => DateUtils.isSameDay(t, now) ? 'today, ${clock(t)}' : dayShort(t);
+    final answered = c.formDrafts[f.id] ?? 0;
+    void open() => context.go('/checkins/forms/${f.id}');
+    if (f.filled) {
+      return Hover(
+        onTap: open,
+        builder: (_, _, _) => ChCard(
+          gap: 10,
+          children: [
+            ChHead(
+              lead: const ChIcon(AppIcons.check, tone: ChTone.green),
+              title: f.name,
+              sub: 'From ${f.from} · you sent it ${when(f.filledAt!)}',
+              action: hkPill('Sent', bg: AppColors.okBg, fg: AppColors.okText),
+            ),
+          ],
+        ),
+      );
+    }
+    return ChCard(
+      gap: 10,
+      children: [
+        ChHead(
+          lead: const ChIcon(AppIcons.check, tone: ChTone.purple),
+          title: f.name,
+          sub: [
+            'From ${f.from}',
+            if (f.sentAt != null) 'sent ${when(f.sentAt!)}',
+            if (f.dueAt != null) 'due ${dayShort(f.dueAt!)}',
+          ].join(' · '),
+          action: hkPill('To fill', bg: AppColors.infoBg, fg: AppColors.infoText),
+        ),
+        if (f.why.isNotEmpty) Text(f.why, style: AppText.s(12.5, W.w4, color: AppColors.muted, h: 1.45)),
+        if (f.chips.isNotEmpty) Wrap(spacing: 5, runSpacing: 5, children: [for (final t in f.chips) _chip(t)]),
+        if (answered > 0 && f.count > 0)
+          Row(
+            spacing: 10,
+            children: [
+              Expanded(child: ChBar(answered / f.count, color: AppColors.accent)),
+              Text('Draft · $answered of ${f.count} answered', style: AppText.s(12, W.w7, color: AppColors.muted)),
+            ],
+          ),
+        CaButton(answered > 0 ? 'Continue form' : 'Fill in form', kind: answered > 0 ? CaBtnKind.pri : CaBtnKind.dark, onPressed: open),
+      ],
+    );
   }
 
   Widget _chip(String t) => Container(

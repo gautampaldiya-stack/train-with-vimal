@@ -294,3 +294,56 @@ def checkins_page(client, tab="weekly", before=None, request=None):
         "tab": tab, "history": rows, "has_more": more, "history_total": totals,
         "next_before": rows[-1]["date"] if rows and more else None,
     }
+
+
+# ---------- Forms the coach sent (boards ClientForm / ClientFormWeb, D-49) ----------
+
+FORMS_SENT_DAYS = 14  # a filled form stays on the page as "Sent" for two weeks
+CARD_SKIP = ("weekly", "daily")  # these have their own cards
+
+
+def _minutes(n):
+    m = max(1, round(n * 20 / 60))  # about 20 seconds a question
+    return "about a minute" if m == 1 else f"about {m} minutes"
+
+
+def _from(req, coach_first):
+    if req.sent_by is not None and req.sent_by.first_name:
+        return req.sent_by.first_name
+    return coach_first or "Your coach"
+
+
+def form_card(req, coach_first):
+    qs = [q for q in req.form.questions.all() if not q.is_removed]
+    n = len(qs)
+    return {"id": str(req.id), "name": req.form.name, "type": req.form.type, "from": _from(req, coach_first),
+            "sent_at": req.created_at, "due_at": req.due_at, "filled_at": req.filled_at,
+            "question_count": n, "chips": [_chip(q) for q in qs[:5]],
+            "why": f"{n} {'question' if n == 1 else 'questions'}. Takes {_minutes(n)}."}
+
+
+def form_cards(client):
+    """Waiting forms first (oldest due first), then the ones filled in the last two weeks."""
+    from .models import FormRequest
+
+    coach = client.client_profile.trainer
+    coach_first = coach.first_name if coach else ""
+    since = timezone.now() - timedelta(days=FORMS_SENT_DAYS)
+    base = (FormRequest.objects.filter(client=client).exclude(form__type__in=CARD_SKIP)
+            .select_related("form", "sent_by").prefetch_related("form__questions"))
+    waiting = base.filter(filled_at__isnull=True).order_by("due_at", "created_at")
+    done = base.filter(filled_at__gte=since).order_by("-filled_at")
+    return [form_card(r, coach_first) for r in list(waiting) + list(done)]
+
+
+def form_request(client, req):
+    """One form to fill (or what was sent): the card, its questions and, once filled, the answers."""
+    coach = client.client_profile.trainer
+    coach_first = coach.first_name if coach else ""
+    out = form_card(req, coach_first)
+    out["form"] = form_payload(req.form, _from(req, coach_first))
+    sub = Submission.objects.filter(request=req).order_by("-created_at").first() if req.filled_at else None
+    out["submission"] = None if sub is None else {
+        "id": str(sub.id), "sent_at": sub.created_at,
+        "answers": {str(a.question_id): a.value for a in sub.answers.all() if not a.photo}}
+    return out

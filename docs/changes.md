@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-22 · Client fills forms the coach sends (built)
+- **Pehle:** Coach ka bheja form (Monthly feedback, Liability waiver, PAR-Q, apna form) client ke app me kahin nahi dikhta tha aur bharne ka page nahi tha. Notification `/checkins` par le jaati thi. Bhara hua form dobara bheja ja sakta tha, aur Undo ke baad form "bhara hua" hi rehta tha.
+- **Ab:** Check-ins par har form ka card (To fill, sawal kitne aur kitna time, chips, draft bar + Continue form; bhara hua 14 din tak green Sent). Form page `/checkins/forms/<id>`: ek page ek sawal, har type, review + Edit, Send to Aman (offline bhi), sent card, Undo (form wapas To fill). Notification seedha form kholti hai. Naya endpoint `me/forms/<id>/`, `me/checkins/` me `forms`. Design example Monthly feedback; PAR-Q onboarding me nahi, Forms ka form hi rahega.
+- **Kyun:** Gautam ne design approve kiya ("ab banao.. sab ache se"); PAR-Q par: "forms and checkins wale me add rakho".
+- **Updated:** backend apps/checkins (client_page.py, views.py, urls.py, services.py, client_forms.py, defaults.py), tests/test_client_form_page.py, app/lib/features/client/checkins (checkins_form.dart new, checkins_screen.dart, checkins_model.dart, checkins_parts.dart), app/lib/app/router.dart (third route level), design/screens/ClientForm*.dc.html, docs · Decision D-49
+
 ### 2026-10-22 · Notification links fixed, admin Check-ins, client form design
 - **Pehle:** Kuch notifications app me na bane page kholte the: session reminder `/sessions/<id>`, trainer ka meal plan `/meal-plans/<id>`, coach ka bheja form `/forms/<id>`. Admin dashboard ka "Check-ins to review" holding page kholta tha. Client ke paas coach ka bheja form (jaise PAR-Q) bharne ka koi page nahi tha, aur canvas me iska board bhi nahi tha.
 - **Ab:** Session notifications `/train` kholti hain, meal plan `/nutrition/<id>`, form ki notification abhi `/checkins` (form page banne par form par jayegi). Admin ke liye `/checkins` aur `/checkins/<id>` trainer wala Check-ins page kholte hain, sab clients ke saath. Naye boards ClientForm / ClientFormWeb (canvas me Client page, Check-ins row ke right): Check-ins par coach ke form ka card (To fill / Continue form / Sent), ek-ek question wala form (yes/no, ek option, kai options, number, scale, short, long), Check your answers, Send to Aman. Design Gautam ke approval par hai, code abhi nahi bana.

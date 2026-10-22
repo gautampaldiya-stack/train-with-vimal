@@ -229,11 +229,14 @@ class CkTry extends StatelessWidget {
 
 /// `fl-in ck-in`: the note / answer box (taller with [area]).
 class CkInput extends StatelessWidget {
-  const CkInput({super.key, required this.controller, required this.hint, this.area = false, this.onChanged});
+  const CkInput({super.key, required this.controller, required this.hint, this.area = false, this.onChanged, this.keyboard});
   final TextEditingController controller;
   final String hint;
   final bool area;
   final VoidCallback? onChanged;
+
+  /// A number answer: the number keyboard, one line.
+  final TextInputType? keyboard;
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: controller,
@@ -252,8 +255,9 @@ class CkInput extends StatelessWidget {
           Expanded(
             child: TextField(
               controller: controller,
+              keyboardType: keyboard,
               minLines: area ? 3 : 1,
-              maxLines: area ? 6 : 3,
+              maxLines: area ? 6 : (keyboard != null ? 1 : 3),
               maxLength: area ? 3000 : 200,
               onChanged: (_) => onChanged?.call(),
               style: AppText.s(13.5, W.w6, h: 1.4),

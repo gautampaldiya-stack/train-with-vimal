@@ -1292,6 +1292,20 @@ Route `/checkins` (More → Check-ins). `/checkins/daily` daily form (`?edit=1` 
 
 ---
 
+### 4.9a Form from your coach — `ClientForm` / `ClientFormWeb` (built 2026-10-22, D-49)
+
+Coach (ya automation) koi form bheje (Monthly feedback, Liability waiver, PAR-Q, trainer ka apna form) to client yahan bharta hai.
+
+| Element | Kya karta hai |
+|---|---|
+| Check-ins par form card | Naam, "From Aman · sent … · due …", `To fill` pill, "N questions. Takes about …", 5 tak question chips, `Fill in form` → `/checkins/forms/<id>`. Draft ho to bar "Draft · 1 of 3 answered" aur `Continue form` (blue). Web par right column me Past check-ins ke upar, phone par Weekly card ke neeche. |
+| Sent card | 14 din tak green `Sent` card: "From Aman · you sent it today, 6:07 pm". Tap → form ka sent view. |
+| Form page | Upar back (Save and exit), naam, "From Aman · due …", "Question 1 of 7" + bar. Ek page par ek sawal; Optional tag; yes/no aur single = radio rows, multiple = checkboxes ("None…" baaki hata deta hai), number = number keyboard, scale 1–5, short / long text, photo slots. Required sawal bina jawab `Next` dim aur toast "Pick an answer to continue". Optional par button `Skip`. |
+| Review | "Check your answers", har jawab ke saath `Edit`. `Send to Aman` (offline me outbox). Missing required → toast "Answer “…” first". |
+| Sent | Green tick card "Sent to Aman", time, har sawal + jawab, `Back to check-ins`. Toast "<form> sent" + `Undo` (24 h me, coach ne dekha na ho) → form wapas "To fill". |
+| Back beech me | Draft phone par save, toast "Draft saved · 1 of 3 answered · finish by …". |
+| Notification | "Form sent" / reminder → seedha ye form khulta hai. |
+
 ### 4.10 Library — `ClientLibrary` / `ClientLibraryWeb` (built 2026-10-16, D-26)
 
 Everything the client can read or watch: what the coach shared (with an optional note), what came with the program or meal plan, and what Vimal shared with all clients. Route `/library`; `/library/<id>` opens that item (the *"New in your library: …"* notification links there).

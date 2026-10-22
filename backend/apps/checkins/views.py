@@ -363,10 +363,22 @@ class MyCheckinsView(APIView):
             raise serializers.ValidationError({"tab": ["Use weekly or daily."]})
         before = parse_date(request.query_params.get("before") or "") if request.query_params.get("before") else None
         data = checkins_page(request.user, tab, before, request=request)
-        data["pending_forms"] = FormRequestSerializer(
-            FormRequest.objects.filter(client=request.user, filled_at__isnull=True).select_related("form"),
-            many=True).data
+        from .client_page import form_cards
+
+        data["forms"] = form_cards(request.user)
         return Response(data)
+
+
+class MyFormView(APIView):
+    """A form the coach sent: its questions to fill, or what was sent (boards ClientForm / ClientFormWeb)."""
+
+    permission_classes = [IsClient]
+
+    def get(self, request, pk):
+        from .client_page import form_request
+
+        req = get_object_or_404(FormRequest.objects.select_related("form", "sent_by"), id=pk, client=request.user)
+        return Response(form_request(request.user, req))
 
 
 class MySubmissionViewSet(mixins.RetrieveModelMixin, mixins.CreateModelMixin, mixins.DestroyModelMixin,
@@ -411,6 +423,8 @@ class MySubmissionViewSet(mixins.RetrieveModelMixin, mixins.CreateModelMixin, mi
         req = None
         if request.data.get("request"):
             req = get_object_or_404(FormRequest, id=request.data["request"], client=u)
+            if req.filled_at:
+                raise serializers.ValidationError("You sent this form already.")
             form = req.form
         else:
             form = get_object_or_404(Form, id=request.data.get("form"), status="published",
@@ -449,6 +463,8 @@ class MySubmissionViewSet(mixins.RetrieveModelMixin, mixins.CreateModelMixin, mi
         if sub.reviewed_at or sub.created_at < timezone.now() - timedelta(hours=24):
             raise serializers.ValidationError("Your coach already has this check-in. Use Edit answers instead.")
         PhotoSet.objects.filter(submission=sub).delete()
+        if sub.request_id:  # a form the coach sent goes back to "To fill"
+            FormRequest.objects.filter(id=sub.request_id).update(filled_at=None)
         sub.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 

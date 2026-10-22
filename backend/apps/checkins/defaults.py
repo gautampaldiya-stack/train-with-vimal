@@ -7,7 +7,20 @@ SLEEP_OPTIONS = ["5 h", "6 h", "6.5 h", "7 h", "7.5 h", "8 h", "9 h"]
 
 # Check-ins page: the short name of a weekly question on the "what it asks" chips.
 CHIPS = {"Body weight (kg)": "Weight", "How was your week?": "Your week", "Did you follow the meal plan?": "Meal plan",
-         "Progress photos this week?": "3 photos", "Anything your coach should know?": "Notes"}
+         "Progress photos this week?": "3 photos", "Anything your coach should know?": "Notes",
+         # Forms the coach sends (the Check-ins card, D-49)
+         "How happy are you with your coaching?": "How happy you are", "What is working well?": "What works",
+         "What should we do better?": "What to do better",
+         "I confirm my health details are true and complete.": "Health details",
+         "I understand exercise has risks and I train at my own risk.": "Training risk",
+         "I will tell my coach about any pain or new health problem.": "Telling your coach",
+         "Has a doctor ever said you have a heart condition?": "Heart",
+         "Do you feel pain in your chest when you do physical activity?": "Chest pain",
+         "In the past month, have you had chest pain when not doing physical activity?": "Chest pain at rest",
+         "Do you lose your balance because of dizziness, or ever lose consciousness?": "Balance",
+         "Do you have a bone or joint problem that activity could make worse?": "Bones and joints",
+         "Are you taking medicine for blood pressure or a heart condition?": "Medicine",
+         "Do you know any other reason you should not do physical activity?": "Anything else"}
 
 
 def q(text, type, *, options=None, scale=None, help="", required=False, metric="", other=False):
