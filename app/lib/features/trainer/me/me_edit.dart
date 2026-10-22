@@ -16,16 +16,20 @@ import 'me_model.dart';
 
 /// "Edit my details" drawer (board `.drawer` in TrainerMe): Personal, Professional, Social media. Access and the
 /// client limit stay with the admin. A new email is confirmed by a link first (auth/email/change/).
-Future<void> showEditMyDetails(BuildContext context, MeController c) async {
+///
+/// Admin (board TrainerProfile `edo`, "Edit Aman’s details"): also Work (most clients, joined on) and Login (send a
+/// password reset link); the email changes straight away. Returns true when saved.
+Future<bool> showEditMyDetails(BuildContext context, MeController c) async {
   final f = _EditForm(c);
+  final note = c.admin ? 'Access is changed in the Access tab' : 'Your access and client limit are set by the admin';
   final saved = await showAppDrawer<String>(
     context,
-    title: 'Edit my details',
-    sub: 'Personal and professional details',
-    icon: AppIcons.edit,
+    title: c.admin ? 'Edit ${c.first}’s details' : 'Edit my details',
+    sub: c.admin ? 'Personal, professional and work details' : 'Personal and professional details',
+    icon: c.admin ? AppIcons.editAlt : AppIcons.edit,
     builder: (ctx) => ListenableBuilder(listenable: f, builder: (ctx, _) => f.build(ctx)),
     footer: (ctx) => [
-      if (!ctx.isPhone) Expanded(child: Text('Your access and client limit are set by the admin', maxLines: 2, style: AppText.s(12.5, W.w5, color: AppColors.muted))),
+      if (!ctx.isPhone) Expanded(child: Text(note, maxLines: 2, style: AppText.s(12.5, W.w5, color: AppColors.muted))),
       AppButton('Cancel', expand: ctx.isPhone, onPressed: () => Navigator.of(ctx).pop()),
       ListenableBuilder(
         listenable: f,
@@ -37,8 +41,9 @@ Future<void> showEditMyDetails(BuildContext context, MeController c) async {
     ],
   );
   f.dispose();
-  if (saved == null || !context.mounted) return;
-  showToast(context, 'Your details are saved', sub: saved.isEmpty ? null : saved, kind: ToastKind.ok);
+  if (saved == null || !context.mounted) return saved != null;
+  showToast(context, c.admin ? '${c.first}’s details are saved' : 'Your details are saved', sub: saved.isEmpty ? null : saved, kind: ToastKind.ok);
+  return true;
 }
 
 class _EditForm extends ChangeNotifier {
@@ -59,6 +64,8 @@ class _EditForm extends ChangeNotifier {
     gender = '${m['gender'] ?? ''}';
     mode = '${p['mode'] ?? 'gym_online'}';
     dob = meParse(m['date_of_birth']);
+    t('max_clients', '${m['max_clients'] ?? ''}');
+    joined = meParse(m['joining_date']);
     for (final x in texts.values) {
       x.addListener(notifyListeners);
     }
@@ -68,8 +75,8 @@ class _EditForm extends ChangeNotifier {
   final texts = <String, TextEditingController>{};
   final err = <String, String>{};
   String gender = '', mode = 'gym_online';
-  DateTime? dob;
-  bool saving = false;
+  DateTime? dob, joined;
+  bool saving = false, reset = false;
   String? formErr;
 
   void t(String k, String v) => texts[k] = TextEditingController(text: v);
@@ -103,6 +110,15 @@ class _EditForm extends ChangeNotifier {
     final w = v('website');
     if (w.isNotEmpty && !RegExp(r'^(https?://)?[\w-]+(\.[\w-]+)+(/\S*)?$').hasMatch(w)) err['website'] = 'Enter a web address, like amanlifts.in.';
     if (v('bio').length > 1500) err['bio'] = 'Keep it under 1,500 letters.';
+    if (c.admin) {
+      final mx = int.tryParse(v('max_clients'));
+      final now = (c.stats['clients'] as num?)?.toInt() ?? 0;
+      if (mx == null || mx < 1 || mx > 500) {
+        err['max_clients'] = 'Enter a number from 1 to 500.';
+      } else if (mx < now) {
+        err['max_clients'] = '${c.he[0].toUpperCase()}${c.he.substring(1)} has $now clients now. Move some first or keep $now or more.';
+      }
+    }
     return err.isEmpty;
   }
 
@@ -116,7 +132,7 @@ class _EditForm extends ChangeNotifier {
     _set(() => saving = true);
     final years = int.tryParse(v('years'));
     final email = v('email').toLowerCase();
-    final emailChanged = email != '${c.me['email'] ?? ''}'.toLowerCase();
+    final emailChanged = !c.admin && email != '${c.me['email'] ?? ''}'.toLowerCase();
     try {
       await c.saveDetails({
         'full_name': v('full_name'),
@@ -134,7 +150,14 @@ class _EditForm extends ChangeNotifier {
         'youtube': v('youtube'),
         'page_link': v('page_link'),
         'website': _url(v('website')),
+        if (c.admin) ...{
+          'email': email,
+          'max_clients': int.parse(v('max_clients')),
+          if (joined != null) 'joining_date': DateFormat('yyyy-MM-dd').format(joined!),
+          'send_password_reset': reset,
+        },
       });
+      if (c.admin && reset) return 'We sent ${c.first} a password reset link';
       if (emailChanged) {
         await Services.api.post('auth/email/change/', {'email': email});
         return 'We sent a link to $email. Your email changes when you open it.';
@@ -143,7 +166,7 @@ class _EditForm extends ChangeNotifier {
     } on ApiError catch (e) {
       _set(() {
         saving = false;
-        for (final k in ['full_name', 'phone', 'email', 'city', 'speciality', 'languages', 'works_best_with', 'bio', 'instagram', 'youtube', 'page_link', 'website']) {
+        for (final k in ['full_name', 'phone', 'email', 'city', 'speciality', 'languages', 'works_best_with', 'bio', 'instagram', 'youtube', 'page_link', 'website', 'max_clients']) {
           final m = e.field(k);
           if (m != null) err[k] = m;
         }
@@ -181,7 +204,7 @@ class _EditForm extends ChangeNotifier {
         MeGrid2([
           _text('full_name', 'Full name', req: true),
           _text('phone', 'Mobile', req: true, kb: TextInputType.phone, prefix: Text('+91', style: AppText.s(13.5, W.w6, color: AppColors.muted))),
-          _text('email', 'Email', req: true, kb: TextInputType.emailAddress, hint: 'A new email is confirmed by a link first'),
+          _text('email', 'Email', req: true, kb: TextInputType.emailAddress, hint: c.admin ? null : 'A new email is confirmed by a link first'),
           meField('Gender', AppSelect(_genders.firstWhere((g) => g.$1 == gender, orElse: () => _genders.first).$2, entries: [
             for (final (k, l) in _genders) MenuEntry(l, selected: k == gender, onTap: () => _set(() => gender = k)),
           ])),
@@ -208,9 +231,9 @@ class _EditForm extends ChangeNotifier {
           _text('languages', 'Languages', hint: 'Separate with a comma', ph: 'Hindi, English'),
         ]),
         _text('works_best_with', 'Best with', ph: 'Beginners and busy office workers'),
-        _text('bio', 'About you', lines: 4, ph: 'A few lines clients read on “My trainer”'),
+        _text('bio', c.admin ? 'About (shown to you, not to clients)' : 'About you', lines: 4, ph: 'A few lines clients read on “My trainer”'),
       ]),
-      MeSec('Social media', sub: 'Optional. Clients see these only if you switch on Social media in What clients see.', last: true, [
+      MeSec('Social media', sub: 'Optional. Clients see these only if you switch on Social media in What clients see.', last: !c.admin, [
         MeGrid2([
           _text('instagram', 'Instagram', ph: '@aman.lifts'),
           _text('youtube', 'YouTube', ph: 'youtube.com/@amanvermafit'),
@@ -218,11 +241,27 @@ class _EditForm extends ChangeNotifier {
           _text('website', 'Website', ph: 'amanlifts.in', kb: TextInputType.url),
         ]),
       ]),
+      if (c.admin) ...[
+        MeSec('Work', [
+          MeGrid2([
+            _text('max_clients', 'Most clients', kb: TextInputType.number, hint: '${c.he[0].toUpperCase()}${c.he.substring(1)} ${c.he == 'they' ? 'have' : 'has'} ${c.stats['clients'] ?? 0} now'),
+            meField('Joined on', MeDateBox(value: joined, placeholder: 'Pick a date', first: DateTime(2015), last: DateTime.now(), onPick: (d) => _set(() => joined = d))),
+          ]),
+        ]),
+        MeSec('Login', last: true, [
+          MeToggleRow(
+            title: 'Send password reset link',
+            sub: '${c.he[0].toUpperCase()}${c.he.substring(1)} ${c.he == 'they' ? 'get' : 'gets'} a link on WhatsApp and email',
+            value: reset,
+            onChanged: (x) => _set(() => reset = x),
+          ),
+        ]),
+      ],
       if (formErr != null) Padding(padding: const EdgeInsets.only(bottom: 12), child: Text(formErr!, style: AppText.s(12.5, W.w6, color: AppColors.badText))),
       if (context.isPhone)
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: Text('Your access and client limit are set by the admin', style: AppText.s(12.5, W.w5, color: AppColors.muted)),
+          child: Text(c.admin ? 'Access is changed in the Access tab' : 'Your access and client limit are set by the admin', style: AppText.s(12.5, W.w5, color: AppColors.muted)),
         ),
     ]);
   }

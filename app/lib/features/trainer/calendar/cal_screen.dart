@@ -19,8 +19,12 @@ import '../../../core/widgets/tooltip.dart';
 /// week, the phone on the day with a Mon–Sun strip (its Week = a 3-day window). Stats, ‹ Today ›, Week / Day,
 /// the kind legend, the grid; a block opens the session panel (Open profile · Reschedule · Mark as done ·
 /// Cancel session + Undo). Header: My working hours, New session (no avatar on web, as on the dashboard).
+///
+/// [admin] = the owner's Calendar (boards `Calendar` + `CalendarMobile`, D-48): the team's sessions with an
+/// All trainers pick, the trainer on each block, Busiest trainer, Availability per trainer and booking for anyone.
 class TrainerCalendarScreen extends StatefulWidget {
-  const TrainerCalendarScreen({super.key});
+  const TrainerCalendarScreen({super.key, this.admin = false});
+  final bool admin;
 
   @override
   State<TrainerCalendarScreen> createState() => _TrainerCalendarScreenState();
@@ -34,7 +38,7 @@ class _TrainerCalendarScreenState extends State<TrainerCalendarScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_c == null) {
-      _c = CalendarController(phone: context.isPhone);
+      _c = CalendarController(phone: context.isPhone, admin: widget.admin);
       c.load();
     }
   }
@@ -69,7 +73,7 @@ class _TrainerCalendarScreenState extends State<TrainerCalendarScreen> {
   }
 
   Future<void> _open(CalSession s) async {
-    final a = await showSessionPanel(context, s);
+    final a = await showSessionPanel(context, s, admin: widget.admin);
     if (!mounted || a == null) return;
     switch (a) {
       case 'profile':
@@ -105,6 +109,10 @@ class _TrainerCalendarScreenState extends State<TrainerCalendarScreen> {
   Future<void> _hours() async {
     final ok = await showWorkingHours(context, c);
     if (!ok || !mounted) return;
+    if (widget.admin) {
+      showToast(context, 'Availability saved', sub: 'Booked sessions stay as they are');
+      return;
+    }
     final n = c.workingDays;
     showToast(context, 'Working hours saved', sub: '$n working ${n == 1 ? 'day' : 'days'}');
   }
@@ -121,9 +129,9 @@ class _TrainerCalendarScreenState extends State<TrainerCalendarScreen> {
             onRefresh: c.load,
             header: PageTop(
               title: 'Calendar',
-              sub: 'Your sessions, ${calWeekRange(c.week)}',
+              sub: '${!widget.admin ? 'Your' : c.trainer.isEmpty ? 'Your team’s' : '${c.trainerName}’s'} sessions, ${calWeekRange(c.week)}',
               actions: [
-                AppButton('My working hours', icon: AppIcons.clockAlt, iconOnly: compact, onPressed: _hours),
+                AppButton(widget.admin ? 'Availability' : 'My working hours', icon: AppIcons.clockAlt, iconOnly: compact, onPressed: _hours),
                 AppButton.primary('New session', icon: AppIcons.plus, iconOnly: compact, onPressed: _new),
               ],
             ),
@@ -133,7 +141,7 @@ class _TrainerCalendarScreenState extends State<TrainerCalendarScreen> {
                     sub: c.error!.offline ? 'Connect to the internet and try again.' : c.error!.message,
                     action: AppButton('Try again', onPressed: c.load))
               else ...[
-                phone ? _phoneStats() : _webStats(),
+                phone ? _phoneStats() : (widget.admin ? _wideStats() : _webStats()),
                 _bar(phone),
                 if (phone) _strip(),
                 _legend(phone),
@@ -152,6 +160,7 @@ class _TrainerCalendarScreenState extends State<TrainerCalendarScreen> {
   }
 
   /// Board stats: Sessions this week · Done (% of the week) · On a call · Working days (the picked day's hours).
+  /// The admin on All trainers sees Busiest trainer ("Aman Verma", "10 sessions") in place of Working days.
   List<(AppIconData, String, String, String)> get _stats {
     final st = c.stats;
     final total = (st['total'] as num?)?.toInt() ?? c.sessions.length;
@@ -159,11 +168,16 @@ class _TrainerCalendarScreenState extends State<TrainerCalendarScreen> {
     final calls = (st['calls'] as num?)?.toInt() ?? 0;
     final av = c.hoursOn(c.day);
     final wd = calWd[c.day];
+    final busy = st['busiest'] as Map?;
+    final n = (busy?['n'] as num?)?.toInt() ?? 0;
     return [
       (AppIcons.calStat, 'Sessions this week', '$total', c.view == 'day' ? '${c.on(c.day).length} on $wd' : ''),
       (AppIcons.check, 'Done', '$done', total > 0 ? '${(st['done_pct'] as num?)?.toInt() ?? (done * 100 / total).round()}% of the week' : ''),
       (AppIcons.call, 'On a call', '$calls', 'Quick calls and reviews'),
-      (AppIcons.person, 'Working days', '${c.workingDays}', av == null ? '' : (av.open ? '$wd ${calRange(av.from, av.to - av.from)}' : '$wd off')),
+      if (widget.admin && c.trainer.isEmpty)
+        (AppIcons.person, 'Busiest trainer', busy == null || n == 0 ? '—' : '${busy['trainer__full_name']}', busy == null || n == 0 ? '' : '$n ${n == 1 ? 'session' : 'sessions'}')
+      else
+        (AppIcons.person, 'Working days', '${c.workingDays}', av == null ? '' : (av.open ? '$wd ${calRange(av.from, av.to - av.from)}' : '$wd off')),
     ];
   }
 
@@ -190,6 +204,26 @@ class _TrainerCalendarScreenState extends State<TrainerCalendarScreen> {
             ),
         ]);
       });
+
+  /// Admin `.stats`: content-wide cards (the busiest trainer's name sets its card's width); they wrap when narrow.
+  Widget _wideStats() => Wrap(spacing: 10, runSpacing: 10, children: [
+        for (final (icon, label, value, delta) in _stats)
+          Container(
+            constraints: const BoxConstraints(minHeight: 80, minWidth: 150),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: AppColors.card, borderRadius: AppRadius.all(AppRadius.card), border: Border.all(color: AppColors.line)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, spacing: 6, children: [
+              Row(mainAxisSize: MainAxisSize.min, spacing: 8, children: [
+                IconTile(icon, radius: 8),
+                Text(label, style: AppText.s(12.5, W.w6, color: AppColors.muted)),
+              ]),
+              Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, spacing: 10, children: [
+                Flexible(child: CutText(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.stat)),
+                if (delta.isNotEmpty) Text(delta, style: AppText.s(12, W.w7)),
+              ]),
+            ]),
+          ),
+      ]);
 
   /// Phone: one card, 4 cells (number over a small grey label).
   Widget _phoneStats() => Container(
@@ -227,10 +261,38 @@ class _TrainerCalendarScreenState extends State<TrainerCalendarScreen> {
       if (c.loading) const Padding(padding: EdgeInsets.only(left: 6), child: SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent))),
     ]);
     final tabs = CalTabs<String>(items: const [('week', 'Week'), ('day', 'Day')], value: c.view, onChanged: c.setView);
+    if (widget.admin) {
+      final pick = _trainerPick();
+      if (phone) {
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
+          nav,
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, spacing: 10, children: [Flexible(child: pick), tabs]),
+        ]);
+      }
+      return Row(spacing: 10, children: [Expanded(child: nav), pick, tabs]);
+    }
     if (phone) {
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [nav, Align(alignment: Alignment.centerRight, child: tabs)]);
     }
     return Row(children: [Expanded(child: nav), tabs]);
+  }
+
+  /// Admin "All trainers" button: menu "Show sessions of" with each trainer's sessions this week.
+  Widget _trainerPick() {
+    final total = c.byTrainer.values.fold(0, (a, b) => a + b);
+    return Builder(
+      builder: (b) => AppButton(
+        c.trainer.isEmpty ? 'All trainers' : c.trainerName,
+        icon: AppIcons.person,
+        trailingIcon: AppIcons.chevronDown,
+        onPressed: () => showAppMenu(b, width: 240, alignRight: !context.isPhone, [
+          const MenuEntry.header('Show sessions of'),
+          MenuEntry('All trainers', end: '$total', selected: c.trainer.isEmpty, onTap: () => c.setTrainer('')),
+          for (final (id, name) in c.trainers)
+            MenuEntry(name, end: '${c.byTrainer[id] ?? 0}', selected: id == c.trainer, onTap: () => c.setTrainer(id)),
+        ]),
+      ),
+    );
   }
 
   /// Phone `.mcal-strip`: M–S with the date; the picked day is a blue disc, the 3-day window is grey, a dot = sessions.

@@ -6,9 +6,11 @@ import 'card.dart';
 import 'hover.dart';
 import 'tooltip.dart';
 
-/// `.stat`: label with 26px icon tile, then number 24/800 with the delta beside it.
+/// `.stat`: label with 26px icon tile, then number 24/800 with the delta beside it. [hug] = as wide as its content
+/// (stats in a Wrap, e.g. Trainer profile).
 class StatCard extends StatelessWidget {
-  const StatCard({super.key, required this.icon, required this.label, required this.value, this.delta, this.deltaUp, this.note});
+  const StatCard({super.key, required this.icon, required this.label, required this.value, this.delta, this.deltaUp, this.note, this.hug = false});
+  final bool hug;
   final AppIconData icon;
   final String label, value;
   final String? delta, note;
@@ -18,8 +20,8 @@ class StatCard extends StatelessWidget {
   Widget build(BuildContext context) => AppCard(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 8, children: [
-          Row(spacing: 8, children: [IconTile(icon), Flexible(child: CutText(label, style: AppText.s(12.5, W.w6, color: AppColors.muted), overflow: TextOverflow.ellipsis))]),
-          Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, spacing: 8, children: [
+          Row(mainAxisSize: hug ? MainAxisSize.min : MainAxisSize.max, spacing: 8, children: [IconTile(icon), Flexible(child: CutText(label, style: AppText.s(12.5, W.w6, color: AppColors.muted), overflow: TextOverflow.ellipsis))]),
+          Row(mainAxisSize: hug ? MainAxisSize.min : MainAxisSize.max, crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, spacing: 8, children: [
             Text(value, style: AppText.stat),
             if (delta != null)
               Flexible(

@@ -166,4 +166,13 @@ abstract final class AppIcons {
   static const trendUp = Ic.i56375b; // stat delta "+8 this month"
   static const personAdd = Ic.ia79c5d; // glance: Onboarding pending
   static const client = Ic.i89b1dd; // stat: Active clients; Needs action client row
+
+  // Admin → Trainers
+  static const team = Ic.i4db1da; // stat: Active trainers
+  static const spots = Ic.i5f5497; // stat: Client spots
+  static const access = Ic.i13cbb1; // row menu: Access and permissions
+  static const editAlt = Ic.if74a51; // row menu: Edit details
+  static const swapBoth = Ic.i042f6e; // row menu: Move clients to another trainer
+  static const deactivate = Ic.i844c55; // row menu: Deactivate
+  static const power = Ic.i363ffe; // row menu: Reactivate
 }

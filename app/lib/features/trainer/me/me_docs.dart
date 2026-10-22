@@ -148,7 +148,7 @@ class _DocCard extends StatelessWidget {
 /// optional (a new file is checked by the admin again). [edit] = "Edit details" (name, type, dates, who sees it),
 /// otherwise "Replace file".
 Future<void> showUploadDocument(BuildContext context, MeController c, {Map<String, dynamic>? replace, bool edit = false}) async {
-  final f = _UpForm(replace);
+  final f = _UpForm(replace, c.api);
   final saved = await showAppModal<Map<String, dynamic>>(
     context,
     title: replace == null ? 'Upload a document' : (edit ? 'Edit details' : 'Replace file'),
@@ -178,7 +178,7 @@ Future<void> showUploadDocument(BuildContext context, MeController c, {Map<Strin
 }
 
 class _UpForm extends ChangeNotifier {
-  _UpForm(this.old) {
+  _UpForm(this.old, this.api) {
     if (kIsWeb) _unwatch = watchDrops(onOver: (v) => _set(() => dragging = v), onFile: _take);
     final o = old;
     if (o != null) {
@@ -192,6 +192,7 @@ class _UpForm extends ChangeNotifier {
     }
   }
   final Map<String, dynamic>? old;
+  final String api;
   String kind = 'certificate';
   final name = TextEditingController(), issuer = TextEditingController();
   DateTime? issued, expires;
@@ -268,8 +269,8 @@ class _UpForm extends ChangeNotifier {
     try {
       final fd = FormData.fromMap(data);
       final r = old == null
-          ? await Services.api.post<Map>('trainers/me/documents/', fd)
-          : await Services.api.patch<Map>('trainers/me/documents/${old!['id']}/', fd);
+          ? await Services.api.post<Map>('$api/documents/', fd)
+          : await Services.api.patch<Map>('$api/documents/${old!['id']}/', fd);
       return Map<String, dynamic>.from(r);
     } on ApiError catch (e) {
       _set(() {
@@ -441,11 +442,26 @@ class _ViewerState extends State<_Viewer> {
         zoom = 100;
       });
 
+  bool verifying = false;
+
+  /// Admin: "Mark as verified" (`trainers/<id>/documents/<doc>/verify/`); clients see a certificate after this.
+  Future<void> _verify(Map<String, dynamic> d) async {
+    setState(() => verifying = true);
+    try {
+      final r = await Services.api.post<Map>('${widget.c.api}/documents/${d['id']}/verify/', {});
+      widget.c.putDoc(Map<String, dynamic>.from(r));
+      if (mounted) showToast(context, 'Marked as verified', sub: '${d['name']}', kind: ToastKind.ok);
+    } on ApiError catch (e) {
+      if (mounted) showToast(context, 'Could not verify it', sub: e.message, kind: ToastKind.err);
+    }
+    if (mounted) setState(() => verifying = false);
+  }
+
   Future<void> _delete(Map<String, dynamic> d) async {
     final ok = await confirmAction(context, title: 'Delete this document?', body: '${d['name']} is removed for good. Clients stop seeing it.', confirm: 'Delete', danger: true, icon: AppIcons.trash);
     if (!ok || !mounted) return;
     try {
-      await Services.api.delete('trainers/me/documents/${d['id']}/');
+      await Services.api.delete('${widget.c.api}/documents/${d['id']}/');
       widget.c.dropDoc('${d['id']}');
       if (!mounted) return;
       Navigator.of(context).pop();
@@ -571,7 +587,18 @@ class _ViewerState extends State<_Viewer> {
               ('Uploaded', MeKv.text(meDmy(d['created_at']))),
               ('File', MeKv.text('${info ?? '—'}')),
             ]),
-            if (d['status'] == 'not_checked')
+            if (d['status'] == 'not_checked' && widget.c.admin) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: AppColors.sub, borderRadius: AppRadius.all(8)),
+                child: Text('Check the name and dates on the file, then mark it verified. Until then clients do not see it.',
+                    style: AppText.s(12.5, W.w5, color: AppColors.text2, h: 1.45)),
+              ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: AppButton.primary('Mark as verified', icon: AppIcons.check, loading: verifying, onPressed: verifying ? null : () => _verify(d)),
+              ),
+            ] else if (d['status'] == 'not_checked')
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(color: AppColors.sub, borderRadius: AppRadius.all(8)),

@@ -238,6 +238,8 @@ Right column: **Video** card (From content library — Bench press · setup · 0
 
 ### 2.7 Trainers — `Trainers` / `TrainersMobile`
 
+> **Built 2026-10-22 (D-48), route `/trainers` (`?add=1` opens Add trainer).** Stats are content-wide cards; phone shows one strip of 4 cells. Tabs All / Active / Full / Inactive with counts, search (name, phone, email), Filter (Access, Space, Speciality, Check-ins) with chips, 20 a page. Row ⋯: Open profile, Access and permissions (`/trainers/<id>?tab=access`), Edit details, Move clients to another trainer, Deactivate / Reactivate. Add trainer drawer: mobile already-used check, Access level with help text, "give clients now" opens Assign clients on the new profile.
+
 Title **Trainers**, sub *"8 in the team · 7 active · 129 clients"*. Header: `Add trainer` (primary).
 
 **4 stat cards:** Active trainers **7** (1 inactive) · Client spots **129 / 215** (86 spots free) · Check-ins to review **11** (Karan has the most (4)) · Avg adherence **82%** (+2% vs last week).
@@ -272,6 +274,8 @@ Do toggle: *"Send the login invite"* (WhatsApp + email, apna password) aur *"Giv
 
 ### 2.8 Activity log — `Activity` / `ActivityMobile`
 
+> **Built 2026-10-22 (D-48), route `/activity`.** Search (person, client or item: server `search=`), Filter (Who: Everyone / Team / Clients / Automations; Person: anyone in the team) with removable chips, range menu (Today … All time, default Last 7 days), kind chips All / Check-in / Plan / Workout / Meal / Body / Client / Content / System with counts, rows by day (the day count is the full count, not only loaded rows), old → new changes, time "2 min ago" today and "7:40 pm" before, hover shows the source. 20 a page with Show more (cursor). Export downloads a CSV of what the filters show.
+
 Title **Activity log**, sub *"Every change by your team, your clients and the system."* Header me sirf `Export`.
 
 Timeline din ke hisaab se grouped: **Today · Yesterday · Wed, 7 Oct · Mon, 5 Oct · Thu, 1 Oct · Mon, 21 Sep · Tue, 1 Sep**. Har row 40px: kaun + kya kiya · change (`60 s → 90 s` jaisa purana→naya) · kind · kab. Source (Admin · Web / Trainer · Web / Client · Android app / Automation · Push and WhatsApp) hover pe dikhta hai.
@@ -290,6 +294,8 @@ Yahi timeline component trainer profile aur client profile ke "Activity" tab me 
 ---
 
 ### 2.9 Calendar — `Calendar` / `CalendarMobile`
+
+> **Built 2026-10-22 (D-48), route `/calendar` (admin).** Same code as the trainer calendar with `admin: true`. Sub "Your team’s sessions, range" or "{Trainer}’s sessions, range". All trainers button (menu "Show sessions of" with each trainer's sessions this week). Blocks show "7:00 am · Aman" on All trainers. 4th stat Busiest trainer (Working days when one trainer is picked); no shading on All trainers. Session panel shows Trainer instead of Plan. New session: Client + Trainer side by side, the client's trainer is picked for you, picked trainer's clients first; warnings name the trainer ("Aman already has …", "Outside Aman’s working hours", "Aman is free at this time"). Availability drawer: Trainer pick, then that trainer's week; saves for that trainer.
 
 Title **Calendar**, sub *"Your team's sessions, 5 – 11 Oct 2026"* (trainer chuno to *"Aman Verma's sessions, …"*). Header: `Availability` (outline) + `New session` (primary).
 
@@ -865,6 +871,8 @@ Naya plan assign karte waqt **kab shuru ho** poochha jata hai — `After current
 ---
 
 ### 2.24 Trainer profile — `TrainerProfile`
+
+> **Built 2026-10-22 (D-48), route `/trainers/<id>?tab=overview|clients|access|activity|documents|visible`** (`&assign=1` opens Assign clients). Reuses the trainer's My profile tabs with an admin mode (texts name the trainer, Edit details adds Work and Login sections, documents get Mark as verified). Clients tab: search, Status and Goal filters, ⋯ Open profile / Move to another trainer. Access tab: level cards, summary, permission grid, changed rows in amber, Save. ⋯ menu: Access, Send password reset link, Move all clients, Deactivate / Reactivate (not for the owner).
 
 Breadcrumb `Trainers / Aman Verma`. Header: `AV`, **Aman Verma**, badge `Active`, sub *"Strength, fat loss"*.
 

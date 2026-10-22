@@ -21,7 +21,7 @@ from apps.common.permissions import IsAdmin, IsStaff, IsTrainer
 from apps.notifications.services import notify
 
 from .models import AccessMode, AccessRequest, TrainerDocument, TrainerProfile
-from .permissions_catalog import ALL_KEYS
+from .permissions_catalog import ALL_CLIENTS_PRESET, ALL_KEYS, ASSIGNED_PRESET
 from .serializers import (
     AccessRequestSerializer,
     AccessSerializer,
@@ -135,9 +135,18 @@ class TrainerViewSet(viewsets.ModelViewSet):
             return [IsStaff()]
         return [IsAdmin()]
 
+    def filter_queryset(self, queryset):
+        # The list's search and filters are for the list only: on a trainer (profile tabs) `?search=` and
+        # `?status=` belong to that tab and must not hide the trainer itself.
+        if self.detail:
+            return queryset
+        return super().filter_queryset(queryset)
+
     def get_queryset(self):
         qs = trainers_queryset()
         p = self.request.query_params
+        if self.detail:
+            return qs
         tab = p.get("tab")
         if tab == "active":
             qs = qs.filter(status=AccountStatus.ACTIVE)
@@ -166,6 +175,21 @@ class TrainerViewSet(viewsets.ModelViewSet):
             return TrainerWriteSerializer
         return TrainerRowSerializer
 
+    def retrieve(self, request, *args, **kwargs):
+        """Trainer profile page (admin): the same shape as `trainers/me/` (stats, access groups, This week,
+        Clients who need him, last login), so the page reuses the My profile code (D-48)."""
+        user = self.get_object()
+        data = TrainerDetailSerializer(user, context={"request": request}).data
+        if request.user.is_admin:
+            from .me import me_extras
+
+            data["stats"] = trainer_stats(user)
+            data["access_groups"] = permission_groups(user.trainer_profile.effective_permissions())
+            # Access tab: which level a set of switches is (Assigned clients / All clients / else Custom).
+            data["access_presets"] = {"assigned": ASSIGNED_PRESET, "all": ALL_CLIENTS_PRESET}
+            data.update(me_extras(user))
+        return Response(data)
+
     # ------------------------------------------------------------ list extras
     @action(detail=False)
     def summary(self, request):
@@ -176,6 +200,10 @@ class TrainerViewSet(viewsets.ModelViewSet):
         used = sum(u.n_clients for u in active)
         most = max(active, key=lambda u: u.n_review, default=None)
         adh = [u.avg_adherence for u in active if u.avg_adherence is not None]
+        # "+2% vs last week": the clients' 7-day against their 30-day adherence, like the dashboard card.
+        both = ClientProfile.objects.filter(trainer__in=[u.id for u in active], removed_at__isnull=True,
+                                            user__status=AccountStatus.ACTIVE).aggregate(
+            a7=Avg("adherence_7d"), a30=Avg("adherence_30d"))
         return Response({
             "counts": {
                 "all": len(rows), "active": len(active), "inactive": len(rows) - len(active),
@@ -187,6 +215,8 @@ class TrainerViewSet(viewsets.ModelViewSet):
                                    "most": {"name": most.first_name, "n": most.n_review}
                                    if most and most.n_review else None},
             "adherence": round(sum(adh) / len(adh)) if adh else None,
+            "adherence_change": round(both["a7"] - both["a30"])
+            if both["a7"] is not None and both["a30"] is not None else None,
         })
 
     @action(detail=False, url_path="with-space")
@@ -410,6 +440,100 @@ class TrainerViewSet(viewsets.ModelViewSet):
     def stats(self, request, pk=None):
         return Response(trainer_stats(self.get_object()))
 
+    @action(detail=True)
+    def activity(self, request, pk=None):
+        """Trainer profile → Activity tab: what this trainer did (same rows as My activity)."""
+        from .me import activity_response
+
+        return activity_response(self.get_object(), request)
+
+    @action(detail=True)
+    def clients(self, request, pk=None):
+        """Trainer profile → Clients tab: his clients with program, adherence, last check-in, status and since.
+        ?search= &status=active|at_risk|paused|pending &goal= &page= (20 a page), most recent first."""
+        from apps.checkins.models import Submission
+        from apps.clients.serializers import badge_for
+        from apps.common.utils import dfmt
+        from apps.training.models import AssignmentStatus, ProgramAssignment
+
+        user = self.get_object()
+        p = request.query_params
+        qs = (User.objects.filter(client_profile__trainer=user, client_profile__removed_at__isnull=True,
+                                  status__in=[AccountStatus.ACTIVE, AccountStatus.PAUSED, AccountStatus.PENDING])
+              .select_related("client_profile")
+              .order_by(F("client_profile__trainer_since").desc(nulls_last=True), "-date_joined"))
+        if p.get("search"):
+            q = p["search"].strip()
+            qs = qs.filter(Q(full_name__icontains=q) | Q(email__icontains=q) | Q(phone__icontains=q))
+        if p.get("goal"):
+            qs = qs.filter(client_profile__goal=p["goal"])
+        st = p.get("status")
+        if st == "at_risk":
+            qs = qs.filter(status=AccountStatus.ACTIVE, client_profile__at_risk=True)
+        elif st == "active":
+            qs = qs.filter(status=AccountStatus.ACTIVE, client_profile__at_risk=False)
+        elif st in ("paused", "pending"):
+            qs = qs.filter(status=st)
+        total = qs.count()
+        try:
+            page = max(1, int(p.get("page", 1)))
+            size = min(50, max(1, int(p.get("page_size", 20))))
+        except ValueError:
+            page, size = 1, 20
+        rows = list(qs[(page - 1) * size: page * size])
+        ids = [u.id for u in rows]
+        plans = {}
+        for a in (ProgramAssignment.objects.filter(client_id__in=ids, status=AssignmentStatus.ACTIVE)
+                  .select_related("program", "custom_program").order_by("client_id", "-start_date")):
+            plans.setdefault(a.client_id, a)
+        last = {}
+        for c, at in (Submission.objects.filter(client_id__in=ids).order_by("client_id", "-created_at")
+                      .values_list("client_id", "created_at")):
+            last.setdefault(c, at)
+        today = timezone.localdate()
+
+        def program(u):
+            a = plans.get(u.id)
+            if a is None:
+                return "Not started"
+            name = a.effective_program.name
+            if u.status == AccountStatus.PAUSED:
+                return f"{name} · paused"
+            if a.start_date > today:
+                return f"{name} · starts {dfmt(a.start_date, '%-d %b')}"
+            return f"{name} · wk {(today - a.start_date).days // 7 + 1}"
+
+        def checkin(u):
+            at = last.get(u.id)
+            if at is None:
+                return "—"
+            local = timezone.localtime(at)
+            days = (today - local.date()).days
+            if days == 0:
+                return "Today, " + dfmt(local, "%-I:%M %p").lower()
+            if days == 1:
+                return "Yesterday"
+            if days < 7:
+                return f"{days} days ago"
+            if days < 14:
+                return "1 week ago"
+            if days < 60:
+                return f"{days // 7} weeks ago"
+            return dfmt(local, "%-d %b %Y")
+
+        out = []
+        for u in rows:
+            cp = u.client_profile
+            since = cp.trainer_since or u.date_joined
+            out.append({
+                "id": str(u.id), "full_name": u.full_name, "initials": u.initials, "avatar_color": u.avatar_color,
+                "avatar": u.avatar.url if getattr(u, "avatar", None) else None,
+                "goal_label": cp.get_goal_display() if cp.goal else "", "program": program(u),
+                "adherence": cp.adherence_7d if u.status == AccountStatus.ACTIVE else None,
+                "last_checkin": checkin(u), "badge": badge_for(u), "since": since,
+            })
+        return Response({"count": total, "results": out})
+
 
 def _visibility(request, user):
     tp = user.trainer_profile
@@ -486,7 +610,7 @@ class TrainerDocumentViewSet(viewsets.ModelViewSet):
         if not self.request.user.is_admin:
             admin = User.objects.filter(role=Role.ADMIN).first()
             notify(admin, "trainer_document", f"{tp.user.full_name} uploaded {doc.name}", "Check it and mark it verified.",
-                   actor=self.request.user, data={"route": f"/trainers/{tp.user_id}/documents"})
+                   actor=self.request.user, data={"route": f"/trainers/{tp.user_id}?tab=documents"})
 
     def perform_update(self, serializer):
         doc = serializer.save()
@@ -536,7 +660,7 @@ class AccessRequestViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, views
         req = serializer.save(trainer=user.trainer_profile)
         admin = User.objects.filter(role=Role.ADMIN).first()
         notify(admin, "access_request", f"{user.full_name} asked for more access", req.reason[:140],
-               actor=user, data={"route": f"/trainers/{user.id}/access", "request": str(req.id)})
+               actor=user, data={"route": f"/trainers/{user.id}?tab=access", "request": str(req.id)})
         activity_log("asked for more access", "team", actor=user, target=user, target_label=user.full_name,
                      trainer=user)
 

@@ -121,7 +121,7 @@ def needs_action(user):
         rows.append({"key": f"access:{r.id}", "kind": "trainers", "since": r.created_at,
                      "title": f"{r.trainer.user.full_name} asked for more access",
                      "sub": "Approve it or say no on their profile", "cta": "Review",
-                     "route": f"/trainers/{r.trainer.user_id}/access"})
+                     "route": f"/trainers/{r.trainer.user_id}?tab=access"})
     for t in TrainerTask.objects.filter(assignee=user, done_at__isnull=True)[:5]:
         rows.append({"key": f"task:{t.id}", "kind": "clients", "since": t.created_at, "title": t.title,
                      "sub": "Task for you", "cta": "Open", "route": f"/clients/{t.client_id}" if t.client_id else "/"})

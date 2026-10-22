@@ -156,8 +156,9 @@ String calStatusLabel(String status) => switch (status) { 'done' => 'Done', 'mis
 
 // ─────────────────────────────── Session panel
 
-/// Opens a session. Returns what the trainer picked: `profile` · `move` · `cancel` · `toggle`.
-Future<String?> showSessionPanel(BuildContext context, CalSession s) {
+/// Opens a session. Returns what was picked: `profile` · `move` · `cancel` · `toggle`. The admin sees the
+/// session's Trainer where a trainer sees the client's Plan.
+Future<String?> showSessionPanel(BuildContext context, CalSession s, {bool admin = false}) {
   final phone = context.isPhone;
   Widget head(BuildContext ctx) => Padding(
         padding: phone ? const EdgeInsets.fromLTRB(4, 6, 0, 0) : const EdgeInsets.fromLTRB(20, 14, 16, 0),
@@ -198,7 +199,7 @@ Future<String?> showSessionPanel(BuildContext context, CalSession s) {
             columnWidths: const {0: FlexColumnWidth(), 1: FixedColumnWidth(20), 2: FlexColumnWidth()},
             children: [
               TableRow(children: [
-                Container(decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))), child: kv('Plan', s.plan.isEmpty ? 'No plan yet' : s.plan)),
+                Container(decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))), child: admin ? kv('Trainer', s.trainer.isEmpty ? '—' : s.trainer) : kv('Plan', s.plan.isEmpty ? 'No plan yet' : s.plan)),
                 const SizedBox(),
                 Container(decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))), child: kv('Length', '${s.minutes}  min')),
               ]),
@@ -322,6 +323,7 @@ class _Form extends ChangeNotifier {
       final m = move!;
       client = m.clientId;
       clientName = m.client;
+      trainer = m.trainerId;
       kind = m.kind;
       week = calMonday(m.start);
       day = m.start.weekday - 1;
@@ -345,6 +347,9 @@ class _Form extends ChangeNotifier {
   final CalendarController c;
   final CalSession? move;
   String? client, clientName;
+
+  /// Admin: who runs the session. Picking a client picks their trainer; it can be changed after.
+  String? trainer;
   CalKind kind = CalKind.session;
   late DateTime week;
   late int day;
@@ -361,6 +366,18 @@ class _Form extends ChangeNotifier {
   int get minutes => int.tryParse(len.text) ?? 0;
   int get from => hour * 60 + minute;
   bool get clash => check?.state == 'clash';
+  bool get admin => c.admin;
+  String get trainerName => c.trainers.where((t) => t.$1 == trainer).firstOrNull?.$2 ?? '';
+  String get trainerFirst => trainerName.split(' ').first;
+
+  /// Admin: the client and their trainer (else the calendar's pick, else the first trainer).
+  void pickClient(CalClient p) => set(() {
+        client = p.id;
+        clientName = p.name;
+        if (admin) {
+          trainer = p.trainerId.isNotEmpty ? p.trainerId : (c.trainer.isNotEmpty ? c.trainer : c.trainers.firstOrNull?.$1);
+        }
+      }, recheck: admin);
 
   void set(VoidCallback f, {bool recheck = false}) {
     f();
@@ -386,7 +403,12 @@ class _Form extends ChangeNotifier {
       }
       final t = ++_ticket;
       try {
-        final r = await c.check(start, m, exclude: move?.id);
+        if (admin && trainer == null) {
+          check = null;
+          notifyListeners();
+          return;
+        }
+        final r = await c.check(start, m, exclude: move?.id, trainer: admin ? trainer : null);
         if (t != _ticket) return;
         check = r;
       } on ApiError {
@@ -397,27 +419,31 @@ class _Form extends ChangeNotifier {
     });
   }
 
-  /// "You already have Riya Sharma at 7 – 8 am" / "Outside your working hours (6:30 am – 8 pm)".
+  /// "You already have Riya Sharma at 7 – 8 am" / "Outside your working hours (6:30 am – 8 pm)". The admin's
+  /// form names the trainer: "Aman already has …" / "Outside Aman’s working hours (…)".
   String? get warning {
     if (start.isBefore(DateTime.now()) && (move == null || start != move!.start)) return 'This time has passed';
     final k = check;
     if (k == null) return null;
+    final who = admin ? '$trainerFirst already has' : 'You already have';
+    final whose = admin ? '$trainerFirst’s' : 'your';
     if (k.state == 'clash' && k.clashFrom != null && k.clashTo != null) {
       final a = k.clashFrom!, b = k.clashTo!;
-      return 'You already have ${k.withName} at ${calRange(calMinutes(a), b.difference(a).inMinutes)}';
+      return '$who ${k.withName} at ${calRange(calMinutes(a), b.difference(a).inMinutes)}';
     }
     if (k.state == 'outside') {
       final h = k.hours;
-      if (h == null) return 'Outside your working hours';
-      return 'Outside your working hours (${calRange(h.$1, h.$2 - h.$1)})';
+      if (h == null) return 'Outside $whose working hours';
+      return 'Outside $whose working hours (${calRange(h.$1, h.$2 - h.$1)})';
     }
-    if (k.state == 'day_off') return 'Outside your working hours (day off)';
+    if (k.state == 'day_off') return 'Outside $whose working hours (day off)';
     return null;
   }
 
   bool validate() {
     final e = <String, String>{};
     if (client == null) e['client'] = 'Pick a client.';
+    if (admin && trainer == null) e['trainer'] = 'Pick a trainer.';
     final m = int.tryParse(len.text);
     if (m == null || m < 5 || m > 240) e['minutes'] = 'Enter 5 to 240 minutes.';
     final l = link.text.trim();
@@ -469,6 +495,7 @@ Future<(CalSession, CalSession?)?> showSessionForm(BuildContext context, Calenda
         link: f.link.text.trim(),
         note: f.note.text.trim(),
         tell: f.tell,
+        trainer: f.admin ? f.trainer : null,
       );
       if (ctx.mounted) Navigator.of(ctx).pop((r, move));
     } on ApiError catch (e) {
@@ -545,23 +572,52 @@ Future<(CalSession, CalSession?)?> showSessionForm(BuildContext context, Calenda
                 builder: (ctx, snap) {
                   final list = snap.data ?? const <CalClient>[];
                   if (f.client == null && list.isNotEmpty && move == null) {
-                    f.client = list.first.id;
-                    f.clientName = list.first.name;
+                    // Admin with one trainer on screen: that trainer's first client.
+                    final first = list.where((p) => f.admin && p.trainerId == c.trainer).firstOrNull ?? list.first;
+                    f.client = first.id;
+                    f.clientName = first.name;
+                    if (f.admin) {
+                      f.trainer = first.trainerId.isNotEmpty ? first.trainerId : (c.trainer.isNotEmpty ? c.trainer : c.trainers.firstOrNull?.$1);
+                      WidgetsBinding.instance.addPostFrameCallback((_) => f.runCheck());
+                    }
                   }
                   final label = f.clientName ?? (snap.hasError ? 'Could not load your clients' : (snap.hasData ? 'No clients yet' : 'Loading…'));
-                  return _field(
+                  if (!f.admin) {
+                    return _field(
+                      'Client',
+                      AppSelect(label, entries: [
+                        for (final p in list) MenuEntry(p.name, end: p.goal, selected: p.id == f.client, onTap: () => f.pickClient(p)),
+                      ]),
+                      req: true,
+                      hint: 'Only clients given to you',
+                      error: f.errors['client'],
+                    );
+                  }
+                  // Admin: the picked trainer's clients first ("Their client"), and the client's trainer ("Their trainer").
+                  final mine = [...list.where((p) => p.trainerId == f.trainer), ...list.where((p) => p.trainerId != f.trainer)];
+                  final theirs = list.where((p) => p.id == f.client).firstOrNull?.trainerId;
+                  final clientField = _field(
                     'Client',
                     AppSelect(label, entries: [
-                      for (final p in list)
-                        MenuEntry(p.name, end: p.goal, selected: p.id == f.client, onTap: () => f.set(() {
-                              f.client = p.id;
-                              f.clientName = p.name;
-                            })),
+                      for (final p in mine)
+                        MenuEntry(p.name, end: p.trainerId == f.trainer && f.trainer != null ? 'Their client' : null, selected: p.id == f.client, onTap: () => f.pickClient(p)),
                     ]),
                     req: true,
-                    hint: 'Only clients given to you',
+                    hint: 'Shows clients of the picked trainer first',
                     error: f.errors['client'],
                   );
+                  final trainerField = _field(
+                    'Trainer',
+                    AppSelect(f.trainer == null ? 'Pick a trainer' : f.trainerName, entries: [
+                      for (final (id, name) in c.trainers)
+                        MenuEntry(name, end: id == theirs ? 'Their trainer' : null, selected: id == f.trainer, onTap: () => f.set(() => f.trainer = id, recheck: true)),
+                    ]),
+                    req: true,
+                    hint: 'Their trainer is picked for you',
+                    error: f.errors['trainer'],
+                  );
+                  if (phone) return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [clientField, trainerField]);
+                  return Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 12, children: [Expanded(child: clientField), Expanded(child: trainerField)]);
                 },
               ),
             ]),
@@ -637,7 +693,7 @@ Future<(CalSession, CalSession?)?> showSessionForm(BuildContext context, Calenda
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
                         Text(warn, style: AppText.s(13, W.w7, color: AppColors.warnText)),
-                        Text('Pick another time.', style: AppText.s(12.5, W.w5, color: AppColors.text2)),
+                        Text(f.admin ? 'Pick another time or another trainer.' : 'Pick another time.', style: AppText.s(12.5, W.w5, color: AppColors.text2)),
                       ]),
                     ),
                   ]),
@@ -648,7 +704,7 @@ Future<(CalSession, CalSession?)?> showSessionForm(BuildContext context, Calenda
                   decoration: BoxDecoration(color: AppColors.okBg, borderRadius: AppRadius.all(AppRadius.item)),
                   child: Row(spacing: 10, children: [
                     const AppIcon(AppIcons.check, size: 16, color: AppColors.okText),
-                    Expanded(child: Text('You are free at this time', style: AppText.s(13, W.w6, color: AppColors.okText))),
+                    Expanded(child: Text(f.admin ? '${f.trainerFirst} is free at this time' : 'You are free at this time', style: AppText.s(13, W.w6, color: AppColors.okText))),
                   ]),
                 ),
             ]),
@@ -683,7 +739,7 @@ Future<(CalSession, CalSession?)?> showSessionForm(BuildContext context, Calenda
                   minLines: 4,
                   formatters: [LengthLimitingTextInputFormatter(300)],
                 ),
-                hint: 'Optional. Only you and Vimal see it.',
+                hint: f.admin ? 'Optional. The trainer sees it on the session.' : 'Optional. Only you and Vimal see it.',
               ),
               _Switch(
                 title: 'Tell the client',
@@ -710,7 +766,7 @@ Future<(CalSession, CalSession?)?> showSessionForm(BuildContext context, Calenda
   return showAppDrawer<(CalSession, CalSession?)>(
     context,
     title: move == null ? 'New session' : 'Move session',
-    sub: move == null ? 'Book one of your clients' : '${move.client} · now ${move.when}',
+    sub: move == null ? (c.admin ? 'Book a client with a trainer' : 'Book one of your clients') : '${move.client} · now ${move.when}',
     icon: AppIcons.calStat,
     builder: body,
     footer: (ctx) => phone
@@ -731,12 +787,39 @@ Future<(CalSession, CalSession?)?> showSessionForm(BuildContext context, Calenda
 
 // ─────────────────────────────── My working hours
 
-/// Every weekday on / off with from – to. Returns true when saved.
+/// Every weekday on / off with from – to. Returns true when saved. The admin's version is Availability: a Trainer
+/// pick on top (the calendar's trainer, else the first one) loads that trainer's hours.
 Future<bool> showWorkingHours(BuildContext context, CalendarController c) async {
-  final days = [for (final d in (c.hours.isEmpty ? [for (var i = 0; i < 7; i++) CalAvDay(i, i < 6, 390, 1200)] : c.hours)) d.copy()];
+  List<CalAvDay> fresh(List<CalAvDay> src) => [for (final d in (src.isEmpty ? [for (var i = 0; i < 7; i++) CalAvDay(i, i < 6, 390, 1200)] : src)) d.copy()];
+  var days = fresh(c.admin ? const [] : c.hours);
   final state = ValueNotifier(0);
-  var busy = false;
+  var busy = false, loadingHours = c.admin;
   String? error;
+  String? who = c.admin ? (c.trainer.isNotEmpty ? c.trainer : c.trainers.firstOrNull?.$1) : null;
+  var ticket = 0;
+  Future<void> loadHours() async {
+    final t = ++ticket, id = who;
+    if (id == null) {
+      loadingHours = false;
+      state.value++;
+      return;
+    }
+    loadingHours = true;
+    error = null;
+    state.value++;
+    try {
+      final h = await c.hoursOf(id);
+      if (t != ticket) return;
+      days = fresh(h);
+    } on ApiError catch (e) {
+      if (t != ticket) return;
+      error = e.message;
+    }
+    loadingHours = false;
+    state.value++;
+  }
+
+  if (c.admin) loadHours();
   final times = [for (var m = 5 * 60; m <= 23 * 60 + 30; m += 30) m];
 
   Future<void> save(BuildContext ctx) async {
@@ -746,11 +829,12 @@ Future<bool> showWorkingHours(BuildContext context, CalendarController c) async 
       state.value++;
       return;
     }
+    if (c.admin && (who == null || loadingHours)) return;
     busy = true;
     error = null;
     state.value++;
     try {
-      await c.saveHours(days);
+      await c.saveHours(days, trainer: who);
       if (ctx.mounted) Navigator.of(ctx).pop(true);
     } on ApiError catch (e) {
       busy = false;
@@ -761,15 +845,33 @@ Future<bool> showWorkingHours(BuildContext context, CalendarController c) async 
 
   final r = await showAppDrawer<bool>(
     context,
-    title: 'My working hours',
-    sub: 'Vimal sees them when he books for you',
+    title: c.admin ? 'Availability' : 'My working hours',
+    sub: c.admin ? 'Working hours of each trainer' : 'Vimal sees them when he books for you',
     icon: AppIcons.clockAlt,
     builder: (ctx) => ValueListenableBuilder(
       valueListenable: state,
       builder: (ctx, _, _) {
         final phone = ctx.isPhone;
         final n = days.where((d) => d.open).length;
-        return _Sec('Working hours, week after week', sub: '$n working ${n == 1 ? 'day' : 'days'}. The calendar shades the rest, and a session outside them shows a warning.', last: true, [
+        final name = c.trainers.where((t) => t.$1 == who).firstOrNull?.$2;
+        final pick = _Sec('Trainer', sub: 'Working hours repeat every week. The calendar shades the rest, and a session outside them shows a warning.', [
+          AppSelect(name ?? 'Pick a trainer', entries: [
+            for (final (id, nm) in c.trainers)
+              MenuEntry(nm, selected: id == who, onTap: () {
+                if (id == who) return;
+                who = id;
+                loadHours();
+              }),
+          ]),
+        ]);
+        if (c.admin && loadingHours) {
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            pick,
+            const Padding(padding: EdgeInsets.all(32), child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent)))),
+          ]);
+        }
+        final sec = _Sec('Working hours, week after week',
+            sub: c.admin ? '$n working ${n == 1 ? 'day' : 'days'}' : '$n working ${n == 1 ? 'day' : 'days'}. The calendar shades the rest, and a session outside them shows a warning.', last: true, [
           Column(children: [
             for (final d in days)
               Container(
@@ -816,6 +918,7 @@ Future<bool> showWorkingHours(BuildContext context, CalendarController c) async 
           ]),
           if (error != null) Text(error!, style: AppText.s(12.5, W.w6, color: AppColors.badText)),
         ]);
+        return c.admin ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [pick, sec]) : sec;
       },
     ),
     footer: (ctx) {

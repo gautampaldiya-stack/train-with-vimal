@@ -7,10 +7,36 @@ import '../../../core/api/api_error.dart';
 /// Trainer → My profile (boards `TrainerMe` / `TrainerMeMobile`). One controller for the page: the profile with
 /// its stats (`trainers/me/`, the same numbers as the dashboard and the admin Trainers table, D-30), documents and
 /// What clients see. My activity and Account load their own lists.
+///
+/// With [id] it is the admin's Trainer profile (boards `TrainerProfile` / `TrainerProfileMobile`, D-48): the same
+/// page for one trainer, read from `trainers/<id>/` (same shape as `trainers/me/`), with the admin tabs.
 class MeController extends ChangeNotifier {
-  MeController({String? tab}) {
-    if (tab != null && tabs.any((t) => t.$1 == tab)) this.tab = tab;
+  MeController({String? tab, this.id}) {
+    if (tab != null && tabList.any((t) => t.$1 == tab)) this.tab = tab;
   }
+
+  /// The trainer's id when the admin looks at a trainer; null on the trainer's own My profile.
+  final String? id;
+  bool get admin => id != null;
+
+  /// API base: `trainers/me` or `trainers/<id>`.
+  String get api => admin ? 'trainers/$id' : 'trainers/me';
+
+  static const adminTabs = [
+    ('overview', 'Overview'),
+    ('clients', 'Clients'),
+    ('access', 'Access and permissions'),
+    ('activity', 'Activity'),
+    ('documents', 'Documents'),
+    ('clients-see', 'What clients see'),
+  ];
+
+  List<(String, String)> get tabList => admin ? adminTabs : tabs;
+
+  /// Words for the admin's texts ("Clients who need him"); "you" on My profile.
+  String get he => admin ? switch ('${me['gender'] ?? ''}') { 'female' => 'she', 'male' => 'he', _ => 'they' } : 'you';
+  String get him => admin ? switch ('${me['gender'] ?? ''}') { 'female' => 'her', 'male' => 'him', _ => 'them' } : 'you';
+  String get his => admin ? switch ('${me['gender'] ?? ''}') { 'female' => 'her', 'male' => 'his', _ => 'their' } : 'your';
 
   static const tabs = [
     ('overview', 'Overview'),
@@ -52,9 +78,9 @@ class MeController extends ChangeNotifier {
     _notify();
     try {
       final r = await Future.wait([
-        Services.api.get<Map>('trainers/me/'),
-        Services.api.get<List>('trainers/me/documents/'),
-        Services.api.get<Map>('trainers/me/visibility/'),
+        Services.api.get<Map>('$api/'),
+        Services.api.get<List>('$api/documents/'),
+        Services.api.get<Map>('$api/visibility/'),
       ]);
       me = Map<String, dynamic>.from(r[0] as Map);
       docs = [for (final d in r[1] as List) Map<String, dynamic>.from(d as Map)];
@@ -72,7 +98,7 @@ class MeController extends ChangeNotifier {
 
   Future<void> reloadMe() async {
     try {
-      me = Map<String, dynamic>.from(await Services.api.get<Map>('trainers/me/'));
+      me = Map<String, dynamic>.from(await Services.api.get<Map>('$api/'));
       version++;
       _notify();
     } on ApiError catch (_) {}
@@ -181,7 +207,7 @@ class MeController extends ChangeNotifier {
     vis = {...vis, key: on};
     _notify();
     try {
-      _setVis(await Services.api.put<Map>('trainers/me/visibility/', {key: on}));
+      _setVis(await Services.api.put<Map>('$api/visibility/', {key: on}));
       _notify();
     } on ApiError {
       vis = old;
@@ -191,12 +217,18 @@ class MeController extends ChangeNotifier {
   }
 
   Future<void> saveDetails(Map<String, dynamic> data) async {
-    me = Map<String, dynamic>.from(await Services.api.patch<Map>('trainers/me/', data));
+    if (admin) {
+      // trainers/<id>/ PATCH answers without the page extras: read the full page again.
+      await Services.api.patch<Map>('$api/', data);
+      me = Map<String, dynamic>.from(await Services.api.get<Map>('$api/'));
+    } else {
+      me = Map<String, dynamic>.from(await Services.api.patch<Map>('trainers/me/', data));
+    }
     version++;
     _notify();
     // The preview card shows the new name, speciality and bio.
     try {
-      _setVis(await Services.api.get<Map>('trainers/me/visibility/'));
+      _setVis(await Services.api.get<Map>('$api/visibility/'));
       _notify();
     } on ApiError catch (_) {}
   }

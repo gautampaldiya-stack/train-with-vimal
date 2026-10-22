@@ -275,7 +275,7 @@ def document_expiry_reminders():
         if admin and once(admin, "doc_expiry", d.id, d.expires_on):
             days = (d.expires_on - today).days
             notify(admin, "document_expiring", f"{d.trainer.user.full_name}: {d.name} expires in {days} days",
-                   "Ask for the new certificate.", data={"route": f"/trainers/{d.trainer.user_id}/documents"})
+                   "Ask for the new certificate.", data={"route": f"/trainers/{d.trainer.user_id}?tab=documents"})
             sent += 1
     return sent
 

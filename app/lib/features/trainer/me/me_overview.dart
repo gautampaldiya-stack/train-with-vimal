@@ -33,7 +33,7 @@ class MeOverviewTab extends StatelessWidget {
     final bio = '${p['bio'] ?? ''}', best = '${p['works_best_with'] ?? ''}';
     return MeCard(
       title: 'Professional details',
-      sub: 'Clients see only what you switch on in What clients see',
+      sub: c.admin ? 'Shown to you when you pick a trainer' : 'Clients see only what you switch on in What clients see',
       action: MeTextBtn('Edit', onTap: onEdit),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         MeKv([
@@ -47,8 +47,8 @@ class MeOverviewTab extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 4, children: [
-            meLabel('About you'),
-            Text(bio.isEmpty ? 'Nothing yet. Add a short bio in Edit my details.' : bio,
+            meLabel(c.admin ? 'About ${c.first}' : 'About you'),
+            Text(bio.isEmpty ? (c.admin ? 'Nothing yet. Add a short bio in Edit details.' : 'Nothing yet. Add a short bio in Edit my details.') : bio,
                 style: AppText.s(13, W.w4, color: bio.isEmpty ? AppColors.muted : AppColors.text, h: 1.5)),
           ]),
         ),
@@ -92,7 +92,7 @@ class MeOverviewTab extends StatelessWidget {
         child: top.isEmpty
             ? Padding(
                 padding: const EdgeInsets.only(bottom: 10),
-                child: Text('Upload your certificates in Documents. Clients see them after Vimal verifies them.', style: AppText.s(12.5, W.w5, color: AppColors.muted, h: 1.45)),
+                child: Text(c.admin ? 'None added yet. Upload them in Documents.' : 'Upload your certificates in Documents. Clients see them after Vimal verifies them.', style: AppText.s(12.5, W.w5, color: AppColors.muted, h: 1.45)),
               )
             : Column(children: [
                 for (final (i, d) in top.indexed)
@@ -121,9 +121,9 @@ class MeOverviewTab extends StatelessWidget {
     final rows = [for (final r in (c.me['attention'] as List?) ?? const []) r as Map];
     final n = (c.stats['clients'] as num?) ?? 0;
     return MeCard(
-      title: 'Clients who need you',
-      sub: 'From your $n ${n == 1 ? 'client' : 'clients'}',
-      action: MeTextBtn('My clients', onTap: () => context.go('/clients')),
+      title: c.admin ? 'Clients who need ${c.him}' : 'Clients who need you',
+      sub: 'From ${c.his} $n ${n == 1 ? 'client' : 'clients'}',
+      action: c.admin ? MeTextBtn('All clients', onTap: () => onTab('clients')) : MeTextBtn('My clients', onTap: () => context.go('/clients')),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
         child: rows.isEmpty
@@ -197,7 +197,7 @@ class _MeRecentState extends State<_MeRecent> {
 
   Future<void> _load() async {
     try {
-      final r = await Services.api.get<Map>('trainers/me/activity/', query: {'range': 'all', 'limit': 5});
+      final r = await Services.api.get<Map>('${widget.c.api}/activity/', query: {'range': 'all', 'limit': 5});
       rows = [for (final x in (r['results'] as List?) ?? const []) x as Map];
     } on ApiError catch (_) {}
     if (mounted) setState(() => loading = false);

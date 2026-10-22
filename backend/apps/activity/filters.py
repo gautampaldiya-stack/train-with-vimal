@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 import django_filters
+from django.db.models import Q
 from django.utils import timezone
 
 from .models import ActivityEvent
@@ -17,6 +18,7 @@ class ActivityFilter(django_filters.FilterSet):
     trainer = django_filters.UUIDFilter(field_name="trainer_id")
     since = django_filters.DateTimeFilter(field_name="created_at", lookup_expr="gte")
     until = django_filters.DateTimeFilter(field_name="created_at", lookup_expr="lte")
+    search = django_filters.CharFilter(method="filter_search")  # Activity log: person, client or item
 
     class Meta:
         model = ActivityEvent
@@ -31,6 +33,13 @@ class ActivityFilter(django_filters.FilterSet):
         else:
             start = now - timedelta(days=RANGES[value])
         return qs.filter(created_at__gte=start)
+
+    def filter_search(self, qs, name, value):
+        v = value.strip()
+        if not v:
+            return qs
+        return qs.filter(Q(actor_label__icontains=v) | Q(client__full_name__icontains=v) | Q(target_label__icontains=v)
+                         | Q(verb__icontains=v))
 
     def filter_who(self, qs, name, value):
         mapping = {"team": "team", "clients": "client", "automations": "automation"}

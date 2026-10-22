@@ -469,7 +469,7 @@ class _MeActivityTabState extends State<MeActivityTab> {
     final req = ++_req;
     setState(() => loading = true);
     try {
-      final r = await Services.api.get<Map>('trainers/me/activity/', query: _q);
+      final r = await Services.api.get<Map>('${widget.c.api}/activity/', query: _q);
       if (req != _req || !mounted) return;
       rows = [for (final x in (r['results'] as List?) ?? const []) x as Map];
       counts = (r['counts'] as Map?) ?? const {};
@@ -489,7 +489,7 @@ class _MeActivityTabState extends State<MeActivityTab> {
     final req = _req;
     setState(() => more = true);
     try {
-      final r = await Services.api.get<Map>('trainers/me/activity/', query: {..._q, 'offset': rows.length});
+      final r = await Services.api.get<Map>('${widget.c.api}/activity/', query: {..._q, 'offset': rows.length});
       if (req != _req || !mounted) return;
       rows = [...rows, for (final x in (r['results'] as List?) ?? const []) x as Map];
       days = {...days, ...((r['days'] as Map?) ?? const {})};
@@ -509,7 +509,7 @@ class _MeActivityTabState extends State<MeActivityTab> {
       child: Padding(
         padding: const EdgeInsets.only(bottom: 8),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          CardHeader('My activity', sub: 'What you did in the app', padding: const EdgeInsets.fromLTRB(16, 12, 16, 6), action: _rangeButton()),
+          CardHeader(widget.c.admin ? 'Activity' : 'My activity', sub: widget.c.admin ? 'What ${widget.c.first} did in the app' : 'What you did in the app', padding: const EdgeInsets.fromLTRB(16, 12, 16, 6), action: _rangeButton()),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),

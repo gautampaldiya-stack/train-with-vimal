@@ -594,15 +594,13 @@ class _GlIcon extends StatelessWidget {
       IconTile(g.icon, size: 28, radius: 8, iconSize: 15, bg: g.warn ? AppColors.warnBg : AppColors.sub, fg: g.warn ? AppColors.warnText : AppColors.text2);
 }
 
-/// `.gl` tile: icon, number over label over sub (both cut with …, full text in the tooltip), chevron.
+/// `.gl` tile: icon, number over label over sub, chevron. No tile tooltip (Gautam); only text that is cut shows its full text on hover.
 class _GlTile extends StatelessWidget {
   const _GlTile(this.g, {required this.onTap});
   final _Gl g;
   final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => AppTooltip(
-        message: '${g.label} · ${g.sub}',
-        child: Hover(
+  Widget build(BuildContext context) => Hover(
           onTap: onTap,
           builder: (_, h, _) => Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -622,7 +620,6 @@ class _GlTile extends StatelessWidget {
               Padding(padding: const EdgeInsets.only(top: 7), child: AppIcon(AppIcons.chevronRight, size: 14, color: h ? AppColors.accent : AppColors.line2)),
             ]),
           ),
-        ),
       );
 }
 

@@ -69,6 +69,8 @@ class TrainerRowSerializer(serializers.ModelSerializer):
 
     def get_access_label(self, obj):
         tp = obj.trainer_profile
+        if tp.is_owner:
+            return "Owner"
         if tp.access_mode == AccessMode.CUSTOM:
             on = sum(1 for v in tp.effective_permissions().values() if v)
             return f"Custom · {on} of {len(ALL_KEYS)}"

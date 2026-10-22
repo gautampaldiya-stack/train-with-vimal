@@ -30,7 +30,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 
 | Path | Methods | View | Notes |
 |---|---|---|---|
-| `activity/` | GET | ActivityViewSet | GET /activity/?range=7d&kind=plan&who=team&person=<id> |
+| `activity/` | GET | ActivityViewSet | GET /activity/?range=7d&kind=plan&who=team&person=<id>&search=. `search` matches the person, the client, the item or the change text (Activity log, D-48). Cursor paged. |
 | `activity/counts/` | GET | ActivityViewSet | GET /activity/?range=7d&kind=plan&who=team&person=<id> |
 | `activity/export/` | GET | ActivityViewSet | GET /activity/?range=7d&kind=plan&who=team&person=<id> |
 | `dashboard/admin/` | GET | AdminDashboardView | Admin Dashboard in one call: greeting, `subline`, stats, glance (`onboarding_pending.forms_missing`), `needs_action` rows `{key, kind, title, sub, cta, route}`, trainer performance (`?period=month` = 30-day adherence), at-risk, recent activity, bell `notices` + `unread`. |
@@ -292,7 +292,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `sessions/<pk>/restore/` | POST | SessionViewSet | Calendar (admin: all trainers; trainer: own sessions). |
 | `sessions/<pk>/status/` | POST | SessionViewSet | Calendar (admin: all trainers; trainer: own sessions). |
 | `sessions/check/` | GET | SessionViewSet | Calendar (admin: all trainers; trainer: own sessions). |
-| `sessions/stats/` | GET | SessionViewSet | Calendar (admin: all trainers; trainer: own sessions). |
+| `sessions/stats/` | GET | SessionViewSet | Calendar (admin: all trainers; trainer: own sessions). Admin gets `busiest` {trainer__full_name, n} and `by_trainer` [{trainer_id, n}] for the Busiest trainer stat and the All trainers menu (D-48). |
 
 ## trainers
 
@@ -302,7 +302,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `access-requests/<pk>/approve/` | POST | AccessRequestViewSet | Trainer → Ask for more access. Admin approves or declines. |
 | `access-requests/<pk>/decline/` | POST | AccessRequestViewSet | Trainer → Ask for more access. Admin approves or declines. |
 | `trainers/` | GET, POST | TrainerViewSet | Admin → Trainers. Trainers can read the team list (for "Move to another trainer"). |
-| `trainers/<pk>/` | GET, PUT, PATCH, DELETE | TrainerViewSet | Admin → Trainers. Trainers can read the team list (for "Move to another trainer"). |
+| `trainers/<pk>/` | GET, PUT, PATCH, DELETE | TrainerViewSet | Admin → Trainers. Trainers can read the team list (for "Move to another trainer"). GET adds `access_presets` {assigned, all} for the Access tab level cards (D-48). The list's search / filters never apply to `trainers/<pk>/…` routes, so a tab's own `?search=` / `?status=` can't hide the trainer. |
 | `trainers/<pk>/access/` | GET, PUT | TrainerViewSet | Admin → Trainers. Trainers can read the team list (for "Move to another trainer"). |
 | `trainers/<pk>/assign-clients/` | POST | TrainerViewSet | Admin → Trainers. Trainers can read the team list (for "Move to another trainer"). |
 | `trainers/<pk>/assignable-clients/` | GET | TrainerViewSet | Admin → Trainers. Trainers can read the team list (for "Move to another trainer"). |
@@ -322,7 +322,9 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `trainers/me/devices/` | GET | MyDevicesView | Account → Where you are logged in: this device first, then the rest by last use; 5 a page. |
 | `trainers/me/notifications/` | GET, PUT, PATCH | MyNotificationsView | Account → Notifications ("Push to your phone and email"). |
 | `trainers/me/visibility/` | GET, PUT | TrainerMeVisibilityView |  |
-| `trainers/summary/` | GET | TrainerViewSet | Admin → Trainers. Trainers can read the team list (for "Move to another trainer"). |
+| `trainers/summary/` | GET | TrainerViewSet | Admin → Trainers stats: counts per tab, spots, check-ins to review (with who has the most), adherence and `adherence_change` (clients' 7-day minus 30-day average, D-48). |
+| `trainers/<pk>/clients/` | GET | TrainerViewSet | Trainer profile → Clients tab: `?search= &status=active|at_risk|paused|pending &goal= &page=` (20 a page), program, adherence, last check-in, since (D-48). |
+| `trainers/<pk>/activity/` | GET | TrainerViewSet | Trainer profile → Activity tab: same rows and paging as `me/activity` for that trainer (D-48). |
 | `trainers/with-space/` | GET | TrainerViewSet | Admin → Trainers. Trainers can read the team list (for "Move to another trainer"). |
 
 ## training

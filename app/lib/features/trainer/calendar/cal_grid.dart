@@ -55,7 +55,7 @@ class CalGrid extends StatelessWidget {
 
   Widget _head() => LayoutBuilder(builder: (context, box) {
         // `.cal-dh` wraps: a narrow column puts "2 sessions" on its own line.
-        final narrow = (box.maxWidth - _gutter) / days.length - 20 < 135;
+        final narrow = (box.maxWidth - _gutter) / days.length - 20 < 125;
         return Container(
           decoration: const BoxDecoration(color: AppColors.card, border: Border(bottom: BorderSide(color: AppColors.line))),
           child: IntrinsicHeight(
@@ -178,21 +178,24 @@ class CalGrid extends StatelessWidget {
   /// Overlapping sessions share the column side by side (board `blocksOf`).
   List<Widget> _blocks(int i, double w) {
     final xs = c.on(i);
+    // Lanes use where a block shows: one before 6 am or after the last hour is pinned to the edge of the grid.
+    int a(CalSession s) => s.from.clamp(calH0 * 60, calH1 * 60 - 22);
+    int z(CalSession s) => math.max(a(s) + 22, math.min(s.from + s.minutes, calH1 * 60));
     final cols = <int>[];
     final colOf = <CalSession, int>{};
     for (final s in xs) {
-      var k = cols.indexWhere((end) => end <= s.from);
+      var k = cols.indexWhere((end) => end <= a(s));
       if (k < 0) {
         k = cols.length;
         cols.add(0);
       }
-      cols[k] = s.from + s.minutes;
+      cols[k] = z(s);
       colOf[s] = k;
     }
     return [
       for (final s in xs)
         () {
-          final grp = xs.where((o) => o.from < s.from + s.minutes && o.from + o.minutes > s.from);
+          final grp = xs.where((o) => a(o) < z(s) && z(o) > a(s));
           final n = grp.map((o) => colOf[o]!).reduce(math.max) + 1;
           final top = _px(s.from.clamp(calH0 * 60, calH1 * 60 - 22));
           final h = math.max(22.0, s.minutes / 60 * calHourPx - 3);
@@ -202,7 +205,7 @@ class CalGrid extends StatelessWidget {
             left: colOf[s]! * cw + 2,
             width: cw - 4,
             height: math.min(h, (calH1 - calH0) * calHourPx - top),
-            child: _Block(s: s, phone: phone, onTap: () => onOpen(s)),
+            child: _Block(s: s, phone: phone, byTrainer: c.admin && c.trainer.isEmpty, onTap: () => onOpen(s)),
           );
         }(),
     ];
@@ -293,15 +296,18 @@ class CalOffSwatch extends StatelessWidget {
 
 /// `.cal-b`: kind-tinted block with the client and "7:00 am · place"; short ones (< 45 min) show the name only.
 class _Block extends StatelessWidget {
-  const _Block({required this.s, required this.phone, required this.onTap});
+  const _Block({required this.s, required this.phone, required this.onTap, this.byTrainer = false});
   final CalSession s;
   final bool phone;
+
+  /// Admin on All trainers: "7:00 am · Aman" (the trainer's first name in place of the place).
+  final bool byTrainer;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final tiny = s.minutes < 45;
-    final tip = [s.client, s.kind.label, calRangeL(s.from, s.minutes), s.bookedBy.isEmpty ? null : s.where, s.done ? 'Done' : (s.status == 'missed' ? 'Missed' : 'Booked')]
+    final tip = [s.client, if (byTrainer && s.trainer.isNotEmpty) s.trainer, s.kind.label, calRangeL(s.from, s.minutes), s.bookedBy.isEmpty ? null : s.where, s.done ? 'Done' : (s.status == 'missed' ? 'Missed' : 'Booked')]
         .whereType<String>()
         .join(' · ');
     Widget box(bool h) => AnimatedOpacity(
@@ -318,7 +324,7 @@ class _Block extends StatelessWidget {
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
               CutText(s.client, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w7, h: 1.25)),
               if (!tiny)
-                CutText('${calFmtL(s.from)} · ${s.where}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w5, color: AppColors.muted, h: 1.25)),
+                CutText('${calFmtL(s.from)} · ${byTrainer ? s.trainer.split(' ').first : s.where}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w5, color: AppColors.muted, h: 1.25)),
             ]),
           ),
         );

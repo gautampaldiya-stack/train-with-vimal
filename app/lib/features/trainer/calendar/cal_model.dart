@@ -7,6 +7,8 @@ import '../../../core/theme/theme.dart';
 
 // Trainer Calendar (boards `TrainerCalendar` + `TrainerCalendarMobile`): the week's own sessions, stats, working
 // hours and the clients given to the trainer. Every write goes to `sessions/` and the page reloads the week.
+// Admin Calendar (boards `Calendar` + `CalendarMobile`, D-48): the same page for the whole team, with the
+// "All trainers" pick, the trainer on each block and per-trainer Availability.
 
 const calMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const calWd = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -85,8 +87,10 @@ class CalSession {
         note = '${j['note'] ?? ''}',
         status = '${j['status'] ?? 'booked'}',
         bookedBy = '${j['booked_by_name'] ?? ''}',
-        plan = '${j['client_plan'] ?? ''}';
-  final String id, clientId, client, place, callLink, note, bookedBy, plan;
+        plan = '${j['client_plan'] ?? ''}',
+        trainerId = '${(j['trainer_detail'] as Map?)?['id'] ?? j['trainer'] ?? ''}',
+        trainer = '${(j['trainer_detail'] as Map?)?['full_name'] ?? ''}';
+  final String id, clientId, client, place, callLink, note, bookedBy, plan, trainerId, trainer;
   final CalKind kind;
   final DateTime start;
   final int minutes;
@@ -136,8 +140,9 @@ class CalClient {
   CalClient(Map j)
       : id = '${j['id']}',
         name = '${j['full_name'] ?? j['name'] ?? ''}',
-        goal = '${j['goal_label'] ?? ''}';
-  final String id, name, goal;
+        goal = '${j['goal_label'] ?? ''}',
+        trainerId = '${(j['trainer'] as Map?)?['id'] ?? ''}';
+  final String id, name, goal, trainerId;
 }
 
 /// Live check under the form (`sessions/check/`).
@@ -155,7 +160,7 @@ class CalCheck {
 }
 
 class CalendarController extends ChangeNotifier {
-  CalendarController({required bool phone}) : view = phone ? 'day' : 'week' {
+  CalendarController({required bool phone, this.admin = false}) : view = phone ? 'day' : 'week' {
     final now = DateTime.now();
     week = calMonday(now);
     day = now.weekday - 1;
@@ -165,6 +170,17 @@ class CalendarController extends ChangeNotifier {
   late DateTime week;
   late int day;
   String view;
+
+  /// Admin: whose sessions show ('' = All trainers) and the active trainers for the picks (id, name).
+  final bool admin;
+  String trainer = '';
+  List<(String, String)> trainers = [];
+
+  /// Sessions this week by trainer (from the All trainers stats), for the counts in the trainer menu.
+  Map<String, int> byTrainer = {};
+  String _hoursOf = '';
+
+  String get trainerName => trainers.where((t) => t.$1 == trainer).firstOrNull?.$2 ?? '';
 
   List<CalSession> sessions = [];
   Map stats = {};
@@ -201,22 +217,32 @@ class CalendarController extends ChangeNotifier {
     }
     loading = true;
     notifyListeners();
-    final q = {
-      'from': _iso(week),
-      'to': _iso(week.add(const Duration(days: 6))),
-      'trainer': myId,
-    };
+    final q = _q;
+    // Shading follows one trainer: yours, or the admin's pick (none for All trainers).
+    final who = admin ? trainer : myId;
+    if (who != _hoursOf) {
+      hours = [];
+      _hoursOf = who;
+    }
     try {
       final res = await Future.wait([
         Services.api.get<List>('sessions/', query: q),
         Services.api.get<Map>('sessions/stats/', query: q),
-        if (hours.isEmpty) Services.api.get<Map>('availability/'),
+        if (hours.isEmpty && who.isNotEmpty) Services.api.get<Map>('availability/', query: {if (admin) 'trainer': who}),
+        if (admin && trainers.isEmpty) Services.api.get<Map>('trainers/', query: {'tab': 'active', 'page_size': 100}),
       ]);
       if (t != _ticket) return;
       sessions = [for (final s in res[0] as List) CalSession(s as Map)];
       _loaded = week;
       stats = res[1] as Map;
-      if (res.length > 2) hours = [for (final d in (res[2] as Map)['days'] as List) CalAvDay.fromJson(d as Map)];
+      for (final x in res.skip(2)) {
+        final m = x as Map;
+        if (m['days'] is List) hours = [for (final d in m['days'] as List) CalAvDay.fromJson(d as Map)];
+        if (m['results'] is List) trainers = [for (final t in m['results'] as List) ('${(t as Map)['id']}', '${t['full_name']}')];
+      }
+      if (admin && trainer.isEmpty) {
+        byTrainer = {for (final b in (stats['by_trainer'] as List?) ?? const []) '${(b as Map)['trainer_id']}': (b['n'] as num).toInt()};
+      }
       error = null;
     } on ApiError catch (e) {
       if (t != _ticket) return;
@@ -224,6 +250,20 @@ class CalendarController extends ChangeNotifier {
     }
     loading = false;
     notifyListeners();
+  }
+
+  /// The week, and whose sessions: always yours for a trainer, the pick (or everyone) for the admin.
+  Map<String, Object> get _q => {
+        'from': _iso(week),
+        'to': _iso(week.add(const Duration(days: 6))),
+        if (!admin) 'trainer': myId else if (trainer.isNotEmpty) 'trainer': trainer,
+      };
+
+  /// Admin: show one trainer's sessions ('' = All trainers).
+  void setTrainer(String id) {
+    if (id == trainer) return;
+    trainer = id;
+    load();
   }
 
   static String _iso(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
@@ -305,15 +345,17 @@ class CalendarController extends ChangeNotifier {
 
   Future<List<CalClient>> myClients() async {
     if (clients != null) return clients!;
+    // The admin's list is every active client; the trainer's is their own (the server filters).
     final r = await Services.api.get<Map>('clients/', query: {'page_size': 100, 'status': 'active'});
     return clients = [for (final c in r['results'] as List) CalClient(c as Map)];
   }
 
-  Future<CalCheck> check(DateTime start, int minutes, {String? exclude}) async =>
+  Future<CalCheck> check(DateTime start, int minutes, {String? exclude, String? trainer}) async =>
       CalCheck(await Services.api.get<Map>('sessions/check/', query: {
         'start': start.toUtc().toIso8601String(),
         'minutes': minutes,
         'exclude': ?exclude,
+        'trainer': ?trainer,
       }));
 
   /// New (no [id]) or move / edit. Returns the saved session.
@@ -328,9 +370,11 @@ class CalendarController extends ChangeNotifier {
     required String link,
     required String note,
     required bool tell,
+    String? trainer,
   }) async {
     final body = {
       'client': client,
+      'trainer': ?trainer,
       'kind': kind.api,
       'start': start.toUtc().toIso8601String(),
       'minutes': minutes,
@@ -366,7 +410,7 @@ class CalendarController extends ChangeNotifier {
     notifyListeners();
     try {
       await Services.api.post('sessions/${s.id}/status/', {'status': status});
-      final r = await Services.api.get<Map>('sessions/stats/', query: {'from': _iso(week), 'to': _iso(week.add(const Duration(days: 6))), 'trainer': myId});
+      final r = await Services.api.get<Map>('sessions/stats/', query: _q);
       stats = r;
       notifyListeners();
     } on ApiError {
@@ -388,9 +432,17 @@ class CalendarController extends ChangeNotifier {
     await load();
   }
 
-  Future<void> saveHours(List<CalAvDay> days) async {
-    final r = await Services.api.put<Map>('availability/', {'days': [for (final d in days) d.toJson()]});
-    hours = [for (final d in r['days'] as List) CalAvDay.fromJson(d as Map)];
+  /// Admin Availability: one trainer's working hours.
+  Future<List<CalAvDay>> hoursOf(String id) async {
+    final r = await Services.api.get<Map>('availability/', query: {'trainer': id});
+    return [for (final d in r['days'] as List) CalAvDay.fromJson(d as Map)];
+  }
+
+  Future<void> saveHours(List<CalAvDay> days, {String? trainer}) async {
+    final r = await Services.api.put<Map>('availability/', {'days': [for (final d in days) d.toJson()], 'trainer': ?trainer});
+    final saved = [for (final d in r['days'] as List) CalAvDay.fromJson(d as Map)];
+    // The shading shows the hours of the trainer on screen only.
+    if (trainer == null || trainer == _hoursOf) hours = saved;
     notifyListeners();
   }
 }

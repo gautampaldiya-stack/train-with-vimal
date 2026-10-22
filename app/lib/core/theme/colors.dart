@@ -247,6 +247,10 @@ abstract final class AppColors {
   static const apOn = Color(0xFF16A34A), apWaitOld = Color(0xFFB45309), apWaitLate = Color(0xFFB91C1C), apEmpty = Color(0xFFFAFAF8);
   // Trainer load bar in pick lists (`.dr-bar i`).
   static const drLoad = Color(0xFFC9C9C4);
+  // Trainers (`.tr-*`): load bar at 80% or more and when full, amber numbers (3+ check-ins, adherence under 80).
+  static const trLoadHi = Color(0xFFD97706), trLoadFull = Color(0xFFB91C1C), trWarn = Color(0xFFB45309);
+  // Trainer profile → Access (`.tp-perm.ch`): a switch changed but not saved.
+  static const tpChangedBg = Color(0xFFFFFBEB), tpChangedEdge = Color(0xFFF59E0B);
 }
 
 enum Tone { ok, warn, bad, info, neutral }

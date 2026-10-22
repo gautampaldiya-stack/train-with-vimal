@@ -72,20 +72,20 @@ Status: **Done** (built and checked in a browser against the board, phone and de
 | TrainerMe | Done | 6 tabs, stats match dashboard (D-30, D-38), documents upload / viewer, What clients see preview, Ask for more access, activity, devices, notifications, Edit my details. Checked 768, 1024, 1440 on 2026-10-17. Drag and drop, any file on phone, PDF pages, Daily summary and Gym news sending added 2026-10-18; all tabs checked in DEBUG mode at 390 and 1440. Edit details for documents, web drop listener, viewer footer without overflow (checked 390, 1024) on 2026-10-18. Not built: admin screen to post gym news. |
 | TrainerMeMobile | Done | Same code, phone layout. Phone layout improved 2026-10-20 (Gautam, 18 Oct): header lines (speciality • experience / Access / Last login) no longer run together, stats as one 2 × 2 card, detail rows as label-left / value-right lines, the tab strip keeps the open tab in view (also when a tab opens from its link), device dates keep the month capital ("Wed 14 Oct"). Tablet (600–819) gets its own header so the name is not cut. Checked all 6 tabs, Edit my details, Change password, Ask for more access, documents at 390; overview / activity at 600, 768, 900, 1024, 1280; DEBUG mode at 390 with no console errors. |
 | TrainerMoreMobile | Done | `/more` (`app/lib/features/trainer/more/`): profile card → My profile, Library rows (Programs, Exercises, Nutrition & foods, Habits & supplements, Content library), Log out with the "Log out?" confirm. The Check-ins badge now loads in the shell, so it shows on every trainer page (it showed only after Dashboard or Check-ins had loaded) and starts empty for a new log in. Checked 390 against the board, 600, 1024, 1440, and DEBUG mode at 390 and 1024 with no console errors (2026-10-20). All Library pages are built. |
-| TrainerProfile | Not started |  |
-| TrainerProfileMobile | Not started |  |
-| Trainers | Not started |  |
-| TrainersMobile | Not started |  |
+| TrainerProfile | Done | `/trainers/<id>` with tabs (D-48). Overview, Clients, Access and permissions, Activity, Documents, What clients see; Edit details, Assign clients, Move all clients, password reset, Deactivate. Debug check 390, 768, 900, 1024, 1280, 1440 on 2026-10-22, no console errors. |
+| TrainerProfileMobile | Done | Phone layout of `/trainers/<id>` (D-48): 4-cell stat strip, tabs scroll. Checked 390 on 2026-10-22. |
+| Trainers | Done | `/trainers` (D-48): stats, tabs, search, Filter + chips, table, row ⋯, Add trainer, Deactivate, Move clients, Assign clients drawers. Checked 390–1440 on 2026-10-22. |
+| TrainersMobile | Done | Phone list of `/trainers` (D-48). Checked 390 on 2026-10-22. |
 
 ## Admin / shared staff
 
 | Board | Status | Note |
 |---|---|---|
-| Activity | Not started |  |
-| ActivityMobile | Not started |  |
-| AdminDashboard | Done | `/dashboard` (admin). Checked 1440 / 1280 / 1024 / 768. CTAs open Approvals, Clients, Trainers, Check-ins, Activity log, Settings: not built yet (holding page). |
+| Activity | Done | `/activity` (D-48): search, Filter (Who, Person), range, kind chips, day groups, Show more, Export CSV. Checked 390–1440 on 2026-10-22. |
+| ActivityMobile | Done | Phone layout of `/activity` (D-48), Export icon only. Checked 390 on 2026-10-22. |
+| AdminDashboard | Done | `/dashboard` (admin). Checked 1440 / 1280 / 1024 / 768. CTAs open Approvals, Clients, Trainers, Activity log (built); Check-ins and Settings not built yet (holding page). |
 | AdminDashboardMobile | Done | Checked at 390 in debug mode. |
-| AdminMoreMobile | Done | `/more` (admin). Trainers, Activity log, Forms, Automations, Emails, Settings rows open pages not built yet. |
+| AdminMoreMobile | Done | `/more` (admin). Trainers and Activity log rows open built pages; Forms, Automations, Emails, Settings not built yet. |
 | Approvals | Done | `/approvals` (`?tab=history`), D-47: Waiting / History tabs with counts, search, Filter (5 groups / 3 groups) with chips, table (sideways scroll when narrow, as on the board), Review drawer (‹ › step, trainer pick, approve switches), Reject, Ask for info, Move back modals, toasts with Undo / View, pager 20 a page, sidebar badge. Not built: the board's invite-link summary card (same data in Invite link → All links). Checked 390, 768, 900, 1024, 1280, 1440 in debug mode on 2026-10-22, no overflow. |
 | ApprovalsMobile | Done | One line per person (avatar, name, inviter, waiting, health note, Review), History rows with badge, reason, date and Move back; drawer as a tall sheet. Checked 390. |
 | AutomationBuilder | Not started |  |
@@ -94,8 +94,8 @@ Status: **Done** (built and checked in a browser against the board, phone and de
 | AutomationNewMobile | Not started |  |
 | Automations | Not started |  |
 | AutomationsMobile | Not started |  |
-| Calendar | Not started |  |
-| CalendarMobile | Not started |  |
+| Calendar | Done | `/calendar` for admin (D-48): All trainers pick, Busiest trainer, trainer on blocks, Trainer in the session panel, New session with Client + Trainer, Availability per trainer. Checked 390–1440 on 2026-10-22. |
+| CalendarMobile | Done | Phone layout of admin `/calendar` (D-48): All trainers + Week / Day on one row. Checked 390 on 2026-10-22. |
 | Clients | Done | `/clients` (admin), My clients code with admin extras (D-47): sub line with need-a-trainer count, Invite link (modal with QR) and Add client (drawer) at the top, Trainer + Joined columns, Trainer filter, row ⋯ Change trainer / Pause / Resume / Delete with Undo. Export and select boxes off, same as My clients (D-33). Checked 390, 768, 900, 1024, 1280, 1440 in debug mode on 2026-10-22, no overflow. |
 | ClientsMobile | Done | One line per client with "No trainer" badge or Trainer · Goal, icon buttons at the top. Checked 390. |
 | Content | Done | `/content`, `/content/<id>` (opens the item), `/content?new=video` (`app/lib/features/library/content/`): categories rail with counts and storage bar, search, All / Videos / Articles / PDFs / Images, cards 8 a page (kind badge, length pill, used-in chip with tooltip, who has it, ⋯ Open / Edit / Assign / Delete), item drawer (KPIs, file, who sees it, used in → client / exercise / program pages, opened stats), New / Edit content drawer (type tabs, upload with drop, YouTube link, cover frames, article text and read time, Everyone for Vimal only, asks before closing with changes), Assign to clients, New category, Delete with Undo. Checked 768, 1024, 1440 and DEBUG mode at 390 and 1440 with no console errors (2026-10-21). Cover frames of a new upload show after it is saved. 2026-10-22 (D-45): new video cover picked before Save, storage limit enforced, drop area reworked (drop never replaces; Replace does), PDF first-page preview; checked 1440. |

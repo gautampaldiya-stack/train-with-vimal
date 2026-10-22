@@ -41,7 +41,10 @@ import '../features/library/nutrition/nutrition_screen.dart';
 import '../features/library/programs/builder_screen.dart';
 import '../features/library/programs/programs_screen.dart';
 import '../features/trainer/more/more_screen.dart';
+import '../features/admin/activity/activity_screen.dart';
 import '../features/trainer/calendar/cal_screen.dart';
+import '../features/admin/trainers/trainer_profile_screen.dart';
+import '../features/admin/trainers/trainers_screen.dart';
 import '../features/trainer/me/me_screen.dart';
 import '../features/trainer/checkins/tc_screen.dart';
 import '../features/trainer/client_profile/cp_screen.dart';
@@ -151,6 +154,15 @@ final Map<String, Widget Function(GoRouterState)> adminScreens = {
   '/clients': (st) => TrainerClientsScreen(key: ValueKey(st.uri.toString()), admin: true, openAdd: st.uri.queryParameters['add'] == '1'),
   '/clients/:id': (st) => TrainerClientProfileScreen(key: ValueKey(st.uri.toString()), id: st.pathParameters['id']!, tab: st.uri.queryParameters['tab'], admin: true),
   '/approvals': (st) => ApprovalsScreen(tab: st.uri.queryParameters['tab']),
+  '/trainers': (st) => TrainersScreen(key: ValueKey(st.uri.toString()), openAdd: st.uri.queryParameters['add'] == '1'),
+  '/trainers/:id': (st) => TrainerProfileScreen(
+        key: ValueKey('trainer-${st.pathParameters['id']}'),
+        id: st.pathParameters['id']!,
+        tab: st.uri.queryParameters['tab'],
+        assign: st.uri.queryParameters['assign'] == '1',
+      ),
+  '/calendar': (_) => const TrainerCalendarScreen(admin: true),
+  '/activity': (_) => const AdminActivityScreen(),
   for (final k in ['/programs', '/programs/:id', '/nutrition', '/nutrition/:id', '/habits', '/exercises', '/exercises/:id', '/content', '/content/:id'])
     k: trainerScreens[k]!,
 };

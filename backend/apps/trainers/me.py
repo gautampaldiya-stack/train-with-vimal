@@ -116,68 +116,72 @@ class MyActivityView(APIView):
     permission_classes = [IsStaff]
 
     def get(self, request):
-        from apps.activity.models import ActivityEvent
+        return activity_response(request.user, request)
 
-        user = request.user
-        p = request.query_params
-        start = _range_start(p.get("range", "7d"))
-        kind = p.get("kind", "")
-        try:
-            offset = max(0, int(p.get("offset", 0)))
-            limit = min(50, max(1, int(p.get("limit", 8))))
-        except ValueError:
-            return Response({"error": {"code": "invalid", "message": "offset and limit are numbers."}}, status=400)
-        events = ActivityEvent.objects.filter(actor=user).select_related("client")
-        logins = user.sessions.all()
-        if start:
-            events = events.filter(created_at__gte=start)
-            logins = logins.filter(created_at__gte=start)
-        counts = {k: events.filter(kind=k).count() for k in KINDS if k != "login"}
-        counts["login"] = logins.count()
-        counts["all"] = events.count() + counts["login"]
-        if kind == "login":
-            events = events.none()
-        elif kind in KINDS:
-            logins = logins.none()
-            events = events.filter(kind=kind)
-        # Merge the two newest-first streams; only offset+limit rows of each are read.
-        want = offset + limit
-        merged = [("e", e.created_at, e) for e in events.order_by("-created_at")[:want]]
-        merged += [("l", s.created_at, s) for s in logins.order_by("-created_at")[:want]]
-        merged.sort(key=lambda r: r[1], reverse=True)
-        total = counts[kind] if kind in KINDS else counts["all"]
-        rows = []
-        for typ, at, obj in merged[offset:want]:
-            if typ == "l":
-                rows.append({"id": f"login-{obj.id}", "kind": "login", "created_at": at, "verb": "Logged in",
-                             "who": "", "note": device_label(obj), "change_from": "", "change_to": "",
-                             "source": f"{user.first_name} · {device_label(obj)}"})
-                continue
-            verb = obj.verb[:1].upper() + obj.verb[1:]
-            who = obj.client.full_name if obj.client_id and obj.client else ""
-            if who and who.lower() in verb.lower():
-                who = ""
-            note = (obj.meta or {}).get("note") or ""
-            if not note and obj.target_label and obj.target_label != who and obj.target_label.lower() not in verb.lower():
-                note = obj.target_label
-            rows.append({"id": str(obj.id), "kind": obj.kind, "created_at": at, "verb": verb, "who": who,
-                         "note": note, "change_from": obj.change_from, "change_to": obj.change_to,
-                         "source": f"{user.first_name} · {(obj.source or 'Web').split('·')[-1].strip()}"})
-        # Rows per local day (day headers "Today · 2") under the same range and kind.
-        days = {}
-        if rows:
-            tz = timezone.get_current_timezone()
-            lo = timezone.localtime(rows[-1]["created_at"]).replace(hour=0, minute=0, second=0, microsecond=0)
-            hi = timezone.localtime(rows[0]["created_at"]).replace(hour=23, minute=59, second=59)
-            from django.db.models.functions import TruncDate
-            from django.db.models import Count
 
-            for qs in (events, logins):
-                for r in (qs.filter(created_at__range=(lo, hi)).annotate(d=TruncDate("created_at", tzinfo=tz))
-                          .values("d").annotate(n=Count("id"))):
-                    days[str(r["d"])] = days.get(str(r["d"]), 0) + r["n"]
-        return Response({"results": rows, "count": total, "counts": counts, "days": days,
-                         "has_more": offset + len(rows) < total})
+def activity_response(user, request):
+    """My activity / Trainer profile → Activity: the rows, counts per kind and per day for `user`."""
+    from apps.activity.models import ActivityEvent
+
+    p = request.query_params
+    start = _range_start(p.get("range", "7d"))
+    kind = p.get("kind", "")
+    try:
+        offset = max(0, int(p.get("offset", 0)))
+        limit = min(50, max(1, int(p.get("limit", 8))))
+    except ValueError:
+        return Response({"error": {"code": "invalid", "message": "offset and limit are numbers."}}, status=400)
+    events = ActivityEvent.objects.filter(actor=user).select_related("client")
+    logins = user.sessions.all()
+    if start:
+        events = events.filter(created_at__gte=start)
+        logins = logins.filter(created_at__gte=start)
+    counts = {k: events.filter(kind=k).count() for k in KINDS if k != "login"}
+    counts["login"] = logins.count()
+    counts["all"] = events.count() + counts["login"]
+    if kind == "login":
+        events = events.none()
+    elif kind in KINDS:
+        logins = logins.none()
+        events = events.filter(kind=kind)
+    # Merge the two newest-first streams; only offset+limit rows of each are read.
+    want = offset + limit
+    merged = [("e", e.created_at, e) for e in events.order_by("-created_at")[:want]]
+    merged += [("l", s.created_at, s) for s in logins.order_by("-created_at")[:want]]
+    merged.sort(key=lambda r: r[1], reverse=True)
+    total = counts[kind] if kind in KINDS else counts["all"]
+    rows = []
+    for typ, at, obj in merged[offset:want]:
+        if typ == "l":
+            rows.append({"id": f"login-{obj.id}", "kind": "login", "created_at": at, "verb": "Logged in",
+                         "who": "", "note": device_label(obj), "change_from": "", "change_to": "",
+                         "source": f"{user.first_name} · {device_label(obj)}"})
+            continue
+        verb = obj.verb[:1].upper() + obj.verb[1:]
+        who = obj.client.full_name if obj.client_id and obj.client else ""
+        if who and who.lower() in verb.lower():
+            who = ""
+        note = (obj.meta or {}).get("note") or ""
+        if not note and obj.target_label and obj.target_label != who and obj.target_label.lower() not in verb.lower():
+            note = obj.target_label
+        rows.append({"id": str(obj.id), "kind": obj.kind, "created_at": at, "verb": verb, "who": who,
+                     "note": note, "change_from": obj.change_from, "change_to": obj.change_to,
+                     "source": f"{user.first_name} · {(obj.source or 'Web').split('·')[-1].strip()}"})
+    # Rows per local day (day headers "Today · 2") under the same range and kind.
+    days = {}
+    if rows:
+        tz = timezone.get_current_timezone()
+        lo = timezone.localtime(rows[-1]["created_at"]).replace(hour=0, minute=0, second=0, microsecond=0)
+        hi = timezone.localtime(rows[0]["created_at"]).replace(hour=23, minute=59, second=59)
+        from django.db.models.functions import TruncDate
+        from django.db.models import Count
+
+        for qs in (events, logins):
+            for r in (qs.filter(created_at__range=(lo, hi)).annotate(d=TruncDate("created_at", tzinfo=tz))
+                      .values("d").annotate(n=Count("id"))):
+                days[str(r["d"])] = days.get(str(r["d"]), 0) + r["n"]
+    return Response({"results": rows, "count": total, "counts": counts, "days": days,
+                     "has_more": offset + len(rows) < total})
 
 
 # ---------------------------------------------------------------- notifications

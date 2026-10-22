@@ -277,9 +277,9 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
     ('Invited by', 136, false),
     ('Signed up from', 132, false),
     ('Profile setup', 138, false),
-    ('Health', 106, false),
+    ('Health', 124, false),
     ('Waiting', 80, true),
-    ('', 92, true),
+    ('', 108, true),
   ];
 
   static const _histCols = <(String, double, bool)>[
