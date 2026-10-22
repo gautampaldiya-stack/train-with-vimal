@@ -533,7 +533,7 @@ class _Assign extends ChangeNotifier {
   String? get libraryRoute {
     final p = _pv;
     if (p == null) return null;
-    return switch (slot) { 'meal' => '/meal-plans/${p['id']}', 'workout' => '/programs/${p['id']}', _ => '/habits' };
+    return switch (slot) { 'meal' => '/nutrition/${p['id']}', 'workout' => '/programs/${p['id']}', _ => '/habits' };
   }
 
   // ── when

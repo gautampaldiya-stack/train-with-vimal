@@ -62,7 +62,7 @@ def workout_reminders():
             where = "on a call" if s.is_call else (s.place or "at the gym")
             notify(s.client, "session_reminder", f"{s.get_kind_display()} in 1 hour",
                    f"With {s.trainer.first_name} at {dfmt(timezone.localtime(s.start), '%-I:%M %p')} · {where}",
-                   data={"route": f"/sessions/{s.id}"})
+                   data={"route": "/train"})
             sent += 1
         s.reminder_sent_at = now
         s.save(update_fields=["reminder_sent_at"])

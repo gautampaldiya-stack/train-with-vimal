@@ -163,6 +163,9 @@ final Map<String, Widget Function(GoRouterState)> adminScreens = {
       ),
   '/calendar': (_) => const TrainerCalendarScreen(admin: true),
   '/activity': (_) => const AdminActivityScreen(),
+  // Dashboard → Check-ins to review: the trainer page over every client (no Check-ins board for the admin, D-49).
+  '/checkins': (_) => const TrainerCheckinsScreen(),
+  '/checkins/:id': (st) => TrainerCheckinsScreen(id: st.pathParameters['id']),
   for (final k in ['/programs', '/programs/:id', '/nutrition', '/nutrition/:id', '/habits', '/exercises', '/exercises/:id', '/content', '/content/:id'])
     k: trainerScreens[k]!,
 };

@@ -206,7 +206,7 @@ def publish(plan, *, actor):
     trainers.discard(actor)
     if trainers:
         notify(list(trainers), "meal_plan_updated", f"{plan.name} was published",
-               f"{len(clients)} clients get the new version.", actor=actor, data={"route": f"/meal-plans/{plan.id}"})
+               f"{len(clients)} clients get the new version.", actor=actor, data={"route": f"/nutrition/{plan.id}"})
     activity_log("published a meal plan", "plan", actor=actor, target=plan, target_label=plan.name,
                  meta={"clients": len(clients)})
     return len(clients)

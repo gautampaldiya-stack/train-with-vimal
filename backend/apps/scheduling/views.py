@@ -185,7 +185,7 @@ class SessionViewSet(viewsets.ModelViewSet):
             where = "on a call" if s.is_call else (s.place or "at the gym")
             notify(s.client, "session_booked", f"{s.get_kind_display()} with {s.trainer.first_name}",
                    f"{dfmt(when, '%a, %-d %b · %-I:%M %p')} · {where}", actor=self.request.user,
-                   data={"route": f"/sessions/{s.id}"})
+                   data={"route": "/train"})
         if s.trainer != self.request.user:
             notify(s.trainer, "session_booked", f"New session with {s.client.full_name}",
                    f"{dfmt(when, '%a, %-d %b · %-I:%M %p')}", actor=self.request.user, data={"route": "/calendar"})
@@ -205,7 +205,7 @@ class SessionViewSet(viewsets.ModelViewSet):
             if tell:
                 notify(s.client, "session_moved", "Your session moved",
                        f"Now {dfmt(timezone.localtime(s.start), '%a, %-d %b · %-I:%M %p')}", actor=self.request.user,
-                       data={"route": f"/sessions/{s.id}"})
+                       data={"route": "/train"})
 
     def destroy(self, request, *args, **kwargs):
         """Cancel session (kept with status cancelled, so Undo can bring it back)."""
