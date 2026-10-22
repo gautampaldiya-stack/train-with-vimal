@@ -29,6 +29,8 @@ abstract final class AppShadows {
   ];
   static const toast = [BoxShadow(color: Color(0x47000000), offset: Offset(0, 12), blurRadius: 28)];
   static const tab = [BoxShadow(color: Color(0x0F171717), offset: Offset(0, 1), blurRadius: 2)];
+  // Emails & alerts push preview card (`.em-push`).
+  static const emPush = [BoxShadow(color: Color(0x14000000), offset: Offset(0, 1), blurRadius: 3)];
 }
 
 /// Screen widths: phone < 600, tablet 600–1023, desktop >= 1024.

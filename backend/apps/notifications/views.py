@@ -1,4 +1,4 @@
-from django.db.models import Count, Q
+from django.db.models import Case, Count, Q, Value, When
 from django.utils import timezone
 from django.utils.text import slugify
 from rest_framework import generics, mixins, status, viewsets
@@ -10,8 +10,9 @@ from rest_framework.views import APIView
 from apps.common.pagination import TimelineCursorPagination
 from apps.common.permissions import IsAdmin, IsStaff
 
-from .defaults import default_channels_for
+from .defaults import TEMPLATES, default_channels_for
 from .models import (
+    ALL_CHANNELS,
     Delivery,
     DeviceToken,
     GymNews,
@@ -34,6 +35,7 @@ from .serializers import (
     ReminderPreferenceSerializer,
     StaffNotificationPreferenceSerializer,
     TeamAlertSettingSerializer,
+    used_in_map,
 )
 from .services import unread_count
 
@@ -135,21 +137,32 @@ class MessageTemplateViewSet(viewsets.ModelViewSet):
     serializer_class = MessageTemplateSerializer
     permission_classes = [IsAdmin]
     pagination_class = None
-    queryset = MessageTemplate.objects.all()
+
+    def get_queryset(self):
+        """Built-in messages in the board's order, then custom ones oldest first."""
+        order = Case(*[When(key=k, then=Value(i)) for i, (k, *_r) in enumerate(TEMPLATES)], default=Value(len(TEMPLATES)))
+        return MessageTemplate.objects.order_by(order, "created_at")
+
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        ctx["used_in"] = used_in_map()
+        return ctx
 
     def create(self, request, *args, **kwargs):
         s = NewTemplateSerializer(data=request.data)
         s.is_valid(raise_exception=True)
-        base = slugify(s.validated_data["name"])[:50] or "template"
+        d = s.validated_data
+        base = d.get("key") or slugify(d["name"])[:50] or "template"
         key, i = base, 2
         while MessageTemplate.objects.filter(key=key).exists():
             key, i = f"{base}-{i}", i + 1
+        texts = d.get("texts") or {}
         channels = {
-            ch: {"on": ch in s.validated_data["channels"], "subject": "", "title": "", "body": ""}
+            ch: {"subject": "", "title": "", "body": "", **texts.get(ch, {}), "on": ch in d["channels"]}
             for ch in ("email", "push", "whatsapp", "in_app")
         }
         tpl = MessageTemplate.objects.create(
-            key=key, name=s.validated_data["name"], group=s.validated_data["group"], is_custom=True,
+            key=key, name=d["name"], group=d["group"], is_custom=True,
             channels=channels, default_channels=channels,
         )
         return Response(self.get_serializer(tpl).data, status=status.HTTP_201_CREATED)
@@ -206,14 +219,29 @@ class MessageTemplateViewSet(viewsets.ModelViewSet):
 
 
 class TeamAlertSettingViewSet(mixins.ListModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
+    """Emails & alerts → Team alerts: which channels each team alert goes out on."""
+
     serializer_class = TeamAlertSettingSerializer
     permission_classes = [IsAdmin]
     pagination_class = None
-    queryset = TeamAlertSetting.objects.all()
+
+    def get_queryset(self):
+        order = {e: i for i, e in enumerate(TeamAlertSetting.Event.values)}
+        return sorted(TeamAlertSetting.objects.all(), key=lambda r: order.get(r.event, 99))
+
+    def get_object(self):
+        obj = generics.get_object_or_404(TeamAlertSetting.objects.all(), pk=self.kwargs["pk"])
+        self.check_object_permissions(self.request, obj)
+        return obj
+
+    @action(detail=False, methods=["post"], url_path="enable-all")
+    def enable_all(self, request):
+        TeamAlertSetting.objects.update(channels={c: True for c in ALL_CHANNELS})
+        return Response(self.get_serializer(self.get_queryset(), many=True).data)
 
 
 class NotificationSettingsView(generics.RetrieveUpdateAPIView):
-    """Quiet hours + sender identity."""
+    """Quiet hours, daily digest and sender identity."""
 
     serializer_class = NotificationSettingsSerializer
     permission_classes = [IsAdmin]

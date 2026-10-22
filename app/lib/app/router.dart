@@ -8,6 +8,7 @@ import '../core/widgets/card.dart';
 import '../core/widgets/overlays.dart';
 import '../features/admin/automations/automation_builder_screen.dart';
 import '../features/admin/automations/automations_screen.dart';
+import '../features/admin/emails/emails_screen.dart';
 import '../features/admin/forms/form_builder_screen.dart';
 import '../features/admin/forms/forms_screen.dart';
 import '../features/admin/dashboard/admin_dashboard_screen.dart';
@@ -177,6 +178,8 @@ final Map<String, Widget Function(GoRouterState)> adminScreens = {
   '/forms/:id': (st) => FormBuilderScreen(key: ValueKey('form-${st.pathParameters['id']}'), id: st.pathParameters['id']!),
   '/automations': (_) => const AutomationsScreen(),
   '/automations/:id': (st) => AutomationBuilderScreen(key: ValueKey(st.uri.toString()), id: st.pathParameters['id']!, starter: st.uri.queryParameters['starter']),
+  // Emails & alerts (D-52): ?tab=alerts or ?tab=sender opens that tab
+  '/emails': (st) => EmailsScreen(key: ValueKey(st.uri.toString()), tab: st.uri.queryParameters['tab']),
   for (final k in ['/programs', '/programs/:id', '/nutrition', '/nutrition/:id', '/habits', '/exercises', '/exercises/:id', '/content', '/content/:id'])
     k: trainerScreens[k]!,
 };

@@ -956,7 +956,10 @@ class Command(BaseCommand):
         Weekly check-in stays off here because the client app already sends that form every week."""
         from apps.automations.models import Automation, AutomationRun, Step
         from apps.checkins.models import Form
+        from apps.notifications.models import NotificationSettings
 
+        NotificationSettings.objects.filter(pk=NotificationSettings.load().pk, whatsapp_number="").update(
+            whatsapp_number="+91 98200 12345")  # Emails & alerts → Sender (board value)
         if Automation.all_objects.exists():
             return
         forms = {f.name: str(f.id) for f in Form.objects.filter(client__isnull=True).exclude(status="client")}

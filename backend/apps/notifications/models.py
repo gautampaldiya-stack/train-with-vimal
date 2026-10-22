@@ -91,6 +91,7 @@ class TemplateGroup(models.TextChoices):
     ACCESS = "access", "Access"
     COACHING = "coaching", "Coaching"
     PACKAGES = "packages", "Packages"
+    TEAM = "team", "Team"  # messages to trainers (Trainer invite)
 
 
 class MessageTemplate(TimeStampedModel):
@@ -135,6 +136,10 @@ class NotificationSettings(models.Model):
     sender_name = models.CharField(max_length=80, default="Train With Vimal")
     reply_to_email = models.EmailField(blank=True, default="hello@trainwithvimal.com")
     whatsapp_number = models.CharField(max_length=20, blank=True, default="")
+    # Team alerts → Daily digest: one email at 8:00 am to you and each trainer (weekly = Mondays only).
+    # Off until Gautam decides on it: it is close to the parked Daily summary design (D-52).
+    digest = models.CharField(max_length=10, choices=[("off", "Off"), ("daily", "Daily"), ("weekly", "Weekly")],
+                              default="off")
     updated_at = models.DateTimeField(auto_now=True)
 
     @classmethod

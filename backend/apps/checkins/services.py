@@ -277,19 +277,19 @@ def _after_submit(client, sub):
             transaction.on_commit(lambda: fire_event("goal_weight", client, dedupe="goal_weight"))
     trainer = client.client_profile.trainer
     if trainer and sub.form_type in (FormType.WEEKLY, FormType.DAILY, FormType.SURVEY):
-        from apps.notifications.models import StaffNotificationPreference
-
-        pref = StaffNotificationPreference.objects.filter(user=trainer).first()
         if sub.form_type == FormType.DAILY:
             # Daily pulses are many: no push, only a live refresh of the review queue.
             from apps.notifications.realtime import send_to_user
 
             transaction.on_commit(lambda: send_to_user(trainer.id, "checkin_submitted",
                                                        {"id": str(sub.id), "client": str(client.id)}))
-        elif pref is None or pref.new_checkin:
+        else:
+            from apps.notifications.staff import team_alert
+
             label = f"week {sub.week_number} check-in" if sub.week_number else sub.form.name
-            notify(trainer, "checkin_submitted", f"{client.full_name} sent their {label}",
-                   "", actor=client, data={"route": f"/checkins/{sub.id}", "submission": str(sub.id)})
+            team_alert("checkin_submitted", client, f"{client.full_name} sent their {label}",
+                       notify_event="checkin_submitted", actor=client, trainer=trainer, pref="new_checkin",
+                       data={"route": f"/checkins/{sub.id}", "submission": str(sub.id)})
 
 
 @transaction.atomic

@@ -54,4 +54,5 @@ One file per decision. Add a new file for every new decision (next number), and 
 | [D-49](0049-client-forms-from-coach.md) | Client fills the forms the coach sends (Check-ins cards + `/checkins/forms/<id>`), admin Check-ins reuse, notification links fixed, PAR-Q stays a Forms form | 2026-10-22 |
 | [D-50](0050-admin-forms-and-builder.md) | Admin Forms & check-ins and Form builder: real DB forms (new onboarding questions), drafts on a published form until Publish, how it is sent, answers so far | 2026-10-22 |
 | [D-51](0051-admin-automations-and-builder.md) | Admin Automations list and builder: one page for new / edit, nothing saved until Save as draft / Turn on, board trigger settings and text, Not ready list, Last 30 days | 2026-10-22 |
+| [D-52](0052-admin-emails-and-alerts.md) | Admin Emails & alerts: board words for built-in messages, where each is used, team alerts really pick the channels, daily digest, sender, list → editor on narrow screens | 2026-10-22 |
 | [D-31](0031-trainer-activity-and-fixes.md) | Trainer Activity card, stat cards fill the row, menus fit the screen, readable guides | 2026-10-16 |

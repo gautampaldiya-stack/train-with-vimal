@@ -1,4 +1,8 @@
+import re
+
 from rest_framework import serializers
+
+from .defaults import CUSTOM_WHEN, SENT_BY, TEAM_ALERT_NOTES, WHEN
 
 from .models import (
     ALL_CHANNELS,
@@ -12,8 +16,32 @@ from .models import (
     TeamAlertSetting,
 )
 
+CH_LABEL = {"email": "Email", "push": "Push", "whatsapp": "WhatsApp", "in_app": "In-app"}
 CHANNEL_LIMITS = {"push": 120, "whatsapp": 1000, "email": 2000, "in_app": 500}
 SUBJECT_LIMIT = 50
+
+
+def used_in_map():
+    """Where it is used: {template key: [{"id", "name", "line"}]}, from the Send message steps of every
+    automation (board lines "Step 3 · Push and WhatsApp" and "Steps 1 and 3")."""
+    from apps.automations.models import Automation
+
+    out = {}
+    for a in Automation.objects.prefetch_related("steps").order_by("created_at"):
+        hits = {}
+        for i, st in enumerate(a.steps.all(), 1):
+            if st.kind == "message" and (st.config or {}).get("template"):
+                hits.setdefault(st.config["template"], []).append((i, st.config.get("channels") or []))
+        for key, rows in hits.items():
+            if len(rows) == 1:
+                i, chans = rows[0]
+                names = " and ".join(CH_LABEL[c] for c in chans if c in CH_LABEL)
+                line = f"Step {i}" + (f" · {names}" if names else "")
+            else:
+                nums = [str(i) for i, _ in rows]
+                line = "Steps " + ", ".join(nums[:-1]) + " and " + nums[-1]
+            out.setdefault(key, []).append({"id": str(a.id), "name": a.name, "status": a.status, "line": line})
+    return out
 
 
 class NotificationSerializer(serializers.ModelSerializer):
@@ -59,11 +87,26 @@ class ChannelTextSerializer(serializers.Serializer):
 
 class MessageTemplateSerializer(serializers.ModelSerializer):
     channels = serializers.DictField(child=ChannelTextSerializer())
+    when = serializers.SerializerMethodField()
+    sent_by = serializers.SerializerMethodField()
+    used_in = serializers.SerializerMethodField()
 
     class Meta:
         model = MessageTemplate
-        fields = ["id", "key", "name", "group", "is_custom", "channels", "updated_at"]
+        fields = ["id", "key", "name", "group", "is_custom", "channels", "when", "sent_by", "used_in", "updated_at"]
         read_only_fields = ["id", "key", "is_custom", "updated_at"]
+
+    def get_when(self, obj):
+        return CUSTOM_WHEN if obj.is_custom else WHEN.get(obj.key, CUSTOM_WHEN)
+
+    def get_sent_by(self, obj):
+        return "" if obj.is_custom else SENT_BY.get(obj.key, "")
+
+    def get_used_in(self, obj):
+        used = self.context.get("used_in")
+        if used is None:
+            used = used_in_map()
+        return used.get(obj.key, [])
 
     def validate_channels(self, value):
         unknown = set(value) - set(ALL_CHANNELS)
@@ -87,21 +130,53 @@ class NewTemplateSerializer(serializers.Serializer):
     group = serializers.ChoiceField(choices=["access", "coaching", "packages"])
     channels = serializers.ListField(child=serializers.ChoiceField(choices=ALL_CHANNELS), allow_empty=False,
                                      error_messages={"empty": "Pick a channel. A template needs at least one."})
+    # Undo after "Delete template": the deleted text comes back as it was, under its old key when free.
+    texts = serializers.DictField(child=ChannelTextSerializer(), required=False)
+    key = serializers.SlugField(max_length=60, required=False)
+
+    def validate_name(self, v):
+        v = v.strip()
+        if not v:
+            raise serializers.ValidationError("Give the template a name.")
+        return v
 
 
 class TeamAlertSettingSerializer(serializers.ModelSerializer):
     label = serializers.CharField(source="get_event_display", read_only=True)
+    description = serializers.SerializerMethodField()
 
     class Meta:
         model = TeamAlertSetting
-        fields = ["id", "event", "label", "channels"]
-        read_only_fields = ["id", "event", "label"]
+        fields = ["id", "event", "label", "description", "channels"]
+        read_only_fields = ["id", "event", "label", "description"]
+
+    def get_description(self, obj):
+        return TEAM_ALERT_NOTES.get(obj.event, "")
+
+    def validate_channels(self, value):
+        unknown = set(value) - set(ALL_CHANNELS)
+        if unknown:
+            raise serializers.ValidationError(f"Unknown channel: {', '.join(sorted(unknown))}.")
+        return {c: bool(value.get(c)) for c in ALL_CHANNELS}
 
 
 class NotificationSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = NotificationSettings
         exclude = ["id"]
+        extra_kwargs = {"sender_name": {"error_messages": {"blank": "Add the name clients see."}}}
+
+    def validate_sender_name(self, v):
+        v = v.strip()
+        if not v:
+            raise serializers.ValidationError("Add the name clients see.")
+        return v
+
+    def validate_whatsapp_number(self, v):
+        v = " ".join(v.split())
+        if v and not re.fullmatch(r"\+?[0-9 ]{8,18}", v):
+            raise serializers.ValidationError("Use digits, like +91 98200 12345.")
+        return v
 
 
 class GymNewsSerializer(serializers.ModelSerializer):

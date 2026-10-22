@@ -484,8 +484,11 @@ class JoinLinkView(APIView):
             invite_link=link, invited_by=link.trainer,
         )
         if not link.needs_approval:
-            notify(link.trainer, "client_joined", f"{user.full_name} joined from your link", "",
-                   data={"route": f"/clients/{user.id}"})
+            from apps.notifications.staff import team_alert
+
+            team_alert("new_client", user, f"{user.full_name} joined from your link", notify_event="client_joined",
+                       trainer=link.trainer, pref="new_client", data={"route": f"/clients/{user.id}"},
+                       owner_title=f"{user.full_name} joined from {link.trainer.first_name}'s link")
         from apps.accounts.emails import send_verify_email
         from apps.accounts.models import OneTimeToken
         from apps.accounts.tokens import issue_one_time_token

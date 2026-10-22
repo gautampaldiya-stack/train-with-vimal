@@ -79,9 +79,12 @@ def create_client(*, actor, full_name, phone=None, email=None, trainer=None, sen
     if actor:
         activity_log("added a client", "client", actor=actor, target=user, target_label=user.full_name, client=user,
                      trainer=trainer)
-    if trainer and actor and trainer != actor and not send_to_approvals:
-        notify(trainer, "client_assigned", f"{user.full_name} is your client now",
-               "Open their profile to plan what is next.", data={"route": f"/clients/{user.id}"}, actor=actor)
+    if actor and not send_to_approvals:
+        from apps.notifications.staff import team_alert
+
+        team_alert("new_client", user, f"{user.full_name} is your client now", "Open their profile to plan what is next.",
+                   notify_event="client_assigned", actor=actor, trainer=trainer, pref="new_client",
+                   owner_title=f"New client: {user.full_name}", data={"route": f"/clients/{user.id}"})
     return user, cp
 
 
@@ -130,9 +133,11 @@ def approve(approval, *, actor, trainer, tell_client=True, ask_finish_setup=True
         from apps.notifications.services import send_template
 
         send_template(user, "onboarding-form-reminder", actor=actor)
-    if trainer and trainer != actor:
-        notify(trainer, "client_assigned", f"{user.full_name} is your client now",
-               "Approved from the sign-up list.", data={"route": f"/clients/{user.id}"}, actor=actor)
+    from apps.notifications.staff import team_alert
+
+    team_alert("new_client", user, f"{user.full_name} is your client now", "Approved from the sign-up list.",
+               notify_event="client_assigned", actor=actor, trainer=trainer, pref="new_client",
+               owner_title=f"New client: {user.full_name}", data={"route": f"/clients/{user.id}"})
     from apps.automations.engine import fire_event
 
     fire_event("client_approved", user)

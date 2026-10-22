@@ -846,13 +846,13 @@ Emails & alerts → Client messages. One row per message, text per channel:
 | `updated_at` | DateTimeField |  |
 | `key` | SlugField | indexed; unique |
 | `name` | CharField |  |
-| `group` | CharField | choices: access, coaching, packages |
+| `group` | CharField | choices: access, coaching, packages, team |
 | `is_custom` | BooleanField |  |
 | `channels` | JSONField |  |
 | `default_channels` | JSONField |  |
 
 ### TeamAlertSetting
-Emails & alerts → Team alerts. channels = {"email": true, "push": true, ...}.
+Emails & alerts → Team alerts. channels = {"email": true, "push": true, ...}. Read by `staff.team_alert` (D-52): owner + the client's trainer, never the person who did it.
 
 | Field | Type | Notes |
 |---|---|---|
@@ -874,6 +874,7 @@ Singleton: quiet hours + sender identity (Emails & alerts → Sender).
 | `sender_name` | CharField |  |
 | `reply_to_email` | CharField |  |
 | `whatsapp_number` | CharField |  |
+| `digest` | CharField | choices: off, daily, weekly; default off (D-52: 8 am email to owner + trainers; weekly = Mondays) |
 | `updated_at` | DateTimeField |  |
 
 ### ReminderPreference

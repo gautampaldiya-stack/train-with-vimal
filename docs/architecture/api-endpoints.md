@@ -219,7 +219,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `gym-news/` | GET, POST | GymNewsViewSet | Admin → Gym news: post a notice to the team. Each trainer with Gym news on gets it in the bell (and push). |
 | `me/reminders/` | GET, POST, PUT, PATCH | ReminderPreferenceView |  |
 | `me/staff-notifications/` | GET, PUT, PATCH | StaffNotificationPreferenceView |  |
-| `message-templates/` | GET, POST | MessageTemplateViewSet | Emails & alerts → Client messages (admin only). |
+| `message-templates/` | GET, POST | MessageTemplateViewSet | Emails & alerts → Client messages (admin only). Board order, custom last. Each row has `when`, `sent_by`, `used_in` [{id, name, status, line}]. POST {name, group, channels[]} (+ `key`, `texts` for Undo after a delete). |
 | `message-templates/<pk>/` | GET, PUT, PATCH, DELETE | MessageTemplateViewSet | Emails & alerts → Client messages (admin only). |
 | `message-templates/<pk>/preview/` | GET | MessageTemplateViewSet | Emails & alerts → Client messages (admin only). |
 | `message-templates/<pk>/reset/` | POST | MessageTemplateViewSet | Emails & alerts → Client messages (admin only). |
@@ -231,9 +231,10 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `notifications/<pk>/unread_one/` | POST | NotificationViewSet | Bell panel / Notifications page. ?unread=1 for the Unread tab. |
 | `notifications/read_all/` | POST | NotificationViewSet | Bell panel / Notifications page. ?unread=1 for the Unread tab. |
 | `notifications/unread/` | GET | NotificationViewSet | Bell panel / Notifications page. ?unread=1 for the Unread tab. |
-| `settings/notifications/` | GET, PUT, PATCH | NotificationSettingsView | Quiet hours + sender identity. |
-| `team-alerts/` | GET | TeamAlertSettingViewSet |  |
-| `team-alerts/<pk>/` | PUT, PATCH | TeamAlertSettingViewSet |  |
+| `settings/notifications/` | GET, PUT, PATCH | NotificationSettingsView | Quiet hours, daily digest (`digest` off / daily / weekly) and sender identity. |
+| `team-alerts/` | GET | TeamAlertSettingViewSet | Emails & alerts → Team alerts, board order, with `label` + `description`. |
+| `team-alerts/<pk>/` | PUT, PATCH | TeamAlertSettingViewSet | {channels}: missing channels become off. |
+| `team-alerts/enable-all/` | POST | TeamAlertSettingViewSet | Every channel on for every team alert; returns the list. |
 
 ## nutrition
 

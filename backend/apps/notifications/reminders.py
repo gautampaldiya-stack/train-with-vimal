@@ -284,6 +284,8 @@ def document_expiry_reminders():
 def nightly_client_stats():
     """Adherence + at-risk for every active client; tells the trainer about new at-risk clients."""
     from apps.clients.metrics import refresh_client_stats
+
+    from .staff import team_alert
     from apps.clients.models import ClientProfile
 
     n = 0
@@ -300,9 +302,8 @@ def nightly_client_stats():
         t = cp.trainer
         if t is None:
             continue
-        pref = StaffNotificationPreference.objects.filter(user=t).first()
-        if pref is None or pref.missed_workouts:
-            notify(t, "client_at_risk", f"{cp.user.full_name} needs you", cp.at_risk_reason,
+        team_alert("missed_workout", cp.user, f"{cp.user.full_name} needs you", cp.at_risk_reason,
+                   notify_event="client_at_risk", trainer=t, pref="missed_workouts",
                    data={"route": f"/clients/{cp.user_id}"})
     return n
 
@@ -374,3 +375,14 @@ def daily_summaries():
             except Exception:
                 log.exception("daily summary failed for %s", u.id)
     return sent
+
+
+@shared_task
+def staff_digests():
+    """8 am: Emails & alerts → Daily digest (Off / Daily / Weekly on Mondays), one email a staff member."""
+    from .staff import send_digests
+
+    local = _local_now()
+    if not (local.hour == DAILY_SUMMARY_HOUR and local.minute < 15):
+        return 0
+    return len(send_digests(local, first=lambda u: once(u, "digest", "day", local.date())))

@@ -34,9 +34,12 @@ class StaffPage extends StatelessWidget {
 
 /// `.top` page header: title + subtitle left, actions right. Narrow widths make outline buttons icon-only (§3.8).
 class PageTop extends StatelessWidget {
-  const PageTop({super.key, required this.title, this.sub, this.actions = const [], this.back});
+  const PageTop({super.key, required this.title, this.sub, this.actions = const [], this.back, this.subWrap = false});
   final String title;
   final String? sub;
+
+  /// Show the whole sub line, wrapped (Emails & alerts on a phone: `.mob-Emails .top .sub`).
+  final bool subWrap;
   final List<Widget> actions;
   final Widget? back;
 
@@ -49,7 +52,7 @@ class PageTop extends StatelessWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 4, children: [
               CutText(title, style: AppText.h1.copyWith(fontSize: size), maxLines: 2, overflow: TextOverflow.ellipsis),
-              if (sub != null) CutText(sub!, style: AppText.sub.copyWith(fontSize: w <= 480 ? 12 : 13), maxLines: w <= 480 ? 2 : 1, overflow: TextOverflow.ellipsis),
+              if (sub != null) CutText(sub!, style: AppText.sub.copyWith(fontSize: w <= 480 ? 12 : 13), maxLines: subWrap ? null : (w <= 480 ? 2 : 1), overflow: subWrap ? TextOverflow.clip : TextOverflow.ellipsis),
             ]),
           ),
           if (actions.isNotEmpty) Row(mainAxisSize: MainAxisSize.min, spacing: 8, children: actions),

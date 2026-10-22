@@ -246,6 +246,7 @@ CELERY_BEAT_SCHEDULE = {
     # team + housekeeping
     "document-expiry": {"task": _R + "document_expiry_reminders", "schedule": crontab(minute=30, hour=8)},
     "daily-summaries": {"task": _R + "daily_summaries", "schedule": crontab(minute=0, hour=8)},
+    "staff-digests": {"task": _R + "staff_digests", "schedule": crontab(minute=0, hour=8)},
     "nightly-client-stats": {"task": _R + "nightly_client_stats", "schedule": crontab(minute=30, hour=2)},
     "roll-plans": {"task": _R + "roll_plans", "schedule": crontab(minute=5, hour=0)},
     "auto-save-workouts": {"task": _R + "auto_save_workouts", "schedule": crontab(minute="*/15")},

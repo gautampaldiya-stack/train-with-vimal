@@ -239,6 +239,9 @@ abstract final class AppColors {
   static const hbOnLine = Color(0xFFD5E1FB), hbDot = Color(0xFFD97706), hbSaveBg = Color(0xFFFBFBF9), hbPhone = Color(0xFFF4F4F1);
   // Forms & check-ins (D-50): `.fm-send` / `.fm-au` bolt, `.fm-drag` handle
   static const fmBolt = Color(0xFFB45309), fmDrag = Color(0xFFC4C4BE);
+  // Emails & alerts (D-52, `.em-*`): channel dots, push card, WhatsApp chat (header, wall, bubble time, text).
+  static const emDotOff = Color(0xFFDADAD5), emDotOn = Color(0xFF10B981), emPushBg = Color(0xEBFFFFFF);
+  static const emWaHead = Color(0xFF075E54), emWaWall = Color(0xFFECE5DD), emWaTime = Color(0xFF8A8A85), emWaText = Color(0xFF111111);
   static const hbDoneLine = Color(0xFFBFE5CF), hbIcoHover = Color(0xFFBDBDB6), hbDayOff = Color(0xFFB5B5B0);
   // Content library (`.ct-*`): kind badge on a card, round play button on the hero, article text box, phone
   // category chip count when picked.

@@ -205,6 +205,11 @@ def assign_program(client, program_id, *, actor=None, start_date=None, when="now
     if notify_client and status == AssignmentStatus.ACTIVE:
         notify(client, "plan_assigned", f"New workout plan: {program.name}", "Open Train to see today's workout.",
                actor=actor, data={"route": "/train"})
+    if actor is not None:
+        from apps.notifications.staff import team_alert
+
+        team_alert("plan_updated", client, f"{actor.first_name} gave {client.full_name} a workout plan", program.name,
+                   notify_event="plan_updated", actor=actor, data={"route": f"/clients/{client.id}"})
     if status == AssignmentStatus.ACTIVE:
         from apps.automations.engine import fire_event
 

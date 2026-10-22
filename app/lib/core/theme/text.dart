@@ -27,6 +27,10 @@ abstract final class AppText {
 
   static TextStyle s(double size, FontWeight w, {Color color = AppColors.text, double? ls, double? h, bool tabular = false}) =>
       TextStyle(fontFamily: family, fontSize: size, fontWeight: w, color: color, letterSpacing: ls, height: h ?? normal, fontFeatures: tabular ? _tab : null);
+
+  /// Code-looking text (`ui-monospace`): the {{variable}} chips in Emails & alerts.
+  static TextStyle mono(double size, {Color color = AppColors.text, FontWeight w = FontWeight.w500}) =>
+      TextStyle(fontFamily: 'monospace', fontFamilyFallback: const ['Menlo', 'Consolas', 'Courier New'], fontSize: size, fontWeight: w, color: color, height: normal);
 }
 
 abstract final class W {

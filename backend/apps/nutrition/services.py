@@ -534,6 +534,11 @@ def assign_plan_to_client(client, plan, *, actor, start_date=None, notify_client
     if notify_client and not later and plan.status == MealPlan.Status.PUBLISHED:
         notify(client, "meal_plan_assigned", f"New meal plan: {plan.name}", "Open Food to see today's meals.",
                actor=actor, data={"route": "/food"})
+    if actor is not None:
+        from apps.notifications.staff import team_alert
+
+        team_alert("plan_updated", client, f"{actor.first_name} gave {client.full_name} a meal plan", plan.name,
+                   notify_event="plan_updated", actor=actor, data={"route": f"/clients/{client.id}"})
     return a
 
 
