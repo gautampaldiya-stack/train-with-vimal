@@ -59,7 +59,7 @@ class _HabitEditorCardState extends State<HabitEditorCard> {
   @override
   Widget build(BuildContext context) {
     final phone = context.isPhone;
-    final can = c.canEdit;
+    final can = c.canEditH;
     final counter = d['kind'] == 'counter';
     final n = (d['client_count'] as num?)?.toInt() ?? 0;
     final freq = '${d['frequency'] ?? 'daily'}';
@@ -73,7 +73,7 @@ class _HabitEditorCardState extends State<HabitEditorCard> {
           title: '${d['name'] ?? ''}',
           sub: '${kindLabel(d)} · ${freqLabel(d)} · ${n == 0 ? 'not assigned' : plural(n, 'client')}',
           actions: [
-            if (can) Builder(builder: (b) => AppIconButton(AppIcons.dots, tooltip: 'Habit options', fill: true, onPressed: () => widget.onMenu(b))),
+            if (c.canNewH) Builder(builder: (b) => AppIconButton(AppIcons.dots, tooltip: 'Habit options', fill: true, onPressed: () => widget.onMenu(b))),
           ],
         ),
         Padding(
@@ -102,11 +102,12 @@ class _HabitEditorCardState extends State<HabitEditorCard> {
               'Frequency',
               error: c.hErr['days'] ?? c.hErr['times_per_week'],
               Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
-                IgnorePointer(
-                  ignoring: !can,
-                  child: SegmentedTabs<String>(
-                    expand: true,
-                    byLabel: true,
+                // Tabs as wide as their labels (Gautam, 22 Oct), not the whole card.
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: IgnorePointer(
+                    ignoring: !can,
+                    child: SegmentedTabs<String>(
                     items: const [TabItem('daily', 'Daily'), TabItem('days', 'Specific days'), TabItem('times_week', 'Times per week')],
                     value: freq,
                     onChanged: (v) => c.setH((x) {
@@ -114,6 +115,7 @@ class _HabitEditorCardState extends State<HabitEditorCard> {
                       if (v == 'days' && (x['days'] as List? ?? const []).isEmpty) x['days'] = [0, 2, 4];
                       if (v == 'times_week' && x['times_per_week'] == null) x['times_per_week'] = 3;
                     }),
+                    ),
                   ),
                 ),
                 if (freq == 'days')
@@ -148,7 +150,7 @@ class _HabitEditorCardState extends State<HabitEditorCard> {
                 AppTextField(controller: why, enabled: can, minLines: 2, maxLines: 4, placeholder: 'e.g. Staying hydrated keeps energy up.', formatters: [LengthLimitingTextInputFormatter(200)], onChanged: (v) => c.setH((x) => x['why'] = v))),
           ]),
         ),
-        HbSaveBar(dirty: c.hDirty, saving: c.saving, canEdit: can, onDiscard: c.discardH, onSave: () => c.saveH(context)),
+        HbSaveBar(dirty: c.hDirty, saving: c.saving, canEdit: can, canCopy: c.canNewH, onDiscard: c.discardH, onSave: () => c.saveH(context)),
       ]),
     );
   }
@@ -173,32 +175,38 @@ class _HabitEditorCardState extends State<HabitEditorCard> {
               : null,
           builder: (_, h, _) {
             final on = d['kind'] == k;
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            final tick = k == 'tick';
+            // Small and plain (Gautam, 22 Oct): radio · icon · name, the hint in grey after it.
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 120),
+              height: 42,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
                 color: on ? AppColors.accentSoft : AppColors.card,
-                borderRadius: AppRadius.all(10),
-                border: Border.all(color: on ? AppColors.accent : (h ? AppColors.hbIcoHover : AppColors.line2)),
+                borderRadius: AppRadius.all(AppRadius.input),
+                border: Border.all(color: on ? AppColors.accent : (h && can ? AppColors.hbIcoHover : AppColors.line2)),
               ),
-              child: Row(spacing: 10, children: [
+              child: Row(spacing: 8, children: [
                 Container(
-                  width: 20,
-                  height: 20,
+                  width: 16,
+                  height: 16,
                   alignment: Alignment.center,
-                  decoration: BoxDecoration(color: on ? AppColors.accent : AppColors.card, shape: BoxShape.circle, border: Border.all(color: on ? AppColors.accent : AppColors.line2, width: 1.5)),
-                  child: on ? const AppIcon(AppIcons.check, size: 12, color: AppColors.white, stroke: 2.6) : null,
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: on ? AppColors.accent : AppColors.line2, width: on ? 5 : 1.5),
+                  ),
                 ),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                    Text(t, style: AppText.s(13.5, W.w7)),
-                    Text(s, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted)),
-                  ]),
-                ),
+                tick
+                    ? AppIcon(AppIcons.checkCircle, size: 16, color: on ? AppColors.accent : AppColors.text2, stroke: 2)
+                    : Text('123', style: AppText.s(11, W.w8, color: on ? AppColors.accent : AppColors.text2, ls: -0.2)),
+                Text(t, style: AppText.s(13.5, W.w7, color: on ? AppColors.accentText : AppColors.text)),
+                Expanded(child: Text(s, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted))),
               ]),
             );
           },
         );
-    final a = one('tick', 'Tick', 'Done or not done'), b = one('counter', 'Counter', 'Glasses, steps…');
+    final a = one('tick', 'Tick', 'Done or not'), b = one('counter', 'Counter', 'Counts up');
     return phone
         ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [a, b])
         : Row(spacing: 8, children: [Expanded(child: a), Expanded(child: b)]);

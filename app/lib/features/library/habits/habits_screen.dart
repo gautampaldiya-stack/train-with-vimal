@@ -39,7 +39,17 @@ class HbCtl extends ChangeNotifier {
   Map<String, String> hErr = {}, sErr = {};
 
   Map get _can => (counts['can'] as Map?) ?? const {};
+  /// "Edit gym templates": may change every habit and plan.
   bool get canEdit => _can['edit'] == true;
+
+  /// New habit / New plan and Duplicate (D-45).
+  bool get canNewH => _can['create_habits'] == true || canEdit;
+  bool get canNewS => _can['create_supplements'] == true || canEdit;
+
+  /// The open habit / plan: everything with "Edit gym templates", else only what this person made.
+  bool _mine(Map? x) => x != null && '${x['created_by'] ?? ''}' == Services.session.me?.id;
+  bool get canEditH => canEdit || (canNewH && _mine(hSaved));
+  bool get canEditS => canEdit || (canNewS && _mine(sSaved));
   bool get canAssignH => _can['assign_habits'] == true;
   bool get canAssignS => _can['assign_supplements'] == true;
 
@@ -74,7 +84,7 @@ class HbCtl extends ChangeNotifier {
     }
     loading = false;
     notifyListeners();
-    if (canEdit && quick.isEmpty) {
+    if (canNewS && quick.isEmpty) {
       try {
         quick = [for (final x in await Services.api.get<List>('supplement-plans/quick-add/')) x as Map];
         notifyListeners();
@@ -374,9 +384,11 @@ class _HabitsScreenState extends State<HabitsScreen> {
   }
 
   void _habitMenu(BuildContext anchor) => showAppMenu(anchor, width: 210, [
-        MenuEntry('Duplicate habit', icon: AppIcons.copy, onTap: _dupHabit),
-        const MenuEntry.separator(),
-        MenuEntry('Delete habit', icon: AppIcons.trash, danger: true, onTap: _delHabit),
+        if (c.canNewH) MenuEntry('Duplicate habit', icon: AppIcons.copy, sub: c.canEditH ? null : 'Make your own copy', onTap: _dupHabit),
+        if (c.canEditH) ...[
+          const MenuEntry.separator(),
+          MenuEntry('Delete habit', icon: AppIcons.trash, danger: true, onTap: _delHabit),
+        ],
       ]);
 
   Future<void> _dupHabit() async {
@@ -420,10 +432,12 @@ class _HabitsScreenState extends State<HabitsScreen> {
   }
 
   void _planMenu(BuildContext anchor) => showAppMenu(anchor, width: 230, [
-        MenuEntry('Rename plan', icon: AppIcons.edit, onTap: _renamePlan),
-        MenuEntry('Duplicate plan', icon: AppIcons.copy, sub: 'Same items, no clients', onTap: _dupPlan),
-        const MenuEntry.separator(),
-        MenuEntry('Delete plan', icon: AppIcons.trash, danger: true, onTap: _delPlan),
+        if (c.canEditS) MenuEntry('Rename plan', icon: AppIcons.edit, onTap: _renamePlan),
+        if (c.canNewS) MenuEntry('Duplicate plan', icon: AppIcons.copy, sub: 'Same items, no clients', onTap: _dupPlan),
+        if (c.canEditS) ...[
+          const MenuEntry.separator(),
+          MenuEntry('Delete plan', icon: AppIcons.trash, danger: true, onTap: _delPlan),
+        ],
       ]);
 
   Future<void> _renamePlan() async {
@@ -516,7 +530,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
             ? 'Build a habit once and assign it to many clients. Saved changes reach everyone on it.'
             : 'Supplement plans with dose and timing. Save to send changes to every client on the plan.',
         actions: [
-          if (c.canEdit) phone ? LibPlusButton(label: label, onTap: onNew) : AppButton.primary(label, icon: AppIcons.plus, onPressed: onNew),
+          if (_isH ? c.canNewH : c.canNewS) phone ? LibPlusButton(label: label, onTap: onNew) : AppButton.primary(label, icon: AppIcons.plus, onPressed: onNew),
         ],
       ),
       children: [
@@ -572,7 +586,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
         child: EmptyState(_isH ? 'No habits yet' : 'No supplement plans yet',
             icon: _isH ? AppIcons.checkCircle : AppIcons.pill,
             sub: _isH ? 'Make a habit once and assign it to many clients.' : 'Make a plan with dose and timing, then assign it.',
-            action: c.canEdit ? AppButton.primary(_isH ? 'New habit' : 'New plan', icon: AppIcons.plus, onPressed: _isH ? _newHabit : _newPlan) : null),
+            action: (_isH ? c.canNewH : c.canNewS) ? AppButton.primary(_isH ? 'New habit' : 'New plan', icon: AppIcons.plus, onPressed: _isH ? _newHabit : _newPlan) : null),
       );
     }
     final rows = <Widget>[];

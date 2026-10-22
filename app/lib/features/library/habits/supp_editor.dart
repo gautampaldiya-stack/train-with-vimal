@@ -80,7 +80,7 @@ class _SuppEditorCardState extends State<SuppEditorCard> {
   @override
   Widget build(BuildContext context) {
     final phone = context.isPhone;
-    final can = c.canEdit;
+    final can = c.canEditS;
     final n = (d['client_count'] as num?)?.toInt() ?? 0;
     final pad = phone ? 14.0 : 18.0;
     final have = {for (final i in _items) '${(i as Map)['name']}'.toLowerCase()};
@@ -93,7 +93,7 @@ class _SuppEditorCardState extends State<SuppEditorCard> {
           sub: '${plural(_items.length, 'supplement')} · ${n == 0 ? 'not assigned' : plural(n, 'client')}',
           actions: [
             if (widget.onAssign != null) AppButton('Assign', icon: AppIcons.clients, size: BtnSize.sm, onPressed: widget.onAssign),
-            if (can) Builder(builder: (b) => AppIconButton(AppIcons.dots, tooltip: 'Plan options', fill: true, onPressed: () => widget.onMenu(b))),
+            if (c.canNewS) Builder(builder: (b) => AppIconButton(AppIcons.dots, tooltip: 'Plan options', fill: true, onPressed: () => widget.onMenu(b))),
           ],
         ),
         if (_items.isEmpty)
@@ -121,7 +121,7 @@ class _SuppEditorCardState extends State<SuppEditorCard> {
                 AppTextField(controller: note, enabled: can, minLines: 2, maxLines: 4, placeholder: 'e.g. Take creatine every day, rest days too.', formatters: [LengthLimitingTextInputFormatter(300)], onChanged: (v) => c.setS((x) => x['note'] = v))),
           ]),
         ),
-        HbSaveBar(dirty: c.sDirty, saving: c.saving, canEdit: can, onDiscard: c.discardS, onSave: () => c.saveS(context)),
+        HbSaveBar(dirty: c.sDirty, saving: c.saving, canEdit: can, canCopy: c.canNewS, onDiscard: c.discardS, onSave: () => c.saveS(context)),
       ]),
     );
   }

@@ -212,7 +212,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [
           narrow
               ? Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [head, logs])
-              : Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 12, children: [Expanded(child: head), Flexible(child: logs)]),
+              : Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 12, children: [Expanded(child: head), ConstrainedBox(constraints: const BoxConstraints(maxWidth: 280), child: logs)]),
           Container(height: 1, color: AppColors.line),
           for (final (r, row) in rows.indexed)
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [

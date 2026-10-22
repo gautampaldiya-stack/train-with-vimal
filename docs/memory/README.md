@@ -48,3 +48,4 @@ Things a new person (or a new Claude session) must know. Update when Gautam deci
 - 2026-10-21: Meal plan builder works like the program builder: changes stay a draft until Publish (Publish = save and send to clients), leaving asks Publish / Don't publish / Cancel. Built-in foods are read-only; trainers assign only their own clients (D-44).
 - Gautam (2026-10-18): Daily summary design/template and a Gym news (announcements) screen are parked — remember them, build only when he asks (backend sending already exists, D-38).
 - Build order (Gautam 2026-10-21): after Content library the trainer side is complete; then admin screens, only 1-2 per round, done well.
+- 2026-10-22: Trainers make their own habits and supplement plans and change only their own (D-45, same as programs and meal plans). Library media (video, picture, PDF) must open inside the app, never in a new browser tab (Gautam).

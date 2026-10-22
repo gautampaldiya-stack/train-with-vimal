@@ -139,12 +139,15 @@ def probe(item):
     if not exe or not item.file:
         return None, ""
     with _source(item) as source:
-        if not source:
-            return None, ""
-        try:
-            r = subprocess.run([exe, "-hide_banner", "-i", source], capture_output=True, timeout=20, check=False)  # noqa: S603
-        except (OSError, subprocess.TimeoutExpired):
-            return None, ""
+        return probe_source(exe, source) if source else (None, "")
+
+
+def probe_source(exe, source):
+    """(seconds, "1080p") of a video file path or URL, from ffmpeg's report; (None, "") when unknown."""
+    try:
+        r = subprocess.run([exe, "-hide_banner", "-i", source], capture_output=True, timeout=20, check=False)  # noqa: S603
+    except (OSError, subprocess.TimeoutExpired):
+        return None, ""
     out = r.stderr.decode("utf-8", "ignore")
     m = re.search(r"Duration: (\d+):(\d+):(\d+(?:\.\d+)?)", out)
     secs = round(int(m.group(1)) * 3600 + int(m.group(2)) * 60 + float(m.group(3))) if m else None

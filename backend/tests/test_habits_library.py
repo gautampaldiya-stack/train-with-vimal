@@ -6,8 +6,10 @@ from apps.habits.models import Habit, HabitAssignment
 def test_counts_and_can(admin, trainer):
     d = admin.get("/api/v1/habits/counts/").json()
     assert d["habits"] == Habit.objects.count() and d["supplements"] >= 1
-    assert d["can"] == {"edit": True, "assign_habits": True, "assign_supplements": True}
-    assert set(trainer.get("/api/v1/habits/counts/").json()["can"]) == {"edit", "assign_habits", "assign_supplements"}
+    assert d["can"] == {"edit": True, "assign_habits": True, "assign_supplements": True, "create_habits": True,
+                        "create_supplements": True}
+    t = trainer.get("/api/v1/habits/counts/").json()["can"]
+    assert t["edit"] is False and t["create_habits"] and t["create_supplements"]
 
 
 def test_habit_new_save_duplicate_delete(admin):
@@ -61,3 +63,21 @@ def test_supplement_plan_with_pre_workout(admin):
                     format="json")
     assert r.status_code == 200 and [i["name"] for i in r.json()["items"]] == ["Caffeine"]
     assert r.json()["note"] == "Before training only."
+
+
+def test_trainer_makes_and_changes_own_habits_only(admin, trainer):
+    """D-45: a trainer makes habits / plans and changes their own; the gym's are read-only (Duplicate works)."""
+    gym = admin.get("/api/v1/habits/").json()[0]
+    assert trainer.patch(f"/api/v1/habits/{gym['id']}/", {"name": "Mine now"}, format="json").status_code == 403
+    assert trainer.delete(f"/api/v1/habits/{gym['id']}/").status_code == 403
+    copy = trainer.post(f"/api/v1/habits/{gym['id']}/duplicate/").json()
+    assert trainer.patch(f"/api/v1/habits/{copy['id']}/", {"name": "Aman's walk"}, format="json").status_code == 200
+    new = trainer.post("/api/v1/habits/", {"name": "Stretch 5 min", "kind": "tick", "frequency": "daily",
+                                           "icon": "habit"}, format="json")
+    assert new.status_code == 201, new.content
+    assert new.json()["created_by"]
+    assert trainer.delete(f"/api/v1/habits/{new.json()['id']}/").status_code == 204
+    plan = trainer.post("/api/v1/supplement-plans/", {"name": "Aman stack", "items": []}, format="json")
+    assert plan.status_code == 201
+    assert trainer.patch(f"/api/v1/supplement-plans/{plan.json()['id']}/", {"note": "Take with water"},
+                         format="json").status_code == 200

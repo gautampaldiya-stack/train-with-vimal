@@ -97,14 +97,14 @@ class HbListRow extends StatelessWidget {
     return Hover(
       onTap: onTap,
       builder: (_, h, _) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: on && !phone ? AppColors.accentSoft : (h ? AppColors.hover : null),
           borderRadius: AppRadius.all(10),
           border: Border.all(color: on && !phone ? AppColors.hbOnLine : Colors.transparent),
         ),
         child: Row(spacing: 10, children: [
-          HbIcon(icon, tone),
+          HbIcon(icon, tone, size: 30),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
               Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
@@ -154,8 +154,11 @@ class HbEditorHead extends StatelessWidget {
 
 /// `.hb-save`: "Unsaved changes" + Discard + Save changes, or "All changes saved" with Save greyed.
 class HbSaveBar extends StatelessWidget {
-  const HbSaveBar({super.key, required this.dirty, required this.saving, required this.canEdit, required this.onDiscard, required this.onSave});
+  const HbSaveBar({super.key, required this.dirty, required this.saving, required this.canEdit, this.canCopy = false, required this.onDiscard, required this.onSave});
   final bool dirty, saving, canEdit;
+
+  /// Read-only but may duplicate (a gym item, D-45): say so instead of "ask for access".
+  final bool canCopy;
   final VoidCallback onDiscard, onSave;
   @override
   Widget build(BuildContext context) {
@@ -167,7 +170,10 @@ class HbSaveBar extends StatelessWidget {
       child: Row(spacing: 8, children: [
         if (!canEdit) ...[
           const AppIcon(AppIcons.lock, size: 15, color: AppColors.muted),
-          Expanded(child: Text('You can look, not change. Ask Vimal for edit access.', style: style)),
+          Expanded(
+            child: Text(canCopy ? 'Only Vimal can change this one. Duplicate it from ⋯ to make your own.' : 'You can look, not change. Ask Vimal for edit access.',
+                style: style),
+          ),
         ] else if (dirty) ...[
           Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppColors.hbDot, shape: BoxShape.circle)),
           Expanded(child: Text('Unsaved changes', maxLines: 1, overflow: TextOverflow.ellipsis, style: style)),

@@ -152,7 +152,8 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `clients/<client_pk>[0-9a-f-]+)/content/library/` | GET | ClientContentView | Client profile → Content tab: what she sees and why (`?why=all/assigned/plan/everyone&q=&page=`), Assign |
 | `content-categories/` | GET, POST | CategoryViewSet |  |
 | `content-categories/<pk>/` | GET, PUT, PATCH, DELETE | CategoryViewSet |  |
-| `content/` | GET, POST | ContentViewSet | Rows carry `thumb_url`: the cover, else the picked `frame`, else a video's first frame (ffmpeg, saved once), else the YouTube still. Also `length_label` ("0:42", "6 pages", "PNG", "4 min read"), `uses` (exercises and programs that show it), `who` (Everyone / client name / N clients / Not assigned), `file_name`. `?kind=&category=&search=&page_size=`. Upload fills length, resolution or page count. |
+| `content/` | GET, POST | ContentViewSet | Rows carry `thumb_url`: the cover, else the picked `frame`, else a video's first frame (ffmpeg, saved once), else the YouTube still. Also `length_label` ("0:42", "6 pages", "PNG", "4 min read"), `uses` (exercises and programs that show it), `who` (Everyone / client name / N clients / Not assigned), `file_name`. `?kind=&category=&search=&page_size=`. Upload fills length, resolution or page count. An upload past `CONTENT_STORAGE_GB` is refused (400 on `file`). |
+| `content/stage/` | POST | ContentViewSet | New video before Save (multipart `file`): keeps it under `content/staging/` and gives back `{upload, frames}` so the cover frame can be picked at once. Then `content/` POST / PATCH with `upload` instead of `file`. 400 when storage is full. (D-45) |
 | `content/summary/` | GET | ContentViewSet | Content library page: `{total, storage: {used, limit}, can: {manage, everyone}}` (limit = `CONTENT_STORAGE_GB`, 20 GB; `everyone` = Vimal only). |
 | `content/<pk>/` | GET, PUT, PATCH, DELETE | ContentViewSet |  |
 | `content/<pk>/assign/` | GET, POST | ContentViewSet |  |

@@ -17,11 +17,12 @@ QUICK_ADD = [
 class HabitSerializer(serializers.ModelSerializer):
     client_count = serializers.IntegerField(read_only=True, source="n_clients", default=0)
     frequency_label = serializers.SerializerMethodField()
+    created_by = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = Habit
         fields = ["id", "name", "kind", "target", "unit", "frequency", "days", "times_per_week", "icon", "why",
-                  "client_count", "frequency_label", "updated_at", "created_at"]
+                  "client_count", "frequency_label", "created_by", "updated_at", "created_at"]
 
     def get_frequency_label(self, obj):
         if obj.frequency == Habit.Frequency.DAYS:
@@ -82,10 +83,11 @@ class SupplementItemSerializer(serializers.ModelSerializer):
 class SupplementPlanSerializer(serializers.ModelSerializer):
     items = SupplementItemSerializer(many=True, required=False)
     client_count = serializers.IntegerField(read_only=True, source="n_clients", default=0)
+    created_by = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = SupplementPlan
-        fields = ["id", "name", "note", "items", "client_count", "updated_at", "created_at"]
+        fields = ["id", "name", "note", "items", "client_count", "created_by", "updated_at", "created_at"]
 
     def validate_name(self, v):
         v = " ".join(v.split())

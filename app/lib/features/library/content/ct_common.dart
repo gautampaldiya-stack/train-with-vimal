@@ -69,7 +69,8 @@ class CtMedia extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (a, b) = AppColors.mediaTiles[ctTone(x)];
-    final url = x['thumb_url'] as String?;
+    // A picture is its own cover.
+    final url = (x['thumb_url'] as String?) ?? (x['kind'] == 'image' ? x['file_url'] as String? : null);
     final tile = Container(
       alignment: Alignment.center,
       decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [a, b])),

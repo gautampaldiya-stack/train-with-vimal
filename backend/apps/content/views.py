@@ -1,4 +1,10 @@
+import re
+import uuid
+
 from django.contrib.auth import get_user_model
+from django.core.files import File
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 from django.db import transaction
 from django.db.models import Count, Exists, OuterRef, Q
 from django.shortcuts import get_object_or_404
@@ -26,6 +32,30 @@ LIVE_SHARE = Q(shares__hidden=False) & ~Q(shares__source=ContentShare.Source.EVE
 
 LIMITS_MB = {"pdf": 25, "image": 10, "video": 500}
 EXT = {"pdf": {"pdf"}, "image": set(IMAGE_EXTENSIONS), "video": {"mp4", "mov", "m4v", "webm"}}
+STAGE_DIR = "content/staging"
+STAGE_RE = re.compile(r"^[0-9a-f-]{36}\.(mp4|mov|m4v|webm)$")
+
+
+def storage_limit():
+    from django.conf import settings
+
+    return getattr(settings, "CONTENT_STORAGE_GB", 20) * 1024 ** 3
+
+
+def storage_used(exclude=None):
+    from django.db.models import Sum
+
+    qs = ContentItem.objects.all()
+    if exclude is not None:
+        qs = qs.exclude(id=exclude.id)
+    return qs.aggregate(s=Sum("file_size"))["s"] or 0
+
+
+def check_room(size, exclude=None):
+    """Uploads stop once the gym's content storage is full (Gautam, 22 Oct)."""
+    if storage_used(exclude) + size > storage_limit():
+        gb = storage_limit() // 1024 ** 3
+        raise serializers.ValidationError({"file": [f"Content storage is full ({gb} GB). Delete old videos or files first."]})
 
 
 def uses_of(item):
@@ -60,6 +90,67 @@ def _fill_media(item):
         item.pages = n
 
 
+def staged_frames(name, sid, request=None):
+    """Four stills of a staged video, keyed like a saved one's (exercises/frames/<id>-<sec>.jpg)."""
+    from apps.training.frames import FRAME_DIR, _grab, clock, ffmpeg_exe, frame_times, key_url, probe_source
+
+    exe = ffmpeg_exe()
+    try:
+        source = default_storage.path(name)
+    except NotImplementedError:
+        source = default_storage.url(name)
+    secs = probe_source(exe, source)[0] if exe else None
+    out = []
+    for at in frame_times(secs):
+        key = f"{FRAME_DIR}/{sid}-{at}.jpg"
+        data = _grab(exe, source, at) if exe else None
+        if data:
+            default_storage.save(key, ContentFile(data))
+        out.append({"key": key, "at": at, "label": clock(at), "url": key_url(key, request) if data else None})
+    return out
+
+
+def _take_staged(item, up):
+    """Move a staged video onto the item (same file, its real place under content/)."""
+    path = f"{STAGE_DIR}/{up}"
+    with default_storage.open(path, "rb") as fh:
+        item.file.save(up, File(fh), save=False)
+    default_storage.delete(path)
+    # The frames were keyed by the staged id: give them the item's id, like a saved video's frames.
+    from apps.training.frames import FRAME_DIR, frame_times, probe
+
+    sid = up.split(".")[0]
+    for at in frame_times(probe(item)[0]):  # same length → same times as the staged frames
+        old = f"{FRAME_DIR}/{sid}-{at}.jpg"
+        if not default_storage.exists(old):
+            continue
+        new = f"{FRAME_DIR}/{item.id}-{at}.jpg"
+        if not default_storage.exists(new):
+            with default_storage.open(old, "rb") as fh:
+                default_storage.save(new, fh)
+        default_storage.delete(old)
+        if item.frame == old:
+            item.frame = new
+    ContentItem.objects.filter(id=item.id).update(file=item.file.name, frame=item.frame)
+
+
+def _sweep_staged():
+    """Staged videos nobody saved within a day."""
+    from datetime import timedelta
+
+    try:
+        _, names = default_storage.listdir(STAGE_DIR)
+    except (FileNotFoundError, NotImplementedError, OSError):
+        return
+    cutoff = timezone.now() - timedelta(days=1)
+    for n in names:
+        try:
+            if default_storage.get_modified_time(f"{STAGE_DIR}/{n}") < cutoff:
+                default_storage.delete(f"{STAGE_DIR}/{n}")
+        except (NotImplementedError, OSError):
+            pass
+
+
 class CategorySerializer(serializers.ModelSerializer):
     count = serializers.IntegerField(read_only=True, source="n", default=0)
 
@@ -91,13 +182,15 @@ class ContentSerializer(serializers.ModelSerializer):
     uses = serializers.SerializerMethodField()
     who = serializers.SerializerMethodField()
     file_name = serializers.SerializerMethodField()
+    # A video sent ahead with `content/stage/` (so its frames can be picked before saving): its staged name.
+    upload = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:
         model = ContentItem
         fields = ["id", "kind", "title", "category", "category_name", "description", "file", "file_url",
                   "youtube_url", "link_url", "cover", "cover_url", "thumb_url", "body", "read_minutes", "duration_seconds", "pages",
                   "file_size", "resolution", "share_everyone", "chapters", "outline", "shared_count", "added_by", "usage", "created_at",
-                  "updated_at", "frame", "length_label", "uses", "who", "file_name"]
+                  "updated_at", "frame", "length_label", "uses", "who", "file_name", "upload"]
         read_only_fields = ["file_size"]
         extra_kwargs = {"file": {"write_only": True, "required": False},
                         "cover": {"write_only": True, "required": False},
@@ -190,7 +283,16 @@ class ContentSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({"file": [f"This file type is not allowed for {kind}."]})
             if kind in LIMITS_MB and f.size > LIMITS_MB[kind] * 1024 * 1024:
                 raise serializers.ValidationError({"file": [f"Up to {LIMITS_MB[kind]} MB."]})
+            check_room(f.size, self.instance)
             attrs["file_size"] = f.size
+        up = attrs.pop("upload", "")
+        if up and not f:
+            if kind != "video" or not STAGE_RE.match(up) or not default_storage.exists(f"{STAGE_DIR}/{up}"):
+                raise serializers.ValidationError({"file": ["The upload has expired. Upload the video again."]})
+            size = default_storage.size(f"{STAGE_DIR}/{up}")
+            check_room(size, self.instance)
+            attrs["_staged"], attrs["file_size"] = up, size
+            f = True
         has_file = f or (self.instance and self.instance.file)
         if kind == "video" and not (has_file or attrs.get("youtube_url") or (self.instance and
                                                                                self.instance.youtube_url)):
@@ -229,27 +331,45 @@ class ContentViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
             qs = qs.filter(category_id=p["category"])
         return qs
 
+    @action(detail=False, methods=["post"])
+    def stage(self, request):
+        """New video, before Save: keep the file and give back its frames, so the cover can be picked right away.
+        Save then sends `upload` (the staged name) instead of the file. Staged files not saved within a day go."""
+        f = request.FILES.get("file")
+        ext = (f.name.rsplit(".", 1)[-1].lower() if f else "")
+        if not f or ext not in EXT["video"]:
+            raise serializers.ValidationError({"file": ["Upload an MP4 or MOV video."]})
+        if f.size > LIMITS_MB["video"] * 1024 * 1024:
+            raise serializers.ValidationError({"file": [f"Up to {LIMITS_MB['video']} MB."]})
+        check_room(f.size)
+        _sweep_staged()
+        sid = str(uuid.uuid4())
+        name = default_storage.save(f"{STAGE_DIR}/{sid}.{ext}", f)
+        return Response({"upload": name.rsplit("/", 1)[-1], "frames": staged_frames(name, sid, request)}, status=201)
+
     @action(detail=False)
     def summary(self, request):
         """Content library page: item count, storage used of the gym's allowance, and what this person may do
         (`manage` = add / edit / delete / assign, `everyone` = share with every client, Vimal only)."""
-        from django.conf import settings
-        from django.db.models import Sum
-
         u = request.user
-        used = ContentItem.objects.aggregate(s=Sum("file_size"))["s"] or 0
         return Response({"total": ContentItem.objects.count(),
-                         "storage": {"used": used, "limit": getattr(settings, "CONTENT_STORAGE_GB", 20) * 1024 ** 3},
+                         "storage": {"used": storage_used(), "limit": storage_limit()},
                          "can": {"manage": u.is_admin or (u.is_trainer and u.trainer_profile.has_perm("content.manage")),
                                  "everyone": u.is_admin}})
 
     def perform_update(self, serializer):
+        staged = serializer.validated_data.pop("_staged", None)
         item = serializer.save()
-        if "file" in serializer.validated_data:
+        if staged:
+            _take_staged(item, staged)
+        if "file" in serializer.validated_data or staged:
             _fill_media(item)
 
     def perform_create(self, serializer):
+        staged = serializer.validated_data.pop("_staged", None)
         item = serializer.save(created_by=self.request.user)
+        if staged:
+            _take_staged(item, staged)
         _fill_media(item)
         activity_log("added content", "content", actor=self.request.user, target=item, target_label=item.title)
         if item.share_everyone:

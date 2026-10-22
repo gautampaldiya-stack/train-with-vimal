@@ -70,16 +70,23 @@ def _assign_options(request, model, field, obj):
 
 
 class _StaffWrite:
+    """Who may change the library (D-45, like programs in D-39): a trainer with the tab's access makes new
+    habits / plans, duplicates any, and changes or deletes the ones they made; "Edit gym templates" changes all."""
+
     def check_permissions(self, request):
         super().check_permissions(request)
         u = request.user
         if u.is_trainer and request.method not in ("GET", "HEAD", "OPTIONS"):
-            if self.action == "assign":
-                key = self.assign_permission
-            else:
-                key = "training.edit_templates"
-            if not u.trainer_profile.has_perm(key):
+            if not u.trainer_profile.has_perm(self.assign_permission):
                 raise PermissionDenied("Your access does not include this. Ask Vimal for more access.")
+
+    def check_object_permissions(self, request, obj):
+        super().check_object_permissions(request, obj)
+        u = request.user
+        if u.is_trainer and request.method not in ("GET", "HEAD", "OPTIONS") and self.action not in ("assign", "duplicate"):
+            if obj.created_by_id != u.id and not u.trainer_profile.has_perm("training.edit_templates"):
+                raise PermissionDenied("Only Vimal or a trainer with \"Edit gym templates\" can change this. "
+                                       "Duplicate it to make your own.")
 
 
 class HabitViewSet(_StaffWrite, SoftDeleteViewMixin, viewsets.ModelViewSet):
@@ -101,7 +108,9 @@ class HabitViewSet(_StaffWrite, SoftDeleteViewMixin, viewsets.ModelViewSet):
         can = lambda k: u.is_admin or (u.is_trainer and u.trainer_profile.has_perm(k))  # noqa: E731
         return Response({"habits": Habit.objects.count(), "supplements": SupplementPlan.objects.filter(is_master=True).count(),
                          "can": {"edit": can("training.edit_templates"), "assign_habits": can(HabitViewSet.assign_permission),
-                                 "assign_supplements": can(SupplementPlanViewSet.assign_permission)}})
+                                 "assign_supplements": can(SupplementPlanViewSet.assign_permission),
+                                 "create_habits": can(HabitViewSet.assign_permission),
+                                 "create_supplements": can(SupplementPlanViewSet.assign_permission)}})
 
     def perform_create(self, serializer):
         h = serializer.save(created_by=self.request.user)

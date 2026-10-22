@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:pdfrx/pdfrx.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 import 'package:webview_flutter_platform_interface/webview_flutter_platform_interface.dart' show WebViewPlatform;
@@ -430,6 +431,96 @@ class OpenInYoutube extends StatelessWidget {
       );
 }
 
+// ─────────────────────────────── PDF
+
+/// A PDF full screen inside the app (not a new browser tab): pages scroll, pinch or ctrl + wheel zooms,
+/// "Page 2 of 6" at the top. If the file can't be shown here, [onFallback] (download / open) is offered.
+Future<void> showPdfViewer(BuildContext context, String url, {String? title, VoidCallback? onFallback}) => Navigator.of(context, rootNavigator: true).push(
+      PageRouteBuilder<void>(
+        opaque: true,
+        transitionDuration: const Duration(milliseconds: 160),
+        pageBuilder: (_, _, _) => _PdfViewer(url: url, title: title, onFallback: onFallback),
+        transitionsBuilder: (_, a, _, child) => FadeTransition(opacity: a, child: child),
+      ),
+    );
+
+class _PdfViewer extends StatefulWidget {
+  const _PdfViewer({required this.url, this.title, this.onFallback});
+  final String url;
+  final String? title;
+  final VoidCallback? onFallback;
+  @override
+  State<_PdfViewer> createState() => _PdfViewerState();
+}
+
+class _PdfViewerState extends State<_PdfViewer> {
+  final ctl = PdfViewerController();
+  int page = 1, pages = 0;
+  bool failed = false;
+
+  void _goto(int p) {
+    if (ctl.isReady && p >= 1 && p <= pages) ctl.goToPage(pageNumber: p);
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        backgroundColor: AppColors.black,
+        body: SafeArea(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 12, 10),
+              child: Row(spacing: 10, children: [
+                Expanded(
+                  child: Text([if (widget.title != null) widget.title!, if (pages > 0) 'Page $page of $pages'].join(' · '),
+                      maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7, color: AppColors.white)),
+                ),
+                if (pages > 1) ...[
+                  _RoundBtn(icon: AppIcons.chevronLeft, label: 'Previous page', onTap: () => _goto(page - 1)),
+                  _RoundBtn(icon: AppIcons.chevronRight, label: 'Next page', onTap: () => _goto(page + 1)),
+                ],
+                _RoundBtn(icon: AppIcons.close, label: 'Close', onTap: () => Navigator.of(context).pop()),
+              ]),
+            ),
+            Expanded(
+              child: failed
+                  ? Center(
+                      child: Column(mainAxisSize: MainAxisSize.min, spacing: 12, children: [
+                        Text('This PDF could not be shown here.', style: AppText.s(14, W.w6, color: AppColors.white)),
+                        if (widget.onFallback != null)
+                          GestureDetector(onTap: widget.onFallback, child: Text('Download it', style: AppText.s(13.5, W.w7, color: AppColors.sky))),
+                      ]),
+                    )
+                  : ClipRect(
+                      child: PdfViewer.uri(
+                        Uri.parse(widget.url),
+                        controller: ctl,
+                        params: PdfViewerParams(
+                          backgroundColor: AppColors.black,
+                          margin: 12,
+                          onViewerReady: (doc, c) => setState(() {
+                            pages = doc.pages.length;
+                            page = c.pageNumber ?? 1;
+                          }),
+                          onPageChanged: (n) {
+                            if (n != null && mounted) setState(() => page = n);
+                          },
+                          loadingBannerBuilder: (_, _, _) =>
+                              const Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.white))),
+                          errorBannerBuilder: (_, _, _, _) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (mounted && !failed) setState(() => failed = true);
+                            });
+                            return const SizedBox.shrink();
+                          },
+                        ),
+                      ),
+                    ),
+            ),
+          ]),
+        ),
+      );
+}
+
 // ─────────────────────────────── Pictures
 
 /// Full-screen pictures on black: pinch / scroll to zoom, swipe or arrows for the next one, "2 / 6" at the top.
@@ -528,5 +619,32 @@ class NetImage extends StatelessWidget {
           height: height ?? 160,
           child: Center(child: AppIcon(AppIcons.photo, size: 28, color: dark ? AppColors.white : AppColors.muted)),
         ),
+      );
+}
+
+/// First page of a PDF as a picture (Content drawer preview, Gautam 22 Oct). Shows [fallback] while loading or on error.
+class PdfFirstPage extends StatelessWidget {
+  const PdfFirstPage(this.url, {super.key, required this.fallback});
+  final String url;
+  final Widget fallback;
+  @override
+  Widget build(BuildContext context) => PdfDocumentViewBuilder.uri(
+        Uri.parse(url),
+        loadingBuilder: (_) => fallback,
+        errorBuilder: (_, _, _) => fallback,
+        builder: (_, doc) => doc == null
+            ? fallback
+            : ColoredBox(
+                color: AppColors.sub,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  child: PdfPageView(
+                    document: doc,
+                    pageNumber: 1,
+                    maximumDpi: 150,
+                    decoration: const BoxDecoration(color: AppColors.white, boxShadow: [BoxShadow(color: AppColors.shadowSoft, blurRadius: 8, offset: Offset(0, 2))]),
+                  ),
+                ),
+              ),
       );
 }

@@ -76,6 +76,10 @@ class Api {
   Future<T> post<T>(String path, [Object? data, String? idempotencyKey, bool auth = true]) => _run(() => _dio.post(path,
       data: data, options: Options(headers: {'Idempotency-Key': ?idempotencyKey}, extra: {'auth': auth})));
 
+  /// A file upload that reports how far it got (0 → 1).
+  Future<T> upload<T>(String path, Object data, {void Function(double)? onProgress}) => _run(() => _dio.post(path,
+      data: data, onSendProgress: onProgress == null ? null : (sent, total) => total > 0 ? onProgress(sent / total) : null));
+
   Future<T> put<T>(String path, [Object? data, String? idempotencyKey]) =>
       _run(() => _dio.put(path, data: data, options: Options(headers: {'Idempotency-Key': ?idempotencyKey})));
 

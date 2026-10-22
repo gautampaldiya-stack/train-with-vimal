@@ -17,6 +17,7 @@ import '../../../core/widgets/button.dart';
 import '../../../core/widgets/card.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/input.dart';
+import '../../../core/widgets/media.dart';
 import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/select.dart';
@@ -65,15 +66,111 @@ Future<String?> showContentDetail(BuildContext context, String id, {required boo
   );
 }
 
-class _Detail extends StatelessWidget {
+class _Detail extends StatefulWidget {
   const _Detail(this.d);
   final Map d;
+  @override
+  State<_Detail> createState() => _DetailState();
+}
 
+/// Videos play right here (full screen from the player), pictures and PDFs open full screen inside the app
+/// (Gautam, 22 Oct: never a new browser tab). Only a web link still opens the site.
+class _DetailState extends State<_Detail> {
+  Map get d => widget.d;
   String get kind => '${d['kind']}';
+  String get _file => '${d['file_url'] ?? ''}';
+  String get _yt => '${d['youtube_url'] ?? ''}';
+
+  late final VideoCtl? _v = kind == 'video' && _file.isNotEmpty ? VideoCtl(_file, fallbackSeconds: ((d['duration'] as num?) ?? 0).toInt()) : null;
+
+  @override
+  void dispose() {
+    _v?.dispose();
+    super.dispose();
+  }
+
+  void _download() {
+    if (_file.isNotEmpty) launchUrl(Uri.parse(_file), webOnlyWindowName: '_blank');
+  }
 
   Future<void> _play() async {
-    final u = '${d['youtube_url'] ?? ''}'.isNotEmpty ? '${d['youtube_url']}' : (d['file_url'] as String? ?? d['link_url'] as String? ?? '');
-    if (u.isNotEmpty) await launchUrl(Uri.parse(u), webOnlyWindowName: '_blank');
+    final title = '${d['title'] ?? ''}';
+    switch (kind) {
+      case 'image' when _file.isNotEmpty:
+        await showImageViewer(context, [_file], title: title);
+      case 'pdf' when _file.isNotEmpty:
+        await showPdfViewer(context, _file, title: title, onFallback: _download);
+      case 'video' when _v != null:
+        if (!_v.playing) await _v.toggle();
+      case 'link':
+        final u = '${d['link_url'] ?? ''}';
+        if (u.isNotEmpty) await launchUrl(Uri.parse(u), webOnlyWindowName: '_blank');
+    }
+  }
+
+  String _label() {
+    final c = _v!;
+    if (c.failed) return 'Could not play here';
+    if (c.playing) return 'Playing';
+    if (c.finished) return 'Finished · tap to watch again';
+    if (c.pos > 0) return 'Paused';
+    return 'Tap to play';
+  }
+
+  /// The top picture: the player for a video, YouTube's player for a link, else the cover (tap to open).
+  Widget _media() {
+    if (kind == 'video' && _v != null) {
+      return AspectRatio(
+        aspectRatio: 16 / 9,
+        child: LayoutBuilder(
+          builder: (_, b) => VideoBox(
+            ctl: _v,
+            label: _label,
+            bg: AppColors.videoDark.first,
+            fg: AppColors.white,
+            height: b.maxHeight,
+            poster: d['thumb_url'] as String?,
+            lengthText: '${d['length_label'] ?? ''}',
+            onTapEmpty: _download, // this browser can't play the file: download it instead
+          ),
+        ),
+      );
+    }
+    if (kind == 'video' && _yt.isNotEmpty) return YoutubeBox(url: _yt, openLink: false);
+    final pic = kind == 'image' && _file.isNotEmpty;
+    return Semantics(
+      button: kind != 'article',
+      label: switch (kind) { 'image' => 'Open the picture full screen', 'pdf' => 'Open the PDF', _ => 'Open' },
+      child: Hover(
+        onTap: kind == 'article' ? null : _play,
+        cursor: pic ? SystemMouseCursors.zoomIn : null,
+        builder: (_, _, _) => AspectRatio(
+          aspectRatio: 16 / 9,
+          child: pic
+              ? ClipRRect(borderRadius: AppRadius.all(12), child: ColoredBox(color: AppColors.sub, child: NetImage(_file, fit: BoxFit.contain)))
+              : kind == 'pdf' && _file.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: AppRadius.all(12),
+                      child: Stack(fit: StackFit.expand, children: [
+                        PdfFirstPage(_file, fallback: CtMedia(d, radius: AppRadius.all(12), bigPlay: true)),
+                        Positioned(
+                          right: 10,
+                          bottom: 10,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(color: AppColors.videoScrim.last, borderRadius: AppRadius.all(99)),
+                            child: Row(mainAxisSize: MainAxisSize.min, spacing: 5, children: [
+                              const AppIcon(AppIcons.expand, size: 13, color: AppColors.white),
+                              Text('Tap to read', style: AppText.s(12, W.w6, color: AppColors.white)),
+                            ]),
+                          ),
+                        ),
+                      ]),
+                    )
+                  : CtMedia(d, radius: AppRadius.all(12), bigPlay: true),
+        ),
+      ),
+    );
   }
 
   @override
@@ -101,10 +198,7 @@ class _Detail extends StatelessWidget {
       padding: EdgeInsets.only(top: context.isPhone ? 0 : 14),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 18, children: [
         Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-          Hover(
-            onTap: kind == 'article' ? null : _play,
-            builder: (_, _, _) => AspectRatio(aspectRatio: 16 / 9, child: CtMedia(d, radius: AppRadius.all(12), bigPlay: true)),
-          ),
+          _media(),
           _Kpis(kv),
         ]),
         if (kind == 'video')
@@ -112,7 +206,7 @@ class _Detail extends StatelessWidget {
             'Video',
             hasFile
                 ? _FileRow(icon: AppIcons.video, name: '${d['file_name']}', sub: _fileSub(d), badge: 'Plays in the app', onTap: _play)
-                : _FileRow(icon: AppIcons.youtube, name: '${d['youtube_url'] ?? ''}', sub: 'YouTube link', badge: 'Plays in the app', onTap: _play),
+                : _FileRow(icon: AppIcons.youtube, name: '${d['youtube_url'] ?? ''}', sub: 'YouTube link', badge: 'Plays in the app'),
           ),
         if ((kind == 'pdf' || kind == 'image') && hasFile)
           meField(kind == 'pdf' ? 'PDF file' : 'Image',
@@ -240,19 +334,38 @@ class _Stats extends StatelessWidget {
 
 /// `.ct-file`: icon, file name, grey line, and a green badge or a button on the right.
 class _FileRow extends StatelessWidget {
-  const _FileRow({required this.icon, required this.name, required this.sub, this.badge, this.action, this.onTap});
+  const _FileRow({required this.icon, required this.name, required this.sub, this.badge, this.action, this.onTap, this.progress});
   final AppIconData icon;
   final String name, sub;
   final String? badge;
   final Widget? action;
   final VoidCallback? onTap;
+
+  /// Upload so far (0 → 1): a thin bar along the bottom.
+  final double? progress;
   @override
   Widget build(BuildContext context) => Hover(
         onTap: onTap,
         builder: (_, h, _) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(borderRadius: AppRadius.all(10), border: Border.all(color: h && onTap != null ? AppColors.line2 : AppColors.line)),
-          child: Row(spacing: 10, children: [
+          child: Stack(children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: _row(),
+            ),
+            if (progress != null)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: LinearProgressIndicator(value: progress, minHeight: 3, color: AppColors.accent, backgroundColor: AppColors.sub),
+              ),
+          ]),
+        ),
+      );
+
+  Widget _row() => Row(spacing: 10, children: [
             AppIcon(icon, size: 18, color: AppColors.muted),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
@@ -262,7 +375,56 @@ class _FileRow extends StatelessWidget {
             ),
             if (badge != null) AppBadge(badge!, tone: Tone.ok, plain: true),
             ?action,
-          ]),
+          ]);
+}
+
+/// `.ct-drop`: dashed box that answers the pointer: hover tints it, a file dragged over turns it blue and lifts the
+/// icon. Clicking opens the file picker.
+class _DropZone extends StatelessWidget {
+  const _DropZone({required this.icon, required this.title, required this.sub, required this.onTap, this.over = false, this.error = false});
+  final AppIconData icon;
+  final String title, sub;
+  final VoidCallback onTap;
+  final bool over, error;
+  @override
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        label: title,
+        child: Hover(
+          onTap: onTap,
+          builder: (_, h, _) {
+            final hot = over || h;
+            return CustomPaint(
+              foregroundPainter: DashedBox(color: error && !hot ? AppColors.badText : (hot ? AppColors.accent : AppColors.line2), radius: 12),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 140),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                decoration: BoxDecoration(color: over ? AppColors.accentSoft : (h ? AppColors.hover : AppColors.card), borderRadius: AppRadius.all(12)),
+                child: Column(spacing: 6, children: [
+                  AnimatedScale(
+                    scale: over ? 1.12 : 1,
+                    duration: const Duration(milliseconds: 160),
+                    curve: Curves.easeOutBack,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 140),
+                      width: 40,
+                      height: 40,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(color: over ? AppColors.accent : AppColors.accentSoft, borderRadius: AppRadius.all(10)),
+                      child: AppIcon(icon, size: 20, color: over ? AppColors.white : AppColors.accent),
+                    ),
+                  ),
+                  Text(title, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7, color: over ? AppColors.accentText : AppColors.text)),
+                  Text(sub, textAlign: TextAlign.center, style: AppText.s(12.5, W.w5, color: AppColors.muted)),
+                  if (!over)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: IgnorePointer(child: AppButton('Choose file', size: BtnSize.sm, icon: AppIcons.importFile, onPressed: () {})),
+                    ),
+                ]),
+              ),
+            );
+          },
         ),
       );
 }
@@ -335,7 +497,7 @@ class _Ed extends ChangeNotifier {
       frame = f.isEmpty ? null : f;
     }
     _snap = _sig;
-    if (kIsWeb) _unwatch = watchDrops(onOver: (v) => _set(() => dragging = v), onFile: take);
+    if (kIsWeb) _unwatch = watchDrops(onOver: (v) => _set(() => dragging = v), onFile: _dropped);
     _loadFrames();
   }
 
@@ -352,6 +514,13 @@ class _Ed extends ChangeNotifier {
   String? titleErr, fileErr, ytErr, bodyErr, formErr;
   List<Map> frames = const [];
   bool framesLoading = false;
+
+  /// A new video goes up as soon as it is picked (`content/stage/`), so its frames can be chosen before saving.
+  String? staged;
+  double? upPct;
+  List<Map> _stagedFrames = const [];
+  Future<void>? _upload;
+  int _upRun = 0;
   String? _framesFor;
   Timer? _ytWait;
   late String _snap;
@@ -385,6 +554,7 @@ class _Ed extends ChangeNotifier {
         kind = k;
         file = null;
         fileErr = null;
+        _dropStaged();
         _loadFrames();
       });
 
@@ -411,7 +581,19 @@ class _Ed extends ChangeNotifier {
     _set(() => dragging = false);
     final f = d.files.whereType<DropItemFile>().firstOrNull;
     if (f == null) return;
-    take((f.name, await f.readAsBytes()));
+    _dropped((f.name, await f.readAsBytes()));
+  }
+
+  bool get hasFile => file != null || oldFile;
+
+  /// A drop only fills an empty slot: once a file is in, changing it takes Replace (Gautam, 22 Oct).
+  void _dropped((String, Uint8List) r) {
+    if (_ext[kind] == null) return;
+    if (hasFile) {
+      _set(() => fileErr = 'A file is already added. Use Replace to change it.');
+      return;
+    }
+    take(r);
   }
 
   void take((String, Uint8List) r) {
@@ -419,23 +601,82 @@ class _Ed extends ChangeNotifier {
     if (allowed == null) return; // an article has no file
     final ext = r.$1.split('.').last.toLowerCase();
     final mb = _limitMb[kind]!;
+    // A wrong file is refused and the current one stays.
+    final keep = hasFile ? ' The file above is kept.' : '';
     _set(() {
       if (!allowed.contains(ext)) {
-        fileErr = switch (kind) { 'video' => 'Upload an MP4 or MOV video.', 'pdf' => 'Upload a PDF.', _ => 'Upload a JPG, PNG or WebP image.' };
+        fileErr = switch (kind) { 'video' => '${r.$1} is not an MP4 or MOV video.', 'pdf' => '${r.$1} is not a PDF.', _ => '${r.$1} is not a JPG, PNG or WebP image.' } + keep;
       } else if (r.$2.length > mb * 1024 * 1024) {
-        fileErr = 'This file is over $mb MB. Pick a smaller one.';
+        fileErr = '${r.$1} is over $mb MB. Pick a smaller one.$keep';
       } else {
         file = r;
         fileErr = null;
         if (kind == 'video') src = 'up';
         if (title.text.trim().isEmpty) title.text = r.$1.replaceFirst(RegExp(r'\.[^.]+$'), '').replaceAll(RegExp(r'[-_]+'), ' ').trim();
-        _loadFrames();
+        if (kind == 'video') {
+          _upload = _stage(r);
+        } else {
+          _loadFrames();
+        }
       }
     });
   }
 
+  /// × on a new file: back to the empty drop area (a saved file stays until another replaces it).
+  void clearFile() => _set(() {
+        file = null;
+        fileErr = null;
+        _dropStaged();
+        frame = null;
+        _framesFor = null;
+        _loadFrames();
+      });
+
+  void _dropStaged() {
+    _upRun++;
+    staged = upPct = _upload = null;
+    _stagedFrames = const [];
+  }
+
+  Future<void> _stage((String, Uint8List) f) async {
+    final run = ++_upRun;
+    staged = null;
+    _stagedFrames = const [];
+    frame = null;
+    _framesFor = 'staged';
+    _set(() {
+      upPct = 0;
+      frames = const [];
+      framesLoading = true;
+    });
+    try {
+      final r = await Services.api.upload<Map>('content/stage/', FormData.fromMap({'file': MultipartFile.fromBytes(f.$2, filename: f.$1)}),
+          onProgress: (p) => run == _upRun ? _set(() => upPct = p) : null);
+      if (run != _upRun) return;
+      staged = '${r['upload']}';
+      _stagedFrames = [for (final x in (r['frames'] as List? ?? const [])) x as Map];
+      if (src == 'up') frames = _stagedFrames;
+    } on ApiError catch (err) {
+      if (run != _upRun) return;
+      file = null;
+      fileErr = err.field('file') ?? err.message;
+    }
+    if (run == _upRun) {
+      _set(() {
+        upPct = null;
+        _upload = null;
+        framesLoading = false;
+      });
+    }
+  }
+
   /// Stills to pick the cover from: a saved upload's frames, or a YouTube link's. A new file has none until saved.
   Future<void> _loadFrames() async {
+    if (kind == 'video' && src == 'up' && file != null) {
+      if (_framesFor != 'staged') _set(() => frames = _stagedFrames);
+      _framesFor = 'staged';
+      return;
+    }
     final link = yt.text.trim();
     final Map<String, dynamic>? q = kind != 'video'
         ? null
@@ -476,7 +717,13 @@ class _Ed extends ChangeNotifier {
     });
     if ((titleErr ?? ytErr ?? fileErr ?? bodyErr) != null) return null;
     _set(() => saving = true);
+    if (_upload != null && kind == 'video' && src == 'up') await _upload; // still going up: wait for it
+    if (fileErr != null) {
+      _set(() => saving = false);
+      return null;
+    }
     final f = file;
+    final up = kind == 'video' && f != null ? staged : null;
     final data = <String, dynamic>{
       'kind': kind,
       'title': t,
@@ -487,13 +734,15 @@ class _Ed extends ChangeNotifier {
       if (kind == 'article') 'read_minutes': readMin,
       if (kind == 'pdf' || kind == 'image') 'description': desc.text.trim(),
       if (canEveryone) 'share_everyone': everyone,
-      if (f != null) 'file': MultipartFile.fromBytes(f.$2, filename: f.$1),
+      'upload': ?up,
+      if (f != null && up == null) 'file': MultipartFile.fromBytes(f.$2, filename: f.$1),
     };
     try {
       final fd = FormData.fromMap(data);
       final r = isNew ? await Services.api.post<Map>('content/', fd) : await Services.api.patch<Map>('content/${old!['id']}/', fd);
       _snap = _sig;
       file = null;
+      staged = null;
       return r;
     } on ApiError catch (e) {
       _set(() {
@@ -570,11 +819,10 @@ class _EdBody extends StatelessWidget {
       padding: EdgeInsets.only(top: phone ? 0 : 14, bottom: 4),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 16, children: [
         if (e.isNew)
-          meField('Type', SegmentedTabs<String>(
-            items: [for (final (k, l) in ctEditKinds) TabItem(k, l)],
-            value: kind,
-            expand: true,
-            onChanged: e.setKind,
+          // Tabs as wide as their labels, the Category select narrower (Gautam, 22 Oct).
+          meField('Type', Align(
+            alignment: Alignment.centerLeft,
+            child: SegmentedTabs<String>(items: [for (final (k, l) in ctEditKinds) TabItem(k, l)], value: kind, onChanged: e.setKind),
           )),
         meField(
           'Title',
@@ -592,10 +840,16 @@ class _EdBody extends StatelessWidget {
         ),
         meField(
           'Category',
-          AppSelect(e.catName ?? 'No category', entries: [
-            for (final c in e.cats) MenuEntry('${c['name']}', selected: '${c['id']}' == e.catId, onTap: () => e._set(() => e.catId = '${c['id']}')),
-            MenuEntry('No category', selected: e.catId == null, onTap: () => e._set(() => e.catId = null)),
-          ]),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: SizedBox(
+              width: phone ? 240 : 280,
+              child: AppSelect(e.catName ?? 'No category', entries: [
+                for (final c in e.cats) MenuEntry('${c['name']}', selected: '${c['id']}' == e.catId, onTap: () => e._set(() => e.catId = '${c['id']}')),
+                MenuEntry('No category', selected: e.catId == null, onTap: () => e._set(() => e.catId = null)),
+              ]),
+            ),
+          ),
         ),
         if (kind == 'video') ..._video(context),
         if (kind == 'pdf' || kind == 'image') ...[
@@ -660,11 +914,9 @@ class _EdBody extends StatelessWidget {
         meField(
           'Video',
           Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
-            SegmentedTabs<String>(
-              items: const [TabItem('up', 'Upload file'), TabItem('yt', 'YouTube link')],
-              value: e.src,
-              expand: true,
-              onChanged: e.setSrc,
+            Align(
+              alignment: Alignment.centerLeft,
+              child: SegmentedTabs<String>(items: const [TabItem('up', 'Upload file'), TabItem('yt', 'YouTube link')], value: e.src, onChanged: e.setSrc),
             ),
             if (e.src == 'up') _fileArea(context),
           ]),
@@ -685,33 +937,27 @@ class _EdBody extends StatelessWidget {
     final canDrop = kIsWeb || !(defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
     final Widget box;
     if (f != null || e.oldFile) {
+      final name = f?.$1 ?? '${e.old!['file_name']}';
+      // A file is in: drops are ignored, Replace picks the new one.
       box = _FileRow(
-        icon: ctIcon(e.kind),
-        name: f?.$1 ?? '${e.old!['file_name']}',
-        sub: f != null ? '${ctSize(f.$2.length)} · new, saves with the item' : 'Uploaded ${ctDm(e.old!['created_at'])}${e.old!['file_size'] == null ? '' : ' · ${ctSize(e.old!['file_size'] as num)}'}',
-        action: AppButton('Replace', size: BtnSize.sm, onPressed: e.pick),
-      );
+              icon: ctIcon(e.kind),
+              name: name,
+              sub: f != null
+                  ? (e.upPct != null ? 'Uploading… ${(e.upPct! * 100).round()}%' : '${ctSize(f.$2.length)} · new, saves with the item')
+                  : 'Uploaded ${ctDm(e.old!['created_at'])}${e.old!['file_size'] == null ? '' : ' · ${ctSize(e.old!['file_size'] as num)}'}',
+              progress: f != null ? e.upPct : null,
+              action: Row(mainAxisSize: MainAxisSize.min, spacing: 4, children: [
+                AppButton('Replace', size: BtnSize.sm, onPressed: e.pick),
+                if (f != null) AppIconButton(AppIcons.close, tooltip: 'Remove this file', small: true, onPressed: e.clearFile),
+              ]),
+            );
     } else {
       final (t, s) = switch (e.kind) {
         'video' => (canDrop ? 'Drop a video here or click to upload' : 'Tap to upload a video', 'MP4 or MOV, up to 500 MB. It plays inside the app.'),
         'pdf' => (canDrop ? 'Drop a PDF here or click to upload' : 'Tap to upload a PDF', 'PDF up to 25 MB. Clients open it inside the app.'),
         _ => (canDrop ? 'Drop an image here or click to upload' : 'Tap to upload an image', 'JPG, PNG or WebP, up to 10 MB. Clients can zoom in.'),
       };
-      box = Hover(
-        onTap: e.pick,
-        builder: (_, h, _) => CustomPaint(
-          foregroundPainter: DashedBox(color: e.fileErr != null ? AppColors.badText : (e.dragging || h ? AppColors.accent : AppColors.line2), radius: 12),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
-            decoration: BoxDecoration(color: e.dragging ? AppColors.accentSoft : (h ? AppColors.hover : null), borderRadius: AppRadius.all(12)),
-            child: Column(spacing: 4, children: [
-              const AppIcon(AppIcons.importFile, size: 24, color: AppColors.accent),
-              Text(e.dragging ? 'Drop it to add the file' : t, textAlign: TextAlign.center, style: AppText.s(13.5, W.w7)),
-              Text(s, textAlign: TextAlign.center, style: AppText.s(12.5, W.w5, color: AppColors.muted)),
-            ]),
-          ),
-        ),
-      );
+      box = _DropZone(icon: AppIcons.importFile, title: e.dragging ? 'Drop it to add the file' : t, sub: s, over: e.dragging, error: e.fileErr != null, onTap: e.pick);
     }
     final zone = kIsWeb
         ? box
@@ -732,7 +978,7 @@ class _EdBody extends StatelessWidget {
     if (e.frames.isEmpty && !e.framesLoading) {
       final msg = e.src == 'yt'
           ? (e.yt.text.trim().isEmpty ? 'Paste the link first, then choose a frame from it.' : 'No frames could be taken from this link.')
-          : (e.file != null ? 'You can pick a frame once the video is saved. Until then clients see its first frame.' : (e.oldFile ? 'No frames could be taken from this video.' : 'Upload a video first, then choose a frame from it.'));
+          : (e.file != null ? 'No frames could be taken from this video. Clients see its first frame.' : (e.oldFile ? 'No frames could be taken from this video.' : 'Upload a video first, then choose a frame from it.'));
       return Text(msg, style: AppText.s(12.5, W.w5, color: AppColors.muted));
     }
     final list = e.framesLoading ? <Map>[for (var i = 0; i < 4; i++) const {}] : e.frames.take(4).toList();
