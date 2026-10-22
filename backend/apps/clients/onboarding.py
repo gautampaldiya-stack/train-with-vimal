@@ -379,6 +379,26 @@ def about_items(user):
     ]
 
 
+def signup_summary(user):
+    """Approvals → Review drawer → "From her onboarding": Goal, Body, Trains, Food — only what she filled."""
+    cp = user.client_profile
+    a = age(user)
+    body = " · ".join(x for x in (
+        f"{float(cp.current_weight_kg or cp.start_weight_kg):g} kg" if (cp.current_weight_kg or cp.start_weight_kg) else "",
+        f"{float(cp.height_cm):g} cm" if cp.height_cm else "",
+        f"{a} years" if a is not None else "") if x)
+    level = _label([(k, lbl.lower()) for k, lbl, _ in LEVELS], cp.experience) or ""
+    place = text(user, "workout_place")
+    trains = " · ".join(x for x in (place if place != "—" else "",
+                                    f"{cp.workout_days} days a week" if cp.workout_days else "", level) if x)
+    goal = dict(Goal.choices).get(cp.goal, "") if cp.goal else ""
+    if cp.goal_detail:
+        goal = f"{goal} · {cp.goal_detail}" if goal else cp.goal_detail
+    food = text(user, "diet_type")
+    rows = [("Goal", goal), ("Body", body), ("Trains", trains), ("Food", food if food != "—" else "")]
+    return [{"label": k, "value": v} for k, v in rows if v]
+
+
 def answer_sections(user):
     """Forms → Onboarding questionnaire: every answer by section, in the form's words, then the extra questions."""
     from apps.checkins.models import Question

@@ -92,7 +92,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   // ─────────────────────────────── Header
 
   List<Widget> _actions(AdminHome d) => [
-        AppIconButton(AppIcons.search, tooltip: 'Search', onPressed: _search),
         Builder(builder: (b) => AppIconButton(AppIcons.bell, tooltip: 'Notifications', dot: d.unread > 0, onPressed: () => _notes(b))),
         AppButton.primary('Add client', icon: AppIcons.plus, iconOnly: compactTop(context), onPressed: _addClient),
         Builder(builder: (b) => _Profile(onTap: () => _account(b))),
@@ -121,11 +120,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       const MenuEntry.separator(),
       MenuEntry('Log out', icon: AppIcons.logout, danger: true, onTap: () => confirmLogOut(context)),
     ]);
-  }
-
-  Future<void> _search() async {
-    final id = await showAppModal<String>(context, title: 'Search clients', icon: AppIcons.search, content: (ctx) => _ClientSearch(c));
-    if (id != null && mounted) context.go('/clients/$id');
   }
 
   // ─────────────────────────────── Stats
@@ -709,88 +703,3 @@ class _Profile extends StatelessWidget {
       );
 }
 
-/// Header search: clients by name, email or phone (300 ms after typing). Picking one closes with its id.
-class _ClientSearch extends StatefulWidget {
-  const _ClientSearch(this.c);
-  final AdminHomeController c;
-  @override
-  State<_ClientSearch> createState() => _ClientSearchState();
-}
-
-class _ClientSearchState extends State<_ClientSearch> {
-  Timer? _t;
-  String _q = '';
-  List<Map>? _rows;
-  bool _err = false;
-
-  void _changed(String v) {
-    _t?.cancel();
-    _q = v.trim();
-    if (_q.isEmpty) {
-      setState(() => _rows = null);
-      return;
-    }
-    _t = Timer(const Duration(milliseconds: 300), () async {
-      final q = _q;
-      try {
-        final r = await widget.c.searchClients(q);
-        if (mounted && q == _q) {
-          setState(() {
-            _rows = r;
-            _err = false;
-          });
-        }
-      } catch (_) {
-        if (mounted) setState(() => _err = true);
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _t?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final rows = _rows;
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
-      AppTextField(placeholder: 'Search name, email or phone', prefix: const AppIcon(AppIcons.search, size: 16, color: AppColors.muted), autofocus: true, onChanged: _changed),
-      if (_err)
-        Text('Could not search right now. Try again.', style: AppText.cap)
-      else if (rows == null)
-        Text('Type a name to find a client.', style: AppText.cap)
-      else if (rows.isEmpty)
-        Text('No client matches "$_q".', style: AppText.cap)
-      else
-        Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 2, children: [
-          for (final r in rows)
-            Hover(
-              onTap: () => Navigator.of(context).pop('${r['id']}'),
-              builder: (_, h, _) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-                decoration: BoxDecoration(color: h ? AppColors.hover : null, borderRadius: AppRadius.all(AppRadius.item)),
-                child: Row(spacing: 10, children: [
-                  _Av('${r['full_name']}', '${r['initials'] ?? ''}', '${r['avatar_color'] ?? 'c1'}'),
-                  Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                      CutText('${r['full_name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.rowTitle),
-                      CutText(
-                        [if ((r['trainer'] as Map?)?['full_name'] != null) '${(r['trainer'] as Map)['full_name']}', '${r['email'] ?? r['phone'] ?? ''}']
-                            .where((s) => s.isNotEmpty)
-                            .join(' · '),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppText.rowSub,
-                      ),
-                    ]),
-                  ),
-                  if (r['status'] != 'active') AppBadge(switch (r['status']) { 'pending' => 'Pending', 'paused' => 'Paused', _ => 'Inactive' }, plain: true),
-                ]),
-              ),
-            ),
-        ]),
-    ]);
-  }
-}

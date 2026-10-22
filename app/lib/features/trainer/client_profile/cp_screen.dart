@@ -15,6 +15,7 @@ import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/stat.dart';
 import '../../../core/widgets/tabs.dart';
+import '../../admin/clients/admin_client_drawers.dart' show showChangeTrainerDrawer;
 import '../clients/clients_parts.dart';
 import 'cp_activity.dart';
 import 'cp_common.dart';
@@ -32,9 +33,13 @@ import '../../../core/widgets/tooltip.dart';
 /// Client profile, trainer view (boards `TrainerClientProfile` + `TrainerClientProfileMobile`): breadcrumb, header
 /// with Edit profile / Assign plan / ⋯, 4 stats, 9 tabs. Only the trainer's own clients open (API 404 otherwise).
 class TrainerClientProfileScreen extends StatefulWidget {
-  const TrainerClientProfileScreen({super.key, required this.id, this.tab});
+  const TrainerClientProfileScreen({super.key, required this.id, this.tab, this.admin = false});
   final String id;
   final String? tab;
+
+  /// Admin view (board `ClientProfile`, D-47): "Clients" breadcrumb, "Trainer Aman Verma" in the header line,
+  /// Change trainer in ⋯ and the Coaching card, Sign-in (new password, reset link) in Edit profile.
+  final bool admin;
   @override
   State<TrainerClientProfileScreen> createState() => _TrainerClientProfileScreenState();
 }
@@ -47,11 +52,12 @@ const _badges = {
 };
 
 class _TrainerClientProfileScreenState extends State<TrainerClientProfileScreen> {
-  late final c = CpController(widget.id);
+  late final c = CpController(widget.id, admin: widget.admin);
 
   @override
   void initState() {
     super.initState();
+    if (widget.admin) c.changeTrainer = _changeTrainer;
     if (widget.tab != null && CpController.tabs.any((t) => t.$1 == widget.tab)) c.tab = widget.tab!;
     c.load();
   }
@@ -72,9 +78,9 @@ class _TrainerClientProfileScreenState extends State<TrainerClientProfileScreen>
               _crumb(),
               AppCard(
                 child: EmptyState(
-                  c.error?.status == 404 ? 'This client is not in your list' : 'Could not open this client',
-                  sub: c.error?.status == 404 ? 'Only your own clients open here.' : c.error?.message,
-                  action: AppButton(c.error?.status == 404 ? 'Back to My clients' : 'Try again', onPressed: c.error?.status == 404 ? () => context.go('/clients') : c.load),
+                  c.error?.status == 404 ? (widget.admin ? 'This client is not there any more' : 'This client is not in your list') : 'Could not open this client',
+                  sub: c.error?.status == 404 ? (widget.admin ? 'They may have been deleted.' : 'Only your own clients open here.') : c.error?.message,
+                  action: AppButton(c.error?.status == 404 ? (widget.admin ? 'Back to Clients' : 'Back to My clients') : 'Try again', onPressed: c.error?.status == 404 ? () => context.go('/clients') : c.load),
                 ),
               ),
             ]);
@@ -116,7 +122,7 @@ class _TrainerClientProfileScreenState extends State<TrainerClientProfileScreen>
   Widget _crumb() => Row(spacing: 6, children: [
         Hover(
           onTap: () => context.go('/clients'),
-          builder: (_, h, _) => Text('My clients', style: AppText.s(13, W.w5, color: h ? AppColors.text : AppColors.muted)),
+          builder: (_, h, _) => Text(widget.admin ? 'Clients' : 'My clients', style: AppText.s(13, W.w5, color: h ? AppColors.text : AppColors.muted)),
         ),
         const AppIcon(AppIcons.chevronRight, size: 13, color: AppColors.chevron),
         Flexible(child: CutText(c.name.isEmpty ? 'Client' : c.name, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6))),
@@ -131,14 +137,18 @@ class _TrainerClientProfileScreenState extends State<TrainerClientProfileScreen>
     return AppBadge(l, tone: t);
   }
 
-  /// "Fat loss · 68 kg goal | Your client since 12 Jan | Active 2 h ago".
+  /// "Fat loss · 68 kg goal | Your client since 12 Jan | Active 2 h ago" (admin: "Trainer Aman Verma").
   List<String> get _subParts {
     final goal = '${c.detail['goal_label'] ?? ''}';
     final target = c.profile['target_weight_kg'];
     final since = c.profile['start_date'] ?? c.detail['date_joined'];
+    final tr = c.detail['trainer'] as Map?;
     return [
       [if (goal.isNotEmpty) goal, if (target != null) '${cpKg(target)} goal'].join(' · '),
-      if (since != null) 'Your client since ${cpDm(since)}',
+      if (widget.admin)
+        tr == null ? 'No trainer' : 'Trainer ${tr['full_name']}'
+      else if (since != null)
+        'Your client since ${cpDm(since)}',
       if ('${c.detail['last_active'] ?? '—'}' != '—') 'Active ${c.detail['last_active']}',
     ].where((s) => s.isNotEmpty).toList();
   }
@@ -201,6 +211,7 @@ class _TrainerClientProfileScreenState extends State<TrainerClientProfileScreen>
 
   void _moreMenu(BuildContext anchor) => showAppMenu(anchor, [
         MenuEntry('Edit profile details', icon: AppIcons.edit, onTap: _edit),
+        if (widget.admin) MenuEntry('Change trainer', icon: AppIcons.swap, onTap: _changeTrainer),
         MenuEntry('Assign a plan', icon: AppIcons.plus, onTap: () => Future.microtask(() {
               if (anchor.mounted) _assignMenu(anchor);
             })),
@@ -216,9 +227,19 @@ class _TrainerClientProfileScreenState extends State<TrainerClientProfileScreen>
       title: 'Edit profile',
       load: () => Services.api.get<Map>('clients/${c.id}/'),
       onSave: (data) => Services.api.patch('clients/${c.id}/', data),
+      admin: widget.admin,
+      onChangeTrainer: widget.admin ? _changeTrainer : null,
     );
     if (saved == true && mounted) {
       showToast(context, '${c.first}’s details saved', kind: ToastKind.ok);
+      c.refresh();
+    }
+  }
+
+  Future<void> _changeTrainer() async {
+    final ok = await showChangeTrainerDrawer(context, id: c.id, name: c.name, gender: '${c.detail['gender'] ?? ''}');
+    if (ok == true && mounted) {
+      showToast(context, '${c.first} has a new trainer', kind: ToastKind.ok);
       c.refresh();
     }
   }

@@ -6,6 +6,7 @@ import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
 import '../../../core/widgets/avatar.dart';
 import '../../../core/widgets/badge.dart';
+import '../../../core/widgets/button.dart';
 import '../../../core/widgets/card.dart';
 import '../../../core/widgets/responsive.dart';
 import '../../client/progress/progress_model.dart' show PxWeight;
@@ -213,10 +214,14 @@ class CpOverviewTab extends StatelessWidget {
             kv(
               'Trainer',
               t == null
-                  ? v('No trainer')
+                  ? Row(spacing: 6, children: [
+                      Flexible(child: v('No trainer')),
+                      if (c.admin && c.changeTrainer != null) AppButton('Pick one', kind: BtnKind.text, size: BtnSize.sm, onPressed: c.changeTrainer),
+                    ])
                   : Row(spacing: 6, children: [
                       AppAvatar('${t['full_name']}', size: 20, initials: '${t['initials'] ?? ''}', colors: AppColors.avatarCode('${t['avatar_color'] ?? 'c1'}')),
-                      Flexible(child: v('${t['full_name']}${t['id'] == me ? ' (you)' : ''}')),
+                      Flexible(child: v('${t['full_name']}${t['id'] == me && !c.admin ? ' (you)' : ''}')),
+                      if (c.admin && c.changeTrainer != null) AppButton('Change', kind: BtnKind.text, size: BtnSize.sm, onPressed: c.changeTrainer),
                     ]),
             ),
             kv('Program', v(w == null ? 'None yet' : '${w['name']} · week ${w['week']} of ${w['weeks']}')),

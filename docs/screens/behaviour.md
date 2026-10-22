@@ -64,6 +64,8 @@ Bottom bar, 5 tab. **Admin:** Home · Clients · Approvals (badge 5) · Calendar
 
 Admin ka ghar. Title greeting hai: **"Good evening, Vimal"**, neeche *"Thursday, 8 October · 3 things need you today"*.
 
+**Header buttons:** Notifications (bell), `Add client`, profile (V) menu. Search icon nahi hai (Gautam, 22 Oct).
+
 **Page pe kya hai (upar se neeche):** 4 stat cards → 6 "at a glance" tiles → 2 columns (left: Needs action + Trainer performance, right: At-risk clients + Recent activity).
 
 **Stat cards (mock):** Active clients **142** (+8 this month) · Pending approvals **5** (Oldest waiting 2 days) · Check-in rate **86%** (−2% vs last week) · Avg adherence **81%** (+3% vs last week). Delta number ke bagal me baithta hai, upar wala green, neeche wala red.
@@ -139,6 +141,8 @@ Footer note *"Only name and mobile are needed"*, buttons `Cancel` + primary (lab
 
 Mock links: AMAN-4821 (Aman Verma, 6 joined, 1 waiting) · VIMAL-0007 "Website" (41 joined) · NEHA-3307 "Instagram · Sept" (20 people · 3 used) · SAHIL-1190 (9 joined) · MEERA-2210 "Yoga batch" (**Ended** 8 Oct).
 
+**Built (D-47):** `/clients` for admin. Export and the select boxes are off (as on My clients). Pause / Resume and Delete ask first and give an Undo toast. Add client checks the mobile while typing and saves all in one go; the toast offers `View` (or says the person is in Approvals). Change trainer drawer: search, load bars, Current / Full / Good fit tags (Full can't be picked), "Move open check-ins" (off = the new trainer starts fresh, open check-ins are marked as seen), "Tell old trainer" (a notice), a note for the new trainer (saved as a client note). Invite link opens the Invite links modal with a real QR code and Download QR (PNG).
+
 **Mock clients:** Riya Sharma (Active, onboarding Done) · Rohan Kapoor (40%) · Neha Jain (Pending, Not started) · Kabir Mehta · Ananya Iyer (Paused, 9 d ago) · Sana Khan (No trainer) · Aisha Sheikh (At risk) · Priya Reddy (20%).
 
 ---
@@ -178,6 +182,8 @@ Page pe ek chhota **invite-link summary** bhi hai (top 3 links + counts); link r
 **Ask for info modal** — "What does she need to do?" multi-select: `Finish profile setup` (N steps left in the app) · `Fill the health form again` · `Send a doctor note` (blood pressure/heart/recent surgery ke liye) · `Add a profile photo` · `Check her phone number` (OTP nahi gaya). Default: setup adhoora ho to `setup`, health note ho to `doc`, warna `photo`. Channel chips: `WhatsApp` (on) · `Email` (on) · `App notice` (off) — toggle hote hain. Button `Send request`, aur count line *"2 things asked"*.
 
 **History tab** — naam · signed up · decision badge (`Approved` green / `Rejected` red) · reason/trainer · decided by · when. **Rejected rows pe `Move back` milta hai** → **modal**: approve ki hui row par *"She cannot log in until someone approves her again. Her data stays / Trainer stops seeing her as a client, plans paused not deleted / She shows at the top of Waiting with a 'Moved back' tag."*; rejected row par *"Her rejection is undone… The reason stays in her history…"*. Ek toggle *"Only if you want her to know it is being looked at again"*, button `Move back`.
+
+**Built (D-47):** `/approvals` (`?tab=history` opens History). People moved back show on top with a "Moved back" tag. After Approve: toast "X is approved" with `View`; after Reject: toast with `Undo` (moves them back); after Ask for info: "Request sent to X". Move back gives "X is back in Waiting" with `Open`. Phone: one line per person (inviter, waiting, health note, `Review`); History rows show the decision badge, reason and date with the Move back icon for rejected people. The invite-link summary card is not built; its data is in the Invite links modal's `All links` tab.
 
 Mock waiting: Pooja Nair (2 days, health note, 3/5) · Ishaan Mehta (1 day, 5/5) · Neha Jain (5 h, 2/5) · Ananya Gupta (3 h, 4/5, health note) · Rohit Sinha (40 min, 5/5).
 
@@ -790,6 +796,8 @@ Har integration drawer me `Disconnect` (laal text) → **confirm modal**: WhatsA
 ---
 
 ### 2.23 Client profile — `ClientProfile` / `ClientProfileMobile`
+
+**Built (D-47):** the trainer client profile with admin extras — menu `Change trainer`, Coaching card Trainer row `Change` / `Pick one`, Edit details → Sign-in (New password, at least 8 characters; `Send a reset link`) and Trainer line. A new password signs the client out everywhere and sends a notice.
 
 Ye poore admin area ka **sabse bada screen** hai. Breadcrumb `Clients / Riya Sharma`.
 

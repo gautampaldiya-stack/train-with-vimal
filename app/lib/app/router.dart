@@ -7,6 +7,7 @@ import '../core/widgets/button.dart';
 import '../core/widgets/card.dart';
 import '../core/widgets/overlays.dart';
 import '../features/admin/dashboard/admin_dashboard_screen.dart';
+import '../features/admin/approvals/approvals_screen.dart';
 import '../features/admin/more/admin_more_screen.dart';
 import '../features/auth/setup/setup_state.dart';
 import '../features/auth/join_screen.dart';
@@ -147,6 +148,9 @@ final Map<String, Widget Function(GoRouterState)> trainerScreens = {
 final Map<String, Widget Function(GoRouterState)> adminScreens = {
   '/dashboard': (_) => const AdminDashboardScreen(),
   '/more': (_) => const AdminMoreScreen(),
+  '/clients': (st) => TrainerClientsScreen(key: ValueKey(st.uri.toString()), admin: true, openAdd: st.uri.queryParameters['add'] == '1'),
+  '/clients/:id': (st) => TrainerClientProfileScreen(key: ValueKey(st.uri.toString()), id: st.pathParameters['id']!, tab: st.uri.queryParameters['tab'], admin: true),
+  '/approvals': (st) => ApprovalsScreen(tab: st.uri.queryParameters['tab']),
   for (final k in ['/programs', '/programs/:id', '/nutrition', '/nutrition/:id', '/habits', '/exercises', '/exercises/:id', '/content', '/content/:id'])
     k: trainerScreens[k]!,
 };

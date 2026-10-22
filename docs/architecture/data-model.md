@@ -376,6 +376,7 @@ Send a form to one client later or again and again (Client profile → Send a fo
 | `updated_at` | DateTimeField |  |
 | `user` | OneToOneField | → User; indexed; unique |
 | `trainer` | ForeignKey | → User; optional; indexed |
+| `trainer_since` | DateTimeField | optional; when the current trainer took over (approve, Add client, Change trainer) (D-47) |
 | `goal` | CharField | choices: fat_loss, muscle_gain, strength, recomp, general, event |
 | `height_cm` | DecimalField | optional |
 | `start_weight_kg` | DecimalField | optional |

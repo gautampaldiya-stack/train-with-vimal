@@ -1,5 +1,6 @@
 import re
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -87,7 +88,7 @@ class ClientRowSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "full_name", "email", "phone", "initials", "avatar_color", "avatar", "status", "badge",
+        fields = ["id", "full_name", "email", "phone", "initials", "avatar_color", "avatar", "status", "badge", "gender",
                   "trainer", "onboarding", "goal", "goal_label", "adherence_7d", "at_risk_reason", "date_joined",
                   "last_seen_at", "last_active", "next_checkin"]
 
@@ -126,7 +127,7 @@ class ClientDetailSerializer(ClientRowSerializer):
     options = serializers.SerializerMethodField()
 
     class Meta(ClientRowSerializer.Meta):
-        fields = ClientRowSerializer.Meta.fields + ["gender", "date_of_birth", "age", "city", "profile", "options"]
+        fields = ClientRowSerializer.Meta.fields + ["date_of_birth", "age", "city", "profile", "options"]
 
     def get_age(self, obj):
         from .onboarding import age
@@ -160,6 +161,7 @@ class ClientCreateSerializer(serializers.Serializer):
     trainer = serializers.PrimaryKeyRelatedField(queryset=User.objects.filter(role__in=[Role.TRAINER, Role.ADMIN]),
                                                  required=False, allow_null=True)
     program = serializers.UUIDField(required=False, allow_null=True)
+    meal_plan = serializers.UUIDField(required=False, allow_null=True)
     start_date = serializers.DateField(required=False, allow_null=True)
     send_login_link = serializers.BooleanField(default=True)
     ask_parq = serializers.BooleanField(default=True)
@@ -206,6 +208,8 @@ class ClientUpdateSerializer(serializers.Serializer):
     start_date = serializers.DateField(required=False, allow_null=True)
     package_name = serializers.CharField(required=False, allow_blank=True, max_length=80)
     package_ends_on = serializers.DateField(required=False, allow_null=True)
+    # Admin only (board ClientProfile → Edit profile → Sign-in): a new password; empty keeps the old one.
+    password = serializers.CharField(required=False, allow_blank=True, trim_whitespace=False, write_only=True)
 
     def get_fields(self):
         """Plus every onboarding answer the coach can change in Edit profile (apps.clients.onboarding)."""
@@ -220,12 +224,26 @@ class ClientUpdateSerializer(serializers.Serializer):
             raise serializers.ValidationError({"phone": ["Another account uses this number."]})
         if clash == "email":
             raise serializers.ValidationError({"email": ["Another account uses this email."]})
+        pw = attrs.pop("password", "")
+        if pw:
+            from django.contrib.auth import password_validation
+
+            if len(pw) < 8:
+                raise serializers.ValidationError({"password": ["Use at least 8 characters."]})
+            try:
+                password_validation.validate_password(pw, inst)
+            except DjangoValidationError as e:
+                raise serializers.ValidationError({"password": list(e.messages)})
+            attrs["_password"] = pw
         return attrs
 
     USER_FIELDS = {"full_name", "phone", "email", "gender", "date_of_birth", "city"}
 
     def update(self, instance, data):
         cp = instance.client_profile
+        pw = data.pop("_password", None)
+        if pw:
+            instance.set_password(pw)
         for k, v in data.items():
             if k in self.USER_FIELDS:
                 setattr(instance, k, v or None if k in ("email", "phone") else v)
@@ -237,9 +255,24 @@ class ClientUpdateSerializer(serializers.Serializer):
 
 
 class ChangeTrainerSerializer(serializers.Serializer):
+    """Change trainer drawer (board ClientProfile): pick a trainer, what happens when she moves, a note."""
+
     trainer = serializers.PrimaryKeyRelatedField(queryset=User.objects.filter(role__in=[Role.TRAINER, Role.ADMIN],
                                                                               status=AccountStatus.ACTIVE))
     tell_client = serializers.BooleanField(default=True)
+    # On: check-ins waiting for review go to the new trainer's queue. Off: they are marked as seen, so the new
+    # trainer starts fresh.
+    move_checkins = serializers.BooleanField(default=True)
+    tell_old = serializers.BooleanField(default=False)
+    note = serializers.CharField(required=False, allow_blank=True, max_length=2000)
+
+    def validate_trainer(self, t):
+        tp = getattr(t, "trainer_profile", None)
+        if tp is None:
+            raise serializers.ValidationError("Pick a trainer.")
+        if tp.is_full:
+            raise serializers.ValidationError(f"{t.full_name} is full. Pick a trainer with space.")
+        return t
 
 
 class RemindSerializer(serializers.Serializer):
@@ -331,6 +364,8 @@ class JoinSerializer(serializers.Serializer):
 # ---------------------------------------------------------------- approvals
 class ApprovalRowSerializer(serializers.ModelSerializer):
     client = ClientRowSerializer(read_only=True)
+    signed_up_from_label = serializers.CharField(source="get_signed_up_from_display", read_only=True)
+    setup_done = serializers.SerializerMethodField()
     invited_by = PersonMiniSerializer(read_only=True)
     decided_by = PersonMiniSerializer(read_only=True)
     assigned_trainer = PersonMiniSerializer(read_only=True)
@@ -340,21 +375,37 @@ class ApprovalRowSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Approval
-        fields = ["id", "client", "status", "invited_by", "signed_up_from", "has_health_note", "waiting_hours",
+        fields = ["id", "client", "status", "invited_by", "signed_up_from", "signed_up_from_label", "setup_done",
+                  "has_health_note", "waiting_hours",
                   "decided_by", "decided_at", "assigned_trainer", "reject_reason", "reject_reason_label", "message",
                   "moved_back", "created_at"]
 
     def get_waiting_hours(self, obj):
         return int((timezone.now() - obj.created_at).total_seconds() // 3600)
 
+    def get_setup_done(self, obj):
+        done = set(obj.client.client_profile.onboarding_done or [])
+        return sum(1 for k in ONBOARDING_STEPS if k in done)
+
 
 class ApprovalDetailSerializer(ApprovalRowSerializer):
     steps = serializers.SerializerMethodField()
     onboarding = serializers.JSONField(source="client.client_profile.onboarding", read_only=True)
     health_notes = serializers.CharField(source="client.client_profile.health_notes", read_only=True)
+    answers = serializers.SerializerMethodField()
+    invite_code = serializers.SerializerMethodField()
 
     class Meta(ApprovalRowSerializer.Meta):
-        fields = ApprovalRowSerializer.Meta.fields + ["steps", "onboarding", "health_notes"]
+        fields = ApprovalRowSerializer.Meta.fields + ["steps", "onboarding", "health_notes", "answers", "invite_code"]
+
+    def get_answers(self, obj):
+        from .onboarding import signup_summary
+
+        return signup_summary(obj.client)
+
+    def get_invite_code(self, obj):
+        link = obj.client.client_profile.invite_link
+        return link.code if link else ""
 
     def get_steps(self, obj):
         done = set(obj.client.client_profile.onboarding_done or [])
@@ -389,6 +440,7 @@ class RejectSerializer(serializers.Serializer):
 
 
 class AskInfoSerializer(serializers.Serializer):
+    message = serializers.CharField(required=False, allow_blank=True, max_length=2000)
     items = serializers.ListField(
         child=serializers.ChoiceField(choices=["setup", "health_form", "doctor_note", "photo", "phone"]),
         allow_empty=False, error_messages={"empty": "Pick at least one thing to ask for."},

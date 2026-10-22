@@ -27,6 +27,7 @@ from . import services
 from .filters import ClientFilter
 from .models import CLIENT_ONBOARDING_STEPS, ONBOARDING_STEPS, STAFF_STEP_FROM_CLIENT, Approval, ClientNote, ClientProfile, InfoRequest, InviteLink, SignupSource
 from .serializers import (
+    PersonMiniSerializer,
     ApprovalDetailSerializer,
     ApprovalRowSerializer,
     ApproveSerializer,
@@ -78,25 +79,47 @@ class ClientViewSet(viewsets.ModelViewSet):
         s.is_valid(raise_exception=True)
         d = dict(s.validated_data)
         program_id = d.pop("program", None)
+        meal_plan_id = d.pop("meal_plan", None)
         mode = d.pop("mode")
-        user, cp = services.create_client(actor=request.user, send_to_approvals=mode == "approvals", **d)
-        if program_id:
-            from apps.training.services import assign_program
+        with transaction.atomic():
+            user, cp = services.create_client(actor=request.user, send_to_approvals=mode == "approvals", **d)
+            if program_id:
+                from apps.training.services import assign_program
 
-            assign_program(user, program_id, actor=request.user, start_date=d.get("start_date"))
+                assign_program(user, program_id, actor=request.user, start_date=d.get("start_date"))
+            if meal_plan_id:
+                from apps.nutrition.models import MealPlan
+                from apps.nutrition.services import assign_plan_to_client
+
+                plan = MealPlan.objects.filter(id=meal_plan_id).first()
+                if plan is None:
+                    raise ValidationError({"meal_plan": ["This meal plan is not there any more."]})
+                assign_plan_to_client(user, plan, actor=request.user, start_date=d.get("start_date"))
         return Response(ClientDetailSerializer(user, context={"request": request}).data,
                         status=status.HTTP_201_CREATED)
 
     def partial_update(self, request, *args, **kwargs):
         user = self.get_object()
+        if request.data.get("password") and not request.user.is_admin:
+            return Response({"error": {"code": "forbidden", "message": "Only Vimal can set a client's password.",
+                                       "fields": {"password": ["Only Vimal can set a client's password."]}}},
+                            status=403)
         s = ClientUpdateSerializer(user, data=request.data, partial=True)
         s.is_valid(raise_exception=True)
         from .history import goal_snapshot, log_goal_changes
 
         before = goal_snapshot(user)
+        new_password = "_password" in s.validated_data
         s.save()
         activity_log("edited client details", "client", actor=request.user, target=user,
                      target_label=user.full_name, client=user)
+        if new_password:  # her other devices log out; she is told (board: "She gets a notice")
+            user.sessions.filter(revoked_at__isnull=True).update(revoked_at=timezone.now())
+            notify(user, "password_changed", "Your password was changed",
+                   f"{request.user.first_name} set a new password for you. Ask the gym if this was not expected.",
+                   channels=["in_app", "email"], actor=request.user)
+            activity_log("set a new password", "client", actor=request.user, target=user,
+                         target_label=user.full_name, client=user)
         log_goal_changes(user, before, request.user)  # History → "Goal weight changed"
         return Response(ClientDetailSerializer(user, context={"request": request}).data)
 
@@ -139,6 +162,22 @@ class ClientViewSet(viewsets.ModelViewSet):
         )
         return Response(agg)
 
+    @action(detail=False, url_path="check-phone")
+    def check_phone(self, request):
+        """Add client → Mobile: "No client or sign-up with this number" while she types (`?phone=` and
+        optional `?email=`)."""
+        from apps.accounts.serializers import email_or_phone_taken
+        from apps.common.validators import validate_phone
+
+        phone = (request.query_params.get("phone") or "").strip()
+        email = (request.query_params.get("email") or "").strip() or None
+        try:
+            validate_phone(phone)
+        except Exception:
+            return Response({"valid": False, "taken": None})
+        clash = email_or_phone_taken(email=email, phone=phone)
+        return Response({"valid": True, "taken": clash})
+
     @action(detail=False)
     def export(self, request):
         qs = self.filter_queryset(self.get_queryset())
@@ -155,28 +194,95 @@ class ClientViewSet(viewsets.ModelViewSet):
         return csv_response("clients", ["Name", "Email", "Phone", "Status", "Trainer", "Goal", "Joined",
                                         "Last active"], rows)
 
+    def _can_change_trainer(self, user):
+        return user.is_admin or user.trainer_profile.has_perm("clients.view_all")
+
+    @action(detail=True)
+    def trainers(self, request, pk=None):
+        """Change trainer drawer: every active trainer with load (clients now / most), Current, Full and Good fit
+        tags, plus how many check-ins wait for review (they move with her)."""
+        if not self._can_change_trainer(request.user):
+            return Response({"error": {"code": "forbidden", "message": "Ask Vimal to change the trainer."}},
+                            status=403)
+        from apps.checkins.models import Submission
+
+        user = self.get_object()
+        cp = user.client_profile
+        load = services.trainer_load()
+        goal = (cp.goal or "").replace("_", " ")
+        rows = []
+        trainers = User.objects.filter(role__in=[Role.TRAINER, Role.ADMIN], status=AccountStatus.ACTIVE,
+                                       trainer_profile__isnull=False).select_related("trainer_profile")
+        for t in trainers.order_by("full_name"):
+            tp = t.trainer_profile
+            n = load.get(t.id, 0)
+            fit = bool(goal) and any(goal in sp.lower() for sp in tp.speciality)
+            rows.append({"id": t.id, "full_name": t.full_name, "initials": t.initials,
+                         "avatar_color": t.avatar_color, "speciality": tp.speciality, "clients": n,
+                         "max_clients": tp.max_clients, "current": t.id == cp.trainer_id,
+                         "full": n >= tp.max_clients, "good_fit": fit})
+        # current first, then good fits with space, then the rest by load
+        rows.sort(key=lambda r: (not r["current"], not (r["good_fit"] and not r["full"]), r["full"],
+                                 r["clients"] / max(r["max_clients"], 1)))
+        open_checkins = Submission.objects.filter(client=user, reviewed_at__isnull=True).count()
+        since = cp.trainer_since or cp.start_date or user.date_joined
+        return Response({"trainers": rows, "open_checkins": open_checkins,
+                         "current": PersonMiniSerializer(cp.trainer).data if cp.trainer else None,
+                         "since": since})
+
     @extend_schema(request=ChangeTrainerSerializer)
     @action(detail=True, methods=["post"], url_path="change-trainer")
     def change_trainer(self, request, pk=None):
-        if not (request.user.is_admin or request.user.trainer_profile.has_perm("clients.view_all")):
+        if not self._can_change_trainer(request.user):
             return Response({"error": {"code": "forbidden", "message": "Ask Vimal to change the trainer."}},
                             status=403)
         user = self.get_object()
         s = ChangeTrainerSerializer(data=request.data)
         s.is_valid(raise_exception=True)
+        d = s.validated_data
         cp = user.client_profile
         old = cp.trainer
-        cp.trainer = s.validated_data["trainer"]
-        cp.save(update_fields=["trainer", "updated_at"])
+        if old == d["trainer"]:
+            raise ValidationError({"trainer": [f"{old.full_name} is already the trainer."]})
+        cp.trainer = d["trainer"]
+        cp.trainer_since = timezone.now()
+        cp.save(update_fields=["trainer", "trainer_since", "updated_at"])
+        if not d["move_checkins"]:  # the new trainer starts fresh: open check-ins are marked as seen
+            from apps.checkins.models import Submission
+
+            Submission.objects.filter(client=user, reviewed_at__isnull=True).update(
+                reviewed_at=timezone.now(), reviewed_by=old or request.user)
+        note = (d.get("note") or "").strip()
+        if note:
+            ClientNote.objects.create(client=user, author=request.user, body=note)
         activity_log("changed trainer", "client", actor=request.user, target=user, target_label=user.full_name,
                      change=(old.full_name if old else "No trainer", cp.trainer.full_name), client=user,
                      trainer=cp.trainer)
-        if s.validated_data["tell_client"]:
+        if d["tell_client"]:
             notify(user, "trainer_changed", f"{cp.trainer.full_name} is your trainer now", "", actor=request.user)
         if cp.trainer != request.user:
-            notify(cp.trainer, "client_assigned", f"{user.full_name} is your client now", "",
+            notify(cp.trainer, "client_assigned", f"{user.full_name} is your client now", note,
                    data={"route": f"/clients/{user.id}"}, actor=request.user)
+        if d["tell_old"] and old and old != request.user:
+            notify(old, "client_moved", f"{user.full_name} moved to {cp.trainer.full_name}", "",
+                   actor=request.user)
         return Response(ClientDetailSerializer(user, context={"request": request}).data)
+
+    @action(detail=True, methods=["post"], url_path="send-reset")
+    def send_reset(self, request, pk=None):
+        """Edit profile → Sign-in → "Send a reset link": she picks her own password from the email."""
+        from apps.accounts.emails import send_password_reset
+        from apps.accounts.models import OneTimeToken
+        from apps.accounts.tokens import issue_one_time_token
+
+        user = self.get_object()
+        if not user.email:
+            return Response({"error": {"code": "no_email", "message": "Add her email first, then send the link."}},
+                            status=400)
+        send_password_reset(user, issue_one_time_token(user, OneTimeToken.Purpose.PASSWORD_RESET))
+        activity_log("sent a password reset link", "client", actor=request.user, target=user,
+                     target_label=user.full_name, client=user)
+        return Response({"sent_to": user.email})
 
     @action(detail=True, methods=["post"])
     def pause(self, request, pk=None):
@@ -411,7 +517,16 @@ class ApprovalViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets
             if not user.trainer_profile.has_perm("clients.approve_signups"):
                 return qs.none()
             qs = qs.filter(invited_by=user)
+        if self.action != "list":  # one person (Review, Move back) opens from either tab
+            return qs
         p = self.request.query_params
+        q = (p.get("q") or p.get("search") or "").strip()
+        if q:
+            digits = "".join(ch for ch in q if ch.isdigit())
+            match = Q(client__full_name__icontains=q) | Q(client__email__icontains=q)
+            if len(digits) >= 3:
+                match |= Q(client__phone__contains=digits)
+            qs = qs.filter(match)
         tab = p.get("tab", "waiting")
         if tab == "history":
             qs = qs.exclude(status=Approval.Status.WAITING).order_by("-decided_at")
@@ -446,8 +561,11 @@ class ApprovalViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets
         base = Approval.objects.all()
         if request.user.is_trainer:
             base = base.filter(invited_by=request.user)
-        return Response({"waiting": base.filter(status="waiting").count(),
-                         "history": base.exclude(status="waiting").count()})
+        waiting = base.filter(status="waiting")
+        first = waiting.order_by("created_at").values_list("created_at", flat=True).first()
+        oldest = int((timezone.now() - first).total_seconds() // 3600) if first else None
+        return Response({"waiting": waiting.count(), "history": base.exclude(status="waiting").count(),
+                         "oldest_hours": oldest})
 
     @action(detail=True)
     def trainers(self, request, pk=None):
@@ -500,11 +618,15 @@ class ApprovalViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets
         a = self._waiting()
         s = AskInfoSerializer(data=request.data)
         s.is_valid(raise_exception=True)
-        InfoRequest.objects.create(approval=a, sent_by=request.user, **s.validated_data)
+        InfoRequest.objects.create(approval=a, sent_by=request.user, items=s.validated_data["items"],
+                                   channels=s.validated_data["channels"])
         labels = {"setup": "Finish your profile setup", "health_form": "Fill the health form again",
                   "doctor_note": "Send a doctor note", "photo": "Add a profile photo",
                   "phone": "Check your phone number"}
         body = "\n".join(f"• {labels[i]}" for i in s.validated_data["items"])
+        msg = (s.validated_data.get("message") or "").strip()
+        if msg:
+            body = f"{msg}\n\n{body}"
         notify(a.client, "info_requested", "We need a few things from you", body,
                channels=s.validated_data["channels"], actor=request.user, data={"route": "/setup"})
         activity_log("asked a sign-up for more info", "client", actor=request.user, client=a.client,

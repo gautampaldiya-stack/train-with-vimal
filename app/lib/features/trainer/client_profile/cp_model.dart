@@ -7,8 +7,14 @@ import '../../../core/api/api_error.dart';
 /// Overview come from `clients/<id>/`, `stats/` and `overview/`. Every other tab loads its own data when opened
 /// and calls [refresh] after a change so the header and the counts stay right.
 class CpController extends ChangeNotifier {
-  CpController(this.id);
+  CpController(this.id, {this.admin = false});
   final String id;
+
+  /// Admin view (board `ClientProfile`, D-47): Change trainer in the ⋯ menu, Coaching card and Edit profile.
+  final bool admin;
+
+  /// Set by the screen: opens the Change trainer drawer (admin only).
+  VoidCallback? changeTrainer;
 
   Map detail = const {}, stats = const {}, overview = const {};
   Map<String, int> counts = {};

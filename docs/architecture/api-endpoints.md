@@ -100,20 +100,22 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 
 | Path | Methods | View | Notes |
 |---|---|---|---|
-| `approvals/` | GET | ApprovalViewSet | ?tab=waiting/history plus filters from the design. |
-| `approvals/<pk>/` | GET | ApprovalViewSet | ?tab=waiting/history plus filters from the design. |
-| `approvals/<pk>/approve/` | POST | ApprovalViewSet | ?tab=waiting/history plus filters from the design. |
-| `approvals/<pk>/ask-info/` | POST | ApprovalViewSet | ?tab=waiting/history plus filters from the design. |
-| `approvals/<pk>/move-back/` | POST | ApprovalViewSet | ?tab=waiting/history plus filters from the design. |
-| `approvals/<pk>/reject/` | POST | ApprovalViewSet | ?tab=waiting/history plus filters from the design. |
-| `approvals/<pk>/trainers/` | GET | ApprovalViewSet | ?tab=waiting/history plus filters from the design. |
-| `approvals/counts/` | GET | ApprovalViewSet | ?tab=waiting/history plus filters from the design. |
-| `clients/` | GET, POST | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
+| `approvals/` | GET | ApprovalViewSet | Approvals page (admin; a trainer sees people they invited). `?tab=waiting/history&q=` (name, email, phone digits), Waiting filters `invited_by, setup=done/not_finished, waiting=1d/2d, health_note=yes/no, signed_up_from=web/android/ios`, History filters `decision, decided_by, when=7d/30d`, 20 a page. Waiting is oldest first with moved-back people on top. Rows carry `signed_up_from_label`, `setup_done` (0–5), `waiting_hours`, `has_health_note`, `moved_back` (D-47). |
+| `approvals/<pk>/` | GET | ApprovalViewSet | Review drawer: the row plus `steps`, `health_notes`, `invite_code`, `answers` [{label, value}] from onboarding (Goal, Body, Trains, Food). |
+| `approvals/<pk>/approve/` | POST | ApprovalViewSet | `{trainer, tell_client, ask_finish_setup}`: client becomes active with that trainer. 400 when the trainer is full. |
+| `approvals/<pk>/ask-info/` | POST | ApprovalViewSet | `{items: [setup, health_form, doctor_note, photo, phone], channels: [whatsapp, email, in_app, push], message}` → `{asked}`. The person stays in Waiting. |
+| `approvals/<pk>/move-back/` | POST | ApprovalViewSet | History → back to Waiting (`moved_back` true, shows on top). An approved client cannot log in again until approved. `{tell_client}`. |
+| `approvals/<pk>/reject/` | POST | ApprovalViewSet | `{reason: not_fit/has_account/fake/no_trainer/other, message, tell_client}`; `other` needs a message. |
+| `approvals/<pk>/trainers/` | GET | ApprovalViewSet | Trainer pick in the Review drawer: load, `max_clients`, `tag` (full / invited / good_fit), `default`. |
+| `approvals/counts/` | GET | ApprovalViewSet | `{waiting, history, oldest_hours}`: tab counts, sidebar badge and "oldest waiting 2 days". |
+| `clients/` | GET, POST | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. Admin rows add `trainer`, `date_joined`, `gender`; `?trainer=<id>/none`. POST (admin, Add client): name + phone required; `mode=active/approvals`, optional trainer, `program`, `meal_plan`, `start_date`, send-link / PAR-Q switches; all in one transaction. PATCH `password` is admin only (min 8, hashed, signs the client out everywhere). |
 | `clients/<client_pk>[0-9a-f-]+)/notes/` | GET, POST | ClientNoteViewSet | /clients/<client_id>/notes/ — staff-only notes. |
 | `clients/<client_pk>[0-9a-f-]+)/notes/<pk>/` | GET, PUT, PATCH, DELETE | ClientNoteViewSet | /clients/<client_id>/notes/ — staff-only notes. |
 | `clients/<client_pk>[0-9a-f-]+)/notes/<pk>/restore/` | POST | ClientNoteViewSet | /clients/<client_id>/notes/ — staff-only notes. |
 | `clients/<pk>/` | GET, PUT, PATCH, DELETE | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
-| `clients/<pk>/change-trainer/` | POST | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
+| `clients/<pk>/change-trainer/` | POST | ClientViewSet | Admin. `{trainer, move_checkins (default true), tell_old, note}`. Same trainer → 400, full trainer → 400. `move_checkins=false` marks open check-ins as seen so the new trainer starts fresh; the note is saved as a client note; `trainer_since` is set (D-47). |
+| `clients/<pk>/send-reset/` | POST | ClientViewSet | Admin. Emails a password reset link → `{sent_to}`; 400 `no_email`. |
+| `clients/<pk>/trainers/` | GET | ClientViewSet | Admin. Change trainer drawer: `{trainers: [{…, clients, max_clients, current, full, good_fit}], current, since, open_checkins}`. |
 | `clients/<pk>/history/` | GET | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
 | `clients/<pk>/overview/` | GET | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
 | `clients/<pk>/pause/` | POST | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
@@ -125,6 +127,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `clients/<uuid:client_pk>/logs/compare/` | GET | ClientLogCompareView | GET clients/<id>/logs/compare/ → A and B side by side. Each side is a workout plan |
 | `clients/<uuid:client_pk>/logs/summary/` | GET | ClientLogSummaryView | GET clients/<id>/logs/summary/?range= → {from, to, workouts, meals, checkins}. |
 | `clients/counts/` | GET | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
+| `clients/check-phone/` | GET | ClientViewSet | Admin, Add client while typing: `?phone=` → `{valid, taken}` (`taken` = "phone" when a client or sign-up has it). |
 | `clients/export/` | GET | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
 | `clients/remind-at-risk/` | POST | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
 | `invite-links/` | GET, POST | InviteLinkViewSet |  |

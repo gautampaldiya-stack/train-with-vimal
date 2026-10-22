@@ -4,7 +4,7 @@ Source of truth for **what is built**. 104 boards in `design/screens/`. Rules fo
 
 Status: **Done** (built and checked in a browser against the board, phone and desktop) · **Partial** (some parts built; the note says what is missing) · **Not started**.
 
-**Last updated:** 2026-10-15
+**Last updated:** 2026-10-22
 
 
 ## Client
@@ -41,8 +41,8 @@ Status: **Done** (built and checked in a browser against the board, phone and de
 | ClientNutritionWeb | Not started | Replaced by ClientMealNutritionWeb, Gautam 2026-10-15. |
 | ClientPermissions | Done | `/permissions`: ask, allowed, blocked, after email is confirmed. Camera / photos use `?kind=` when first needed. Checked 390. |
 | ClientPermissionsWeb | Done | Side panel with To ask / Allowed / Blocked / Not now pills. Checked 1440. |
-| ClientProfile | Not started | Admin view of a client; built with the admin Clients page, reusing the trainer client profile code (D-46). |
-| ClientProfileMobile | Not started |  |
+| ClientProfile | Done | `/clients/<id>` (admin), the trainer client profile code with admin extras (D-47): breadcrumb Clients, sub line trainer, menu Change trainer, Coaching card Change / Pick one, Edit details Sign-in (new password, Send a reset link) and Trainer line. Checked 390, 768, 900, 1024, 1280, 1440 in debug mode on 2026-10-22, no overflow. |
+| ClientProfileMobile | Done | Same code, phone layout of the trainer profile; drawers open as sheets. Checked 390. |
 | ClientProgress | Done | `/progress`: goal, Weight / Body / Strength, First day vs now, photos, stats, adherence; sheets Log weight, workouts, lift, photo set, Add photos. Sub pages `/progress/history` (+ day sheet), `/progress/photos`, `/progress/compare`. Checked 390, 600. |
 | ClientProgressWeb | Done | Two columns (right 340: goal, photos, stats); History summary sticks on the right; Compare photos 540 + table. Checked 768, 1024, 1280, 1440. |
 | ClientResetPassword | Done | `/forgot` (forgot, email sent, resend in 30 s) and `/reset-password?token=` (set, updated, link not valid). Checked 390. |
@@ -86,8 +86,8 @@ Status: **Done** (built and checked in a browser against the board, phone and de
 | AdminDashboard | Done | `/dashboard` (admin). Checked 1440 / 1280 / 1024 / 768. CTAs open Approvals, Clients, Trainers, Check-ins, Activity log, Settings: not built yet (holding page). |
 | AdminDashboardMobile | Done | Checked at 390 in debug mode. |
 | AdminMoreMobile | Done | `/more` (admin). Trainers, Activity log, Forms, Automations, Emails, Settings rows open pages not built yet. |
-| Approvals | Not started |  |
-| ApprovalsMobile | Not started |  |
+| Approvals | Done | `/approvals` (`?tab=history`), D-47: Waiting / History tabs with counts, search, Filter (5 groups / 3 groups) with chips, table (sideways scroll when narrow, as on the board), Review drawer (‹ › step, trainer pick, approve switches), Reject, Ask for info, Move back modals, toasts with Undo / View, pager 20 a page, sidebar badge. Not built: the board's invite-link summary card (same data in Invite link → All links). Checked 390, 768, 900, 1024, 1280, 1440 in debug mode on 2026-10-22, no overflow. |
+| ApprovalsMobile | Done | One line per person (avatar, name, inviter, waiting, health note, Review), History rows with badge, reason, date and Move back; drawer as a tall sheet. Checked 390. |
 | AutomationBuilder | Not started |  |
 | AutomationBuilderMobile | Not started |  |
 | AutomationNew | Not started |  |
@@ -96,8 +96,8 @@ Status: **Done** (built and checked in a browser against the board, phone and de
 | AutomationsMobile | Not started |  |
 | Calendar | Not started |  |
 | CalendarMobile | Not started |  |
-| Clients | Not started |  |
-| ClientsMobile | Not started |  |
+| Clients | Done | `/clients` (admin), My clients code with admin extras (D-47): sub line with need-a-trainer count, Invite link (modal with QR) and Add client (drawer) at the top, Trainer + Joined columns, Trainer filter, row ⋯ Change trainer / Pause / Resume / Delete with Undo. Export and select boxes off, same as My clients (D-33). Checked 390, 768, 900, 1024, 1280, 1440 in debug mode on 2026-10-22, no overflow. |
+| ClientsMobile | Done | One line per client with "No trainer" badge or Trainer · Goal, icon buttons at the top. Checked 390. |
 | Content | Done | `/content`, `/content/<id>` (opens the item), `/content?new=video` (`app/lib/features/library/content/`): categories rail with counts and storage bar, search, All / Videos / Articles / PDFs / Images, cards 8 a page (kind badge, length pill, used-in chip with tooltip, who has it, ⋯ Open / Edit / Assign / Delete), item drawer (KPIs, file, who sees it, used in → client / exercise / program pages, opened stats), New / Edit content drawer (type tabs, upload with drop, YouTube link, cover frames, article text and read time, Everyone for Vimal only, asks before closing with changes), Assign to clients, New category, Delete with Undo. Checked 768, 1024, 1440 and DEBUG mode at 390 and 1440 with no console errors (2026-10-21). Cover frames of a new upload show after it is saved. 2026-10-22 (D-45): new video cover picked before Save, storage limit enforced, drop area reworked (drop never replaces; Replace does), PDF first-page preview; checked 1440. |
 | ContentMobile | Done | Same page under 600: + and upload buttons, category chips row, storage line, 2-column cards, drawers as tall sheets. Checked 390 in DEBUG mode (2026-10-21). |
 | Emails | Not started |  |

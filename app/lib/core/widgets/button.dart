@@ -5,7 +5,7 @@ import '../theme/theme.dart';
 import 'hover.dart';
 import 'tooltip.dart';
 
-enum BtnKind { primary, dark, outline, danger, text, soft }
+enum BtnKind { primary, dark, outline, danger, text, textDanger, soft }
 
 enum BtnSize { sm, md, lg }
 
@@ -40,11 +40,12 @@ class AppButton extends StatelessWidget {
           BtnKind.danger => (hov ? AppColors.badHoverBg : AppColors.badBg, AppColors.badText, null),
           BtnKind.soft => (hov ? AppColors.sub : AppColors.accentSoft, AppColors.accentText, null),
           BtnKind.text => (Colors.transparent, AppColors.accentText, null),
+          BtnKind.textDanger => (Colors.transparent, AppColors.badText, null), // `.btn.text.danger`
         };
         final style = AppText.button.copyWith(
           color: fg,
           fontSize: size == BtnSize.sm ? 12.5 : 13.5,
-          decoration: kind == BtnKind.text && hov ? TextDecoration.underline : null,
+          decoration: (kind == BtnKind.text || kind == BtnKind.textDanger) && hov ? TextDecoration.underline : null,
           decorationColor: fg,
         );
         final iconSize = size == BtnSize.sm ? 15.0 : 16.0;
@@ -65,7 +66,7 @@ class AppButton extends StatelessWidget {
         final btn = Container(
           height: h,
           width: iconOnly ? h : null,
-          padding: kind == BtnKind.text || iconOnly ? EdgeInsets.zero : EdgeInsets.symmetric(horizontal: icon != null ? 12 : 14),
+          padding: kind == BtnKind.text || kind == BtnKind.textDanger || iconOnly ? EdgeInsets.zero : EdgeInsets.symmetric(horizontal: icon != null ? 12 : 14),
           decoration: BoxDecoration(
             color: bg,
             borderRadius: AppRadius.all(AppRadius.btn),

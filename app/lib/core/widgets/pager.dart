@@ -7,8 +7,11 @@ import 'hover.dart';
 /// `.pager`: "Showing 1–8 of 24" left, page buttons right (28 high, radius 7; current one white with a line).
 /// Long lists show the first, last and the pages around the current one with "…" between.
 class Pager extends StatelessWidget {
-  const Pager({super.key, required this.page, required this.pageSize, required this.count, required this.onPage});
+  const Pager({super.key, required this.page, required this.pageSize, required this.count, required this.onPage, this.empty = 'No clients'});
   final int page, pageSize, count;
+
+  /// Left text when there is nothing to show.
+  final String empty;
   final ValueChanged<int> onPage;
 
   int get pages => count == 0 ? 1 : (count + pageSize - 1) ~/ pageSize;
@@ -28,7 +31,7 @@ class Pager extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2),
       child: Row(children: [
-        Expanded(child: Text(count == 0 ? 'No clients' : 'Showing $from–$to of $count', style: AppText.s(12.5, W.w6, color: AppColors.muted))),
+        Expanded(child: Text(count == 0 ? empty : 'Showing $from–$to of $count', style: AppText.s(12.5, W.w6, color: AppColors.muted))),
         if (pages > 1)
           Row(mainAxisSize: MainAxisSize.min, spacing: 4, children: [
             _Pg(icon: AppIcons.chevronLeft, label: 'Previous page', onTap: page > 1 ? () => onPage(page - 1) : null),

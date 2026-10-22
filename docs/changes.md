@@ -18,6 +18,18 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-22 · Admin Clients and Approvals built
+- **Pehle:** Admin ke `/clients`, `/clients/<id>` aur `/approvals` par holding page tha. Dashboard ke buttons (Approvals, Clients, Add client) kuch kaam ka nahi kholte the. Approvals tab filter detail actions (move back) par bhi lagta tha, isliye move back 404 deta tha.
+- **Ab:** Clients page (sab clients, Trainer + Joined column, Trainer filter, Invite link, Add client drawer, row menu me Change trainer / Pause / Delete + Undo). Client profile admin ke liye (Change trainer, Edit details me password set karna ya reset link bhejna). Invite links modal (QR, copy, WhatsApp, email, download QR, naya link, sab links). Approvals page (Waiting + History, search, filter chips, Review drawer, Reject / Ask for info / Move back modals, phone par ek line per person). Naye endpoints: `clients/<id>/trainers/`, `clients/<id>/send-reset/`, `clients/check-phone/`; change-trainer me note, fresh start, old trainer ko notice; `trainer_since` field; `approvals/counts/` me `oldest_hours`. Sidebar Approvals badge app khulte hi.
+- **Kyun:** Gautam (22 Oct): "ab aage wala clients and approvals ka kar... sahi se karna".
+- **Updated:** backend/apps/clients (models, migration 0007, serializers, views, services, onboarding), backend/tests/test_admin_clients.py, app/lib/features/admin/clients/*, app/lib/features/admin/approvals/*, app/lib/features/trainer/clients/*, app/lib/features/trainer/client_profile/cp_model.dart, cp_overview.dart, cp_screen.dart, app/lib/app/router.dart, app/lib/app/shell/app_shell.dart, core/widgets (button text danger, drawer leading, pager empty text), docs · Decision D-47
+
+### 2026-10-22 · Admin dashboard — no search icon in the header
+- **Pehle:** Dashboard header me search icon tha jo "Search clients" modal kholta tha.
+- **Ab:** Search icon hata diya. Header me Notifications, Add client aur profile (V) menu.
+- **Kyun:** Gautam (22 Oct): "dashboard me se search ka icon hata do header se".
+- **Updated:** app/lib/features/admin/dashboard/admin_dashboard_screen.dart, admin_dashboard_model.dart, docs/screens/behaviour.md
+
 ### 2026-10-22 · Admin dashboard — no overflow, Needs action scrolls, import activity wording
 - **Pehle:** Gautam ki machine par stat cards me "BOTTOM OVERFLOWED BY 4.0 PIXELS" aur Trainer performance table me overflow stripes aate the (fixed 80 px height, fixed 90 px bar). Needs action me 5 rows ke baad `Show all` aur har row pe × Dismiss tha. Food import me sirf update hue foods par activity "imported foods 0 foods" likhti thi.
 - **Ab:** Stat cards ki height content ke hisaab se (kam se kam 80), adherence bar jagah kam ho to pehle chhota hota hai, table headings "…" + tooltip. Needs action 5 se zyada rows par card ke andar hi scroll hota hai (scrollbar ke saath), × Dismiss hata diya. Activity: "imported 3 foods from Excel", "updated 2 foods from Excel", ya dono ho to "imported 3 foods · updated 2".

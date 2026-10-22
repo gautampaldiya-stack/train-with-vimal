@@ -47,6 +47,7 @@ class ClientProfile(TimeStampedModel):
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="coached_clients",
         limit_choices_to={"role__in": ["admin", "trainer"]},
     )
+    trainer_since = models.DateTimeField(null=True, blank=True)  # "With Aman Verma since 12 Jan" (Change trainer)
     goal = models.CharField(max_length=12, choices=Goal.choices, blank=True, default="")
     height_cm = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
     start_weight_kg = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)

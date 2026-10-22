@@ -175,11 +175,6 @@ class AdminHomeController extends ChangeNotifier implements NoticesSource {
     await Services.api.post('notifications/read_all/');
   }
 
-  Future<List<Map>> searchClients(String q) async {
-    final r = await Services.api.get<Map>('clients/', query: {'search': q, 'page_size': 8});
-    return [for (final x in (r['results'] as List? ?? const [])) x as Map];
-  }
-
   @override
   void dispose() {
     // Leaving the page before Undo runs out still sends the reminders.

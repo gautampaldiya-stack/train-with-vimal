@@ -53,12 +53,19 @@ class _AppShellState extends State<AppShell> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadCounts()); // not during build: it notifies the badges
   }
 
-  /// The trainer's Check-ins badge shows on every page (board TrainerMoreMobile), not only after
+  /// The trainer's Check-ins badge (and the admin's Approvals badge) shows on every page (board TrainerMoreMobile), not only after
   /// Dashboard or Check-ins loaded. Those pages keep it fresh afterwards.
   Future<void> _loadCounts() async {
     final me = Services.session.me;
     if (me == null) return;
     NavCounts.claim(me.id);
+    if (me.role == Role.admin && !NavCounts.values.value.containsKey('approvals')) {
+      try {
+        final c = await Services.api.get<Map>('approvals/counts/');
+        if (!NavCounts.values.value.containsKey('approvals')) NavCounts.set('approvals', (c['waiting'] as num?)?.toInt() ?? 0);
+      } catch (_) {}
+      return;
+    }
     if (me.role != Role.trainer || NavCounts.values.value.containsKey('checkins')) return;
     try {
       final c = await Services.api.get<Map>('checkins/counts/');

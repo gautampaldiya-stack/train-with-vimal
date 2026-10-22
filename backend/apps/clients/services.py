@@ -63,7 +63,7 @@ def create_client(*, actor, full_name, phone=None, email=None, trainer=None, sen
     )
     start_weight = profile.pop("current_weight_kg", None)
     cp = ClientProfile.objects.create(
-        user=user, trainer=trainer, ask_parq=ask_parq, signup_source=source, invite_link=invite_link,
+        user=user, trainer=trainer, trainer_since=timezone.now() if trainer else None, ask_parq=ask_parq, signup_source=source, invite_link=invite_link,
         invited_by=invited_by or actor, start_weight_kg=start_weight, current_weight_kg=start_weight,
         onboarding_done=["account"] if (email or phone) else [], **profile,
     )
@@ -112,7 +112,8 @@ def approve(approval, *, actor, trainer, tell_client=True, ask_finish_setup=True
     user.save(update_fields=["status"])
     cp = user.client_profile
     cp.trainer = trainer
-    cp.save(update_fields=["trainer", "updated_at"])
+    cp.trainer_since = timezone.now()
+    cp.save(update_fields=["trainer", "trainer_since", "updated_at"])
     approval.status = Approval.Status.APPROVED
     approval.decided_by = actor
     approval.decided_at = timezone.now()

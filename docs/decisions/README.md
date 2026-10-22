@@ -49,4 +49,5 @@ One file per decision. Add a new file for every new decision (next number), and 
 | [D-44](0044-nutrition-rights-food-library-meal-builder.md) | Nutrition & foods: who may change a meal plan, delete Undo, food library rules, Excel import, meal plan builder draft + Publish | 2026-10-21 |
 | [D-45](0045-habits-own-items-and-media-in-app.md) | Trainers make and change their own habits and supplement plans; habit editor look; Content videos, pictures and PDFs open inside the app | 2026-10-22 |
 | [D-46](0046-client-profile-missing-parts-and-toolbar-rule.md) | Client profile: target date, health over time, stock history, form-check video, body map; toolbars wrap, chip rows scroll | 2026-10-22 |
+| [D-47](0047-admin-clients-and-approvals.md) | Admin Clients and Approvals: one Clients page for both roles, admin profile extras (password, change trainer), Add client, invite links, Approvals with review drawer | 2026-10-22 |
 | [D-31](0031-trainer-activity-and-fixes.md) | Trainer Activity card, stat cards fill the row, menus fit the screen, readable guides | 2026-10-16 |

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../app/services.dart';
 import '../../../core/api/api_error.dart';
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
 import '../../../core/util/input_rules.dart';
+import '../../../core/widgets/avatar.dart';
 import '../../../core/widgets/badge.dart';
 import '../../../core/widgets/button.dart';
 import '../../../core/widgets/card.dart';
@@ -15,8 +17,8 @@ import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/select.dart';
 import 'clients_model.dart';
 
-const _genders = [('female', 'Female'), ('male', 'Male'), ('other', 'Other'), ('', 'Prefer not to say')];
-const _goals = [('fat_loss', 'Lose fat'), ('muscle_gain', 'Muscle gain'), ('strength', 'Strength'), ('recomp', 'Recomp'), ('general', 'General fitness'), ('event', 'Event prep')];
+const clientGenders = [('female', 'Female'), ('male', 'Male'), ('other', 'Other'), ('', 'Prefer not to say')];
+const clientGoals = [('fat_loss', 'Lose fat'), ('muscle_gain', 'Muscle gain'), ('strength', 'Strength'), ('recomp', 'Recomp'), ('general', 'General fitness'), ('event', 'Event prep')];
 
 /// Onboarding answers the drawer edits besides the board's fields (D-36): free text, and choices whose options
 /// come from the server (`options` of `clients/<id>/`). Choices with "Other" keep the client's own words.
@@ -58,16 +60,26 @@ Future<bool?> showEditClientDrawer(BuildContext context, MyClientsController c, 
 
 /// The same drawer for any screen (Client profile → Edit profile): [load] gives `clients/<id>/`, [save] PATCHes.
 Future<bool?> showClientDetailsDrawer(BuildContext context,
-    {required String id, required String clientName, required Future<Map> Function() load, required Future<void> Function(Map<String, dynamic>) onSave, String title = 'Edit details'}) {
+    {required String id,
+    required String clientName,
+    required Future<Map> Function() load,
+    required Future<void> Function(Map<String, dynamic>) onSave,
+    String title = 'Edit details',
+    bool admin = false,
+    Future<void> Function()? onChangeTrainer}) {
   final first = clientName.split(' ').first;
   final s = _EditState();
   final name = TextEditingController(), phone = TextEditingController(), email = TextEditingController();
   final city = TextEditingController(), goalW = TextEditingController();
+  // Admin only (board ClientProfile → Sign-in): a new password; empty keeps the old one.
+  final password = TextEditingController();
+  final trainer = ValueNotifier<Map?>(null);
   final height = TextEditingController(), weight = TextEditingController(), notes = TextEditingController();
   final texts = {for (final k in [..._texts, ..._others.keys]) k: TextEditingController()};
   final detail = load().then((d) {
     String num(Object? v) => v == null ? '' : '${double.tryParse('$v')?.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '') ?? v}';
     final p = (d['profile'] as Map?) ?? const {};
+    trainer.value = d['trainer'] as Map?;
     name.text = '${d['full_name'] ?? ''}';
     final ph = '${d['phone'] ?? ''}';
     phone.text = ph.startsWith('+91') ? ph.substring(3).trim() : ph;
@@ -122,6 +134,7 @@ Future<bool?> showClientDetailsDrawer(BuildContext context,
     range('target_weight_kg', goalW, 25, 300, 'Enter a weight between 25 and 300 kg.');
     range('current_weight_kg', weight, 25, 300, 'Enter a weight between 25 and 300 kg.');
     range('height_cm', height, 100, 250, 'Enter a height between 100 and 250 cm.');
+    if (admin && password.text.isNotEmpty && password.text.length < 8) errs['password'] = 'Use at least 8 characters.';
     s.set(() => s.errors = errs);
     if (errs.isNotEmpty) return;
     s.set(() => s.busy = true);
@@ -145,6 +158,7 @@ Future<bool?> showClientDetailsDrawer(BuildContext context,
         for (final k in _multis) k: s.vals[k] ?? <String>[],
         for (final k in _bools) k: s.vals[k],
         'workout_days': s.vals['workout_days'],
+        if (admin && password.text.isNotEmpty) 'password': password.text,
       });
       if (ctx.mounted) Navigator.of(ctx).pop(true);
     } on ApiError catch (e) {
@@ -264,26 +278,73 @@ Future<bool?> showClientDetailsDrawer(BuildContext context,
                 two(
                   ctx,
                   field('Email', AppTextField(controller: email, keyboard: TextInputType.emailAddress, placeholder: 'For login links and receipts'), error: e['email']),
-                  field('Gender', AppSelect(_genders.firstWhere((g) => g.$1 == s.gender, orElse: () => _genders.last).$2,
-                      entries: [for (final (v, l) in _genders) MenuEntry(l, selected: v == s.gender, onTap: () => s.set(() => s.gender = v))])),
+                  field('Gender', AppSelect(clientGenders.firstWhere((g) => g.$1 == s.gender, orElse: () => clientGenders.last).$2,
+                      entries: [for (final (v, l) in clientGenders) MenuEntry(l, selected: v == s.gender, onTap: () => s.set(() => s.gender = v))])),
                 ),
                 two(
                   ctx,
-                  field('Date of birth', _DateBox(s.dob, onPick: (v) => s.set(() => s.dob = v)), error: e['date_of_birth']),
+                  field('Date of birth', ClientDateBox(s.dob, onPick: (v) => s.set(() => s.dob = v)), error: e['date_of_birth']),
                   field('City', AppTextField(controller: city, placeholder: 'City'), error: e['city']),
                 ),
               ]),
+              if (admin) ...[
+                sec('Sign-in', 'They get a notice when their password changes.', [
+                  two(
+                    ctx,
+                    field('New password', AppTextField(controller: password, obscure: true, placeholder: 'Leave empty to keep it'), error: e['password']),
+                    const SizedBox.shrink(),
+                  ),
+                  Text('At least 8 characters.', style: AppText.s(12, W.w5, color: AppColors.muted)),
+                  Row(spacing: 6, children: [
+                    const AppIcon(AppIcons.info, size: 15, color: AppColors.muted),
+                    Flexible(child: Text('Or let $first pick their own:', style: AppText.s(13, W.w5, color: AppColors.text2))),
+                    AppButton('Send a reset link', kind: BtnKind.text, size: BtnSize.sm, onPressed: () async {
+                      try {
+                        final r = await Services.api.post<Map>('clients/$id/send-reset/');
+                        if (ctx.mounted) showToast(ctx, 'Reset link sent', sub: '${r['sent_to']}', kind: ToastKind.ok);
+                      } on ApiError catch (er) {
+                        if (ctx.mounted) showToast(ctx, 'Could not send the link', sub: er.message, kind: ToastKind.info);
+                      }
+                    }),
+                  ]),
+                ]),
+                sec('Trainer', 'Who coaches them now.', [
+                  ValueListenableBuilder<Map?>(
+                    valueListenable: trainer,
+                    builder: (_, t, _) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(border: Border.all(color: AppColors.line), borderRadius: AppRadius.all(AppRadius.input)),
+                      child: Row(spacing: 10, children: [
+                        if (t != null) AppAvatar('${t['full_name']}', size: 24, initials: '${t['initials'] ?? ''}', colors: AppColors.avatarCode('${t['avatar_color'] ?? 'c1'}')),
+                        Expanded(
+                          child: Text.rich(TextSpan(children: [
+                            const TextSpan(text: 'Trainer '),
+                            TextSpan(text: t == null ? 'none yet' : '${t['full_name']}', style: AppText.s(13.5, W.w7)),
+                          ]), style: AppText.s(13.5, W.w5)),
+                        ),
+                        if (onChangeTrainer != null)
+                          AppButton('Change trainer', kind: BtnKind.text, size: BtnSize.sm, onPressed: () async {
+                            await onChangeTrainer();
+                            try {
+                              trainer.value = (await load())['trainer'] as Map?;
+                            } catch (_) {}
+                          }),
+                      ]),
+                    ),
+                  ),
+                ]),
+              ],
               sec('Goal and body', 'Optional. If you leave these empty they fill them in onboarding.', [
                 two(
                   ctx,
-                  field('Goal', AppSelect(s.goal.isEmpty ? 'Pick a goal' : _goals.firstWhere((g) => g.$1 == s.goal, orElse: () => (s.goal, s.goal)).$2,
-                      entries: [for (final (v, l) in _goals) MenuEntry(l, selected: v == s.goal, onTap: () => s.set(() => s.goal = v))])),
+                  field('Goal', AppSelect(s.goal.isEmpty ? 'Pick a goal' : clientGoals.firstWhere((g) => g.$1 == s.goal, orElse: () => (s.goal, s.goal)).$2,
+                      entries: [for (final (v, l) in clientGoals) MenuEntry(l, selected: v == s.goal, onTap: () => s.set(() => s.goal = v))])),
                   field('Goal weight', AppTextField(controller: goalW, keyboard: const TextInputType.numberWithOptions(decimal: true), suffix: _unit('kg')),
                       error: e['target_weight_kg']),
                 ),
                 two(
                   ctx,
-                  field('Target date', _DateBox(s.target, future: true, onPick: (v) => s.set(() => s.target = v)), error: e['target_date']),
+                  field('Target date', ClientDateBox(s.target, future: true, onPick: (v) => s.set(() => s.target = v)), error: e['target_date']),
                   field('Enrolled for', other('enrolled_for')),
                 ),
                 two(
@@ -343,7 +404,7 @@ Future<bool?> showClientDetailsDrawer(BuildContext context,
         builder: (_, _) => AppButton.primary('Save changes', icon: AppIcons.check, expand: ctx.isPhone, loading: s.busy, onPressed: s.loaded && !s.busy ? () => save(ctx) : null),
       ),
     ],
-  ).whenComplete(() => disposeLater([s, name, phone, email, city, goalW, height, weight, notes, ...texts.values]));
+  ).whenComplete(() => disposeLater([s, name, phone, email, city, goalW, height, weight, notes, password, trainer, ...texts.values]));
 }
 
 int _age(DateTime d) {
@@ -354,8 +415,8 @@ int _age(DateTime d) {
 Widget _unit(String u) => Text(u, style: AppText.s(13, W.w6, color: AppColors.muted));
 
 /// Date of birth: a box like the other inputs that opens the date picker (no typing).
-class _DateBox extends StatelessWidget {
-  const _DateBox(this.value, {required this.onPick, this.future = false});
+class ClientDateBox extends StatelessWidget {
+  const ClientDateBox(this.value, {super.key, required this.onPick, this.future = false});
   final DateTime? value;
   final ValueChanged<DateTime> onPick;
 

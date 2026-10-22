@@ -241,6 +241,12 @@ abstract final class AppColors {
   // Content library (`.ct-*`): kind badge on a card, round play button on the hero, article text box, phone
   // category chip count when picked.
   static const ctKbBg = Color(0xEBFFFFFF), ctPlayBtn = Color(0xB3171717), ctTextBg = Color(0xFFFBFBF9), ctChipOnN = Color(0xFFC9C9C4);
+  // Invite links (`.il-*`): link card and preview box, "What she sees" box text, links list.
+  static const ilCard = Color(0xFFF7F7F5), ilExplainFg = Color(0xFF1E3A8A);
+  // Approvals (`.ap-*`): setup pips and ticks, Waiting colours (amber after 1 day, red after 2), empty answers box.
+  static const apOn = Color(0xFF16A34A), apWaitOld = Color(0xFFB45309), apWaitLate = Color(0xFFB91C1C), apEmpty = Color(0xFFFAFAF8);
+  // Trainer load bar in pick lists (`.dr-bar i`).
+  static const drLoad = Color(0xFFC9C9C4);
 }
 
 enum Tone { ok, warn, bad, info, neutral }

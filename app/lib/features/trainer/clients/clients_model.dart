@@ -19,8 +19,15 @@ class McRow {
         onbDone = ((j['onboarding'] as Map?)?['done'] as num?)?.toInt() ?? 0,
         onbTotal = ((j['onboarding'] as Map?)?['total'] as num?)?.toInt() ?? 1,
         next = '${j['next_checkin'] ?? '—'}',
-        lastActive = '${j['last_active'] ?? '—'}';
-  final String id, name, email, phone, initials, color, badge, goal, next, lastActive;
+        lastActive = '${j['last_active'] ?? '—'}',
+        status = '${j['status'] ?? ''}',
+        gender = '${j['gender'] ?? ''}',
+        trainerId = (j['trainer'] as Map?)?['id']?.toString(),
+        trainerName = '${(j['trainer'] as Map?)?['full_name'] ?? ''}',
+        joined = DateTime.tryParse('${j['date_joined'] ?? ''}')?.toLocal();
+  final String id, name, email, phone, initials, color, badge, goal, next, lastActive, status, gender, trainerName;
+  final String? trainerId;
+  final DateTime? joined;
   final int onbDone, onbTotal;
 
   /// `.bar` fill and its caption: "Done", "40%", "Not started" (the account step alone is not a start).

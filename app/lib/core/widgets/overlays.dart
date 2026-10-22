@@ -268,6 +268,7 @@ Future<T?> showAppDrawer<T>(
   List<Widget> Function(BuildContext)? footer,
   Widget? headerAction,
   AppIconData? icon,
+  Widget? leading,
   bool fixedBody = false,
   double? width,
 }) {
@@ -300,7 +301,7 @@ Future<T?> showAppDrawer<T>(
               padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
               decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
               child: Row(spacing: 10, children: [
-                if (icon != null) IconTile(icon, size: 32, radius: 8, iconSize: 17),
+                if (leading != null) leading else if (icon != null) IconTile(icon, size: 32, radius: 8, iconSize: 17),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
                     Text(title, style: AppText.s(15, W.w8, ls: -0.15, h: 1.3)),
