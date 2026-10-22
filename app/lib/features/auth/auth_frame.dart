@@ -326,7 +326,8 @@ class _SoftPanel extends StatelessWidget {
                   child: Text('Workouts, meals and check-ins in one place, made for you by your coach.', style: AppText.s(15, W.w4, color: AppColors.muted, h: 1.5)),
                 ),
                 const SizedBox(height: 4),
-                Row(spacing: 22, children: [
+                // Wraps on a narrow side panel (900 px window) instead of running off the edge.
+                Wrap(spacing: 22, runSpacing: 10, children: [
                   for (final (n, l) in _stats)
                     Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(n, style: AppText.s(20, W.w8, ls: -0.2)),

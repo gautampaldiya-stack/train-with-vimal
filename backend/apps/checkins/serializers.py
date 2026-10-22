@@ -21,7 +21,7 @@ METRICS = {"", "weight", "sleep_hours", "energy", "mood", "hunger", "soreness", 
 
 
 class QuestionSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(required=False)
+    id = serializers.IntegerField(required=False, allow_null=True)
 
     class Meta:
         model = Question
@@ -38,7 +38,8 @@ class QuestionSerializer(serializers.ModelSerializer):
         attrs["text"] = text
         opts = [" ".join(o.split()) for o in attrs.get("options", []) if o and o.strip()]
         if t in CHOICE_TYPES:
-            if len(opts) < 2:
+            # "No" + Other ("Any known food allergies?") is two choices too
+            if len(opts) + (1 if attrs.get("allow_other") else 0) < 2:
                 raise serializers.ValidationError({"options": ["Add at least two options."]})
             if len({o.lower() for o in opts}) != len(opts):
                 raise serializers.ValidationError({"options": ["Two options are the same."]})
@@ -68,15 +69,28 @@ class QuestionSerializer(serializers.ModelSerializer):
 class FormRowSerializer(serializers.ModelSerializer):
     question_count = serializers.IntegerField(read_only=True, source="n_questions", default=0)
     sent_by = serializers.SerializerMethodField()
+    built_in = serializers.SerializerMethodField()
+    has_draft = serializers.SerializerMethodField()
 
     class Meta:
         model = Form
-        fields = ["id", "name", "type", "status", "is_parq", "question_count", "sent_by", "updated_at", "created_at"]
+        fields = ["id", "name", "type", "status", "is_parq", "question_count", "sent_by", "built_in", "has_draft",
+                  "updated_at", "created_at"]
         read_only_fields = ["status", "is_parq"]
 
     def get_sent_by(self, obj):
         names = (self.context.get("senders") or {}).get(obj.id, [])
         return names
+
+    def get_built_in(self, obj):
+        """ "How it is sent" when no automation sends it: how the app asks it (D-50), else ""."""
+        from .library import built_in
+
+        live = self.context.get("live")
+        return built_in(obj, live) if live is not None else ""
+
+    def get_has_draft(self, obj):
+        return obj.draft_questions is not None
 
     def validate_name(self, v):
         v = " ".join(v.split())
@@ -89,6 +103,9 @@ class FormDetailSerializer(FormRowSerializer):
     questions = serializers.SerializerMethodField()
 
     def get_questions(self, obj):
+        """The builder's list: the unpublished draft when there is one (D-50), else the live questions."""
+        if obj.draft_questions is not None:
+            return obj.draft_questions
         return QuestionSerializer([q for q in obj.questions.all() if not q.is_removed], many=True).data
 
     class Meta(FormRowSerializer.Meta):
@@ -105,8 +122,9 @@ class QuestionsSerializer(serializers.Serializer):
     questions = QuestionSerializer(many=True)
 
     def validate_questions(self, v):
-        if len(v) > 60:
-            raise serializers.ValidationError("Up to 60 questions.")
+        # the built-in onboarding questionnaire alone has 57
+        if len(v) > 80:
+            raise serializers.ValidationError("Up to 80 questions.")
         return v
 
 

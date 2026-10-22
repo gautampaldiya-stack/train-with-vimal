@@ -75,13 +75,15 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `clients/<uuid:client_pk>/forms/<str:key>/questions/` | GET, PUT | ClientFormQuestionsView | The per-client editor ("Edit Weekly check-in for Riya"): GET the questions of her copy (or of the master |
 | `clients/<uuid:client_pk>/forms/duplicate/` | POST | ClientFormDuplicateView | Duplicate and edit → Send copy: a new form only for her {source: list key / form: library id, name, |
 | `clients/<uuid:client_pk>/progress/` | GET | ClientProgressView | Client profile → Progress tab (staff): weights, measurements, photo sets. |
-| `forms/` | GET, POST | FormViewSet |  |
-| `forms/<pk>/` | GET, PUT, PATCH, DELETE | FormViewSet |  |
+| `forms/` | GET, POST | FormViewSet | Library forms (`tab=archived`, `type`, `search`). Rows: question_count, sent_by (automations), built_in (how the app asks it, D-50), has_draft. POST {name, type, start: template / blank}. |
+| `forms/<pk>/` | GET, PUT, PATCH, DELETE | FormViewSet | GET: the builder: questions (the draft when there is one), sent_by, built_in, stats {sent, answered, rate, latest} this month (D-50). PATCH name / type. DELETE soft (Undo = restore/). |
 | `forms/<pk>/answers/` | GET | FormViewSet |  |
 | `forms/<pk>/archive/` | POST | FormViewSet |  |
 | `forms/<pk>/duplicate/` | POST | FormViewSet |  |
-| `forms/<pk>/publish/` | POST | FormViewSet |  |
-| `forms/<pk>/questions/` | GET, PUT | FormViewSet |  |
+| `forms/<pk>/draft/` | POST | FormViewSet | Move back to draft: start a draft of a published form; clients keep the live questions (D-50). |
+| `forms/<pk>/discard/` | POST | FormViewSet | Throw the draft away (Undo of Move back to draft). |
+| `forms/<pk>/publish/` | POST | FormViewSet | Writes the draft into the questions and publishes; returns the detail. |
+| `forms/<pk>/questions/` | GET, PUT | FormViewSet | PUT the whole list (≤ 80). On a published form it is saved as the draft (D-50); onboarding questions with a profile_key keep their type and options. |
 | `forms/<pk>/restore/` | POST | FormViewSet |  |
 | `forms/<pk>/unarchive/` | POST | FormViewSet |  |
 | `forms/counts/` | GET | FormViewSet |  |

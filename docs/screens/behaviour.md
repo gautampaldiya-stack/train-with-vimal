@@ -589,7 +589,9 @@ Mock forms: New client questionnaire (15 q) · PAR-Q health screening (7) · Wee
 
 ### 2.16 Form builder — `FormBuilder` / `FormBuilderMobile`
 
-Header: form naam, 3-dot (`Rename` · `Duplicate` · `Archive form` · `Delete`), `Preview` (outline), `Publish` (primary).
+Header: form naam + status, 3-dot (`Duplicate form` · `Move back to draft` · `Archive form`, board jaisa), `Preview` (outline), `Publish` (primary, sirf Draft par).
+
+**Built (D-50):** har change turant save hota hai. Published form ka change **draft** me rehta hai (badge Draft + Publish) — clients ko purana version milta hai jab tak Publish na ho. `Move back to draft` ka Undo draft hata deta hai. Onboarding ke jo sawal profile field bharte hain (New client questionnaire) unka sirf text, help aur Required badalta hai; type aur options wahi rehte hain. "How it is sent": automation, warna app ka apna tareeka (*Client setup · asked at sign-up*, *Client app · every week, due Sunday 6 pm*, *Client app · every day*), warna *Sent by hand*. Answers so far is mahine ke; hint "…under Forms" (client profile ka tab Forms hai).
 
 **Question list** — har question card pe number, text, type, `Required` badge, aur choice type pe *"5 options + Other"*.
 

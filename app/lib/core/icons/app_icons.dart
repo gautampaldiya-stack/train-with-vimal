@@ -175,4 +175,16 @@ abstract final class AppIcons {
   static const swapBoth = Ic.i042f6e; // row menu: Move clients to another trainer
   static const deactivate = Ic.i844c55; // row menu: Deactivate
   static const power = Ic.i363ffe; // row menu: Reactivate
+
+  // Forms & check-ins / Form builder (D-50): answer types, drag handle, Move up, Archive
+  static const qShort = Ic.id4d98f;
+  static const qLong = Ic.ic91d4c;
+  static const qNumber = Ic.if9d295;
+  static const qSingle = Ic.i9f3604;
+  static const qMulti = Ic.i8ff8e2;
+  static const qScale = Ic.i69f218;
+  static const qDropdown = Ic.i83a7a6;
+  static const dragDots = Ic.i03db81;
+  static const chevronUpAlt = Ic.i35b43a;
+  static const formArchive = Ic.if60d32;
 }

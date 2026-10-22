@@ -18,7 +18,7 @@ from apps.common.mixins import SoftDeleteViewMixin
 from apps.common.pagination import TimelineCursorPagination
 from apps.common.permissions import IsClient, IsStaff
 
-from . import services
+from . import library, services
 from .defaults import TEMPLATES
 from .queue import REVIEW_TYPES, review_queue, staff_submissions
 from .models import Form, FormRequest, Measurement, PhotoSet, ProgressPhoto, Question, Submission, WeightLog
@@ -92,11 +92,20 @@ class FormViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
 
     def get_serializer_context(self):
         ctx = super().get_serializer_context()
-        if self.action == "list":
+        if self.action in ("list", "retrieve", "duplicate"):
             import uuid
 
             ctx["senders"] = {uuid.UUID(str(k)): v for k, v in _senders().items()}
+            ctx["live"] = library.live_ids()
         return ctx
+
+    def retrieve(self, request, *args, **kwargs):
+        """The builder: the form (its draft questions when it has one), how it is sent and Answers so far."""
+        f = self.get_object()
+        ctx = self.get_serializer_context()
+        data = FormDetailSerializer(f, context=ctx).data
+        data["stats"] = library.form_stats(f, request.user, ctx["live"])
+        return Response(data)
 
     @action(detail=False)
     def counts(self, request):
@@ -124,48 +133,48 @@ class FormViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
         if request.method == "PUT":
             s = QuestionsSerializer(data=request.data)
             s.is_valid(raise_exception=True)
-            with transaction.atomic():
-                keep = []
-                for i, qd in enumerate(s.validated_data["questions"]):
-                    q = f.questions.filter(id=qd.get("id")).first() if qd.get("id") else None
-                    q = q or Question(form=f)
-                    for k, v in qd.items():
-                        if k != "id":
-                            setattr(q, k, v)
-                    q.order = i
-                    q.save()
-                    keep.append(q.id)
-                gone = f.questions.exclude(id__in=keep)
-                # questions with answers are kept off the form (answers stay readable) instead of deleted
-                from .models import Answer
-
-                answered = set(Answer.objects.filter(question__in=gone).values_list("question_id", flat=True))
-                gone.exclude(id__in=answered).delete()
-                Question.objects.filter(id__in=answered).update(is_removed=True, order=999)
-                f.save(update_fields=["updated_at"])
+            # a published form keeps the change as a draft until Publish (D-50)
+            library.save_builder(f, [dict(q) for q in s.validated_data["questions"]])
             f = self.get_queryset().get(id=f.id)
         return Response(FormDetailSerializer(f).data)
 
     @action(detail=True, methods=["post"])
     def publish(self, request, pk=None):
         f = self.get_object()
-        if not f.questions.filter(is_removed=False).exists():
+        if not library.shown_questions(f):
             raise serializers.ValidationError("Add at least one question first.")
-        f.status = Form.Status.PUBLISHED
-        f.save(update_fields=["status", "updated_at"])
-        return Response(FormRowSerializer(f).data)
+        library.publish(f)
+        activity_log("published a form", "checkin", actor=request.user, target=f, target_label=f.name)
+        return Response(FormDetailSerializer(self.get_queryset().get(id=f.id)).data)
+
+    @action(detail=True, methods=["post"])
+    def draft(self, request, pk=None):
+        """ "Move back to draft": start a draft of a published form; clients keep the live questions."""
+        f = self.get_object()
+        if f.status != Form.Status.PUBLISHED:
+            raise serializers.ValidationError("Only a published form can go back to draft.")
+        library.to_draft(f)
+        return Response(FormDetailSerializer(self.get_queryset().get(id=f.id)).data)
+
+    @action(detail=True, methods=["post"])
+    def discard(self, request, pk=None):
+        """Undo of "Move back to draft" (and of a draft's changes): back to the live questions."""
+        f = self.get_object()
+        library.discard_draft(f)
+        return Response(FormDetailSerializer(self.get_queryset().get(id=f.id)).data)
 
     @action(detail=True, methods=["post"])
     def duplicate(self, request, pk=None):
         src = self.get_object()
         with transaction.atomic():
             f = Form.objects.create(name=f"{src.name} (copy)"[:120], type=src.type, created_by=request.user)
+            # the copy starts from what the builder shows (the draft when there is one)
             Question.objects.bulk_create([
-                Question(form=f, order=q.order, text=q.text, type=q.type, options=q.options,
-                         scale_labels=q.scale_labels, allow_other=q.allow_other, help_text=q.help_text,
-                         required=q.required, metric=q.metric, profile_key=q.profile_key)
-                for q in src.questions.filter(is_removed=False)])
-        return Response(FormRowSerializer(f).data, status=201)
+                Question(form=f, order=i, profile_key=d.get("profile_key", ""),
+                         **{k: d[k] for k in library.Q_FIELDS if k in d})
+                for i, d in enumerate(library.shown_questions(src))])
+        f = self.get_queryset().get(id=f.id)
+        return Response(FormRowSerializer(f, context=self.get_serializer_context()).data, status=201)
 
     @action(detail=True, methods=["post"])
     def archive(self, request, pk=None):

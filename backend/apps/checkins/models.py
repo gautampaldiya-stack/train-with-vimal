@@ -36,6 +36,9 @@ class Form(SoftDeleteModel):
     master = models.ForeignKey("self", null=True, blank=True, on_delete=models.SET_NULL, related_name="copies")
     # A client's weekly check-in copy with this off = "Stop sending" (her app shows no weekly check-in).
     sending = models.BooleanField(default=True)
+    # Builder changes to a published form wait here until Publish (D-50): clients keep getting the live questions.
+    # A list of question dicts (QuestionSerializer shape, `id` kept for questions that already exist); None = no draft.
+    draft_questions = models.JSONField(null=True, blank=True)
 
     class Meta:
         ordering = ["-updated_at"]

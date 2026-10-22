@@ -6,6 +6,8 @@ import '../core/leave/leave_guard.dart';
 import '../core/widgets/button.dart';
 import '../core/widgets/card.dart';
 import '../core/widgets/overlays.dart';
+import '../features/admin/forms/form_builder_screen.dart';
+import '../features/admin/forms/forms_screen.dart';
 import '../features/admin/dashboard/admin_dashboard_screen.dart';
 import '../features/admin/approvals/approvals_screen.dart';
 import '../features/admin/more/admin_more_screen.dart';
@@ -168,6 +170,9 @@ final Map<String, Widget Function(GoRouterState)> adminScreens = {
   // Dashboard → Check-ins to review: the trainer page over every client (no Check-ins board for the admin, D-49).
   '/checkins': (_) => const TrainerCheckinsScreen(),
   '/checkins/:id': (st) => TrainerCheckinsScreen(id: st.pathParameters['id']),
+  // Forms & check-ins and the Form builder (D-50)
+  '/forms': (_) => const FormsScreen(),
+  '/forms/:id': (st) => FormBuilderScreen(key: ValueKey('form-${st.pathParameters['id']}'), id: st.pathParameters['id']!),
   for (final k in ['/programs', '/programs/:id', '/nutrition', '/nutrition/:id', '/habits', '/exercises', '/exercises/:id', '/content', '/content/:id'])
     k: trainerScreens[k]!,
 };

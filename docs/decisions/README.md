@@ -52,4 +52,5 @@ One file per decision. Add a new file for every new decision (next number), and 
 | [D-47](0047-admin-clients-and-approvals.md) | Admin Clients and Approvals: one Clients page for both roles, admin profile extras (password, change trainer), Add client, invite links, Approvals with review drawer | 2026-10-22 |
 | [D-48](0048-admin-trainers-calendar-activity.md) | Admin Trainers, Trainer profile, team Calendar and Activity log: reuse of My profile and trainer Calendar with an admin mode, `?tab=` routes, list filters never touch a trainer's own routes | 2026-10-22 |
 | [D-49](0049-client-forms-from-coach.md) | Client fills the forms the coach sends (Check-ins cards + `/checkins/forms/<id>`), admin Check-ins reuse, notification links fixed, PAR-Q stays a Forms form | 2026-10-22 |
+| [D-50](0050-admin-forms-and-builder.md) | Admin Forms & check-ins and Form builder: real DB forms (new onboarding questions), drafts on a published form until Publish, how it is sent, answers so far | 2026-10-22 |
 | [D-31](0031-trainer-activity-and-fixes.md) | Trainer Activity card, stat cards fill the row, menus fit the screen, readable guides | 2026-10-16 |

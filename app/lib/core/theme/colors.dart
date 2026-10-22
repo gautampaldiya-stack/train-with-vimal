@@ -237,6 +237,8 @@ abstract final class AppColors {
     (Color(0xFFF1EAFE), Color(0xFF5B21B6)),
   ];
   static const hbOnLine = Color(0xFFD5E1FB), hbDot = Color(0xFFD97706), hbSaveBg = Color(0xFFFBFBF9), hbPhone = Color(0xFFF4F4F1);
+  // Forms & check-ins (D-50): `.fm-send` / `.fm-au` bolt, `.fm-drag` handle
+  static const fmBolt = Color(0xFFB45309), fmDrag = Color(0xFFC4C4BE);
   static const hbDoneLine = Color(0xFFBFE5CF), hbIcoHover = Color(0xFFBDBDB6), hbDayOff = Color(0xFFB5B5B0);
   // Content library (`.ct-*`): kind badge on a card, round play button on the hero, article text box, phone
   // category chip count when picked.

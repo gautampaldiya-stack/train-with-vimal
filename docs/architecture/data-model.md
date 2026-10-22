@@ -216,6 +216,7 @@ Tasks card on the trainer dashboard (from automations or added by hand).
 | `client` | ForeignKey | → User; optional; indexed |
 | `master` | ForeignKey | → Form; optional; indexed |
 | `sending` | BooleanField |  |
+| `draft_questions` | JSONField | optional; builder changes to a published form, kept until Publish (D-50) |
 
 ### Question
 

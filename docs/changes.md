@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-22 · Admin Forms & check-ins and Form builder (built)
+- **Pehle:** Admin ke `Forms & check-ins` aur form builder holding page the. Builder me har change seedha clients tak jata; "Move back to draft" karne se weekly check-in hi band ho jata (app sirf published form leta hai). Onboarding form me board ke purane 15 sawal the.
+- **Ab:** `/forms`: asli forms (New client questionnaire ke 57 naye sawal jo app sign-up par poochta hai, PAR-Q bhi), search, Form type dropdown, All / Archived, kaise bheja jata hai, status, ⋯ (Edit questions, Preview, Duplicate, Archive / Restore, Delete + Undo), Create form modal. `/forms/<id>` builder: Add question (9 type), editor, drag / Move up / down, Duplicate, Delete + Undo, Preview (bhar ke dekh sakte), Form details (naam, type, kaise bheja jata), Answers so far. Published form ka change draft me rehta hai jab tak Publish na karo; clients ko purana version milta rehta hai. Profile field bharne wale onboarding sawal ka sirf text / help / Required badalta hai.
+- **Kyun:** Gautam: "jesa pehle tumne kaha vesa karte hai ok... ab banao..sab ache se"; onboarding ke naye sawal hi dikhane hain.
+- **Updated:** backend apps/checkins (library.py new, views.py, serializers.py, models.py, migration 0007), tests/test_forms_library.py, app/lib/features/admin/forms/ (new), app/lib/app/router.dart, app_icons.dart, colors.dart, app/lib/features/auth/auth_frame.dart (login stats wrap at 900), docs · Decision D-50
+
 ### 2026-10-22 · Client fills forms the coach sends (built)
 - **Pehle:** Coach ka bheja form (Monthly feedback, Liability waiver, PAR-Q, apna form) client ke app me kahin nahi dikhta tha aur bharne ka page nahi tha. Notification `/checkins` par le jaati thi. Bhara hua form dobara bheja ja sakta tha, aur Undo ke baad form "bhara hua" hi rehta tha.
 - **Ab:** Check-ins par har form ka card (To fill, sawal kitne aur kitna time, chips, draft bar + Continue form; bhara hua 14 din tak green Sent). Form page `/checkins/forms/<id>`: ek page ek sawal, har type, review + Edit, Send to Aman (offline bhi), sent card, Undo (form wapas To fill). Notification seedha form kholti hai. Naya endpoint `me/forms/<id>/`, `me/checkins/` me `forms`. Design example Monthly feedback; PAR-Q onboarding me nahi, Forms ka form hi rahega.
