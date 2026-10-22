@@ -12,6 +12,7 @@ import '../../core/widgets/client.dart';
 import '../../core/widgets/overlays.dart';
 import 'account_widgets.dart';
 import 'auth_frame.dart';
+import '../../core/widgets/tooltip.dart';
 
 /// We explain first, then the phone / browser asks (boards `ClientPermissions`, `ClientPermissionsWeb`).
 ///
@@ -268,7 +269,7 @@ class _When extends StatelessWidget {
           height: 26,
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(99)),
-          child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w7, color: AppColors.text2, h: 1.2)),
+          child: CutText(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w7, color: AppColors.text2, h: 1.2)),
         ),
       );
 }

@@ -32,14 +32,16 @@ ALIASES = {
     "diet": ["diet", "main_category", "type", "veg/non-veg"],
     "source": ["source", "data_source"],
 }
-GROUP_MAP = {"grains": "carbs", "cereals": "carbs", "egg": "protein", "eggs": "protein", "meat": "protein",
-             "pulses": "protein", "legumes": "protein", "chicken": "protein", "fish": "protein", "seafood": "protein",
-             "fats": "fats", "fruits": "fruits", "dairy": "dairy", "non-veg": "indian", "dishes": "indian", "beverages": "beverages",
-             "vegetables": "veg", "fruit": "fruits", "milk": "dairy", "nuts": "fats", "oils": "fats"}
+# Only a category that is one of the library's groups (or the same word) lands in that group. Anything else
+# (Grains, Egg, Legumes, Snacks...) goes to Other and keeps its own name (Gautam, 22 Oct: no silent matching).
+GROUP_MAP = {"protein": "protein", "carbs": "carbs", "carb": "carbs", "carbohydrates": "carbs", "fats": "fats",
+             "fat": "fats", "veg": "veg", "vegetable": "veg", "vegetables": "veg", "fruits": "fruits",
+             "fruit": "fruits", "dairy": "dairy", "indian": "indian", "indian dishes": "indian",
+             "beverages": "beverages", "beverage": "beverages", "other": "other"}
 DIET_MAP = {"vegetarian": "veg", "veg": "veg", "non-vegetarian": "nonveg", "non-veg": "nonveg", "nonveg": "nonveg",
             "dairy": "veg", "egg": "egg", "eggetarian": "egg", "vegan": "vegan"}
 PLAIN_RE = re.compile(r"^\s*[\d.]+\s*(g|gm|grams?|ml)\s*$", re.I)  # "100 g" is not a unit
-UNIT_RE = re.compile(r"^(?P<name>.+?)\s*\((?P<g>[\d.]+)\s*g\)\s*$")
+UNIT_RE = re.compile(r"^(?P<name>.+?)\s*\((?P<g>[\d.]+)\s*(g|gm|grams?|ml)\)\s*$", re.I)
 
 
 def _norm(h):
@@ -126,17 +128,24 @@ def check(f, *, user):
                 egg_rows += 1
             unit = None
             m = UNIT_RE.match(str(cell("portion") or ""))
+            serving_g = None
             if m:
-                unit = {"name": m.group("name").strip()[:40], "grams": float(m.group("g"))}
+                uname = m.group("name").strip()[:40]
+                if re.fullmatch(r"[\d.]+", uname):  # "1 (150 g)" → "1 piece"
+                    uname = f"{uname} piece"
+                unit = {"name": uname, "grams": float(m.group("g"))}
+            elif cell("portion") and PLAIN_RE.match(str(cell("portion"))):
+                serving_g = float(portion)  # "100 g": the default serving is that many grams
             elif cell("portion") and not PLAIN_RE.match(str(cell("portion"))):
                 unit = {"name": str(cell("portion")).strip()[:40], "grams": float(portion)}
             key = name.lower()
             row.update({
                 "per100": per100, "calc_kcal": round(calc), "kcal_differs": abs(calc - per100["kcal"]) > max(
                     15, 0.1 * per100["kcal"]) and any(k in per100 for k in ("protein", "carbs", "fat")),
-                "diet_raw": diet_raw, "group_raw": group_raw, "is_egg": is_egg, "unit": unit,
+                "diet_raw": diet_raw, "group_raw": group_raw, "group_label": " ".join(str(cell("group") or "").split())[:40], "is_egg": is_egg, "unit": unit,
                 "existing": str(existing[key]) if key in existing else None,
                 "dupe_in_file": key in seen, "source": str(cell("source") or "").strip()[:40],
+                "serving_g": serving_g,
             })
             seen.add(key)
         out.append(row)
@@ -183,7 +192,9 @@ def run(job, *, duplicates="skip", kcal_choice=None, eggs_eggetarian=True, group
         group = group_map.get(r["group_raw"], "other") if r["group_raw"] else "other"
         if group not in FOOD_GROUPS:
             group = "other"
-        fields = dict(kcal=min(Decimal(str(kcal)), Decimal(900)), diet=diet, group=group,
+        # a sheet category with no group of its own goes to Other and keeps its name ("Snacks")
+        category = r.get("group_label", "") if group == "other" and r.get("group_raw") not in (None, "", "other") else ""
+        fields = dict(kcal=min(Decimal(str(kcal)), Decimal(900)), diet=diet, group=group, category=category,
                       **{k: Decimal(str(p[k])) for k in ("protein", "carbs", "fat", "fibre", "sodium_mg", "iron_mg",
                                                          "calcium_mg", "potassium_mg") if k in p})
         if r["existing"] and duplicates == "skip":
@@ -202,6 +213,9 @@ def run(job, *, duplicates="skip", kcal_choice=None, eggs_eggetarian=True, group
                                        source_note=r.get("source") or "Excel",
                                        created_by=user, **fields)
             created.append(food.id)
+        if r.get("serving_g") and not r.get("unit") and food.default_unit_id is None:
+            food.default_quantity = Decimal(str(r["serving_g"]))
+            food.save(update_fields=["default_quantity"])
         if r.get("unit"):
             unit, _ = FoodUnit.objects.get_or_create(food=food, name=r["unit"]["name"],
                                                      defaults={"grams": Decimal(str(r["unit"]["grams"]))})

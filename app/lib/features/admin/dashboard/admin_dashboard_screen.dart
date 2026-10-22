@@ -99,10 +99,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   /// Phone `.top`: title and the buttons on one line, the date line under both (2 lines max).
   Widget _phoneTop(AdminHome d) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 2, children: [
         Row(spacing: 10, children: [
-          Expanded(child: Text(d.greeting, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.h1.copyWith(fontSize: 17))),
+          Expanded(child: CutText(d.greeting, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.h1.copyWith(fontSize: 17))),
           Row(mainAxisSize: MainAxisSize.min, spacing: 8, children: _actions(d)),
         ]),
-        Text(d.subline, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.sub.copyWith(fontSize: 12, height: 1.4)),
+        CutText(d.subline, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.sub.copyWith(fontSize: 12, height: 1.4)),
       ]);
 
   void _addClient() => context.go('/clients?add=1');
@@ -196,8 +196,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   padding: const EdgeInsets.fromLTRB(8, 8, 8, 9),
                   decoration: BoxDecoration(border: i == 0 ? null : const Border(left: BorderSide(color: AppColors.line))),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                    Text(s.$3, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(16, W.w8, h: 1.2, tabular: true)),
-                    Text(s.$2, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(10.5, W.w6, color: AppColors.muted, h: 1.25)),
+                    CutText(s.$3, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(16, W.w8, h: 1.2, tabular: true)),
+                    CutText(s.$2, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(10.5, W.w6, color: AppColors.muted, h: 1.25)),
                   ]),
                 ),
               ),
@@ -258,8 +258,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 _GlIcon(g),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(g.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w7)),
-                    Text(g.sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w5, color: g.warn ? AppColors.warnText : AppColors.muted)),
+                    CutText(g.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w7)),
+                    CutText(g.sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w5, color: g.warn ? AppColors.warnText : AppColors.muted)),
                   ]),
                 ),
                 Text('${g.n}', style: AppText.s(17, W.w8, tabular: true)),
@@ -410,7 +410,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           child: _cells([
             Row(spacing: 10, children: [
               _Av(t.name, t.initials, t.color),
-              Flexible(child: Text(t.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
+              Flexible(child: CutText(t.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
             ]),
             Text(t.load, style: t.over ? AppText.s(13.5, W.w7, color: AppColors.badText, tabular: true) : AppText.s(13.5, W.w5, tabular: true)),
             Row(spacing: 8, children: [
@@ -431,8 +431,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             _Av(t.name, t.initials, t.color),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                Text(t.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w7)),
-                Text.rich(
+                CutText(t.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w7)),
+                CutText.rich(
                   TextSpan(children: [
                     TextSpan(text: t.load, style: t.over ? AppText.s(12.5, W.w7, color: AppColors.badText) : null),
                     TextSpan(text: ' clients · Avg reply ${t.replyLabel}'),
@@ -562,7 +562,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       child: Row(spacing: 10, children: [
                         _Av(a.who, a.initials, a.color),
                         Expanded(
-                          child: Text.rich(
+                          child: CutText.rich(
                             TextSpan(children: [TextSpan(text: a.who, style: AppText.s(13, W.w7)), TextSpan(text: ' ${a.what}')]),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -616,10 +616,10 @@ class _GlTile extends StatelessWidget {
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('${g.n}', style: AppText.s(18, W.w8, h: 1.15, tabular: true)),
-                  Text(g.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w7)),
+                  CutText(g.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w7)),
                   Padding(
                     padding: const EdgeInsets.only(top: 1),
-                    child: Text(g.sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w5, color: g.warn ? AppColors.warnText : AppColors.muted)),
+                    child: CutText(g.sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w5, color: g.warn ? AppColors.warnText : AppColors.muted)),
                   ),
                 ]),
               ),
@@ -674,7 +674,7 @@ class _NameLink extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Hover(
         onTap: onTap,
-        builder: (_, h, _) => Text(name,
+        builder: (_, h, _) => CutText(name,
             maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.rowTitle.copyWith(decoration: h ? TextDecoration.underline : null)),
       );
 }
@@ -773,8 +773,8 @@ class _ClientSearchState extends State<_ClientSearch> {
                   _Av('${r['full_name']}', '${r['initials'] ?? ''}', '${r['avatar_color'] ?? 'c1'}'),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                      Text('${r['full_name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.rowTitle),
-                      Text(
+                      CutText('${r['full_name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.rowTitle),
+                      CutText(
                         [if ((r['trainer'] as Map?)?['full_name'] != null) '${(r['trainer'] as Map)['full_name']}', '${r['email'] ?? r['phone'] ?? ''}']
                             .where((s) => s.isNotEmpty)
                             .join(' · '),

@@ -14,6 +14,7 @@ import '../../../core/widgets/responsive.dart';
 import '../../auth/sheets.dart' show gymInfo, prettyPhone;
 import '../progress/progress_screen.dart' show pxLoading;
 import 'more_parts.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// About (boards `ClientAbout` phone and `ClientAboutWeb`): the app card with the version, the head coach,
 /// contact rows and the app rows (What's new, Rate the app, Terms, Privacy, Open-source licences).
@@ -131,7 +132,7 @@ class _ClientAboutScreenState extends State<ClientAboutScreen> {
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
             Text('About', style: AppText.s(21, W.w8, h: 1.2)),
-            Text('${_s('name')} · Version $appVersion', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted)),
+            CutText('${_s('name')} · Version $appVersion', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted)),
           ]),
         ),
       ]);
@@ -205,7 +206,7 @@ class _ClientAboutScreenState extends State<ClientAboutScreen> {
                 decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(12)),
                 child: Column(spacing: 1, children: [
                   FittedBox(fit: BoxFit.scaleDown, child: Text(v, style: AppText.s(19, W.w8, color: AppColors.accentText, h: 1.2))),
-                  Text(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11, W.w6, color: AppColors.text2)),
+                  CutText(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11, W.w6, color: AppColors.text2)),
                 ]),
               ),
             ),

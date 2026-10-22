@@ -4,6 +4,7 @@ import '../icons/app_icons.dart';
 import '../theme/theme.dart';
 import 'hover.dart';
 import 'overlays.dart';
+import 'tooltip.dart';
 
 /// `.select` 36 high, full width: the value and a chevron; opens the entries as a menu the width of the box
 /// (an action sheet on a phone).
@@ -32,7 +33,7 @@ class AppSelect extends StatelessWidget {
             child: Row(spacing: 8, children: [
               if (icon != null) AppIcon(icon!, size: 15, color: AppColors.text2),
               if (lead != null) Text(lead!, style: AppText.s(13.5, W.w5, color: AppColors.muted)),
-              Expanded(child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w6))),
+              Expanded(child: CutText(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w6))),
               const AppIcon(AppIcons.chevronDown, size: 16, color: AppColors.muted),
             ]),
           ),

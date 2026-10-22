@@ -16,6 +16,7 @@ import '../home/home_model.dart' show clock, dayShort;
 import '../progress/progress_model.dart' show pxAmt, pxDm;
 import 'checkins_model.dart';
 import 'checkins_parts.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Weekly check-in (board ClientCheckin, `isWeekly`): one question a page, a review page, then
 /// "Week N check-in sent". Answers are kept as a draft on the phone until it is sent.
@@ -480,7 +481,7 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
           ),
           child: AppIcon(has ? AppIcons.check : AppIcons.camera, size: 17, color: has ? AppColors.white : AppColors.text2, stroke: has ? 2.6 : 1.8),
         ),
-        Text(
+        CutText(
           name,
           textAlign: TextAlign.center,
           maxLines: 1,

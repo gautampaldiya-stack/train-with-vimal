@@ -13,6 +13,7 @@ import 'cp_common.dart';
 import 'cp_logs_parts.dart';
 import 'cp_model.dart';
 import 'cp_progress_photos.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Client profile → Progress tab (board `TrainerClientProfile` Progress): 4 change cards (weight, waist, body fat,
 /// the lift that went up most), the Weight chart with the range picker, Measurements with a Change row (left);
@@ -201,7 +202,7 @@ class _CpProgressTabState extends State<CpProgressTab> {
         decoration: BoxDecoration(color: AppColors.card, borderRadius: AppRadius.all(AppRadius.card), border: Border.all(color: AppColors.line)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, spacing: 6, children: [
           Row(mainAxisSize: MainAxisSize.min, spacing: 12, children: [
-            Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w5, color: AppColors.text2))),
+            Flexible(child: CutText(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w5, color: AppColors.text2))),
             if (delta != null) AppBadge(delta, plain: true, tone: good == null ? Tone.neutral : (good ? Tone.ok : Tone.warn)),
           ]),
           Text.rich(TextSpan(children: [

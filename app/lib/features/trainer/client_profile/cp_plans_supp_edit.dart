@@ -246,7 +246,7 @@ class _SupplementEditorState extends State<SupplementEditor> {
       Expanded(
         child: r['new'] == true
             ? _Cell(key: ValueKey('n${rows.indexOf(r)}$_gen'), value: '${r['name']}', placeholder: 'Supplement name', onChanged: (v) => _change(() => r['name'] = v))
-            : Text('${r['name']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
+            : CutText('${r['name']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
       ),
     ]);
   }

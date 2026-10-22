@@ -119,7 +119,7 @@ class CpPlansChart extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8),
       alignment: Alignment.centerLeft,
       decoration: BoxDecoration(color: bg, borderRadius: AppRadius.all(6)),
-      child: Text('${b['label']}', maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: AppText.s(11.5, W.w7, color: fg, h: 1)),
+      child: CutText('${b['label']}', maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: AppText.s(11.5, W.w7, color: fg, h: 1)),
     );
     if (status == 'next') box = CustomPaint(foregroundPainter: const CpDashedBox(AppColors.accent, radius: 6), child: box);
     return Positioned(left: left, top: top, child: AppTooltip(message: '${b['tip'] ?? b['label']}', child: box));

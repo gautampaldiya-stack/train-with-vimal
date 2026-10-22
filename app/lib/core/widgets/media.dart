@@ -10,6 +10,7 @@ import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 import '../icons/app_icons.dart';
 import '../theme/theme.dart';
 import 'hover.dart';
+import 'tooltip.dart';
 
 /// Videos and pictures shown in the app (Library items, exercise guide): an in-app player with a seek bar and
 /// full screen, and a full-screen picture viewer with pinch zoom and paging.
@@ -185,7 +186,7 @@ class _VideoFace extends StatelessWidget {
                     decoration: BoxDecoration(color: AppColors.white.withValues(alpha: .85), borderRadius: AppRadius.all(99)),
                     child: Row(mainAxisSize: MainAxisSize.min, spacing: 6, children: [
                       AppIcon(AppIcons.video, size: 13, color: AppColors.text),
-                      Flexible(child: Text(label(), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w7, h: 1))),
+                      Flexible(child: CutText(label(), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w7, h: 1))),
                     ]),
                   ),
                   ),
@@ -487,7 +488,7 @@ class _PdfViewerState extends State<_PdfViewer> {
               padding: const EdgeInsets.fromLTRB(14, 10, 12, 10),
               child: Row(spacing: 10, children: [
                 Expanded(
-                  child: Text([if (widget.title != null) widget.title!, if (pages > 0) 'Page $page of $pages'].join(' · '),
+                  child: CutText([if (widget.title != null) widget.title!, if (pages > 0) 'Page $page of $pages'].join(' · '),
                       maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7, color: AppColors.white)),
                 ),
                 if (pages > 1) ...[
@@ -593,7 +594,7 @@ class _ImageViewerState extends State<_ImageViewer> {
             top: 10,
             child: Row(spacing: 10, children: [
               Expanded(
-                child: Text(
+                child: CutText(
                   [if (widget.title != null) widget.title!, if (n > 1) '${i + 1} / $n'].join(' · '),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

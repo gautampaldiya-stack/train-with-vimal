@@ -34,6 +34,7 @@ class Food(SoftDeleteModel):
     brand = models.CharField(max_length=80, blank=True, default="")
     diet = models.CharField(max_length=6, choices=Diet.choices, default=Diet.VEG, db_index=True)
     group = models.CharField(max_length=30, default="other", db_index=True)
+    category = models.CharField(max_length=40, blank=True, default="")  # own name when group is "other" ("Snacks")
     source = models.CharField(max_length=10, choices=Source.choices, default=Source.TEAM, db_index=True)
     source_note = models.CharField(max_length=40, blank=True, default="")  # "IFCT"
     owner_client = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.CASCADE,

@@ -12,6 +12,7 @@ import '../../../core/widgets/responsive.dart';
 import 'home_model.dart';
 import 'home_parts.dart';
 import 'home_sheets.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Client Home (boards `ClientHome` phone and `ClientHomeWeb`). Phone: one column of cards over
 /// the bottom tabs. Wider: the web panel with two columns (one column while the panel is narrow).
@@ -115,7 +116,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
           height: 44,
           child: Row(spacing: 8, children: [
             Expanded(
-              child: Text('${dayShort(d.date)}${d.week != null && d.weeks != null ? ' · Week ${d.week} of ${d.weeks}' : ''}',
+              child: CutText('${dayShort(d.date)}${d.week != null && d.weeks != null ? ' · Week ${d.week} of ${d.weeks}' : ''}',
                   maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.homeHeroSub)),
             ),
             Semantics(
@@ -150,7 +151,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
           child: Row(crossAxisAlignment: CrossAxisAlignment.end, spacing: 8, children: [
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Hey ${d.firstName}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(28, W.w8, ls: -0.56, color: AppColors.white, h: 1.2)),
+                CutText('Hey ${d.firstName}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(28, W.w8, ls: -0.56, color: AppColors.white, h: 1.2)),
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: Text('$line1$line2', style: AppText.s(13, W.w4, color: AppColors.homeHeroSub, h: 1.45)),
@@ -684,7 +685,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 2, children: [
           Row(spacing: 8, children: [
-            Flexible(child: Text(h.name, style: AppText.s(14, W.w7), overflow: TextOverflow.ellipsis)),
+            Flexible(child: CutText(h.name, style: AppText.s(14, W.w7), overflow: TextOverflow.ellipsis)),
             if (met) const ChOk('Done', icon: true),
           ]),
           Text(line, style: AppText.s(12, W.w4, color: AppColors.muted)),

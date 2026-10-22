@@ -18,6 +18,7 @@ import 'cp_forms_editor.dart';
 import 'cp_forms_print.dart';
 import 'cp_forms_send.dart';
 import 'cp_model.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Client profile → Forms tab (`clients/<id>/forms/`). Left: "Forms · N forms for Riya · copies of the master
 /// forms" with Send a form and one row per form (Done / Signed / Waiting / Recurring). Right: the selected form —
@@ -275,8 +276,8 @@ class _CpFormsTabState extends State<CpFormsTab> {
           cpIcon(r['icon'] == 'calendar' ? AppIcons.calendar : AppIcons.clipboard, size: 30),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-              Text('${r['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.rowTitle),
-              Text('${r['sub']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.rowSub),
+              CutText('${r['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.rowTitle),
+              CutText('${r['sub']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.rowSub),
             ]),
           ),
           AppBadge('${r['status_label']}', tone: _tone('${r['status']}')),

@@ -16,6 +16,7 @@ import '../home/home_model.dart' show inNum, mealTime;
 import '../train/train_parts.dart' show TwoTabs;
 import 'food_model.dart';
 import 'food_parts.dart';
+import '../../../core/widgets/tooltip.dart';
 import 'food_sheets.dart' show fdError;
 
 /// Log food (boards `ClientFoodLog` phone and `ClientFoodLogWeb`, route `/food/log?meal=`): search the coach's
@@ -396,7 +397,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
             child: Hover(
               onTap: () => _mealMenu(bc),
               builder: (_, h, _) => Row(mainAxisSize: MainAxisSize.min, spacing: 6, children: [
-                Flexible(child: Text('Add to $meal', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(20, W.w8, color: h ? AppColors.accentText : AppColors.text))),
+                Flexible(child: CutText('Add to $meal', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(20, W.w8, color: h ? AppColors.accentText : AppColors.text))),
                 const AppIcon(AppIcons.chevronDown, size: 16, color: AppColors.muted),
               ]),
             ),
@@ -560,7 +561,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(title, style: AppText.s(menu ? 13.5 : 14.5, on ? W.w7 : W.w6)),
-              Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w5, color: AppColors.muted)),
+              CutText(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w5, color: AppColors.muted)),
             ]),
           ),
           if (on) const AppIcon(AppIcons.check, size: 15, color: AppColors.accent, stroke: 2.2),
@@ -701,7 +702,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
             onTap: () => _portion(f),
             builder: (_, h, _) => Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
               Row(children: [
-                Flexible(child: Text(f.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w7, color: h ? AppColors.accentText : AppColors.text))),
+                Flexible(child: CutText(f.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w7, color: h ? AppColors.accentText : AppColors.text))),
                 if (f.mine) fdTag('Mine'),
               ]),
               Text(f.line, style: AppText.s(12, W.w4, color: AppColors.muted)),
@@ -762,7 +763,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
-                      Flexible(child: Text(e.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
+                      Flexible(child: CutText(e.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
                       if (e.source == 'off_plan') fdTag('Off-plan', amber: true),
                     ]),
                     Text(

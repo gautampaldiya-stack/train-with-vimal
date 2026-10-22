@@ -12,6 +12,7 @@ import '../../../core/widgets/responsive.dart';
 import '../lib_common.dart';
 import 'habits_screen.dart';
 import 'hb_common.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Supplement plan editor (`.hb-ed` on the Supplements tab): items with dose and timing (a table, rows on a
 /// narrow card), quick add, Custom, note to client and the save bar.
@@ -126,7 +127,7 @@ class _SuppEditorCardState extends State<SuppEditorCard> {
     );
   }
 
-  Widget _foodLine(Map it) => Text(it['with_food'] == true ? 'With food' : 'Empty stomach is fine', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted));
+  Widget _foodLine(Map it) => CutText(it['with_food'] == true ? 'With food' : 'Empty stomach is fine', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted));
 
   Widget _dots(int i) => Builder(builder: (b) => AppIconButton(AppIcons.dots, tooltip: 'Supplement options', small: true, ghost: true, fill: true, onPressed: () => _menu(b, i)));
 
@@ -159,13 +160,13 @@ class _SuppEditorCardState extends State<SuppEditorCard> {
                     HbIcon(AppIcons.pill, AppColors.hbTones[suppTone], size: 30),
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                        Text('${it['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
+                        CutText('${it['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
                         _foodLine(it),
                       ]),
                     ),
                   ]),
                 ),
-                SizedBox(width: 110, child: Padding(padding: const EdgeInsets.only(right: 8), child: Text('${it['dose']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)))),
+                SizedBox(width: 110, child: Padding(padding: const EdgeInsets.only(right: 8), child: CutText('${it['dose']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)))),
                 SizedBox(width: 130, child: _when(it)),
                 SizedBox(width: 36, child: can ? _dots(i) : null),
               ]),

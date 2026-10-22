@@ -13,6 +13,7 @@ import '../../../core/widgets/responsive.dart';
 import 'cal_drawers.dart';
 import 'cal_grid.dart';
 import 'cal_model.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Calendar (boards `TrainerCalendar` + `TrainerCalendarMobile`): the trainer's own sessions. Web opens on the
 /// week, the phone on the day with a Mon–Sun strip (its Week = a 3-day window). Stats, ‹ Today ›, Week / Day,
@@ -179,11 +180,11 @@ class _TrainerCalendarScreenState extends State<TrainerCalendarScreen> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, spacing: 6, children: [
                 Row(spacing: 8, children: [
                   IconTile(icon, radius: 8),
-                  Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted))),
+                  Expanded(child: CutText(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted))),
                 ]),
                 Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, spacing: 10, children: [
                   Text(value, style: AppText.stat),
-                  if (delta.isNotEmpty) Flexible(child: Text(delta, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w7))),
+                  if (delta.isNotEmpty) Flexible(child: CutText(delta, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w7))),
                 ]),
               ]),
             ),
@@ -201,7 +202,7 @@ class _TrainerCalendarScreenState extends State<TrainerCalendarScreen> {
                   padding: const EdgeInsets.fromLTRB(8, 8, 8, 9),
                   decoration: BoxDecoration(border: i == 0 ? null : const Border(left: BorderSide(color: AppColors.line))),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                    Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(16, W.w8, h: 1.2)),
+                    CutText(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(16, W.w8, h: 1.2)),
                     Text(label, maxLines: 2, style: AppText.s(10.5, W.w6, color: AppColors.muted, h: 1.25)),
                   ]),
                 ),
@@ -220,7 +221,7 @@ class _TrainerCalendarScreenState extends State<TrainerCalendarScreen> {
       Flexible(
         child: Padding(
           padding: EdgeInsets.only(left: phone ? 4 : 8),
-          child: Text(range, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(phone ? 14.5 : 16, W.w7, ls: -0.16)),
+          child: CutText(range, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(phone ? 14.5 : 16, W.w7, ls: -0.16)),
         ),
       ),
       if (c.loading) const Padding(padding: EdgeInsets.only(left: 6), child: SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent))),

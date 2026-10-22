@@ -14,6 +14,7 @@ import '../train/train_parts.dart' show TwoTabs;
 import 'food_model.dart';
 import 'food_parts.dart';
 import 'food_sheets.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Food (boards `ClientMealNutrition` phone and `ClientMealNutritionWeb`): the day strip, calories, this week,
 /// water, then My plan (the meals to eat) or the Food log of the picked day. On a wide web page the tabs stay
@@ -163,7 +164,7 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
             Text('Food', style: AppText.s(26, W.w8, ls: -0.26)),
-            Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6, color: AppColors.muted)),
+            CutText(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6, color: AppColors.muted)),
           ]),
         ),
         chSm('Log food', _logFood, icon: AppIcons.plus, kind: CaBtnKind.dark),
@@ -519,7 +520,7 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
         Row(spacing: 8, children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-              Text.rich(
+              CutText.rich(
                 TextSpan(children: [
                   TextSpan(text: m.name, style: AppText.s(15, W.w8)),
                   TextSpan(text: '  · ${mealTime(m.timeRaw)}', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
@@ -639,7 +640,7 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Photo ready', style: AppText.s(13, W.w7)),
-          Text('${m.name} is not logged yet', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
+          CutText('${m.name} is not logged yet', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
         ]),
       ),
       chSm('Change', () => _eatWithPhoto(m), icon: AppIcons.camera),
@@ -673,7 +674,7 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Row(children: [
-                        Flexible(child: Text(e.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7, color: h ? AppColors.accentText : AppColors.text))),
+                        Flexible(child: CutText(e.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7, color: h ? AppColors.accentText : AppColors.text))),
                         if (e.source == 'off_plan') fdTag('Off-plan', amber: true),
                       ]),
                       Text('${e.amount} · ${fdClock(e.time)}${e.reason.isEmpty ? '' : ' · ${e.reason}'}', style: AppText.s(12, W.w4, color: AppColors.muted)),
@@ -817,7 +818,7 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
               Text(r.title, style: AppText.s(13.5, W.w7, color: h ? AppColors.accentText : AppColors.text)),
-              Text(r.sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
+              CutText(r.sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
             ]),
           ),
           if (r.photo != null) FdPhoto(r.photo!, name: r.title),

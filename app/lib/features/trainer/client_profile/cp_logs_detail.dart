@@ -15,6 +15,7 @@ import 'cp_common.dart';
 import 'cp_logs.dart' show cpWeeklyLine;
 import 'cp_logs_parts.dart';
 import 'cp_model.dart';
+import '../../../core/widgets/tooltip.dart';
 
 // The log drawer each Logs row opens (board `logd`): a workout with every set, a day's meals with macros, a daily
 // or weekly check-in's answers and photos (weekly ones still to review can be replied to and marked reviewed,
@@ -419,7 +420,7 @@ Widget _foodRow(List<String> cells, {bool head = false}) {
     for (final (i, t) in cells.indexed)
       Expanded(
         flex: flex[i] * (i < 2 ? 1 : 1),
-        child: Text(head ? t.toUpperCase() : t,
+        child: CutText(head ? t.toUpperCase() : t,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: i >= 2 ? TextAlign.right : TextAlign.left,
@@ -674,9 +675,9 @@ class _FormVideoRow extends StatelessWidget {
         ),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-            Text(what, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
-            Text('Form check video · sent ${cpTime(v['created_at'])}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.cap),
-            if ('${v['note'] ?? ''}'.isNotEmpty) Text('${v['note']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.text2)),
+            CutText(what, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
+            CutText('Form check video · sent ${cpTime(v['created_at'])}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.cap),
+            if ('${v['note'] ?? ''}'.isNotEmpty) CutText('${v['note']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.text2)),
           ]),
         ),
         AppButton('Watch', size: BtnSize.sm, icon: AppIcons.play, onPressed: url.isEmpty ? null : () => playVideoFull(context, url, title: what)),

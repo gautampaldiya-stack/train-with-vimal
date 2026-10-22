@@ -5,6 +5,7 @@ import '../../../core/theme/theme.dart';
 import '../../../core/util/input_rules.dart';
 import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Pieces of the Food and Log food boards (`fd-*`, `nv-*`, `fl-*`).
 
@@ -116,7 +117,7 @@ class _NumStepperState extends State<NumStepper> {
                   color: h ? AppColors.accentSoft : null,
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: Text(
+                child: CutText(
                   widget.label(widget.value),
                   textAlign: TextAlign.center,
                   maxLines: 1,

@@ -369,7 +369,7 @@ class _CatRow extends StatelessWidget {
           decoration: BoxDecoration(color: on ? AppColors.accentSoft : (h ? AppColors.hover : null), borderRadius: AppRadius.all(8)),
           child: Row(spacing: 8, children: [
             Expanded(
-              child: Text(label,
+              child: CutText(label,
                   maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w6, color: on ? AppColors.accentText : (h ? AppColors.text : AppColors.text2))),
             ),
             Text('$n', style: AppText.s(11.5, W.w7, color: AppColors.muted)),
@@ -432,9 +432,9 @@ class _CtCard extends StatelessWidget {
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 3, children: [
               SizedBox(
                 height: 36.5,
-                child: Text('${x['title']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7, h: 1.35)),
+                child: CutText('${x['title']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7, h: 1.35)),
               ),
-              Text(ctMeta(x), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted)),
+              CutText(ctMeta(x), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted)),
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Align(
@@ -448,7 +448,7 @@ class _CtCard extends StatelessWidget {
             padding: phone ? const EdgeInsets.fromLTRB(10, 4, 4, 6) : const EdgeInsets.fromLTRB(12, 6, 6, 8),
             child: Row(spacing: 5, children: [
               AppIcon(AppIcons.clients, size: 14, color: who == 'Everyone' ? AppColors.okText : AppColors.muted),
-              Expanded(child: Text(who, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w6, color: whoColor))),
+              Expanded(child: CutText(who, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w6, color: whoColor))),
               Builder(builder: (b) => AppIconButton(AppIcons.dots, tooltip: 'Content options', small: true, ghost: true, fill: true, onPressed: () => onMenu(b))),
             ]),
           ),
@@ -470,7 +470,7 @@ class _UsedChip extends StatelessWidget {
         decoration: BoxDecoration(color: none ? AppColors.sub : AppColors.accentSoft, borderRadius: AppRadius.all(6)),
         child: Row(mainAxisSize: MainAxisSize.min, spacing: 4, children: [
           if (!none) const AppIcon(AppIcons.link, size: 12, color: AppColors.accentText),
-          Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w7, color: none ? AppColors.muted : AppColors.accentText, h: 1))),
+          Flexible(child: CutText(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w7, color: none ? AppColors.muted : AppColors.accentText, h: 1))),
         ]),
       );
 }

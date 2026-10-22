@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/theme.dart';
 import '../../core/widgets/responsive.dart';
+import '../../core/widgets/tooltip.dart';
 
 /// A staff page inside the panel: padding `24px 32px 48px`, content max 1200, sections 20 apart.
 /// Phone: padding `6px 16px 24px`, gap 14.
@@ -47,8 +48,8 @@ class PageTop extends StatelessWidget {
           ?back,
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 4, children: [
-              Text(title, style: AppText.h1.copyWith(fontSize: size), maxLines: 2, overflow: TextOverflow.ellipsis),
-              if (sub != null) Text(sub!, style: AppText.sub.copyWith(fontSize: w <= 480 ? 12 : 13), maxLines: w <= 480 ? 2 : 1, overflow: TextOverflow.ellipsis),
+              CutText(title, style: AppText.h1.copyWith(fontSize: size), maxLines: 2, overflow: TextOverflow.ellipsis),
+              if (sub != null) CutText(sub!, style: AppText.sub.copyWith(fontSize: w <= 480 ? 12 : 13), maxLines: w <= 480 ? 2 : 1, overflow: TextOverflow.ellipsis),
             ]),
           ),
           if (actions.isNotEmpty) Row(mainAxisSize: MainAxisSize.min, spacing: 8, children: actions),

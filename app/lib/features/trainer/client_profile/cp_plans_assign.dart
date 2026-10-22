@@ -17,6 +17,7 @@ import 'cp_common.dart';
 import 'cp_model.dart';
 import 'cp_plans_model.dart';
 import 'cp_plans_parts.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Header `Assign plan ▾`, ⋯ `Assign a plan`, `Assign new plan`, `Replace with another plan`, Up next `Change` /
 /// `Choose next plan`: the plan picker drawer (`assign`, board `TrainerClientProfile`) for one slot
@@ -78,7 +79,7 @@ Future<void> showAssignPlan(BuildContext context, CpController c, String slot, {
       ListenableBuilder(
         listenable: s,
         builder: (_, _) {
-          final t = Text(s.summary, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.cap);
+          final t = CutText(s.summary, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.cap);
           return ctx.isPhone ? t : Expanded(child: t);
         },
       ),
@@ -248,7 +249,7 @@ class PickRow extends StatelessWidget {
                     Text(title, style: AppText.s(13.5, W.w7, color: h && !disabled ? AppColors.accentText : AppColors.text)),
                     ...badges,
                   ]),
-                  Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.text2)),
+                  CutText(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.text2)),
                 ]),
               ),
               if (end != null) Text(end!, style: AppText.s(12, W.w6, color: AppColors.muted)),
@@ -298,7 +299,7 @@ Widget _preview(BuildContext dctx, _Assign s) => FutureBuilder<_Pv>(
                             decoration: BoxDecoration(border: i == 0 ? null : const Border(left: BorderSide(color: AppColors.line))),
                             child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
                               Text(k, style: AppText.s(12, W.w5, color: AppColors.muted)),
-                              Text(v, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w8)),
+                              CutText(v, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w8)),
                             ]),
                           ),
                       ]);

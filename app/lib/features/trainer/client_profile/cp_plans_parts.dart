@@ -20,6 +20,7 @@ import '../../client/train/train_parts.dart' show BodyMap;
 import 'cp_common.dart';
 import 'cp_model.dart';
 import 'cp_plans_model.dart';
+import '../../../core/widgets/tooltip.dart';
 
 // Pieces of the Plans tab: day strip, day head and note, exercise and meal rows, the exercise and meal drawers
 // and the habits drawer (with the per-client habit edit).
@@ -93,7 +94,7 @@ class DayStrip extends StatelessWidget {
                 child: Stack(clipBehavior: Clip.none, children: [
                   Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
                     Text(d, style: AppText.s(12.5, W.w8, color: on ? AppColors.accentText : AppColors.text)),
-                    Text(n, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w6, color: on ? AppColors.accentText : AppColors.muted)),
+                    CutText(n, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w6, color: on ? AppColors.accentText : AppColors.muted)),
                   ]),
                   if (dot)
                     Positioned(
@@ -298,7 +299,7 @@ class ExerciseRow extends StatelessWidget {
                 if (changed != null) _SmallBadge(changed!, Tone.info),
                 if (e['edited'] == true) const _SmallBadge('Edited in program', Tone.warn),
               ]),
-              Text.rich(
+              CutText.rich(
                 TextSpan(children: [
                   TextSpan(text: '${e['sets']} × ${e['reps']}', style: AppText.s(12.5, W.w7, color: AppColors.text)),
                   if (meta.isNotEmpty) TextSpan(text: ' · $meta'),
@@ -380,7 +381,7 @@ class MealRow extends StatelessWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
               Text('${meal['name']}', style: AppText.s(13.5, W.w7)),
-              Text(items.isEmpty ? 'No foods yet' : items.map((i) => '${(i['food_detail'] as Map?)?['name'] ?? ''}').join(', '),
+              CutText(items.isEmpty ? 'No foods yet' : items.map((i) => '${(i['food_detail'] as Map?)?['name'] ?? ''}').join(', '),
                   maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.text2)),
             ]),
           ),
@@ -412,7 +413,7 @@ Widget _kpis(List<(String, String)> k) {
         decoration: BoxDecoration(border: first ? null : const Border(left: BorderSide(color: AppColors.line))),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
           Text(a, style: AppText.s(12, W.w5, color: AppColors.muted)),
-          Text(b, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w8, tabular: true)),
+          CutText(b, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w8, tabular: true)),
         ]),
       ),
     );
@@ -554,7 +555,7 @@ Future<void> showExerciseDrawer(BuildContext context,
         ctx,
         ValueListenableBuilder(
           valueListenable: i,
-          builder: (_, n, _) => Text(was(n) != null ? 'Changed for ${c?.first} · master is the same' : 'Same as the master plan',
+          builder: (_, n, _) => CutText(was(n) != null ? 'Changed for ${c?.first} · master is the same' : 'Same as the master plan',
               maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.cap),
         ),
       ),
@@ -654,7 +655,7 @@ class _ExMediaState extends State<ExMedia> {
             alignment: Alignment.center,
             child: Column(mainAxisSize: MainAxisSize.min, spacing: 6, children: [
               AppIcon(AppIcons.external, size: 22, color: h ? AppColors.accent : AppColors.muted),
-              Text(Uri.tryParse(url)?.host ?? url, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: h ? AppColors.accentText : AppColors.text2)),
+              CutText(Uri.tryParse(url)?.host ?? url, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: h ? AppColors.accentText : AppColors.text2)),
             ]),
           ),
         ),
@@ -670,7 +671,7 @@ class _ExMediaState extends State<ExMedia> {
           child: Row(spacing: 8, children: [
             AppIcon(icon, size: 15, color: AppColors.muted),
             Expanded(
-              child: Text.rich(
+              child: CutText.rich(
                 TextSpan(text: what, style: AppText.s(12.5, W.w7), children: [if (title.isNotEmpty) TextSpan(text: ' · $title', style: AppText.s(12.5, W.w5, color: AppColors.text2))]),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -742,7 +743,7 @@ Future<void> showMealDrawer(BuildContext context,
       },
     ),
     footer: (ctx) => [
-      _fnote(ctx, Text(custom ? '${c.first}’s own copy · the master stays the same' : 'Same as the master plan', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.cap)),
+      _fnote(ctx, CutText(custom ? '${c.first}’s own copy · the master stays the same' : 'Same as the master plan', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.cap)),
       if (!ctx.isPhone) AppButton('Close', onPressed: () => Navigator.of(ctx).pop()),
       AppButton.primary('Edit for ${c.first}', icon: AppIcons.edit, onPressed: () {
         Navigator.of(ctx).pop();

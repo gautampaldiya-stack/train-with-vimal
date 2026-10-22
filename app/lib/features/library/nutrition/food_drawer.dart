@@ -15,6 +15,7 @@ import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/select.dart';
 import '../../../core/widgets/tabs.dart';
 import '../../../core/widgets/tooltip.dart';
+import '../../../core/widgets/type_number.dart';
 import '../../trainer/client_profile/cp_plans.dart' show CpInfo;
 import '../lib_common.dart';
 import 'nu_common.dart';
@@ -106,6 +107,7 @@ class _FoodFormState extends State<_FoodForm> {
   late final Map? f = widget.food;
   late final name = TextEditingController(text: '${f?['name'] ?? ''}');
   late final brand = TextEditingController(text: '${f?['brand'] ?? ''}');
+  late final category = TextEditingController(text: '${f?['category'] ?? ''}');
   late String diet = '${f?['diet'] ?? 'veg'}', group = '${f?['group'] ?? 'other'}', source = _sources.containsKey(f?['source_note']) ? '${f?['source_note'] ?? ''}' : '';
   late final String sourceExtra = _sources.containsKey(f?['source_note']) ? '' : '${f?['source_note'] ?? ''}';
 
@@ -149,7 +151,7 @@ class _FoodFormState extends State<_FoodForm> {
 
   @override
   void dispose() {
-    for (final c in [name, brand, ...ctl.values, for (final u in units) u.ctl]) {
+    for (final c in [name, brand, category, ...ctl.values, for (final u in units) u.ctl]) {
       c.dispose();
     }
     super.dispose();
@@ -225,6 +227,7 @@ class _FoodFormState extends State<_FoodForm> {
       'brand': brand.text.trim(),
       'diet': diet,
       'group': group,
+      'category': group == 'other' ? category.text.trim() : '',
       'source_note': source.isEmpty && sourceExtra.isNotEmpty ? sourceExtra : source,
       for (final k in [..._macroKeys, ..._minKeys]) k: per100[k] == null ? (k.endsWith('_mg') ? null : 0) : double.parse(per100[k]!.toStringAsFixed(2)),
       'units': [
@@ -275,10 +278,14 @@ class _FoodFormState extends State<_FoodForm> {
           two(
             _field(
               'Group in the food library',
-              AppSelect(foodGroups[group] ?? group, entries: [
-                for (final g in foodGroups.entries) MenuEntry(g.value, selected: g.key == group, onTap: () => setState(() => group = g.key)),
+              Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
+                AppSelect(foodGroups[group] ?? group, entries: [
+                  for (final g in foodGroups.entries) MenuEntry(g.value, selected: g.key == group, onTap: () => setState(() => group = g.key)),
+                ]),
+                // Other keeps the food's own category name (from the sheet, or typed here)
+                if (group == 'other') AppTextField(controller: category, placeholder: 'Category name, e.g. Snacks', formatters: [LengthLimitingTextInputFormatter(40)]),
               ]),
-              error: errors['group'],
+              error: errors['group'] ?? errors['category'],
             ),
             _field(
               'Source',
@@ -490,16 +497,20 @@ class _FoodFormState extends State<_FoodForm> {
         _num('carbs', 'Carbs', 'g'),
         _num('fat', 'Fat', 'g'),
         _num('fibre', 'Fibre', 'g'),
-      ], phone ? 3 : 5),
+      ], phone ? 3 : 5, wide: const {0}),
       for (final e in ['kcal', 'protein', 'carbs', 'fat', 'fibre'])
         if (errors[e] != null) Text(errors[e]!, style: AppText.s(12, W.w6, color: AppColors.badText)),
     ]);
   }
 
-  Widget _grid(List<Widget> cells, int cols) => LayoutBuilder(builder: (context, b) {
+  /// [wide] cells get 1.4 shares on a one-line row, so "367.5 kcal" (up to 9999.9) is never cut.
+  Widget _grid(List<Widget> cells, int cols, {Set<int> wide = const {}}) => LayoutBuilder(builder: (context, b) {
         const gap = 8.0;
-        final w = (b.maxWidth - gap * (cols - 1)) / cols;
-        return Wrap(spacing: gap, runSpacing: 8, children: [for (final c in cells) SizedBox(width: w, child: c)]);
+        final one = cells.length == cols && wide.isNotEmpty;
+        final w = (b.maxWidth - gap * (cols - 1)) / (one ? cols + .4 * wide.length : cols);
+        return Wrap(spacing: gap, runSpacing: 8, children: [
+          for (final (i, c) in cells.indexed) SizedBox(width: one && wide.contains(i) ? w * 1.4 : w, child: c),
+        ]);
       });
 
   Widget _num(String k, String label, String unit) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 4, children: [
@@ -616,10 +627,10 @@ class _FoodFormState extends State<_FoodForm> {
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
             Row(spacing: 6, children: [
-              Flexible(child: Text(n, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
+              Flexible(child: CutText(n, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
               const AppBadge('Team', tone: Tone.info, plain: true),
             ]),
-            Text.rich(
+            CutText.rich(
               TextSpan(children: [
                 TextSpan(text: '$_unitLabel${def < 0 ? '' : ' (${fq(g)} g)'}', style: AppText.s(12, W.w7, color: AppColors.text2)),
                 TextSpan(text: ' · ${v('kcal').round()} kcal · P ${nf(v('protein'))} g · C ${nf(v('carbs'))} g · F ${nf(v('fat'))} g'),
@@ -682,8 +693,8 @@ class _Step extends StatelessWidget {
           AppIconButton(AppIcons.minus, tooltip: 'Less', small: true, ghost: true, onPressed: value <= min ? null : () => onChanged(_round((value - stepFor(value - .0001)).clamp(min, max)))),
           Expanded(
             child: Row(mainAxisAlignment: MainAxisAlignment.center, spacing: 4, children: [
-              Text(fq(value), style: AppText.s(14, W.w8)),
-              Flexible(child: Text(unit, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w6, color: AppColors.muted))),
+              TypeNumber(value: value, text: fq(value), min: min, max: max, style: AppText.s(14, W.w8), name: unit == 'g' ? 'weight' : 'serving', onChanged: onChanged),
+              Flexible(child: CutText(unit, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w6, color: AppColors.muted))),
             ]),
           ),
           AppIconButton(AppIcons.plus, tooltip: 'More', small: true, ghost: true, onPressed: value >= max ? null : () => onChanged(_round((value + stepFor(value)).clamp(min, max)))),
@@ -779,8 +790,8 @@ class _SwapPickerState extends State<_SwapPicker> {
                                 FoodTile(tone: groupTone('${f['group']}'), size: 30),
                                 Expanded(
                                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                                    Text('${f['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
-                                    Text('${servingLabel(f)} · ${at(f['kcal'], g).round()} kcal · P ${nf(at(f['protein'], g))} g',
+                                    CutText('${f['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
+                                    CutText('${servingLabel(f)} · ${at(f['kcal'], g).round()} kcal · P ${nf(at(f['protein'], g))} g',
                                         maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
                                   ]),
                                 ),

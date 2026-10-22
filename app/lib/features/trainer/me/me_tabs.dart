@@ -306,7 +306,7 @@ class _AccessCard extends StatelessWidget {
           const IconTile(AppIcons.clock, size: 26, radius: 7, iconSize: 14, bg: AppColors.warnBg, fg: AppColors.warnText),
           Flexible(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-              Text((a['labels'] as List).join(', '), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7, h: 1.25)),
+              CutText((a['labels'] as List).join(', '), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7, h: 1.25)),
               Text('Waiting for Vimal${a['at'] == null ? '' : ' · sent ${meDmy(a['at'])}'}', style: AppText.s(12, W.w6, color: AppColors.warnText)),
             ]),
           ),

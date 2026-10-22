@@ -19,6 +19,7 @@ import '../../../core/widgets/select.dart';
 import '../lib_common.dart';
 import 'ex_common.dart';
 import 'ex_sheets.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Exercise library (boards `ExerciseLibrary` / `ExerciseLibraryMobile`): picture-first cards, search, the
 /// Muscle · Equipment · Level · Source filter (several options each), chips, Sort, New exercise.
@@ -283,11 +284,11 @@ class _ExCard extends StatelessWidget {
           Padding(
             padding: phone ? const EdgeInsets.fromLTRB(10, 9, 10, 10) : const EdgeInsets.fromLTRB(12, 11, 12, 12),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: phone ? 3 : 4, children: [
-              Text('${e['name']}',
+              CutText('${e['name']}',
                   maxLines: phone ? 2 : 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppText.s(phone ? 13 : 14, W.w7, color: h ? AppColors.accentText : AppColors.text, h: 1.3)),
-              Text.rich(
+              CutText.rich(
                 TextSpan(children: [
                   TextSpan(text: exMuscleLabel(e), style: AppText.s(phone ? 11.5 : 12.5, W.w6, color: AppColors.text2)),
                   TextSpan(text: '  ·  ${exEquipLabel(e)}'),

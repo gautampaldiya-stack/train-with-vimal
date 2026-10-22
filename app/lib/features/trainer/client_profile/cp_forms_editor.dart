@@ -292,7 +292,7 @@ class _CpFormEditorState extends State<CpFormEditor> {
           padding: const EdgeInsets.symmetric(horizontal: 10),
           alignment: Alignment.centerLeft,
           decoration: BoxDecoration(color: AppColors.card, borderRadius: AppRadius.all(AppRadius.input), border: Border.all(color: AppColors.line2)),
-          child: Text(t, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6)),
+          child: CutText(t, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6)),
         );
     final o = widget.sendOpts?.body;
     final label = weekly

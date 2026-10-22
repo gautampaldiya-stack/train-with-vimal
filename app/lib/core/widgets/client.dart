@@ -6,6 +6,7 @@ import '../icons/app_icons.dart';
 import '../theme/theme.dart';
 import '../util/input_rules.dart';
 import 'hover.dart';
+import 'tooltip.dart';
 
 /// Client-app components (the `ca-*`, `fd-*`, `wl-*` classes on the client boards).
 /// Staff screens use button.dart / input.dart instead.
@@ -62,7 +63,7 @@ class CaButton extends StatelessWidget {
                 SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: fg))
               else if (icon != null)
                 AppIcon(icon!, size: small ? 15 : 17, color: fg),
-              if (label.isNotEmpty) Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(fs, W.w7, color: fg, h: 1))),
+              if (label.isNotEmpty) Flexible(child: CutText(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(fs, W.w7, color: fg, h: 1))),
               if (trailingIcon != null) AppIcon(trailingIcon!, size: 17, color: fg),
             ]),
           );
@@ -356,7 +357,7 @@ class CaSeg extends StatelessWidget {
                   // also hits the title's text), the picked one only stands out by its white tile.
                   child: Column(spacing: 1, children: [
                     Text(options[i].$1, style: AppText.s(11, W.w7, color: AppColors.muted)),
-                    Text(options[i].$2, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11, W.w4, color: AppColors.muted)),
+                    CutText(options[i].$2, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11, W.w4, color: AppColors.muted)),
                   ]),
                 ),
               ),
@@ -524,7 +525,14 @@ class _CaFieldState extends State<CaField> {
         onEnter: (_) => setState(() => _hover = true),
         onExit: (_) => setState(() => _hover = false),
         cursor: SystemMouseCursors.text,
-        child: AnimatedContainer(
+        // a tap anywhere in the box (not only on the one-line text) focuses it
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.enabled ? () {
+            _focus.requestFocus();
+            widget.onTap?.call();
+          } : null,
+          child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
           height: 44,
           padding: EdgeInsets.only(left: 12, right: widget.trailing == null ? 12 : 8),
@@ -566,6 +574,7 @@ class _CaFieldState extends State<CaField> {
             ),
             ?widget.trailing,
           ]),
+          ),
         ),
       ),
       if (bad)

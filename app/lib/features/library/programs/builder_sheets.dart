@@ -14,11 +14,12 @@ import '../../../core/widgets/input.dart';
 import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/select.dart';
-import '../../trainer/client_profile/cp_content_drawers.dart' show DrOpt, DrOpts, DrScrollList;
+import '../../trainer/client_profile/cp_content_drawers.dart' show drEveryone, DrOpt, DrOpts, DrScrollList;
 import '../../trainer/client_profile/cp_plans_parts.dart' show MediaTile;
 import '../../trainer/me/me_common.dart' show meField;
 import '../lib_common.dart';
 import 'builder_model.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// One-field modal: Rename program, Rename day, Add day. Returns the trimmed text.
 Future<String?> showNameModal(BuildContext context,
@@ -299,6 +300,7 @@ Future<(int, int)?> showAssignModal(BuildContext context, BuilderModel m) async 
                 Text('No client matches.', style: AppText.s(13, W.w5, color: AppColors.muted))
               else
                 DrScrollList(rows: 6, [
+                  if (rows.length > 1) drEveryone(rows, picked, searching: q.value.isNotEmpty),
                   for (final c in rows)
                     () {
                       final id = '${c['id']}', sel = picked.value!.contains(id);
@@ -409,7 +411,7 @@ Future<bool?> showClientsDrawer(BuildContext context, BuilderModel m) {
       },
     ),
     footer: (ctx) => [
-      if (!ctx.isPhone) Expanded(child: Text(subOf(m.clientCount), style: AppText.cap, maxLines: 1, overflow: TextOverflow.ellipsis)),
+      if (!ctx.isPhone) Expanded(child: CutText(subOf(m.clientCount), style: AppText.cap, maxLines: 1, overflow: TextOverflow.ellipsis)),
       AppButton('Close', expand: ctx.isPhone, onPressed: () => Navigator.of(ctx).pop()),
       if (m.canAssign && !m.archived)
         AppButton.primary(m.clientCount > 0 ? 'Change clients' : 'Assign clients', icon: AppIcons.assign, expand: ctx.isPhone, onPressed: () => Navigator.of(ctx).pop(true)),

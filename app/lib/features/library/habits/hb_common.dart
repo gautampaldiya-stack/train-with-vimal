@@ -14,7 +14,7 @@ import '../../../core/widgets/input.dart';
 import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/tooltip.dart';
-import '../../trainer/client_profile/cp_content_drawers.dart' show DrOpt, DrScrollList;
+import '../../trainer/client_profile/cp_content_drawers.dart' show drEveryone, DrOpt, DrScrollList;
 import '../lib_common.dart';
 
 /// Shared bits of Habits & supplements (boards `Habits` / `HabitsMobile`): icons and tones, list rows, the save
@@ -107,8 +107,8 @@ class HbListRow extends StatelessWidget {
           HbIcon(icon, tone, size: 30),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-              Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
-              Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted)),
+              CutText(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
+              CutText(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted)),
             ]),
           ),
           AppTooltip(
@@ -142,7 +142,7 @@ class HbEditorHead extends StatelessWidget {
         HbIcon(icon, tone, size: 44),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-            Text(title.isEmpty ? 'Untitled' : title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.h3),
+            CutText(title.isEmpty ? 'Untitled' : title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.h3),
             Text(sub, style: AppText.s(12.5, W.w6, color: AppColors.muted)),
           ]),
         ),
@@ -176,12 +176,12 @@ class HbSaveBar extends StatelessWidget {
           ),
         ] else if (dirty) ...[
           Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppColors.hbDot, shape: BoxShape.circle)),
-          Expanded(child: Text('Unsaved changes', maxLines: 1, overflow: TextOverflow.ellipsis, style: style)),
+          Expanded(child: CutText('Unsaved changes', maxLines: 1, overflow: TextOverflow.ellipsis, style: style)),
           AppButton('Discard', size: BtnSize.sm, onPressed: saving ? null : onDiscard),
           AppButton.primary('Save changes', icon: AppIcons.checkCircle, size: BtnSize.sm, loading: saving, onPressed: onSave),
         ] else ...[
           const AppIcon(AppIcons.checkCircle, size: 15, color: AppColors.okText),
-          Expanded(child: Text('All changes saved', maxLines: 1, overflow: TextOverflow.ellipsis, style: style)),
+          Expanded(child: CutText('All changes saved', maxLines: 1, overflow: TextOverflow.ellipsis, style: style)),
           Opacity(opacity: .5, child: AppButton.primary('Save changes', icon: AppIcons.checkCircle, size: BtnSize.sm)),
         ],
       ]),
@@ -247,8 +247,8 @@ class HbAssignedCard extends StatelessWidget {
                   AppAvatar('${c['full_name']}', size: 28, initials: '${c['initials'] ?? ''}', colors: AppColors.avatarCode('${c['avatar_color'] ?? 'c1'}')),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                      Text('${c['full_name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7, color: h ? AppColors.accentText : AppColors.text)),
-                      Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted)),
+                      CutText('${c['full_name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7, color: h ? AppColors.accentText : AppColors.text)),
+                      CutText(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted)),
                     ]),
                   ),
                   const AppIcon(AppIcons.chevronRight, size: 16, color: AppColors.text2),
@@ -296,6 +296,7 @@ Future<List<Map>?> showHbAssign(BuildContext context, {required String url, requ
                 Text('No client matches.', style: AppText.s(13, W.w5, color: AppColors.muted))
               else
                 DrScrollList(rows: 6, [
+                  if (rows.length > 1) drEveryone(rows, picked, searching: q.value.isNotEmpty),
                   for (final c in rows)
                     () {
                       final id = '${c['id']}', sel = picked.value!.contains(id);

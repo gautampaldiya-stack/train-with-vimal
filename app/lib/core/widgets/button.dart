@@ -53,7 +53,7 @@ class AppButton extends StatelessWidget {
             SizedBox(width: iconSize, height: iconSize, child: CircularProgressIndicator(strokeWidth: 2, color: fg))
           else if (icon != null)
             AppIcon(icon!, size: iconSize, color: fg),
-          if (!iconOnly) Flexible(child: Text(label, style: style, overflow: TextOverflow.ellipsis, maxLines: 1)),
+          if (!iconOnly) Flexible(child: CutText(label, style: style, overflow: TextOverflow.ellipsis, maxLines: 1)),
           if (trailingIcon != null && !iconOnly) AppIcon(trailingIcon!, size: 15, color: fg),
         ];
         final content = Row(

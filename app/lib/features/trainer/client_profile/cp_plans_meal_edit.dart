@@ -9,6 +9,7 @@ import '../../../core/api/api_error.dart';
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
 import '../../../core/widgets/badge.dart';
+import '../../../core/widgets/type_number.dart';
 import '../../../core/widgets/button.dart';
 import '../../../core/widgets/card.dart';
 import '../../../core/widgets/hover.dart';
@@ -653,7 +654,7 @@ class _MealEditorState extends State<MealEditor> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
                 Hover(
                   onTap: () => _rename(mi),
-                  builder: (_, h, _) => Text('${x['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(15.5, W.w8, color: h ? AppColors.accentText : AppColors.text)),
+                  builder: (_, h, _) => CutText('${x['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(15.5, W.w8, color: h ? AppColors.accentText : AppColors.text)),
                 ),
                 Text([mealTime(x['time']), if (tgt > 0) 'target ${_f.format(tgt.round())} kcal'].join(' · '), style: AppText.s(12.5, W.w6, color: AppColors.muted)),
               ]),
@@ -728,9 +729,9 @@ class _MealEditorState extends State<MealEditor> {
     final name = Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
       Row(spacing: 6, children: [
         if (was != null) _dot,
-        Flexible(child: Text('${f['name'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
+        Flexible(child: CutText('${f['name'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
       ]),
-      Text.rich(
+      CutText.rich(
         TextSpan(text: amount(it), children: [
           if (was != null) TextSpan(text: ' · Was: $was', style: AppText.s(12, W.w6, color: AppColors.accentText)),
         ]),
@@ -796,10 +797,10 @@ class _MealEditorState extends State<MealEditor> {
   /// F 3 g"); [mac] holds kcal / protein / carbs / fat.
   static Widget _swapText(String name, double q, String? unit, double grams, Map mac, {Widget? badge}) {
     final amt = unit == null ? _portion(q, null) : '${_portion(q, unit)} · ${_n(grams)} g';
-    final title = Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w7));
+    final title = CutText(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w7));
     return Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
       badge == null ? title : Row(spacing: 8, children: [Flexible(child: title), badge]),
-      Text.rich(
+      CutText.rich(
         TextSpan(children: [
           TextSpan(text: amt, style: AppText.s(12, W.w7, color: AppColors.text2, tabular: true)),
           TextSpan(text: ' · ${_d(mac['kcal']).round()} kcal'),
@@ -808,7 +809,7 @@ class _MealEditorState extends State<MealEditor> {
         overflow: TextOverflow.ellipsis,
         style: AppText.s(12, W.w6, color: AppColors.muted, tabular: true),
       ),
-      Text('P ${_d(mac['protein']).round()} g · C ${_d(mac['carbs']).round()} g · F ${_d(mac['fat']).round()} g',
+      CutText('P ${_d(mac['protein']).round()} g · C ${_d(mac['carbs']).round()} g · F ${_d(mac['fat']).round()} g',
           maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w5, color: AppColors.muted, tabular: true)),
     ]);
   }
@@ -864,7 +865,7 @@ class _MealEditorState extends State<MealEditor> {
           padding: const EdgeInsets.fromLTRB(12, 0, 10, 0),
           decoration: BoxDecoration(color: AppColors.card, borderRadius: AppRadius.all(AppRadius.input), border: Border.all(color: h ? AppColors.lineHover : AppColors.line2)),
           child: Row(spacing: 6, children: [
-            Expanded(child: Text(u == null ? 'Grams' : '${u['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w6))),
+            Expanded(child: CutText(u == null ? 'Grams' : '${u['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w6))),
             const AppIcon(AppIcons.chevronDown, size: 16, color: AppColors.muted),
           ]),
         ),
@@ -903,7 +904,7 @@ class _MealEditorState extends State<MealEditor> {
               decoration: BoxDecoration(color: AppColors.card, borderRadius: AppRadius.all(AppRadius.input), border: Border.all(color: AppColors.line2)),
               child: Row(children: [
                 AppIconButton(AppIcons.minus, tooltip: 'Less', ghost: true, small: true, onPressed: q - step < (u == null ? 5 : .5) ? null : () => _setQty(it, q - step)),
-                Expanded(child: Text(_n(q), textAlign: TextAlign.center, style: AppText.s(14, W.w8, tabular: true))),
+                Expanded(child: Center(child: TypeNumber(value: q, text: _n(q), min: u == null ? 5 : .5, max: u == null ? 2000 : 20, style: AppText.s(14, W.w8, tabular: true), onChanged: (v) => _setQty(it, v)))),
                 AppIconButton(AppIcons.plus, tooltip: 'More', ghost: true, small: true, onPressed: q + step > (u == null ? 2000 : 20) ? null : () => _setQty(it, q + step)),
               ]),
             ),
@@ -1266,7 +1267,7 @@ Future<void> showFoodPicker(
                 child: Row(spacing: 8, children: [
                   Text('${rows.length} food${rows.length == 1 ? '' : 's'}', style: AppText.s(12, W.w6, color: AppColors.muted)),
                   Expanded(
-                    child: Text('Most protein first${dietLabel.isEmpty || fits[diet] == null ? '' : ' · ${dietLabel.toLowerCase()} foods${first.isEmpty ? '' : ' for $first'}'}',
+                    child: CutText('Most protein first${dietLabel.isEmpty || fits[diet] == null ? '' : ' · ${dietLabel.toLowerCase()} foods${first.isEmpty ? '' : ' for $first'}'}',
                         textAlign: TextAlign.right, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w6, color: AppColors.muted)),
                   ),
                 ]),
@@ -1351,7 +1352,7 @@ class _FoodPickRow extends StatelessWidget {
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
             Row(spacing: 6, children: [
-              Flexible(child: Text('${x['name']}${'${x['brand'] ?? ''}'.isEmpty ? '' : ' · ${x['brand']}'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
+              Flexible(child: CutText('${x['name']}${'${x['brand'] ?? ''}'.isEmpty ? '' : ' · ${x['brand']}'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
               if (x['team'] == true)
                 Container(
                   height: 18,
@@ -1361,7 +1362,7 @@ class _FoodPickRow extends StatelessWidget {
                   child: Text('Team', style: AppText.s(10.5, W.w7, color: AppColors.infoText)),
                 ),
             ]),
-            Text.rich(
+            CutText.rich(
               TextSpan(children: [
                 TextSpan(text: serv, style: AppText.s(12, W.w7, color: AppColors.text2)),
                 TextSpan(text: ' · ${per('kcal').round()} kcal · P ${per('protein').round()} g · C ${per('carbs').round()} g · F ${per('fat').round()} g'),

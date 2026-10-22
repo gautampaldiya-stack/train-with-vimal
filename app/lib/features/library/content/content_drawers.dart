@@ -22,7 +22,7 @@ import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/select.dart';
 import '../../../core/widgets/tabs.dart';
-import '../../trainer/client_profile/cp_content_drawers.dart' show DrOpt, DrScrollList, DrSwitch;
+import '../../trainer/client_profile/cp_content_drawers.dart' show drEveryone, DrOpt, DrScrollList, DrSwitch;
 import '../../trainer/client_profile/cp_plans_meal_edit.dart' show DangerText;
 import '../../trainer/me/me_common.dart' show meField;
 import '../../trainer/me/me_docs.dart' show DashedBox;
@@ -30,6 +30,7 @@ import '../../trainer/me/me_pick.dart';
 import '../lib_common.dart' show plural;
 import '../programs/builder_sheets.dart' show showNameModal;
 import 'ct_common.dart';
+import '../../../core/widgets/tooltip.dart';
 
 // Content library drawers and modals (boards `Content` / `ContentMobile`): the item drawer, New / Edit content,
 // Assign to clients, New category and Delete.
@@ -137,6 +138,7 @@ class _DetailState extends State<_Detail> {
       );
     }
     if (kind == 'video' && _yt.isNotEmpty) return YoutubeBox(url: _yt, openLink: false);
+    if (kind == 'link') return _linkCard();
     final pic = kind == 'image' && _file.isNotEmpty;
     return Semantics(
       button: kind != 'article',
@@ -168,6 +170,38 @@ class _DetailState extends State<_Detail> {
                       ]),
                     )
                   : CtMedia(d, radius: AppRadius.all(12), bigPlay: true),
+        ),
+      ),
+    );
+  }
+
+  /// A link needs no big picture: a short card that reads like a link (site, the address in blue), tap opens it.
+  Widget _linkCard() {
+    final u = '${d['link_url'] ?? ''}';
+    final site = '${d['length_label'] ?? ''}';
+    return Semantics(
+      link: true,
+      label: 'Open $u',
+      child: Hover(
+        onTap: u.isEmpty ? null : _play,
+        builder: (_, h, _) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: h ? AppColors.accentSoft : AppColors.sub,
+            borderRadius: AppRadius.all(10),
+            border: Border.all(color: h ? AppColors.accent : AppColors.line),
+          ),
+          child: Row(spacing: 12, children: [
+            const IconTile(AppIcons.link, size: 36),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+                if (site.isNotEmpty) CutText(site, style: AppText.s(12, W.w6, color: AppColors.muted)),
+                CutText(u.isEmpty ? 'No address saved' : u,
+                    style: AppText.s(13.5, W.w6, color: AppColors.accentText).copyWith(decoration: h ? TextDecoration.underline : null, decorationColor: AppColors.accentText)),
+              ]),
+            ),
+            AppIcon(AppIcons.external, size: 16, color: h ? AppColors.accent : AppColors.muted),
+          ]),
         ),
       ),
     );
@@ -217,7 +251,7 @@ class _DetailState extends State<_Detail> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(color: AppColors.ctTextBg, borderRadius: AppRadius.all(10), border: Border.all(color: AppColors.line)),
-              child: Text(text, maxLines: 10, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w5, color: AppColors.text2, h: 1.6)),
+              child: CutText(text, maxLines: 10, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w5, color: AppColors.text2, h: 1.6)),
             ),
           ),
         meField(
@@ -297,8 +331,8 @@ class _Kpis extends StatelessWidget {
                   padding: EdgeInsets.fromLTRB(i == 0 ? 0 : 12, 2, 8, 2),
                   decoration: BoxDecoration(border: i == 0 ? null : const Border(left: BorderSide(color: AppColors.line))),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-                    Text(k, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w6, color: AppColors.muted)),
-                    Text(v, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w8)),
+                    CutText(k, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w6, color: AppColors.muted)),
+                    CutText(v, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w8)),
                   ]),
                 ),
               ),
@@ -369,8 +403,8 @@ class _FileRow extends StatelessWidget {
             AppIcon(icon, size: 18, color: AppColors.muted),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w7)),
-                Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted)),
+                CutText(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w7)),
+                CutText(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted)),
               ]),
             ),
             if (badge != null) AppBadge(badge!, tone: Tone.ok, plain: true),
@@ -414,7 +448,7 @@ class _DropZone extends StatelessWidget {
                       child: AppIcon(icon, size: 20, color: over ? AppColors.white : AppColors.accent),
                     ),
                   ),
-                  Text(title, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7, color: over ? AppColors.accentText : AppColors.text)),
+                  CutText(title, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7, color: over ? AppColors.accentText : AppColors.text)),
                   Text(sub, textAlign: TextAlign.center, style: AppText.s(12.5, W.w5, color: AppColors.muted)),
                   if (!over)
                     Padding(
@@ -460,7 +494,7 @@ class _LinkRow extends StatelessWidget {
             lead,
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7, color: h ? AppColors.accentText : AppColors.text)),
+                CutText(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7, color: h ? AppColors.accentText : AppColors.text)),
                 if (sub != null) Text(sub!, style: AppText.s(12, W.w5, color: AppColors.muted)),
               ]),
             ),
@@ -775,7 +809,7 @@ Future<Map?> showContentEditor(BuildContext context,
         _fill(ctx, ListenableBuilder(
           listenable: e,
           builder: (_, _) {
-            final note = Text(e.isNew ? (e.catName == null ? 'Not filed under a category' : 'Saved to ${e.catName}') : 'Changes reach everyone who sees it',
+            final note = CutText(e.isNew ? (e.catName == null ? 'Not filed under a category' : 'Saved to ${e.catName}') : 'Changes reach everyone who sees it',
                 maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted));
             final cancel = AppButton('Cancel', expand: ctx.isPhone, onPressed: () => Navigator.of(ctx).pop());
             final save = AppButton.primary(e.isNew ? 'Add to library' : 'Save changes',
@@ -1088,6 +1122,7 @@ Future<void> showContentAssign(BuildContext context, Map item, {required bool ca
                   Text('No client matches.', style: AppText.s(13, W.w5, color: AppColors.muted))
                 else
                   DrScrollList(rows: 6, [
+                    if (rows.length > 1) drEveryone(rows, picked, searching: q.value.isNotEmpty),
                     for (final c in rows)
                       () {
                         final cid = '${c['id']}', sel = picked.value!.contains(cid);

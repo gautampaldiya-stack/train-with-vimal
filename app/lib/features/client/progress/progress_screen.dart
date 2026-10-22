@@ -137,7 +137,7 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
           Text(l, style: AppText.s(11.5, W.w7, color: AppColors.muted)),
           FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(v, style: AppText.s(17, W.w8, ls: -.17, color: now ? AppColors.accentText : AppColors.text))),
-          Text(s, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w4, color: AppColors.muted)),
+          CutText(s, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w4, color: AppColors.muted)),
         ]),
       ),
     );
@@ -446,7 +446,7 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
                 child: Row(spacing: 10, children: [
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                      Text(l.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w7, color: h ? AppColors.accentText : AppColors.text)),
+                      CutText(l.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w7, color: h ? AppColors.accentText : AppColors.text)),
                       Text('Best set ${l.bestSet}', style: AppText.s(12, W.w4, color: AppColors.muted)),
                     ]),
                   ),
@@ -515,7 +515,7 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: h ? AppColors.line2 : AppColors.line)),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-              Text(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w7, color: AppColors.muted)),
+              CutText(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w7, color: AppColors.muted)),
               FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(v, style: AppText.s(18, W.w8))),
             ]),
           ),

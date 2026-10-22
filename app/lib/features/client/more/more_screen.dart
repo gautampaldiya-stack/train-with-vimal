@@ -16,6 +16,7 @@ import '../progress/progress_screen.dart' show pxLoading;
 import 'more_model.dart';
 import 'more_parts.dart';
 import 'more_sheets.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// More tab (boards `ClientMore` phone and `ClientMoreWeb`). Phone: `/more` is the menu, `/more/profile`,
 /// `/more/notifications` and `/more/activity` are pages. Web ("My account"): Overview · Notifications ·
@@ -280,7 +281,7 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
                   Text(d.name, style: AppText.s(16, W.w8, color: h ? AppColors.accentText : AppColors.text)),
-                  Text('Coach ${d.coachFirst} · Profile & activity', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w4, color: AppColors.muted)),
+                  CutText('Coach ${d.coachFirst} · Profile & activity', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w4, color: AppColors.muted)),
                 ]),
               ),
               const AppIcon(AppIcons.chevronRight, size: 16, color: AppColors.muted),
@@ -443,7 +444,7 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
             FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(title, maxLines: 1, style: AppText.s(21, W.w8, h: 1.2))),
-            Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted)),
+            CutText(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted)),
           ]),
         ),
         ...actions,
@@ -556,7 +557,7 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
               decoration: BoxDecoration(color: AppColors.caWebBg, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.line)),
               child: Column(children: [
                 Text(v, maxLines: 1, style: AppText.s(15, W.w8)),
-                Text(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11, W.w6, color: AppColors.muted)),
+                CutText(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11, W.w6, color: AppColors.muted)),
               ]),
             ),
           ),

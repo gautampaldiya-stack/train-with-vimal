@@ -753,8 +753,8 @@ class _ProgramBuilderScreenState extends State<ProgramBuilderScreen> {
           border: Border.all(color: border),
           boxShadow: on ? const [BoxShadow(color: AppColors.accentSoft, spreadRadius: 3)] : null,
         );
-        final title = Text(dayTitle(d), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(compact ? 14 : 13.5, W.w7));
-        final sum = Text(daySummary(d), maxLines: compact ? 1 : 2, overflow: TextOverflow.ellipsis, style: AppText.s(compact ? 12 : 11.5, W.w5, color: AppColors.muted));
+        final title = CutText(dayTitle(d), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(compact ? 14 : 13.5, W.w7));
+        final sum = CutText(daySummary(d), maxLines: compact ? 1 : 2, overflow: TextOverflow.ellipsis, style: AppText.s(compact ? 12 : 11.5, W.w5, color: AppColors.muted));
         const moon = AppTooltip(message: 'Rest day', child: AppIcon(AppIcons.moon, size: 16, color: AppColors.muted));
         const dumbbell = AppTooltip(message: 'Workout day', child: AppIcon(AppIcons.dumbbell, size: 16, color: AppColors.muted));
         final box = compact
@@ -931,7 +931,7 @@ class _ProgramBuilderScreenState extends State<ProgramBuilderScreen> {
           decoration: BoxDecoration(color: ss ? AppColors.card : AppColors.sub, borderRadius: AppRadius.all(6)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(l, style: AppText.s(10.5, W.w6, color: AppColors.muted)),
-            Text(v, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6, tabular: true)),
+            CutText(v, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6, tabular: true)),
           ]),
         );
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [

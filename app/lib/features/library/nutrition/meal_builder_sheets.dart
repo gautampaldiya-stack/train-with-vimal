@@ -13,20 +13,27 @@ import '../../../core/widgets/input.dart';
 import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/select.dart';
-import '../../trainer/client_profile/cp_content_drawers.dart' show DrOpt, DrScrollList;
+import '../../trainer/client_profile/cp_content_drawers.dart' show drEveryone, DrOpt, DrScrollList;
 import '../../trainer/me/me_common.dart' show meField;
 import '../lib_common.dart';
 import 'meal_builder_model.dart';
 import 'nu_common.dart';
+import '../../../core/widgets/tooltip.dart';
+import '../../../core/widgets/type_number.dart';
 
 /// Modals and drawers of the Meal plan builder (board `MealPlanBuilder`): Edit targets, Add / Edit meal, Publish,
 /// Assign to clients, Clients on this plan (version notes) and Custom version.
 
 /// `.pg-step` with a text value ("3", "3.5"), for steppers that are not whole numbers.
 class NuStep extends StatelessWidget {
-  const NuStep({super.key, required this.value, required this.unit, this.onLess, this.onMore});
+  const NuStep({super.key, required this.value, required this.unit, this.onLess, this.onMore, this.number, this.min = 0, this.max = 99999, this.onSet});
   final String value, unit;
   final VoidCallback? onLess, onMore;
+
+  /// With [onSet] the number can also be typed (tap it), clamped to [min]–[max].
+  final double? number;
+  final double min, max;
+  final ValueChanged<double>? onSet;
   @override
   Widget build(BuildContext context) => Container(
         height: 40,
@@ -36,8 +43,10 @@ class NuStep extends StatelessWidget {
           AppIconButton(AppIcons.minus, tooltip: 'Less', small: true, onPressed: onLess),
           Expanded(
             child: Row(mainAxisAlignment: MainAxisAlignment.center, spacing: 5, children: [
-              Text(value, style: AppText.s(16, W.w8, tabular: true)),
-              if (unit.isNotEmpty) Flexible(child: Text(unit, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted))),
+              onSet == null || number == null
+                  ? Text(value, style: AppText.s(16, W.w8, tabular: true))
+                  : TypeNumber(value: number!, text: value, min: min, max: max, width: 76, style: AppText.s(16, W.w8, tabular: true), onChanged: onSet!),
+              if (unit.isNotEmpty) Flexible(child: CutText(unit, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted))),
             ]),
           ),
           AppIconButton(AppIcons.plus, tooltip: 'More', small: true, onPressed: onMore),
@@ -75,6 +84,10 @@ Future<Map<String, num>?> showTargetsModal(BuildContext context, Map<String, num
             unit: unit,
             onLess: x - by < lo ? null : () => set(k, x - by),
             onMore: x + by > hi ? null : () => set(k, x + by),
+            number: shown.toDouble(),
+            min: lo / scale,
+            max: hi / scale,
+            onSet: (n) => set(k, scale == 1 ? n.round() : (n * scale).round()),
           );
         },
       );
@@ -243,6 +256,7 @@ Future<(int, int, List<String>)?> showMealAssignModal(BuildContext context, Meal
                 Text('No client matches.', style: AppText.s(13, W.w5, color: AppColors.muted))
               else
                 DrScrollList(rows: 6, [
+                  if (rows.length > 1) drEveryone(rows, picked, searching: q.value.isNotEmpty),
                   for (final c in rows)
                     () {
                       final id = '${c['id']}', sel = picked.value!.contains(id);
@@ -448,7 +462,7 @@ Future<bool?> showMealClientsDrawer(BuildContext context, MealBuilderModel m, {r
     ),
     footer: (ctx) => [
       if (!ctx.isPhone)
-        Expanded(child: ValueListenableBuilder(valueListenable: rows, builder: (_, l, _) => Text(countL(l), style: AppText.cap, maxLines: 1, overflow: TextOverflow.ellipsis))),
+        Expanded(child: ValueListenableBuilder(valueListenable: rows, builder: (_, l, _) => CutText(countL(l), style: AppText.cap, maxLines: 1, overflow: TextOverflow.ellipsis))),
       AppButton('Close', expand: ctx.isPhone, onPressed: () => Navigator.of(ctx).pop()),
       if (m.canAssign) AppButton.primary('Assign to clients', icon: AppIcons.assign, expand: ctx.isPhone, onPressed: () => Navigator.of(ctx).pop(true)),
     ],

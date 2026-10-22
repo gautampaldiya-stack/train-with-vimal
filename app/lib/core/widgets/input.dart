@@ -79,10 +79,15 @@ class _AppTextFieldState extends State<AppTextField> {
     final focused = _focus.hasFocus;
     final border = err ? AppColors.badText : (focused ? AppColors.accent : (_hover ? AppColors.lineHover : AppColors.line2));
     final multi = widget.maxLines > 1 || (widget.minLines ?? 1) > 1;
+    // The text itself is only one line tall: a click anywhere in the box (padding, near the border) focuses it too.
     final field = MouseRegion(
+      cursor: widget.enabled ? SystemMouseCursors.text : MouseCursor.defer,
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
-      child: AnimatedContainer(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.enabled ? _focus.requestFocus : null,
+        child: AnimatedContainer(
         duration: const Duration(milliseconds: 120),
         height: multi ? null : (widget.height ?? 36),
         constraints: multi ? const BoxConstraints(minHeight: 92) : null,
@@ -123,6 +128,7 @@ class _AppTextFieldState extends State<AppTextField> {
           ),
           if (widget.suffix != null) Padding(padding: const EdgeInsets.only(left: 8), child: widget.suffix),
         ]),
+        ),
       ),
     );
     if (widget.label == null && widget.hint == null && !err) return field;

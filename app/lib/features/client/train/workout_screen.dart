@@ -17,6 +17,7 @@ import '../home/home_parts.dart';
 import 'train_model.dart';
 import 'train_parts.dart';
 import 'workout_model.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Workout logger (boards `ClientWorkout` phone and `ClientWorkoutWeb`): one exercise at a time,
 /// sets with −/+ values and ticks, rest timer, workout timer, finish and the "Workout done" page.
@@ -210,10 +211,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           CaIconBtn(AppIcons.chevronLeft, tooltip: 'Back to overview', onTap: () => context.go('/train')),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-              Text(c.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(web ? 22 : 17, W.w8)),
+              CutText(c.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(web ? 22 : 17, W.w8)),
               Row(spacing: 5, children: [
                 Builder(builder: (bc) => _timeChip(c, () => web ? _timerPop(bc, c) : _timerSheet(c))),
-                Flexible(child: Text('· ${c.setsDone} of ${c.setsAll} sets', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted))),
+                Flexible(child: CutText('· ${c.setsDone} of ${c.setsAll} sets', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted))),
               ]),
             ]),
           ),
@@ -299,7 +300,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                   decoration: BoxDecoration(color: on ? AppColors.sub : (h ? AppColors.outlineHover : null), borderRadius: BorderRadius.circular(10)),
                   child: Row(spacing: 7, children: [
                     _badge(c, i, on: on),
-                    Expanded(child: Text(x.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, on ? W.w7 : W.w6, color: on ? AppColors.text : AppColors.text2))),
+                    Expanded(child: CutText(x.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, on ? W.w7 : W.w6, color: on ? AppColors.text : AppColors.text2))),
                   ]),
                 );
               },
@@ -697,7 +698,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     return Row(spacing: 6, children: _grid(c, e, web: web, cells: [
       Align(alignment: Alignment.centerLeft, child: sn),
       if (web)
-        Text(prev, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: s.wu ? AppColors.amberText : AppColors.muted)),
+        CutText(prev, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: s.wu ? AppColors.amberText : AppColors.muted)),
       for (var j = 0; j < cols.length; j++) cell(j),
       ?go,
       tick,
@@ -892,7 +893,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('Rest timer', style: AppText.s(15, W.w8)),
-              Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
+              CutText(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
             ]),
           ),
         ]),
@@ -924,7 +925,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           child: Row(spacing: 8, children: [
             const AppIcon(AppIcons.arrowRight, size: 15, color: AppColors.muted),
             Expanded(child: Text('Next up', style: AppText.s(12.5, W.w4, color: AppColors.muted))),
-            Flexible(flex: 3, child: Text(c.nextUp, textAlign: TextAlign.right, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w7))),
+            Flexible(flex: 3, child: CutText(c.nextUp, textAlign: TextAlign.right, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w7))),
           ]),
         ),
       ]),
@@ -1193,7 +1194,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             alignment: Alignment.center,
             padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: BoxDecoration(color: h ? AppColors.badText : AppColors.red, borderRadius: BorderRadius.circular(web ? 10 : 12)),
-            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(web ? 14 : 14.5, W.w7, color: AppColors.white)),
+            child: CutText(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(web ? 14 : 14.5, W.w7, color: AppColors.white)),
           );
         },
       );

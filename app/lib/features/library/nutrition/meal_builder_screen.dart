@@ -10,6 +10,7 @@ import '../../../core/icons/app_icons.dart';
 import '../../../core/leave/leave_guard.dart';
 import '../../../core/theme/theme.dart';
 import '../../../core/widgets/avatar.dart';
+import '../../../core/widgets/type_number.dart';
 import '../../../core/widgets/badge.dart';
 import '../../../core/widgets/button.dart';
 import '../../../core/widgets/card.dart';
@@ -525,8 +526,8 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
                                 FoodTile(tone: groupTone('${r['group'] ?? ''}'), size: 30),
                                 Expanded(
                                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                                    Text('${r['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w7)),
-                                    Text('$amt · ${_d(mac['kcal']).round()} kcal · P ${_d(mac['protein']).round()} g',
+                                    CutText('${r['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w7)),
+                                    CutText('$amt · ${_d(mac['kcal']).round()} kcal · P ${_d(mac['protein']).round()} g',
                                         maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted)),
                                   ]),
                                 ),
@@ -660,7 +661,7 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
       Text(m.name, style: AppText.h1.copyWith(fontSize: size)),
       AppBadge(pub ? 'Published' : 'Draft', tone: pub ? Tone.ok : Tone.warn, plain: true),
     ]);
-    final sub = Text(m.sub, style: AppText.sub.copyWith(fontSize: phone ? 12 : 13), maxLines: 2, overflow: TextOverflow.ellipsis);
+    final sub = CutText(m.sub, style: AppText.sub.copyWith(fontSize: phone ? 12 : 13), maxLines: 2, overflow: TextOverflow.ellipsis);
     final actions = [
       if (_edit || m.canCreate) Builder(builder: (b) => AppIconButton(AppIcons.dots, tooltip: 'More options', onPressed: () => _planMenu(b))),
       AppButton(clientsL, icon: AppIcons.clientsAlt, iconOnly: phone || narrow, tooltip: 'Clients on this plan', onPressed: _manage),
@@ -731,7 +732,7 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
       final frac = want == 0 ? 0.0 : (have / want).clamp(0.0, 1.0);
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: phone ? 2 : 4, children: [
         Text(k, style: AppText.s(phone ? 10.5 : 12, W.w6, color: AppColors.muted)),
-        Text.rich(
+        CutText.rich(
           TextSpan(children: [
             TextSpan(text: kfmt(want)),
             TextSpan(text: ' $u', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
@@ -747,7 +748,7 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
           alignment: Alignment.centerLeft,
           child: FractionallySizedBox(widthFactor: frac, child: Container(decoration: BoxDecoration(color: col, borderRadius: AppRadius.all(3)))),
         ),
-        Text('$pre${kfmt(have)} $u', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(phone ? 10.5 : 11.5, W.w6, color: ok ? AppColors.okText : AppColors.warnText)),
+        CutText('$pre${kfmt(have)} $u', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(phone ? 10.5 : 11.5, W.w6, color: ok ? AppColors.okText : AppColors.warnText)),
       ]);
     }
 
@@ -759,7 +760,7 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
     // grid: Fibre and Water get a cell each, so both rows have three even cells
     Widget daily(String k, String v) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: phone ? 2 : 4, children: [
           Text(k, style: AppText.s(phone ? 10.5 : 12, W.w6, color: AppColors.muted)),
-          Text(v, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(phone ? 15 : 20, W.w8, tabular: true)),
+          CutText(v, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(phone ? 15 : 20, W.w8, tabular: true)),
           Text('Daily target', style: AppText.s(phone ? 10.5 : 11.5, W.w6, color: AppColors.muted)),
         ]);
     final edit = AppButton('Edit targets', icon: AppIcons.edit, size: BtnSize.sm, expand: phone || grid, tooltip: 'Daily targets for every client on this plan', onPressed: _edit ? _editTargets : null);
@@ -843,8 +844,8 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
         const IconTile(AppIcons.clock, size: 34, radius: 9, iconSize: 17, bg: AppColors.okBg, fg: AppColors.okText),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-            Text('${meal['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(15.5, W.w8)),
-            Text('${mealTimeLabel(meal['time'])} · target ${kfmt(tgt)} kcal', maxLines: phone ? 2 : 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted)),
+            CutText('${meal['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(15.5, W.w8)),
+            CutText('${mealTimeLabel(meal['time'])} · target ${kfmt(tgt)} kcal', maxLines: phone ? 2 : 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted)),
           ]),
         ),
         AppBadge(badge, tone: ok ? Tone.ok : Tone.warn, plain: true),
@@ -980,7 +981,7 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
     final f = (it['food_detail'] as Map?) ?? const {};
     final on = m.sel == (mi, oi, ii);
     final tile = FoodTile(tone: groupTone('${f['group'] ?? ''}'), size: 30);
-    final name = Text('${f['name'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7));
+    final name = CutText('${f['name'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7));
     final por = Text(MealItemMath.amount(it), style: AppText.s(12, W.w5, color: AppColors.muted));
     String mac(String k) => '${MealItemMath.m(it, k).round()}';
     final kcal = MealItemMath.m(it, 'kcal').round();
@@ -1106,7 +1107,7 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
           padding: const EdgeInsets.fromLTRB(12, 0, 10, 0),
           decoration: BoxDecoration(color: AppColors.card, borderRadius: AppRadius.all(AppRadius.input), border: Border.all(color: h ? AppColors.lineHover : AppColors.line2)),
           child: Row(spacing: 6, children: [
-            Expanded(child: Text(u == null ? 'Grams' : '${u['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w6))),
+            Expanded(child: CutText(u == null ? 'Grams' : '${u['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w6))),
             const AppIcon(AppIcons.chevronDown, size: 16, color: AppColors.muted),
           ]),
         ),
@@ -1134,7 +1135,13 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
               decoration: BoxDecoration(color: AppColors.card, borderRadius: AppRadius.all(AppRadius.input), border: Border.all(color: AppColors.line2)),
               child: Row(children: [
                 AppIconButton(AppIcons.minus, tooltip: 'Less', ghost: true, small: true, onPressed: !_edit || q - step < step ? null : () => _setQty(it, q - step)),
-                Expanded(child: Text(fq(q), textAlign: TextAlign.center, style: AppText.s(14, W.w8, tabular: true))),
+                Expanded(
+                  child: Center(
+                    child: _edit
+                        ? TypeNumber(value: q, text: fq(q), min: step, max: u == null ? 2000 : 20, style: AppText.s(14, W.w8, tabular: true), onChanged: (v) => _setQty(it, v))
+                        : Text(fq(q), textAlign: TextAlign.center, style: AppText.s(14, W.w8, tabular: true)),
+                  ),
+                ),
                 AppIconButton(AppIcons.plus, tooltip: 'More', ghost: true, small: true, onPressed: !_edit || q + step > (u == null ? 2000 : 20) ? null : () => _setQty(it, q + step)),
               ]),
             ),
@@ -1163,8 +1170,8 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
             child: Row(spacing: 8, children: [
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                  Text('${s['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w7)),
-                  Text(s['unit'] == null ? portionLabel(_d(s['quantity']), null) : '${portionLabel(_d(s['quantity']), '${s['unit_name']}')} · ${fq(_d(s['grams']))} g',
+                  CutText('${s['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w7)),
+                  CutText(s['unit'] == null ? portionLabel(_d(s['quantity']), null) : '${portionLabel(_d(s['quantity']), '${s['unit_name']}')} · ${fq(_d(s['grams']))} g',
                       maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted)),
                 ]),
               ),
@@ -1217,8 +1224,8 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
                 AppAvatar('${c['full_name']}', size: 28, initials: '${c['initials'] ?? ''}', colors: AppColors.avatarCode('${c['avatar_color'] ?? 'c1'}')),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                    Text('${c['full_name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7, color: h ? AppColors.accentText : AppColors.text)),
-                    Text(custom ? (note.isEmpty ? 'Has changes only for them' : note) : 'Follows the master plan',
+                    CutText('${c['full_name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7, color: h ? AppColors.accentText : AppColors.text)),
+                    CutText(custom ? (note.isEmpty ? 'Has changes only for them' : note) : 'Follows the master plan',
                         maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted)),
                   ]),
                 ),

@@ -19,6 +19,7 @@ import '../../trainer/client_profile/cp_plans_parts.dart' show ExMedia;
 import '../lib_common.dart';
 import 'ex_common.dart';
 import 'ex_sheets.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Exercise page (boards `ExerciseDetail` / `ExerciseDetailMobile`): header with the cover, Default sets and reps,
 /// How to · Form cues · Muscles (body map), Video, Details and Used in N programs. Built-in exercises are read-only
@@ -133,7 +134,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
           builder: (_, h, _) => Text('Exercises', style: AppText.s(13, W.w5, color: h ? AppColors.text : AppColors.muted)),
         ),
         const AppIcon(AppIcons.chevronRight, size: 13, color: AppColors.chevron),
-        Flexible(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6))),
+        Flexible(child: CutText(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6))),
       ]);
 
   Widget _head(Map x, bool phone) {
@@ -143,7 +144,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
       SizedBox(width: phone ? 48 : 76, height: phone ? 48 : 76, child: ExCover(x, radius: phone ? 9 : 12, iconSize: phone ? 20 : 32, badge: !phone, inset: 5)),
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 4, children: [
-          Text('${x['name']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.h1.copyWith(fontSize: phone ? 17 : 28)),
+          CutText('${x['name']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.h1.copyWith(fontSize: phone ? 17 : 28)),
           Text(sub, style: AppText.sub.copyWith(fontSize: phone ? 12 : 13)),
         ]),
       ),
@@ -176,7 +177,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
           decoration: BoxDecoration(border: Border(left: first ? BorderSide.none : const BorderSide(color: AppColors.line))),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
             Text(t.$1, style: AppText.s(12, W.w6, color: AppColors.muted)),
-            Text.rich(
+            CutText.rich(
               TextSpan(children: [
                 TextSpan(text: t.$2),
                 if (t.$3 != null) TextSpan(text: ' ${t.$3}', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
@@ -190,7 +191,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
     final logs = Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(color: AppColors.sub, borderRadius: AppRadius.all(99), border: Border.all(color: AppColors.line)),
-      child: Text.rich(
+      child: CutText.rich(
         TextSpan(children: [
           TextSpan(text: 'Client logs  ', style: AppText.s(12, W.w5, color: AppColors.muted)),
           TextSpan(text: logLabel(x['log_type']), style: AppText.s(12.5, W.w7)),
@@ -353,7 +354,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
           padding: const EdgeInsets.symmetric(vertical: 7),
           child: Row(spacing: 12, children: [
             Text(k, style: AppText.s(13, W.w5, color: AppColors.muted)),
-            Expanded(child: Text(v, textAlign: TextAlign.right, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6))),
+            Expanded(child: CutText(v, textAlign: TextAlign.right, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6))),
           ]),
         );
     final title = m != null ? '${m['title'] ?? 'Video'}${((m['duration'] as num?) ?? 0) > 0 ? ' · ${clock(m['duration'])}' : ''}' : null;

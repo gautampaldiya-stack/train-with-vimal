@@ -8,6 +8,7 @@ import '../../../core/theme/theme.dart';
 import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/photo_viewer.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Pieces of the Check-ins boards (`ck-*`), shared by the list, the two forms and the sheet.
 
@@ -80,7 +81,7 @@ class CkScale extends StatelessWidget {
                       spacing: lg ? 3 : 1,
                       children: [
                         Text('${i + 1}', style: AppText.s(lg ? 20 : 15, W.w8, color: on ? AppColors.white : AppColors.text, h: 1.2)),
-                        Text(
+                        CutText(
                           labels[i],
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,

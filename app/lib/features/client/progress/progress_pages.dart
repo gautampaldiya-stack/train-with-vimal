@@ -16,6 +16,7 @@ import 'progress_model.dart';
 import 'progress_parts.dart';
 import 'progress_screen.dart' show fdCapPx, pxLoading, pxMRow;
 import 'progress_sheets.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// The Progress sub pages (boards `ClientProgress` / `ClientProgressWeb`): History (`/progress/history`),
 /// Progress photos (`/progress/photos`) and Compare (`/progress/compare?a=&b=&pose=`).
@@ -214,7 +215,7 @@ class _ProgressHistoryScreenState extends State<ProgressHistoryScreen> {
     return ChCard(gap: 10, children: [
       Row(spacing: 8, children: [
         Text('SUMMARY', style: AppText.s(11, W.w8, ls: .66, color: AppColors.muted)),
-        Expanded(child: Text('$rl · ${n('days') ?? 0} days', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
+        Expanded(child: CutText('$rl · ${n('days') ?? 0} days', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
         if (n('adherence') != null) pxPill('${n('adherence')}% adherence', PxTone.green),
       ]),
       for (var r = 0; r < 2; r++)
@@ -225,8 +226,8 @@ class _ProgressHistoryScreenState extends State<ProgressHistoryScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(10)),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                  Text(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w7, color: AppColors.muted)),
-                  Text.rich(
+                  CutText(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w7, color: AppColors.muted)),
+                  CutText.rich(
                     TextSpan(children: [
                       TextSpan(text: v, style: AppText.s(16, W.w8)),
                       if (u.isNotEmpty) TextSpan(text: '  $u', style: AppText.s(11.5, W.w4, color: AppColors.muted)),
@@ -410,7 +411,7 @@ class _ProgressPhotosScreenState extends State<ProgressPhotosScreen> {
                 padding: const EdgeInsets.only(bottom: 4),
                 child: PxTile(set: s, pose: _pose, label: _pose, badge: pk < 0 ? null : 'AB'[pk], badgeAccent: true, selected: pk >= 0),
               ),
-              Text(pxWdm(s.date), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w8, color: h ? AppColors.accentText : AppColors.text)),
+              CutText(pxWdm(s.date), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w8, color: h ? AppColors.accentText : AppColors.text)),
               Text([if (s.kg != null) pxAmt(s.kg!, 'kg'), s.label].join(' · '), style: AppText.s(11, W.w4, color: AppColors.muted, h: 1.3)),
             ]),
           ),
@@ -583,8 +584,8 @@ class _ProgressCompareScreenState extends State<ProgressCompareScreen> {
           Row(spacing: 4, children: [
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                Text(pxWdm(s.date), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w8)),
-                Text([if (s.kg != null) pxAmt(s.kg!, 'kg'), s.shortLabel].join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11, W.w4, color: AppColors.muted)),
+                CutText(pxWdm(s.date), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w8)),
+                CutText([if (s.kg != null) pxAmt(s.kg!, 'kg'), s.shortLabel].join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11, W.w4, color: AppColors.muted)),
               ]),
             ),
             Opacity(

@@ -10,6 +10,7 @@ import 'card.dart';
 import 'client.dart';
 import 'hover.dart';
 import 'responsive.dart';
+import 'tooltip.dart';
 
 // ─────────────────────────────── Menu (docs/design.md §4.1)
 
@@ -124,10 +125,10 @@ class _MenuBoxState extends State<_MenuBox> {
                           ?e.lead,
                           Expanded(
                             child: e.sub == null
-                                ? Text(e.label, style: AppText.s(13.5, e.selected ? W.w7 : W.w5, color: fg), overflow: TextOverflow.ellipsis)
+                                ? CutText(e.label, style: AppText.s(13.5, e.selected ? W.w7 : W.w5, color: fg), overflow: TextOverflow.ellipsis)
                                 : Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                                    Text(e.label, style: AppText.s(13.5, W.w5, color: fg), overflow: TextOverflow.ellipsis),
-                                    Text(e.sub!, style: AppText.s(11.5, W.w5, color: AppColors.muted), overflow: TextOverflow.ellipsis),
+                                    CutText(e.label, style: AppText.s(13.5, W.w5, color: fg), overflow: TextOverflow.ellipsis),
+                                    CutText(e.sub!, style: AppText.s(11.5, W.w5, color: AppColors.muted), overflow: TextOverflow.ellipsis),
                                   ]),
                           ),
                           if (e.end != null) Text(e.end!, style: AppText.s(12, W.w5, color: AppColors.muted)),
@@ -303,7 +304,7 @@ Future<T?> showAppDrawer<T>(
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
                     Text(title, style: AppText.s(15, W.w8, ls: -0.15, h: 1.3)),
-                    if (sub != null) Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted, h: 1.4)),
+                    if (sub != null) CutText(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted, h: 1.4)),
                   ]),
                 ),
                 ?headerAction,
@@ -793,10 +794,10 @@ class _FilterMenuState extends State<_FilterMenu> {
                   onEnter: () => setState(() => open = i),
                   onTap: () => setState(() => open = open == i ? null : i),
                   child: Row(spacing: 10, children: [
-                    Expanded(child: Text(g.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w5))),
+                    Expanded(child: CutText(g.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w5))),
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 120),
-                      child: Text(g.value, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w6, color: AppColors.muted)),
+                      child: CutText(g.value, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w6, color: AppColors.muted)),
                     ),
                     const AppIcon(AppIcons.chevronRight, size: 14, color: AppColors.muted),
                   ]),
@@ -833,7 +834,7 @@ class _FilterMenuState extends State<_FilterMenu> {
                       o.onTap?.call();
                     },
                     child: Row(children: [
-                      Expanded(child: Text(o.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, o.selected ? W.w7 : W.w5))),
+                      Expanded(child: CutText(o.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, o.selected ? W.w7 : W.w5))),
                       if (o.selected) const AppIcon(AppIcons.check, size: 15, color: AppColors.accent, stroke: 2.2),
                     ]),
                   ),

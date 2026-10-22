@@ -8,6 +8,7 @@ import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/overlays.dart';
 import 'home_model.dart';
 import 'home_parts.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Sheets of the client Home board. On wide screens [showAppSheet] makes them centred 520 cards.
 
@@ -95,7 +96,7 @@ Future<void> showLogFoodSheet(BuildContext context, HomeController c, void Funct
               decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: h ? AppColors.line2 : AppColors.line)),
               child: Row(spacing: 8, children: [
                 const AppIcon(AppIcons.search, color: AppColors.muted),
-                Expanded(child: Text('Search foods, e.g. dal, roti, paneer', overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w4, color: AppColors.muted))),
+                Expanded(child: CutText('Search foods, e.g. dal, roti, paneer', overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w4, color: AppColors.muted))),
               ]),
             ),
           ),

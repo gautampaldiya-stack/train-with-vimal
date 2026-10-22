@@ -7,6 +7,7 @@ import '../../../app/shell/page.dart';
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
 import '../../../core/widgets/hover.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// More tab (board `TrainerMoreMobile`, phone only — wider screens have the sidebar): the profile card
 /// (→ My profile), the Library group and Log out. Settings, trainers and automations are not here (behaviour §3.7).
@@ -82,8 +83,8 @@ class MoreMeCard extends StatelessWidget {
               ),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-                  Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(16, W.w8, ls: -0.16, color: h ? AppColors.accentText : AppColors.text)),
-                  Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w4, color: AppColors.muted)),
+                  CutText(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(16, W.w8, ls: -0.16, color: h ? AppColors.accentText : AppColors.text)),
+                  CutText(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w4, color: AppColors.muted)),
                 ]),
               ),
               const AppIcon(AppIcons.chevronRight, size: 18, color: AppColors.muted),
@@ -152,8 +153,8 @@ class MoreRow extends StatelessWidget {
               ),
               Expanded(
                 child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                  Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w6, color: red ? AppColors.mbRed : AppColors.text)),
-                  if (sub != null) Text(sub!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted)),
+                  CutText(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w6, color: red ? AppColors.mbRed : AppColors.text)),
+                  if (sub != null) CutText(sub!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted)),
                 ]),
               ),
               if (!red) const AppIcon(AppIcons.chevronRight, size: 18, color: AppColors.muted),

@@ -4,6 +4,7 @@ import '../icons/app_icon.dart';
 import '../theme/theme.dart';
 import 'card.dart';
 import 'hover.dart';
+import 'tooltip.dart';
 
 /// `.stat`: label with 26px icon tile, then number 24/800 with the delta beside it.
 class StatCard extends StatelessWidget {
@@ -17,15 +18,15 @@ class StatCard extends StatelessWidget {
   Widget build(BuildContext context) => AppCard(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 8, children: [
-          Row(spacing: 8, children: [IconTile(icon), Flexible(child: Text(label, style: AppText.s(12.5, W.w6, color: AppColors.muted), overflow: TextOverflow.ellipsis))]),
+          Row(spacing: 8, children: [IconTile(icon), Flexible(child: CutText(label, style: AppText.s(12.5, W.w6, color: AppColors.muted), overflow: TextOverflow.ellipsis))]),
           Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, spacing: 8, children: [
             Text(value, style: AppText.stat),
             if (delta != null)
               Flexible(
-                child: Text(delta!,
+                child: CutText(delta!,
                     style: AppText.s(12, W.w7, color: deltaUp == null ? AppColors.muted : (deltaUp! ? AppColors.okText : AppColors.badText)), overflow: TextOverflow.ellipsis),
               ),
-            if (note != null) Flexible(child: Text(note!, style: AppText.s(12.5, W.w6, color: AppColors.text2), overflow: TextOverflow.ellipsis)),
+            if (note != null) Flexible(child: CutText(note!, style: AppText.s(12.5, W.w6, color: AppColors.text2), overflow: TextOverflow.ellipsis)),
           ]),
         ]),
       );
@@ -55,8 +56,8 @@ class GlanceTile extends StatelessWidget {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
                 Text(value, style: AppText.s(18, W.w8, tabular: true, h: 1.1)),
-                Text(label, style: AppText.s(12.5, W.w7), maxLines: 1, overflow: TextOverflow.ellipsis),
-                if (sub != null) Text(sub!, style: AppText.s(11.5, W.w5, color: warn ? AppColors.warnText : AppColors.muted), maxLines: 1, overflow: TextOverflow.ellipsis),
+                CutText(label, style: AppText.s(12.5, W.w7), maxLines: 1, overflow: TextOverflow.ellipsis),
+                if (sub != null) CutText(sub!, style: AppText.s(11.5, W.w5, color: warn ? AppColors.warnText : AppColors.muted), maxLines: 1, overflow: TextOverflow.ellipsis),
               ]),
             ),
             Icon(Icons.chevron_right_rounded, size: 16, color: h ? AppColors.accent : AppColors.line2),

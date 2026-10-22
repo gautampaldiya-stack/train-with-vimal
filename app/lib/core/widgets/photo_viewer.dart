@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../icons/app_icons.dart';
 import '../theme/theme.dart';
 import 'hover.dart';
+import 'tooltip.dart';
 
 /// A photo from the server (a link) or one still on this phone (a data URL).
 ImageProvider? photoImage(String? src) {
@@ -63,7 +64,7 @@ class PhotoThumb extends StatelessWidget {
             if (label)
               SizedBox(
                 width: size,
-                child: Text(
+                child: CutText(
                   name,
                   textAlign: TextAlign.center,
                   maxLines: 1,

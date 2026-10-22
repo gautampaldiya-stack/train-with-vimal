@@ -14,6 +14,7 @@ import '../home/home_parts.dart';
 import 'checkins_daily.dart';
 import 'checkins_model.dart';
 import 'checkins_weekly.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Check-ins (boards `ClientCheckin` phone and `ClientCheckinWeb`). `/checkins` is the list,
 /// `/checkins/daily` and `/checkins/weekly` the two forms, `/checkins/<id>` opens a past check-in.
@@ -164,7 +165,7 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Check-ins', style: AppText.s(web ? 26 : 22, W.w8, ls: web ? -0.26 : -0.22, h: 1.2)),
-        Text(
+        CutText(
           d.sub,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -521,7 +522,7 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
                 spacing: 1,
                 children: [
                   Text(title, style: AppText.s(14, W.w7, color: h ? AppColors.accentText : AppColors.text)),
-                  Text(
+                  CutText(
                     sub,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

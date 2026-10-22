@@ -569,8 +569,8 @@ class _PlanCard extends StatelessWidget {
               const IconTile(AppIcons.apple, size: 40, radius: 10, iconSize: 18, bg: AppColors.okBg, fg: AppColors.okText),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-                  Text('${p['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(15, W.w8, color: h ? AppColors.accentText : AppColors.text)),
-                  Text('${dietPlan[p['diet']] ?? ''} · ${plural(meals, 'meal')} · ${plural(opts, 'meal option')}',
+                  CutText('${p['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(15, W.w8, color: h ? AppColors.accentText : AppColors.text)),
+                  CutText('${dietPlan[p['diet']] ?? ''} · ${plural(meals, 'meal')} · ${plural(opts, 'meal option')}',
                       maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted)),
                 ]),
               ),
@@ -639,7 +639,7 @@ class _PlanCard extends StatelessWidget {
           Text('Not assigned yet', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
         ],
         Expanded(
-          child: Text(editedOn(p['updated_at']), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.right, style: AppText.s(12.5, W.w5, color: AppColors.muted)),
+          child: CutText(editedOn(p['updated_at']), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.right, style: AppText.s(12.5, W.w5, color: AppColors.muted)),
         ),
       ]),
     );
@@ -690,6 +690,7 @@ class _FoodVals {
     final src = '${f['source']}';
     sub = [
       if ('${f['brand'] ?? ''}'.isNotEmpty) '${f['brand']}',
+      if ('${f['group']}' == 'other' && '${f['category'] ?? ''}'.isNotEmpty) '${f['category']}',
       if (src == 'team') 'Made by your team',
       if (src == 'imported') 'Imported${'${f['source_note'] ?? ''}'.isEmpty ? '' : ' · ${f['source_note']}'}',
       if (units > 1) plural(units, 'unit'),
@@ -714,7 +715,7 @@ Widget _usedIn(Map f) {
       constraints: const BoxConstraints(maxWidth: 160),
       padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: AppRadius.all(6)),
-      child: Center(widthFactor: 1, child: Text('${used.first}${used.length > 1 ? ' +${used.length - 1}' : ''}',
+      child: Center(widthFactor: 1, child: CutText('${used.first}${used.length > 1 ? ' +${used.length - 1}' : ''}',
           maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w7, color: AppColors.accentText))),
     ),
   );
@@ -738,7 +739,7 @@ class _FoodRow extends StatelessWidget {
           alignment: right ? Alignment.centerRight : Alignment.centerLeft,
           child: child,
         );
-    Text t(String s, {bool b = false}) => Text(s, maxLines: 1, overflow: TextOverflow.ellipsis, style: b ? AppText.s(13.5, W.w7) : body);
+    Widget t(String s, {bool b = false}) => CutText(s, maxLines: 1, overflow: TextOverflow.ellipsis, style: b ? AppText.s(13.5, W.w7) : body);
     return Hover(
       onTap: onOpen,
       builder: (_, h, _) => Container(
@@ -754,8 +755,8 @@ class _FoodRow extends StatelessWidget {
               FoodTile(tone: groupTone('${f['group']}')),
               Expanded(
                 child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                  Text('${f['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
-                  Text(v.sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
+                  CutText('${f['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
+                  CutText(v.sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
                 ]),
               ),
             ]),
@@ -766,7 +767,7 @@ class _FoodRow extends StatelessWidget {
           cell(4, t('${v.c} g'), right: true),
           cell(5, t('${v.fat} g'), right: true),
           cell(6, DietLabel('${f['diet']}')),
-          cell(7, t(foodGroups['${f['group']}'] ?? '${f['group']}')),
+          cell(7, t('${f['group']}' == 'other' && '${f['category'] ?? ''}'.isNotEmpty ? '${f['category']}' : (foodGroups['${f['group']}'] ?? '${f['group']}'))),
           cell(8, _usedIn(f)),
           SizedBox(
             width: widths[9],
@@ -806,8 +807,8 @@ class _FoodItem extends StatelessWidget {
               Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 8, children: [
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                    Text('${f['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
-                    Text(v.sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: mute),
+                    CutText('${f['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
+                    CutText(v.sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: mute),
                   ]),
                 ),
                 Padding(
@@ -823,7 +824,7 @@ class _FoodItem extends StatelessWidget {
                 padding: const EdgeInsets.only(right: 6),
                 child: Row(spacing: 6, children: [
                   Expanded(
-                    child: Text.rich(
+                    child: CutText.rich(
                       TextSpan(children: [
                         TextSpan(text: v.serv, style: cap),
                         TextSpan(text: '   P ${v.p} g   C ${v.c} g   F ${v.fat} g'),

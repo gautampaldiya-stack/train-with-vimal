@@ -37,7 +37,7 @@ class FoodSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Food
-        fields = ["id", "name", "brand", "diet", "group", "source", "source_note", "kcal", "protein", "carbs", "fat",
+        fields = ["id", "name", "brand", "diet", "group", "category", "source", "source_note", "kcal", "protein", "carbs", "fat",
                   "fibre", "sodium_mg", "iron_mg", "calcium_mg", "potassium_mg", "units", "default_unit",
                   "default_unit_name", "default_quantity", "swaps", "calories_match", "calories_from_macros",
                   "used_in", "used_tip", "mine", "created_at", "updated_at"]
@@ -73,6 +73,10 @@ class FoodSerializer(serializers.ModelSerializer):
         return v
 
     def validate(self, attrs):
+        if "group" in attrs and attrs["group"] != "other":
+            attrs["category"] = ""  # the own name is only for Other
+        if "category" in attrs:
+            attrs["category"] = " ".join(attrs["category"].split())[:40]
         for f in ("protein", "carbs", "fat", "fibre"):
             if attrs.get(f, 0) and attrs[f] > 100:
                 raise serializers.ValidationError({f: ["Per 100 g this can't be more than 100 g."]})

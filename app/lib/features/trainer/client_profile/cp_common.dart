@@ -154,7 +154,7 @@ class CpRangePicker extends StatelessWidget {
               ),
               child: Row(spacing: 8, children: [
                 const AppIcon(AppIcons.calendar, size: 15, color: AppColors.text2),
-                Expanded(child: Text(value.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w6))),
+                Expanded(child: CutText(value.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w6))),
                 const AppIcon(AppIcons.chevronDown, size: 16, color: AppColors.muted),
               ]),
             ),
@@ -243,7 +243,7 @@ class _CpMenuRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(color: h ? AppColors.sub : null, borderRadius: AppRadius.all(AppRadius.item)),
         child: Row(spacing: 10, children: [
-          Expanded(child: Text(e.label, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis, style: style)),
+          Expanded(child: CutText(e.label, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis, style: style)),
           if (e.selected) AppIcon(AppIcons.check, size: 15, color: AppColors.accent, stroke: 2.2),
         ]),
       ),

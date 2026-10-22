@@ -24,6 +24,7 @@ import '../../../core/widgets/select.dart';
 import 'me_common.dart';
 import 'me_model.dart';
 import 'me_pick.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Documents tab: "Certificates and documents" + Upload document, cards grouped Certificates / ID and contract.
 /// A card opens the viewer (zoom, previous / next, Replace file, Delete). Only Vimal marks a file verified.
@@ -106,8 +107,8 @@ class _DocCard extends StatelessWidget {
             meDocIcon('${d['kind']}'),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-                Text('${d['name']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w6, h: 1.3)),
-                if ('${d['issuer'] ?? ''}'.isNotEmpty) Text('${d['issuer']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
+                CutText('${d['name']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w6, h: 1.3)),
+                if ('${d['issuer'] ?? ''}'.isNotEmpty) CutText('${d['issuer']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
               ]),
             ),
           ]),
@@ -129,7 +130,7 @@ class _DocCard extends StatelessWidget {
             Expanded(
               child: Row(spacing: 4, children: [
                 AppIcon(cl ? AppIcons.eye : AppIcons.lock, size: 13, color: cl ? AppColors.okText : AppColors.muted),
-                Flexible(child: Text(cl ? 'Clients see it' : 'Admins only', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: cl ? AppColors.okText : AppColors.muted))),
+                Flexible(child: CutText(cl ? 'Clients see it' : 'Admins only', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: cl ? AppColors.okText : AppColors.muted))),
               ]),
             ),
             if (onEdit != null) MeTextBtn('Edit', onTap: onEdit!),
@@ -547,7 +548,7 @@ class _ViewerState extends State<_Viewer> {
           meDocIcon('${d['kind']}'),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-              Text('${d['name']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
+              CutText('${d['name']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
               Text('${i + 1} of $n · ${meDocKind(d['kind'])}', style: AppText.s(12, W.w5, color: AppColors.muted)),
             ]),
           ),
@@ -597,7 +598,7 @@ class _ViewerState extends State<_Viewer> {
 
 Widget _stageBar(List<Widget> children) => Padding(padding: const EdgeInsets.fromLTRB(14, 8, 8, 8), child: Row(spacing: 4, children: children));
 
-Widget _fname(String f) => Text(f, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.white));
+Widget _fname(String f) => CutText(f, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.white));
 
 Widget _pct(String t, {double w = 44}) => SizedBox(width: w, child: Text(t, textAlign: TextAlign.center, maxLines: 1, style: AppText.s(12, W.w6, color: AppColors.white, tabular: true)));
 

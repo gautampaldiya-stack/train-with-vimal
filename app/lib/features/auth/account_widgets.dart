@@ -11,6 +11,7 @@ import '../../core/widgets/hover.dart';
 import '../../core/widgets/overlays.dart';
 import 'auth_frame.dart';
 import 'sheets.dart';
+import '../../core/widgets/tooltip.dart';
 
 /// Pieces shared by the account pages (boards `ClientResetPassword`, `ClientVerifyEmail`,
 /// `ClientJoinLink`, `ClientPermissions`): top row, illustration box, heading, badge,
@@ -53,7 +54,7 @@ class UrlChip extends StatelessWidget {
         decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(99)),
         child: Row(mainAxisSize: MainAxisSize.min, spacing: 6, children: [
           const AppIcon(AppIcons.link, size: 13, color: AppColors.text2),
-          Flexible(child: Text(url, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w7, color: AppColors.text2))),
+          Flexible(child: CutText(url, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w7, color: AppColors.text2))),
         ]),
       );
 }

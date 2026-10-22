@@ -12,6 +12,7 @@ import '../../../core/widgets/overlays.dart';
 import '../home/home_model.dart' show dayShort, hoursMin, inNum;
 import '../home/home_parts.dart';
 import 'habits_model.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Sheets of the Habits & supplements board (`ClientHabits`): Add steps, sleep, habit details,
 /// a habit that starts later, supplement details. On wide screens they are centred 520 cards.
@@ -108,7 +109,7 @@ class HkCells extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(color: AppColors.cellBg, borderRadius: BorderRadius.circular(10)),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                Text(v, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(big ? 18 : 16, W.w8)),
+                CutText(v, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(big ? 18 : 16, W.w8)),
                 Text(l, style: AppText.s(11, W.w6, color: AppColors.muted, h: 1.3)),
               ]),
             ),

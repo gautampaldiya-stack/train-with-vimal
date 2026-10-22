@@ -13,6 +13,7 @@ import '../../../core/widgets/media.dart';
 import '../../../core/widgets/overlays.dart';
 import '../home/home_parts.dart' show ChAvatar;
 import 'library_model.dart';
+import '../../../core/widgets/tooltip.dart';
 
 // ─────────────────────────────── Row parts shared by the list, the grid and the sheet.
 
@@ -69,7 +70,7 @@ class LbNoteTag extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, spacing: 4, children: [
         AppIcon(AppIcons.doc, size: 13, color: AppColors.amberDeep),
-        Flexible(child: Text('Note from $coach', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w7, color: AppColors.amberDeep))),
+        Flexible(child: CutText('Note from $coach', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w7, color: AppColors.amberDeep))),
       ]);
 }
 
@@ -207,7 +208,7 @@ class _SheetBtn extends StatelessWidget {
         ),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, spacing: 7, children: [
           AppIcon(icon, size: 17, color: iconColor, fill: fill, stroke: stroke),
-          Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(web ? 14 : 14.5, W.w7, color: fg, h: 1))),
+          Flexible(child: CutText(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(web ? 14 : 14.5, W.w7, color: fg, h: 1))),
         ]),
       ),
     );
@@ -567,7 +568,7 @@ class _Link extends StatelessWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
               Text(x.linkSite.isEmpty ? 'Web page' : x.linkSite, style: AppText.s(14, W.w8)),
-              Text(x.linkUrl, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
+              CutText(x.linkUrl, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
             ]),
           ),
           CaButton('Open link', kind: CaBtnKind.out, small: true, expand: false, trailingIcon: AppIcons.external, onPressed: open),

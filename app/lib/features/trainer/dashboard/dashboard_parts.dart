@@ -329,8 +329,8 @@ class _Kpis extends StatelessWidget {
           padding: EdgeInsets.fromLTRB(i == 0 || !divide ? 0 : 12, 2, 12, 2),
           decoration: BoxDecoration(border: divide && i > 0 ? const Border(left: BorderSide(color: AppColors.line)) : null),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-            Text(k.$1, style: AppText.s(11.5, W.w6, color: AppColors.muted), maxLines: 1, overflow: TextOverflow.ellipsis),
-            Text(k.$2, style: AppText.s(14, W.w8), maxLines: 1, overflow: TextOverflow.ellipsis),
+            CutText(k.$1, style: AppText.s(11.5, W.w6, color: AppColors.muted), maxLines: 1, overflow: TextOverflow.ellipsis),
+            CutText(k.$2, style: AppText.s(14, W.w8), maxLines: 1, overflow: TextOverflow.ellipsis),
           ]),
         );
     final phone = context.isPhone;

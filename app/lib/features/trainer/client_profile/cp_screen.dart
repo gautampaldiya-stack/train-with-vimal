@@ -27,6 +27,7 @@ import 'cp_notes.dart';
 import 'cp_overview.dart';
 import 'cp_plans.dart';
 import 'cp_progress.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Client profile, trainer view (boards `TrainerClientProfile` + `TrainerClientProfileMobile`): breadcrumb, header
 /// with Edit profile / Assign plan / ⋯, 4 stats, 9 tabs. Only the trainer's own clients open (API 404 otherwise).
@@ -118,7 +119,7 @@ class _TrainerClientProfileScreenState extends State<TrainerClientProfileScreen>
           builder: (_, h, _) => Text('My clients', style: AppText.s(13, W.w5, color: h ? AppColors.text : AppColors.muted)),
         ),
         const AppIcon(AppIcons.chevronRight, size: 13, color: AppColors.chevron),
-        Flexible(child: Text(c.name.isEmpty ? 'Client' : c.name, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6))),
+        Flexible(child: CutText(c.name.isEmpty ? 'Client' : c.name, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6))),
       ]);
 
   Widget _avatar(double size) => AppAvatar(c.name,
@@ -147,7 +148,7 @@ class _TrainerClientProfileScreenState extends State<TrainerClientProfileScreen>
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 4, children: [
             Row(spacing: 10, children: [
-              Flexible(child: Text(c.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(28, W.w8, ls: -.7, h: 1.15))),
+              Flexible(child: CutText(c.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(28, W.w8, ls: -.7, h: 1.15))),
               _badge(),
             ]),
             Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: [
@@ -289,7 +290,7 @@ class _TrainerClientProfileScreenState extends State<TrainerClientProfileScreen>
                 padding: const EdgeInsets.fromLTRB(8, 9, 6, 9),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
                   FittedBox(fit: BoxFit.scaleDown, child: Text(v, style: AppText.s(15, W.w8, tabular: true))),
-                  Text(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11, W.w5, color: AppColors.muted)),
+                  CutText(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11, W.w5, color: AppColors.muted)),
                 ]),
               ),
             ),

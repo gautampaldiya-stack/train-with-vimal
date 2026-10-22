@@ -12,6 +12,7 @@ import '../../client/progress/progress_model.dart' show PxWeight;
 import '../../client/progress/progress_parts.dart' show PxWeightChart;
 import 'cp_common.dart';
 import 'cp_model.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Overview tab: About, Weight trend, Last 7 days, Latest note (left) · Needs attention, Coaching, Current plans,
 /// Check-ins and schedule (right). Everything from `clients/<id>/overview/`.
@@ -207,7 +208,7 @@ class CpOverviewTab extends StatelessWidget {
                 decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 3, children: [Text(l, style: AppText.s(12.5, W.w5, color: AppColors.muted)), v]),
               );
-          Text v(String s) => Text(s, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w7));
+          Widget v(String s) => CutText(s, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w7));
           return Wrap(spacing: 20, children: [
             kv(
               'Trainer',

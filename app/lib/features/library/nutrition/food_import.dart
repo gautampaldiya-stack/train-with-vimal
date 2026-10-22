@@ -19,6 +19,7 @@ import '../../../core/widgets/tabs.dart';
 import '../../trainer/me/me_pick.dart';
 import '../lib_common.dart';
 import 'nu_common.dart';
+import '../../../core/widgets/tooltip.dart';
 import 'nutrition_screen.dart' show nutritionChanged;
 
 /// Import foods from Excel (board `Nutrition` → import drawer): 1 Upload (drop zone, what each row needs, template),
@@ -205,7 +206,7 @@ class _ImportState extends State<_Import> {
                       ? const AppIcon(AppIcons.check, size: 12, color: AppColors.okText)
                       : Text('${i + 1}', style: AppText.s(11.5, W.w7, color: i + 1 == s ? AppColors.white : AppColors.text2)),
                 ),
-                Flexible(child: Text(t, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w7, color: i + 1 == s ? AppColors.accentText : (i + 1 < s ? AppColors.text2 : AppColors.muted)))),
+                Flexible(child: CutText(t, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w7, color: i + 1 == s ? AppColors.accentText : (i + 1 < s ? AppColors.text2 : AppColors.muted)))),
               ]),
             ),
           ),
@@ -246,7 +247,7 @@ class _ImportState extends State<_Import> {
               ),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                  Text(f.$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
+                  CutText(f.$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
                   Text('${(f.$2.length / 1024).toStringAsFixed(f.$2.length < 10240 ? 1 : 0)} KB · checked in the next step', style: AppText.s(12, W.w5, color: AppColors.muted)),
                 ]),
               ),
@@ -348,7 +349,7 @@ class _ImportState extends State<_Import> {
               ),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
                 Text(k.$1, style: AppText.s(20, W.w8, color: k.$3 == Tone.ok ? AppColors.okText : (k.$3 == Tone.warn ? AppColors.warnText : AppColors.text))),
-                Text(k.$2, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w6, color: AppColors.text2)),
+                CutText(k.$2, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w6, color: AppColors.text2)),
               ]),
             ),
         ]);
@@ -460,6 +461,8 @@ class _ImportState extends State<_Import> {
   String _group(Map r) {
     final raw = '${r['group_raw'] ?? ''}';
     final g = raw.isEmpty ? 'other' : '${(summary['group_suggestions'] as Map?)?[raw] ?? 'other'}';
+    // not one of the library groups: it goes to Other under its own name
+    if (g == 'other' && raw.isNotEmpty && raw != 'other') return 'Other · ${r['group_label'] ?? raw}';
     return foodGroups[g] ?? g;
   }
 
@@ -507,14 +510,14 @@ class _ImportState extends State<_Import> {
                 final tone = st == 'Skip' ? Tone.neutral : (differs ? Tone.warn : (st == 'Update' ? Tone.info : Tone.ok));
                 final d = _diet(r);
                 return [
-                  cell(0, Text('${r['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6))),
-                  cell(1, Text(u == null ? '100 g' : '${u['name']} · ${fq(nd(u['grams']))} g', maxLines: 1, overflow: TextOverflow.ellipsis, style: body)),
+                  cell(0, CutText('${r['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6))),
+                  cell(1, CutText(u == null ? '100 g' : '${u['name']} · ${fq(nd(u['grams']))} g', maxLines: 1, overflow: TextOverflow.ellipsis, style: body)),
                   cell(2, Text('${nd(p['kcal']).round()}', style: body)),
                   cell(3, Text(nf(nd(p['protein'])), style: body)),
                   cell(4, Text(nf(nd(p['carbs'])), style: body)),
                   cell(5, Text(nf(nd(p['fat'])), style: body)),
-                  cell(6, Text(_group(r), maxLines: 1, overflow: TextOverflow.ellipsis, style: body)),
-                  cell(7, Row(spacing: 6, children: [DietMark(d), Flexible(child: Text(dietLong[d] ?? d, maxLines: 1, overflow: TextOverflow.ellipsis, style: body))])),
+                  cell(6, CutText(_group(r), maxLines: 1, overflow: TextOverflow.ellipsis, style: body)),
+                  cell(7, Row(spacing: 6, children: [DietMark(d), Flexible(child: CutText(dietLong[d] ?? d, maxLines: 1, overflow: TextOverflow.ellipsis, style: body))])),
                   cell(8, AppBadge(differs ? '$st · kcal differs' : st, tone: tone, plain: true)),
                 ];
               }()),
@@ -577,7 +580,7 @@ class _ImportFooterState extends State<_ImportFooter> {
     // On a phone the sheet stacks its footer in a Column, so the row can't be Expanded there.
     final row = Row(spacing: 8, children: [
         if (two) AppButton('Back', kind: BtnKind.text, icon: AppIcons.chevronLeft, onPressed: st?.back),
-        if (!phone) Expanded(child: Text(st?.note ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted))) else const Spacer(),
+        if (!phone) Expanded(child: CutText(st?.note ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted))) else const Spacer(),
         AppButton('Cancel', onPressed: () => Navigator.of(context).pop()),
         Opacity(
           opacity: !two && st?.file == null ? .5 : 1,

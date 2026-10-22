@@ -8,6 +8,7 @@ import '../../core/widgets/button.dart';
 import '../../core/widgets/hover.dart';
 import '../../core/widgets/responsive.dart';
 import '../../core/widgets/tooltip.dart';
+import '../../core/widgets/type_number.dart';
 
 /// Shared bits of the Library pages (Programs, Exercises, Nutrition & foods, Habits & supplements, Content library).
 /// They are the same pages for Vimal and trainers; what a trainer may change comes from the API (D-39).
@@ -71,8 +72,8 @@ class LibStepper extends StatelessWidget {
           // the value and its unit share all the room between the buttons, so "8 weeks" never shortens to "8 w…"
           Expanded(
             child: Row(mainAxisAlignment: MainAxisAlignment.center, spacing: 5, children: [
-              Text('$value', style: AppText.s(16, W.w8, tabular: true)),
-              if (unit.isNotEmpty) Flexible(child: Text(unit, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted))),
+              TypeNumber(value: value.toDouble(), text: '$value', min: min.toDouble(), max: max.toDouble(), decimals: false, style: AppText.s(16, W.w8, tabular: true), onChanged: (v) => onChanged(v.round())),
+              if (unit.isNotEmpty) Flexible(child: CutText(unit, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted))),
             ]),
           ),
           AppIconButton(AppIcons.plus, tooltip: 'More', small: true, onPressed: value < max ? () => onChanged((value + step).clamp(min, max)) : null),
@@ -199,7 +200,7 @@ Future<void> showLibFilter(BuildContext anchor, {required List<LibFacet> facets,
                   on: i == cat,
                   onTap: () => set(() => cat = i),
                   child: Row(spacing: 6, children: [
-                    Expanded(child: Text(c.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w5))),
+                    Expanded(child: CutText(c.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w5))),
                     if ((p[c.key] ?? const {}).isNotEmpty) AppCount(p[c.key]!.length, size: 18, color: AppColors.accent),
                     const AppIcon(AppIcons.chevronRight, size: 14, color: AppColors.muted),
                   ]),
@@ -232,7 +233,7 @@ Future<void> showLibFilter(BuildContext anchor, {required List<LibFacet> facets,
                         picked.value = {...p, f.key: s};
                       },
                       child: Row(spacing: 8, children: [
-                        Expanded(child: Text(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, on ? W.w7 : W.w5))),
+                        Expanded(child: CutText(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, on ? W.w7 : W.w5))),
                         Text('$n', style: AppText.s(12, W.w6, color: AppColors.muted)),
                         SizedBox(width: 16, child: on ? const AppIcon(AppIcons.check, size: 15, color: AppColors.accent, stroke: 2.4) : null),
                       ]),

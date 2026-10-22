@@ -18,6 +18,7 @@ import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
 import '../auth_frame.dart';
 import 'setup_state.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Brand side panel (desktop) for every setup page.
 BrandSteps setupBrand(BuildContext context, {int? current, bool fromDone = false}) {
@@ -611,12 +612,12 @@ class _Seg extends StatelessWidget {
                           boxShadow: on ? const [BoxShadow(color: AppColors.shadowSoft, blurRadius: 2, offset: Offset(0, 1))] : null,
                         ),
                         child: Column(mainAxisAlignment: MainAxisAlignment.center, spacing: 2, children: [
-                          Text(options[i].$1,
+                          CutText(options[i].$1,
                               textAlign: TextAlign.center,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: AppText.s(13, W.w7, color: on ? AppColors.accentText : AppColors.text2)),
-                          Text(options[i].$2,
+                          CutText(options[i].$2,
                               textAlign: TextAlign.center,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
@@ -866,7 +867,7 @@ class _PhotoSlot extends StatelessWidget {
           ),
         ),
         Row(children: [
-          Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w7))),
+          Expanded(child: CutText(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w7))),
           if (has) Text('Change', style: AppText.s(12, W.w7, color: AppColors.accentText)),
         ]),
       ]),

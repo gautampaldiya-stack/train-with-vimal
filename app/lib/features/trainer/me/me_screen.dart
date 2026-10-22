@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/router.dart' show confirmLogOut;
 import '../../../app/shell/page.dart';
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
@@ -18,6 +19,7 @@ import 'me_edit.dart';
 import 'me_model.dart';
 import 'me_overview.dart';
 import 'me_tabs.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Trainer → My profile (boards `TrainerMe` / `TrainerMeMobile`): header with Edit my details, the 4 stats
 /// (same numbers as the dashboard and the admin Trainers table, D-30) and 6 tabs. `/me/<tab>` opens a tab
@@ -115,7 +117,7 @@ class _TrainerMeScreenState extends State<TrainerMeScreen> {
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 4, children: [
           Row(spacing: 10, children: [
-            Flexible(child: Text(c.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(28, W.w8, ls: -.7, h: 1.15))),
+            Flexible(child: CutText(c.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(28, W.w8, ls: -.7, h: 1.15))),
             _badge(),
           ]),
           Wrap(crossAxisAlignment: WrapCrossAlignment.center, runSpacing: 2, children: [
@@ -126,6 +128,8 @@ class _TrainerMeScreenState extends State<TrainerMeScreen> {
           ]),
         ]),
       ),
+      // Log out next to Edit (Gautam, 22 Oct)
+      AppButton('Log out', icon: AppIcons.logout, onPressed: () => confirmLogOut(context)),
       AppButton('Edit my details', icon: AppIcons.edit, onPressed: _edit),
     ]);
   }
@@ -144,6 +148,8 @@ class _TrainerMeScreenState extends State<TrainerMeScreen> {
           ..._metaPhone(st, AppText.s(13, W.w7, color: AppColors.text, h: 1.5)),
         ]),
       ),
+      // Log out next to Edit (Gautam, 22 Oct)
+      AppButton('Log out', icon: AppIcons.logout, onPressed: () => confirmLogOut(context)),
       AppButton('Edit my details', icon: AppIcons.edit, onPressed: _edit),
     ]);
   }
@@ -182,7 +188,10 @@ class _TrainerMeScreenState extends State<TrainerMeScreen> {
           ]),
         ),
       ]),
-      AppButton('Edit my details', icon: AppIcons.edit, expand: true, onPressed: _edit),
+      Row(spacing: 8, children: [
+        Expanded(child: AppButton('Edit my details', icon: AppIcons.edit, expand: true, onPressed: _edit)),
+        AppButton('Log out', icon: AppIcons.logout, onPressed: () => confirmLogOut(context)),
+      ]),
     ]);
   }
 
@@ -244,8 +253,8 @@ class _TrainerMeScreenState extends State<TrainerMeScreen> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-              Text(v, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(17, W.w8, tabular: true)),
-              Text(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted)),
+              CutText(v, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(17, W.w8, tabular: true)),
+              CutText(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted)),
             ]),
           ),
         ),

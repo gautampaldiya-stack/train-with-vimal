@@ -27,6 +27,7 @@ import '../../trainer/me/me_docs.dart' show DashedBox;
 import '../../trainer/me/me_pick.dart';
 import '../lib_common.dart';
 import 'ex_common.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// New / Edit exercise (boards `ExerciseAdd` / `ExerciseAddMobile`): Basics, Default sets and reps, How to, Form
 /// cues, Video and image, Muscles (chips and the tappable body map). Everything the Exercise page shows is filled
@@ -502,7 +503,7 @@ class _ExerciseEditScreenState extends State<ExerciseEditScreen> {
           builder: (_, h, _) => Text('Exercises', style: AppText.s(13, W.w5, color: h ? AppColors.text : AppColors.muted)),
         ),
         const AppIcon(AppIcons.chevronRight, size: 13, color: AppColors.chevron),
-        Flexible(child: Text(t, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6))),
+        Flexible(child: CutText(t, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6))),
       ]);
 
   Widget _card(bool phone, List<Widget> children, {double gap = 14}) => AppCard(
@@ -801,8 +802,8 @@ class _ExerciseEditScreenState extends State<ExerciseEditScreen> {
           thumb,
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-              Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
-              Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted)),
+              CutText(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
+              CutText(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted)),
             ]),
           ),
           trailing,
@@ -878,7 +879,7 @@ class _ExerciseEditScreenState extends State<ExerciseEditScreen> {
                 if (dragging)
                   Text('Drop it to use this image', style: AppText.s(13.5, W.w6, color: AppColors.accentText))
                 else if (has)
-                  Text(file?.$1 ?? 'Current cover image', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w6))
+                  CutText(file?.$1 ?? 'Current cover image', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w6))
                 else
                   Text.rich(TextSpan(text: kIsWeb || !phone ? 'Drop an image here or ' : 'Pick an image or ', children: [
                     TextSpan(text: 'browse', style: AppText.s(13.5, W.w6, color: AppColors.accentText)),
@@ -923,7 +924,7 @@ class _ExerciseEditScreenState extends State<ExerciseEditScreen> {
           decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line))),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
             Row(spacing: 8, children: [
-              Expanded(child: Text(m, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
+              Expanded(child: CutText(m, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
               _tabs(const [('light', 'Light'), ('strong', 'Strong')], lv[m] ?? 'light', (v) => _set(() => lv[m] = v), height: 26),
               AppIconButton(AppIcons.close, tooltip: 'Remove', small: true, ghost: true, onPressed: () => _toggle(m)),
             ]),
@@ -1130,8 +1131,8 @@ class _VideoListState extends State<_VideoList> {
                         ),
                         Expanded(
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-                            Text('${v['title']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
-                            Text(['Video', if (at != null) 'added ${DateFormat('d MMM').format(at.toLocal())}'].join(' · '),
+                            CutText('${v['title']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
+                            CutText(['Video', if (at != null) 'added ${DateFormat('d MMM').format(at.toLocal())}'].join(' · '),
                                 maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted)),
                           ]),
                         ),

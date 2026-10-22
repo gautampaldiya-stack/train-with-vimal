@@ -17,6 +17,7 @@ import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
 import 'dashboard_model.dart';
 import 'dashboard_parts.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Trainer Dashboard (boards `TrainerDashboard` and `TrainerDashboardMobile`): stats, today's sessions,
 /// clients who need you, check-ins to review, this week. Phone = the blue hero with the stats strip over its edge.
@@ -127,7 +128,7 @@ class _TrainerDashboardScreenState extends State<TrainerDashboardScreen> {
           height: 44,
           child: Row(spacing: 8, children: [
             Expanded(
-              child: Text('${d.date} · Trainer workspace', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.homeHeroSub)),
+              child: CutText('${d.date} · Trainer workspace', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.homeHeroSub)),
             ),
             Builder(builder: (b) => _HeroButton(AppIcons.bell, label: 'Notifications', dot: d.unread > 0, onTap: () => _notes(b, d))),
             _HeroButton(AppIcons.plus, label: 'New session', onTap: () => _newSession(d)),
@@ -196,13 +197,13 @@ class _TrainerDashboardScreenState extends State<TrainerDashboardScreen> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, spacing: 8, children: [
                 Row(spacing: 8, children: [
                   IconTile(_statIcons[s.key] ?? AppIcons.info, radius: 8),
-                  Expanded(child: Text(s.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted))),
+                  Expanded(child: CutText(s.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted))),
                 ]),
                 Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, spacing: 10, children: [
                   Text(s.value, style: AppText.stat),
                   if (s.delta.isNotEmpty)
                     Expanded(
-                      child: Text(s.delta,
+                      child: CutText(s.delta,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppText.s(12, W.w7, color: s.tone == 'up' ? AppColors.okText : (s.tone == 'down' ? AppColors.badText : AppColors.text))),
@@ -229,7 +230,7 @@ class _TrainerDashboardScreenState extends State<TrainerDashboardScreen> {
                   padding: const EdgeInsets.fromLTRB(8, 8, 8, 9),
                   decoration: BoxDecoration(border: i == 0 ? null : const Border(left: BorderSide(color: AppColors.line))),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                    Text(s.value, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(16, W.w8, h: 1.2, tabular: true)),
+                    CutText(s.value, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(16, W.w8, h: 1.2, tabular: true)),
                     Text(s.label, style: AppText.s(10.5, W.w6, color: AppColors.muted, h: 1.25)),
                   ]),
                 ),
@@ -269,9 +270,9 @@ class _TrainerDashboardScreenState extends State<TrainerDashboardScreen> {
     ]);
     final where = Row(spacing: 5, children: [
       AppIcon(s.isCall ? AppIcons.video : AppIcons.pinAlt, size: 13, color: AppColors.muted),
-      Flexible(child: Text(s.what, style: AppText.rowSub, maxLines: phone ? 2 : 1, overflow: TextOverflow.ellipsis)),
+      Flexible(child: CutText(s.what, style: AppText.rowSub, maxLines: phone ? 2 : 1, overflow: TextOverflow.ellipsis)),
     ]);
-    final name = Text(s.client.name, style: AppText.s(13.5, W.w7, color: past ? AppColors.muted : AppColors.text), maxLines: 1, overflow: TextOverflow.ellipsis);
+    final name = CutText(s.client.name, style: AppText.s(13.5, W.w7, color: past ? AppColors.muted : AppColors.text), maxLines: 1, overflow: TextOverflow.ellipsis);
     final status = switch (s.status) {
       'done' => const AppBadge('Done', tone: Tone.ok),
       'missed' => const AppBadge('Missed', tone: Tone.bad),
@@ -447,14 +448,14 @@ class _TrainerDashboardScreenState extends State<TrainerDashboardScreen> {
             _Av(r.client),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-                Text.rich(
+                CutText.rich(
                   TextSpan(text: r.client.name, style: AppText.rowTitle, children: [
                     TextSpan(text: ' · ${r.kind}', style: AppText.s(13.5, W.w5, color: AppColors.muted)),
                   ]),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                Text(r.line, style: AppText.rowSub, maxLines: 1, overflow: TextOverflow.ellipsis),
+                CutText(r.line, style: AppText.rowSub, maxLines: 1, overflow: TextOverflow.ellipsis),
               ]),
             ),
             AppBadge(r.age, tone: switch (r.tone) { 'bad' => Tone.bad, 'warn' => Tone.warn, _ => Tone.neutral }, plain: true),
@@ -495,7 +496,7 @@ class _TrainerDashboardScreenState extends State<TrainerDashboardScreen> {
                     decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 3, children: [
                       Text(k, style: AppText.s(12, W.w6, color: AppColors.muted)),
-                      Text(v, style: AppText.s(13.5, W.w7), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      CutText(v, style: AppText.s(13.5, W.w7), maxLines: 1, overflow: TextOverflow.ellipsis),
                     ]),
                   ),
               ]);
@@ -604,7 +605,7 @@ class _ActRow extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(0, 9, 0, 13),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-              Text.rich(
+              CutText.rich(
                 TextSpan(children: [
                   TextSpan(text: a.who, style: AppText.s(13.5, W.w6, color: AppColors.text)),
                   TextSpan(text: ' ${a.what}'),
@@ -615,10 +616,10 @@ class _ActRow extends StatelessWidget {
               ),
               if (a.detail.isNotEmpty)
                 onClient == null
-                    ? Text(a.detail, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted))
+                    ? CutText(a.detail, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted))
                     : Hover(
                         onTap: onClient,
-                        builder: (_, h, _) => Text(a.detail,
+                        builder: (_, h, _) => CutText(a.detail,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: AppText.s(12.5, W.w5, color: h ? AppColors.accentText : AppColors.muted)),
@@ -650,7 +651,7 @@ class _NameLink extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Hover(
         onTap: onTap,
-        builder: (_, h, _) => Text(name,
+        builder: (_, h, _) => CutText(name,
             maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.rowTitle.copyWith(decoration: h ? TextDecoration.underline : null)),
       );
 }

@@ -154,8 +154,8 @@ class _TcPanelState extends State<TcPanel> {
         AppAvatar(r.name, size: 40, colors: AppColors.avatarCode(r.color), initials: r.initials),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-            Text(r.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(phone ? 16 : 15, W.w7)),
-            Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted)),
+            CutText(r.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(phone ? 16 : 15, W.w7)),
+            CutText(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted)),
           ]),
         ),
         ...nav,
@@ -267,8 +267,8 @@ class _TcPanelState extends State<TcPanel> {
           padding: EdgeInsets.fromLTRB(left, 2, 10, 2),
           decoration: BoxDecoration(border: line ? const Border(left: BorderSide(color: AppColors.line)) : null),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 3, children: [
-            Text('${k['label']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted)),
-            Text('${k['value']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(15, W.w8, color: trend(k['trend'], AppColors.text))),
+            CutText('${k['label']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted)),
+            CutText('${k['value']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(15, W.w8, color: trend(k['trend'], AppColors.text))),
           ]),
         );
     return Container(

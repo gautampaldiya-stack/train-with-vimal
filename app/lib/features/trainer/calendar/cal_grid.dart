@@ -97,10 +97,10 @@ class CalGrid extends StatelessWidget {
             return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               wdText,
               num,
-              if (cnt.isNotEmpty) Text(cnt, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11, W.w5, color: AppColors.muted)),
+              if (cnt.isNotEmpty) CutText(cnt, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11, W.w5, color: AppColors.muted)),
             ]);
           }
-          final count = Text(cnt, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w5, color: AppColors.muted));
+          final count = CutText(cnt, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w5, color: AppColors.muted));
           if (narrow) {
             return Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
               Row(spacing: 6, children: [wdText, num]),
@@ -316,9 +316,9 @@ class _Block extends StatelessWidget {
               border: h ? Border.all(color: s.kind.dot, width: 1.5, strokeAlign: BorderSide.strokeAlignOutside) : null,
             ),
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-              Text(s.client, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w7, h: 1.25)),
+              CutText(s.client, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w7, h: 1.25)),
               if (!tiny)
-                Text('${calFmtL(s.from)} · ${s.where}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w5, color: AppColors.muted, h: 1.25)),
+                CutText('${calFmtL(s.from)} · ${s.where}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w5, color: AppColors.muted, h: 1.25)),
             ]),
           ),
         );

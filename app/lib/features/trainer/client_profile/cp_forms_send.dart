@@ -15,6 +15,7 @@ import '../../../core/widgets/tabs.dart';
 import 'cp_content_drawers.dart';
 import 'cp_forms_editor.dart';
 import 'cp_model.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// What Send a form ended with: sent (the new list key), or "edit her copy first" (the editor opens).
 class CpSendResult {
@@ -189,7 +190,7 @@ Future<CpSendResult?> showSendFormDrawer(BuildContext context, CpController c, L
       },
     ),
     footer: (ctx) => [
-      if (!ctx.isPhone) Expanded(child: ListenableBuilder(listenable: s, builder: (_, _) => Text(summary(), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted)))),
+      if (!ctx.isPhone) Expanded(child: ListenableBuilder(listenable: s, builder: (_, _) => CutText(summary(), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted)))),
       AppButton('Cancel', expand: ctx.isPhone, onPressed: () => Navigator.of(ctx).pop()),
       ListenableBuilder(
         listenable: s,

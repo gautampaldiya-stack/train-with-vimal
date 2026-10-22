@@ -15,6 +15,7 @@ import 'cp_logs_compare.dart';
 import 'cp_logs_detail.dart';
 import 'cp_logs_parts.dart';
 import 'cp_model.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Client profile → Logs tab (board `TrainerClientProfile` Logs): sub-tabs Workouts · Meals · Daily check-ins ·
 /// Weekly check-ins · Habits · Supplements, the range picker, Compare plans, the summary line, then the log of the
@@ -330,7 +331,7 @@ class _CpLogsTabState extends State<CpLogsTab> {
     String steps(Map r) => r['steps'] == null ? '—' : cpNum(r['steps'] as num);
     Widget note(Map r) => r['id'] == null
         ? const AppBadge('Not sent', tone: Tone.bad)
-        : Text('${r['note']}'.isEmpty ? '—' : '${r['note']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted));
+        : CutText('${r['note']}'.isEmpty ? '—' : '${r['note']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted));
     if (phone) {
       return CpPhoneRows(
         titles: [for (final r in rows) cpDay(r['date'])],

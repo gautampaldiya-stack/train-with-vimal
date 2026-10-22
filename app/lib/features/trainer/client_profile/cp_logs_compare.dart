@@ -14,6 +14,7 @@ import '../../../core/widgets/responsive.dart';
 import 'cp_common.dart';
 import 'cp_logs_parts.dart';
 import 'cp_model.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Logs → Compare plans (board `cmp`): Back to logs, plan A and plan B pickers with Swap, aspect chips
 /// (All · Workouts · Meals · Check-ins · Habits · Supplements · Body), then one card per aspect: each number for
@@ -389,8 +390,8 @@ class _CpLogsCompareState extends State<CpLogsCompare> {
               ),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                  Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
-                  Text(_sub(p, isA), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted)),
+                  CutText(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
+                  CutText(_sub(p, isA), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted)),
                 ]),
               ),
               const AppIcon(AppIcons.chevronDown, size: 16, color: AppColors.muted),
@@ -435,7 +436,7 @@ class _CpLogsCompareState extends State<CpLogsCompare> {
                 [
                   cpCell(r.label),
                   cpCell(r.a),
-                  Text(r.b, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7, tabular: true)),
+                  CutText(r.b, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7, tabular: true)),
                   r.bars ? _bars(r) : const SizedBox(),
                   r.change == null
                       ? const SizedBox()

@@ -7,6 +7,7 @@ import '../../../core/widgets/card.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/input.dart';
 import '../../../core/widgets/responsive.dart';
+import '../../../core/widgets/tooltip.dart';
 
 // Small pieces of the TrainerMe board shared by the tabs.
 
@@ -116,7 +117,7 @@ Widget meSocial(String kind, String text) => Container(
       decoration: BoxDecoration(borderRadius: AppRadius.all(8), border: Border.all(color: AppColors.line)),
       child: Row(mainAxisSize: MainAxisSize.min, spacing: 6, children: [
         AppIcon(meSocialIcon(kind), size: 14, color: AppColors.muted),
-        Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6))),
+        Flexible(child: CutText(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6))),
       ]),
     );
 
@@ -272,7 +273,7 @@ class MeDateBox extends StatelessWidget {
           ),
           child: Row(spacing: 8, children: [
             Expanded(
-              child: Text(value == null ? placeholder : (format?.call(value!) ?? '${value!.day} / ${value!.month.toString().padLeft(2, '0')} / ${value!.year}'),
+              child: CutText(value == null ? placeholder : (format?.call(value!) ?? '${value!.day} / ${value!.month.toString().padLeft(2, '0')} / ${value!.year}'),
                   maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, value == null ? W.w5 : W.w6, color: value == null ? AppColors.muted : AppColors.text)),
             ),
             if (value != null && onClear != null)

@@ -952,6 +952,7 @@ Every number is stored per 100 g (ml counts as g), whatever the person typed in.
 | `brand` | CharField |  |
 | `diet` | CharField | choices: veg, egg, nonveg, vegan; indexed |
 | `group` | CharField | indexed |
+| `category` | CharField | own category name when group is `other` ("Snacks"), from the import sheet or typed in the food drawer; cleared for any other group |
 | `source` | CharField | choices: builtin, team, imported, client; indexed |
 | `source_note` | CharField |  |
 | `owner_client` | ForeignKey | → User; optional; indexed |

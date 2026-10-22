@@ -4,6 +4,7 @@ import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
 import '../../../core/widgets/hover.dart';
 import '../home/home_parts.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Small pieces of the More board (`mo-*`, `fd-mi`, `fd-kv` classes), shared by the page and its sheets.
 
@@ -140,7 +141,7 @@ class MoMenuRow extends StatelessWidget {
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
                   Text(title, style: AppText.s(14, W.w7, color: h && onTap != null ? AppColors.accentText : AppColors.text)),
-                  if (sub.isNotEmpty) Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w4, color: AppColors.muted)),
+                  if (sub.isNotEmpty) CutText(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w4, color: AppColors.muted)),
                 ]),
               ),
               if (pill != null) MoPill(pill!, tone: pillTone),

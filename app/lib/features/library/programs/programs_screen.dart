@@ -19,6 +19,7 @@ import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/tabs.dart';
 import '../../trainer/me/me_common.dart' show meField;
 import '../lib_common.dart';
+import '../../../core/widgets/tooltip.dart';
 import 'builder_sheets.dart' show showNameModal;
 
 /// Programs page (boards `Programs` / `ProgramsMobile`): master plans as cards, Active / Archived, search,
@@ -298,9 +299,9 @@ class _ProgramCard extends StatelessWidget {
     final days = pattern.where((x) => x).length;
     final icon = IconTile(AppIcons.dumbbell, size: 40, radius: 10, iconSize: 18, bg: tone.$1, fg: tone.$2);
     final dots = Builder(builder: (a) => AppIconButton(AppIcons.dots, tooltip: 'More actions', small: true, ghost: true, fill: true, onPressed: () => onMenu(a)));
-    final name = Text('${p['name']}',
+    final name = CutText('${p['name']}',
         maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(phone ? 15.5 : 16, W.w8, ls: -0.24, h: 1.3));
-    final goal = Text('${p['goal_line'] ?? ''}'.isEmpty ? '${p['level_label'] ?? ''}' : '${p['goal_line']}',
+    final goal = CutText('${p['goal_line'] ?? ''}'.isEmpty ? '${p['level_label'] ?? ''}' : '${p['goal_line']}',
         maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(phone ? 12.5 : 13, W.w5, color: AppColors.muted));
     final tags = Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
       AppBadge('${p['weeks']} weeks', tone: Tone.info, plain: true),
@@ -380,7 +381,7 @@ class _ProgramCard extends StatelessWidget {
         const AppIcon(AppIcons.clientsAlt, size: 15, color: AppColors.muted),
         Text('Not assigned', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
       ],
-      Expanded(child: Text(editedOn(p['updated_at']), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.right, style: muted)),
+      Expanded(child: CutText(editedOn(p['updated_at']), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.right, style: muted)),
     ]));
   }
 

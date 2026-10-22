@@ -201,7 +201,7 @@ class _HabitEditorCardState extends State<HabitEditorCard> {
                     ? AppIcon(AppIcons.checkCircle, size: 16, color: on ? AppColors.accent : AppColors.text2, stroke: 2)
                     : Text('123', style: AppText.s(11, W.w8, color: on ? AppColors.accent : AppColors.text2, ls: -0.2)),
                 Text(t, style: AppText.s(13.5, W.w7, color: on ? AppColors.accentText : AppColors.text)),
-                Expanded(child: Text(s, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted))),
+                Expanded(child: CutText(s, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted))),
               ]),
             );
           },
@@ -307,7 +307,7 @@ class _HabitPreviewCardState extends State<HabitPreviewCard> {
               HbIcon(habitIcon(icon), habitTone(icon)),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                  Text('${d['name'] ?? ''}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w7)),
+                  CutText('${d['name'] ?? ''}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w7)),
                   Text(tick ? (done ? 'Done today' : 'Done today?') : freqLabel(d), style: AppText.s(12, W.w5, color: AppColors.muted)),
                 ]),
               ),
@@ -319,7 +319,7 @@ class _HabitPreviewCardState extends State<HabitPreviewCard> {
               ),
               Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, spacing: 4, children: [
                 Text(hbNum(v.clamp(0, t)), style: AppText.s(20, W.w8, tabular: true)),
-                Flexible(child: Text('/ ${hbNum(t)} $u', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted))),
+                Flexible(child: CutText('/ ${hbNum(t)} $u', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted))),
               ]),
             ],
             if (done)

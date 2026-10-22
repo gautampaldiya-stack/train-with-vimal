@@ -13,6 +13,7 @@ import '../../core/widgets/overlays.dart';
 import 'account_widgets.dart';
 import 'auth_frame.dart';
 import 'sheets.dart';
+import '../../core/widgets/tooltip.dart';
 
 /// Invite link and login link pages (boards `ClientJoinLink`, `ClientJoinLinkWeb`).
 ///
@@ -323,7 +324,7 @@ class _JoinScreenState extends State<JoinScreen> {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
                 Text('Invite from Coach $_first', style: AppText.s(13.5, W.w8)),
-                Text('Code $_code · filled in from your link', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
+                CutText('Code $_code · filled in from your link', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
               ]),
             ),
             const AppIcon(AppIcons.check, size: 18, color: AppColors.okText, stroke: 2.6),

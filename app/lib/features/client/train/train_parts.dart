@@ -15,6 +15,7 @@ import '../../../core/widgets/responsive.dart';
 import '../home/home_parts.dart';
 import 'body_map_svg.dart';
 import 'train_model.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Pieces shared by the Train tab and the workout logger: exercise tile, exercise guide with the
 /// body map, and the Past workouts sheet.
@@ -312,8 +313,8 @@ class _GuidePage extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
                 decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(10)),
                 child: Column(spacing: 1, children: [
-                  Text(v, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(18, W.w8)),
-                  Text(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w6, color: AppColors.muted)),
+                  CutText(v, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(18, W.w8)),
+                  CutText(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w6, color: AppColors.muted)),
                 ]),
               ),
             ),
@@ -402,7 +403,7 @@ class _GuidePage extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.line)),
           child: Row(spacing: 10, children: [
-            Expanded(child: Text(m, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
+            Expanded(child: CutText(m, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
             Row(spacing: 3, children: [
               for (final on in [true, lv == 'Strong', false])
                 Container(width: 14, height: 5, decoration: BoxDecoration(color: on ? AppColors.accent : AppColors.metOff, borderRadius: BorderRadius.circular(3))),
@@ -542,7 +543,7 @@ class _ExHistorySheetState extends State<_ExHistorySheet> {
           ),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-              Text('${r['name'] ?? 'Workout'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
+              CutText('${r['name'] ?? 'Workout'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
               Text('${sets.length} ${sets.length == 1 ? 'set' : 'sets'}${i == 0 ? ' · last time' : ''}', style: AppText.s(12, W.w4, color: AppColors.muted)),
             ]),
           ),
@@ -770,7 +771,7 @@ class _PastSheetState extends State<_PastSheet> {
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
                           Text(r.name, style: AppText.s(13.5, W.w7)),
-                          Text('${r.minutes} min · ${r.exercises} exercises · ${r.sets} sets', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
+                          CutText('${r.minutes} min · ${r.exercises} exercises · ${r.sets} sets', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
                         ]),
                       ),
                       if (r.pr) const PrFlag('PR'),
@@ -899,7 +900,7 @@ class TwoTabs extends StatelessWidget {
               borderRadius: BorderRadius.circular(6),
               boxShadow: i == index ? const [BoxShadow(color: AppColors.shadowSoft, blurRadius: 2, offset: Offset(0, 1)), BoxShadow(color: AppColors.line, spreadRadius: 1)] : null,
             ),
-            child: Text(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(fit ? 12.5 : 13, W.w6, color: i == index || h ? AppColors.text : AppColors.text2)),
+            child: CutText(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(fit ? 12.5 : 13, W.w6, color: i == index || h ? AppColors.text : AppColors.text2)),
           ),
         );
     final track = Container(
@@ -980,7 +981,7 @@ class _GuideMediaState extends State<_GuideMedia> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(spacing: 8, children: [
             AppIcon(kind == 'image' ? AppIcons.photo : AppIcons.video, size: 15, color: AppColors.muted),
-            Expanded(child: Text(e.videoTitle.isNotEmpty ? e.videoTitle : e.name, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w7))),
+            Expanded(child: CutText(e.videoTitle.isNotEmpty ? e.videoTitle : e.name, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w7))),
             // YouTube: the footer's right side is the "Open in YouTube" link (not a line under the player).
             if (kind == 'youtube' || kind.isEmpty)
               OpenInYoutube(kind.isEmpty ? e.youtube : e.mediaUrl)

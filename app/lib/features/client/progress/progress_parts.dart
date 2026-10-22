@@ -8,6 +8,7 @@ import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/photo_viewer.dart' show photoImage;
 import '../checkins/checkins_parts.dart' show DashedBox;
 import 'progress_model.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Small pieces of the Progress board (`px-*`), shared by the phone and web layouts.
 
@@ -157,7 +158,7 @@ class PxTabs extends StatelessWidget {
             borderRadius: BorderRadius.circular(6),
             boxShadow: i == index ? const [BoxShadow(color: AppColors.shadowSoft, blurRadius: 2, offset: Offset(0, 1)), BoxShadow(color: AppColors.line, spreadRadius: 1)] : null,
           ),
-          child: Text(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6, color: i == index || h ? AppColors.text : AppColors.text2)),
+          child: CutText(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6, color: i == index || h ? AppColors.text : AppColors.text2)),
         ),
       ),
     );
@@ -240,7 +241,7 @@ class PxTile extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(color: AppColors.pxPoseBg, borderRadius: BorderRadius.circular(6)),
-                child: Text(label!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11, W.w7)),
+                child: CutText(label!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11, W.w7)),
               ),
             ),
           ),
@@ -519,7 +520,7 @@ Widget pxStatCell(String l, String v, String s, {bool? down}) => Container(
   child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
     Text(l, style: AppText.s(11, W.w4, color: AppColors.muted)),
     Text(v, style: AppText.s(14, W.w7, color: down == null ? AppColors.text : (down ? AppColors.okText : AppColors.warnText))),
-    Text(s, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11, W.w4, color: AppColors.muted)),
+    CutText(s, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11, W.w4, color: AppColors.muted)),
   ]),
 );
 

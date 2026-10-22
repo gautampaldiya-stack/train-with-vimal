@@ -385,7 +385,7 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
             ),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                Text(rest ? 'Rest' : '${dd?['name'] ?? ''}'.ifEmpty('Workout'), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.rowTitle),
+                CutText(rest ? 'Rest' : '${dd?['name'] ?? ''}'.ifEmpty('Workout'), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.rowTitle),
                 Text(rest ? 'Rest day' : '${exercisesOf(dd).length} exercises', style: AppText.rowSub),
               ]),
             ),
@@ -529,7 +529,7 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
           width: phone ? null : w,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
             Text(l, style: AppText.s(11, W.w6, color: AppColors.muted)),
-            Text(v.isEmpty ? '–' : v, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w7, color: v.isEmpty ? AppColors.muted : AppColors.text, tabular: true)),
+            CutText(v.isEmpty ? '–' : v, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w7, color: v.isEmpty ? AppColors.muted : AppColors.text, tabular: true)),
           ]),
         );
     final stats = [
@@ -546,7 +546,7 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
     ]);
     final name = Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
       Row(spacing: 6, children: [
-        Flexible(child: Text(exName(e), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
+        Flexible(child: CutText(exName(e), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
         // The note for the client sits behind ⓘ (tooltip), so the row stays short.
         if (note.isNotEmpty)
           AppTooltip(
@@ -555,7 +555,7 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
           ),
         if (was != null) Container(width: 7, height: 7, decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle)),
       ]),
-      if (was != null) Text(was, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.cap),
+      if (was != null) CutText(was, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.cap),
       if (e['edited'] == true && was == null) Text('Edited in the program', style: AppText.cap),
     ]);
     return Material(
@@ -774,8 +774,8 @@ Future<List<Map>?> showExercisePicker(BuildContext context,
                       SizedBox(width: 52, height: 40, child: ExCover(x, radius: 8, iconSize: 16, inset: 3, mini: true)),
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                          Text('${x['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7, color: h && !on2 ? AppColors.accentText : AppColors.text)),
-                          Text(['${x['primary_muscle'] ?? ''}'.ifEmpty('${x['muscle_group']}'), '${x['level'] ?? ''}'.capFirst].where((s) => s.isNotEmpty).join(' · '),
+                          CutText('${x['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7, color: h && !on2 ? AppColors.accentText : AppColors.text)),
+                          CutText(['${x['primary_muscle'] ?? ''}'.ifEmpty('${x['muscle_group']}'), '${x['level'] ?? ''}'.capFirst].where((s) => s.isNotEmpty).join(' · '),
                               maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.text2)),
                         ]),
                       ),

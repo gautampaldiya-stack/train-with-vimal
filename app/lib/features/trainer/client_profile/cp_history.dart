@@ -16,6 +16,7 @@ import '../../../core/widgets/responsive.dart';
 import 'cp_common.dart';
 import 'cp_history_chart.dart';
 import 'cp_model.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Client profile → History tab (`.hs-wrap` on both boards): 4 summary cards, "Plans over time", the Journey
 /// (month by month, filter chips, Export — off for now —, Show earlier months) and the side cards "About her journey" and
@@ -154,8 +155,8 @@ class _CpHistoryTabState extends State<CpHistoryTab> {
           padding: EdgeInsets.symmetric(horizontal: phone ? 12 : 16, vertical: 12),
           decoration: BoxDecoration(color: AppColors.card, borderRadius: AppRadius.all(AppRadius.card), border: Border.all(color: AppColors.line)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 3, children: [
-            Text(x.$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted)),
-            Text(x.$2,
+            CutText(x.$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted)),
+            CutText(x.$2,
                 maxLines: phone ? 2 : 1,
                 softWrap: phone,
                 overflow: phone ? TextOverflow.visible : TextOverflow.ellipsis,

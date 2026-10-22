@@ -16,6 +16,7 @@ import '../food/food_model.dart' show DateUtils0;
 import '../food/food_parts.dart' show NumStepper, fdCap;
 import 'progress_model.dart';
 import 'progress_parts.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Sheets of the Progress tab (boards `ClientProgress` / `ClientProgressWeb`): Log weight, workouts done, a lift,
 /// a photo set, Add photos and a History day.
@@ -402,7 +403,7 @@ Future<void> showAddPhotos(BuildContext context, ProgressController c, {String? 
                   ),
                 ),
               ),
-            Text(
+            CutText(
               s.image == null ? 'No photo yet' : '${s.pose} photo ready · ${s.file ?? 'taken just now'}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,

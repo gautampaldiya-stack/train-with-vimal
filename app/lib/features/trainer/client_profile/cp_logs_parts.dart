@@ -13,6 +13,7 @@ import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
 import 'cp_common.dart';
 import 'cp_model.dart';
+import '../../../core/widgets/tooltip.dart';
 
 // Pieces shared by the Logs and Progress tabs: the range both tabs use (one picker state, as on the board),
 // the client's plans for "Plan: …", the board table (`.tbl.dt.cmp.cp-t`) and its phone card list, the log drawer
@@ -140,7 +141,7 @@ class _CpTableState extends State<CpTable> {
               ),
               child: Row(children: [
                 for (final (i, c) in cols.indexed)
-                  cell(i, Text(c.label.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w7, color: AppColors.muted, ls: .58))),
+                  cell(i, CutText(c.label.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w7, color: AppColors.muted, ls: .58))),
               ]),
             ),
             for (final (i, r) in widget.rows.indexed) row(r, index: i, last: i == widget.rows.length - 1 && widget.footer == null),
@@ -157,7 +158,7 @@ class _CpTableState extends State<CpTable> {
 }
 
 /// Table cell text: 13.5 regular, or bold for the name column.
-Widget cpCell(String s, {bool bold = false, Color? color, bool muted = false}) => Text(s,
+Widget cpCell(String s, {bool bold = false, Color? color, bool muted = false}) => CutText(s,
     maxLines: 2,
     overflow: TextOverflow.ellipsis,
     style: AppText.s(13.5, bold ? W.w7 : W.w5, color: color ?? (muted ? AppColors.muted : AppColors.text), tabular: true));
@@ -301,8 +302,8 @@ Future<T?> showCpLogDrawer<T>(
                   const IconTile(AppIcons.clipboard, size: 32, radius: 8, iconSize: 17),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                      Text(title(), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(15, W.w8, ls: -0.15, h: 1.3)),
-                      Text(sub(), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted, h: 1.4)),
+                      CutText(title(), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(15, W.w8, ls: -0.15, h: 1.3)),
+                      CutText(sub(), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted, h: 1.4)),
                     ]),
                   ),
                   nav(),
@@ -315,7 +316,7 @@ Future<T?> showCpLogDrawer<T>(
                 padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
                 decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
                 child: Row(spacing: 8, children: [
-                  Expanded(child: Text(note(), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted))),
+                  Expanded(child: CutText(note(), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted))),
                   ...actions(ctx),
                 ]),
               ),
@@ -337,8 +338,8 @@ class CpKpis extends StatelessWidget {
           padding: EdgeInsets.fromLTRB(i == 0 ? 0 : 12, 2, 12, 2),
           decoration: BoxDecoration(border: i > 0 ? const Border(left: BorderSide(color: AppColors.line)) : null),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-            Text(k.$1, style: AppText.s(12, W.w5, color: AppColors.muted), maxLines: 1, overflow: TextOverflow.ellipsis),
-            Text(k.$2, style: AppText.s(14.5, W.w8, tabular: true), maxLines: 1, overflow: TextOverflow.ellipsis),
+            CutText(k.$1, style: AppText.s(12, W.w5, color: AppColors.muted), maxLines: 1, overflow: TextOverflow.ellipsis),
+            CutText(k.$2, style: AppText.s(14.5, W.w8, tabular: true), maxLines: 1, overflow: TextOverflow.ellipsis),
           ]),
         );
     final per = context.isPhone ? 2 : 4;

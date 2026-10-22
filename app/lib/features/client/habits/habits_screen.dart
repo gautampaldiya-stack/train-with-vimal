@@ -12,6 +12,7 @@ import '../home/home_model.dart' show clock, dayShort, litres;
 import '../home/home_parts.dart';
 import 'habits_model.dart';
 import 'habits_sheets.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Habits & supplements (boards `ClientHabits` phone and `ClientHabitsWeb`). Day: the week strip,
 /// each habit with its log button and the supplements of the picked day. Week: the Mon–Sun grid.
@@ -124,7 +125,7 @@ class _ClientHabitsScreenState extends State<ClientHabitsScreen> {
   Widget _top(HabitsData d, {required bool web}) {
     final title = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('Habits & supplements', style: AppText.s(web ? 26 : 22, W.w8, ls: web ? -0.26 : -0.22, h: 1.2)),
-      Text(d.by, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w6, color: AppColors.muted)),
+      CutText(d.by, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w6, color: AppColors.muted)),
     ]);
     if (web) return title;
     return Row(spacing: 10, children: [
@@ -326,11 +327,11 @@ class _ClientHabitsScreenState extends State<ClientHabitsScreen> {
               onTap: () => _details(d, h),
               builder: (_, hv, _) => Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
                 Row(spacing: 7, children: [
-                  Flexible(child: Text(h.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w7, color: hv ? AppColors.accentText : AppColors.text))),
+                  Flexible(child: CutText(h.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w7, color: hv ? AppColors.accentText : AppColors.text))),
                   if (met) const ChOk('Done', icon: true),
                   if (miss) Text('Missed', style: AppText.s(11.5, W.w7, color: AppColors.badText)),
                 ]),
-                Text(line, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
+                CutText(line, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
               ]),
             ),
           ),
@@ -468,7 +469,7 @@ class _ClientHabitsScreenState extends State<ClientHabitsScreen> {
         child: Row(spacing: 6, children: [
           AppIcon(icon, size: 14, color: AppColors.text2),
           Text(g.groupName.toUpperCase(), style: AppText.s(12, W.w8, color: AppColors.text2, ls: .48)),
-          Flexible(child: Text(g.groupLine, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w6, color: AppColors.muted))),
+          Flexible(child: CutText(g.groupLine, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w6, color: AppColors.muted))),
         ]),
       ),
       for (final s in list) _suppRow(d, s),
@@ -527,7 +528,7 @@ class _ClientHabitsScreenState extends State<ClientHabitsScreen> {
             onTap: info,
             builder: (_, h, _) => Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
               Text(s.name, style: AppText.s(14, W.w7, color: h ? AppColors.accentText : AppColors.text)),
-              Text(desc, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: tk ? AppColors.okText : AppColors.muted)),
+              CutText(desc, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: tk ? AppColors.okText : AppColors.muted)),
             ]),
           ),
         ),
@@ -705,8 +706,8 @@ class _ClientHabitsScreenState extends State<ClientHabitsScreen> {
                 child: Hover(
                   onTap: r.open,
                   builder: (_, h, _) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(r.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(web ? 13 : 12.5, W.w7, color: h ? AppColors.accentText : AppColors.text)),
-                    Text(r.sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11, W.w4, color: AppColors.muted)),
+                    CutText(r.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(web ? 13 : 12.5, W.w7, color: h ? AppColors.accentText : AppColors.text)),
+                    CutText(r.sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11, W.w4, color: AppColors.muted)),
                   ]),
                 ),
               ),

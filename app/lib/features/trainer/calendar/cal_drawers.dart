@@ -14,6 +14,7 @@ import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/select.dart';
 import 'cal_model.dart';
+import '../../../core/widgets/tooltip.dart';
 
 // Calendar overlays from the boards: the session panel (`.modal.cal-det`, phone: bottom sheet), Cancel this session?,
 // the New session / Move session drawer and My working hours.
@@ -142,7 +143,7 @@ class _SmSelect extends StatelessWidget {
               border: Border.all(color: h ? AppColors.lineHover : AppColors.line2),
             ),
             child: Row(spacing: 6, children: [
-              Expanded(child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6))),
+              Expanded(child: CutText(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6))),
               const AppIcon(AppIcons.chevronDown, size: 16, color: AppColors.muted),
             ]),
           ),
@@ -179,7 +180,7 @@ Future<String?> showSessionPanel(BuildContext context, CalSession s) {
         padding: phone ? const EdgeInsets.fromLTRB(4, 6, 4, 4) : const EdgeInsets.fromLTRB(20, 6, 20, 0),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
-            Expanded(child: Text(s.client, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(phone ? 18 : 20, W.w8, ls: -0.4))),
+            Expanded(child: CutText(s.client, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(phone ? 18 : 20, W.w8, ls: -0.4))),
             Hover(
               onTap: () => Navigator.of(ctx).pop('profile'),
               builder: (_, h, _) => Padding(
@@ -703,7 +704,7 @@ Future<(CalSession, CalSession?)?> showSessionForm(BuildContext context, Calenda
       );
   final noteText = ListenableBuilder(
     listenable: f,
-    builder: (_, _) => Text(foot(), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted)),
+    builder: (_, _) => CutText(foot(), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted)),
   );
 
   return showAppDrawer<(CalSession, CalSession?)>(
@@ -818,7 +819,7 @@ Future<bool> showWorkingHours(BuildContext context, CalendarController c) async 
       },
     ),
     footer: (ctx) {
-      final note = Text('Booked sessions stay as they are', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted));
+      final note = CutText('Booked sessions stay as they are', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted));
       final saveBtn = ValueListenableBuilder(
         valueListenable: state,
         builder: (_, _, _) => AppButton.primary('Save availability', icon: AppIcons.check, expand: ctx.isPhone, loading: busy, onPressed: () => save(ctx)),

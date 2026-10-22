@@ -15,6 +15,7 @@ import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/tabs.dart';
 import 'tc_model.dart';
 import 'tc_parts.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// One list for the page and the phone's open check-in, so ← Back lands on the same tab, type and rows.
 final _shared = TcController();
@@ -222,7 +223,7 @@ class _Row extends StatelessWidget {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(spacing: 8, children: [
                   Expanded(
-                    child: Text(r.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, r.reviewed ? W.w6 : W.w7)),
+                    child: CutText(r.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, r.reviewed ? W.w6 : W.w7)),
                   ),
                   Text(r.age, style: AppText.s(12, W.w7, color: r.late ? AppColors.badText : AppColors.muted)),
                 ]),
@@ -231,7 +232,7 @@ class _Row extends StatelessWidget {
                 const SizedBox(height: 2),
                 Row(spacing: 4, children: [
                   if (r.reviewed) const AppIcon(AppIcons.check, size: 13, color: AppColors.tdOkIcon),
-                  Expanded(child: Text(line, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted))),
+                  Expanded(child: CutText(line, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted))),
                 ]),
               ]),
             ),

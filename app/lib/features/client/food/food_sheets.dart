@@ -15,6 +15,7 @@ import '../../../core/widgets/responsive.dart';
 import '../home/home_model.dart' show inNum, mealTime;
 import 'food_model.dart';
 import 'food_parts.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Sheets of the Food page (board `ClientMealNutrition`): calories, the meal menu, swap, edit portions and the
 /// details of a food-log row.
@@ -351,7 +352,7 @@ class _SwapOpt extends StatelessWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                Flexible(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
+                Flexible(child: CutText(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
                 if (planned) fdTag('Planned'),
               ]),
               Text(sub, style: AppText.s(12.5, W.w4, color: AppColors.text2)),

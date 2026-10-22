@@ -18,6 +18,7 @@ import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/tabs.dart';
 import 'cp_common.dart';
 import 'cp_model.dart';
+import '../../../core/widgets/tooltip.dart';
 
 // Content tab drawers (Assign content, Content preview, Change how long) and the drawer pieces the Content and
 // Forms tabs share (`.dr-sec`, `.dr-opt`, `.dr-sw`, `.field`).
@@ -160,7 +161,7 @@ class DrOpt extends StatelessWidget {
                     Text(title, style: AppText.s(13.5, W.w7)),
                     if (badge != null && badge!.isNotEmpty) AppBadge(badge!, plain: true),
                   ]),
-                  if (sub != null && sub!.isNotEmpty) Text(sub!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted)),
+                  if (sub != null && sub!.isNotEmpty) CutText(sub!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted)),
                 ]),
               ),
               if (end != null) Text(end!, style: AppText.s(12, W.w5, color: AppColors.muted)),
@@ -168,6 +169,22 @@ class DrOpt extends StatelessWidget {
           ),
         ),
       );
+}
+
+/// "Everyone" row on top of a client pick list: ticks every client shown at once, or clears them (Gautam, 22 Oct).
+/// With a search typed it works on the clients shown.
+Widget drEveryone(Iterable rows, ValueNotifier<Set<String>?> picked, {bool searching = false}) {
+  final ids = {for (final c in rows) '${(c as Map)['id']}'};
+  final all = ids.isNotEmpty && picked.value!.containsAll(ids);
+  final n = ids.length;
+  return DrOpt(
+    title: searching ? 'All shown' : 'Everyone',
+    sub: all ? 'All $n picked · tap to clear' : 'Pick all $n clients at once',
+    multi: true,
+    on: all,
+    thumb: const IconTile(AppIcons.clientsAlt, size: 28),
+    onTap: () => picked.value = all ? ({...picked.value!}..removeAll(ids)) : {...picked.value!, ...ids},
+  );
 }
 
 /// `.dr-sw`: a switch, a bold line and a grey line.
@@ -517,7 +534,7 @@ Future<String?> showContentPreview(BuildContext context, CpController c, Map r) 
                     decoration: BoxDecoration(border: i == 0 ? null : const Border(left: BorderSide(color: AppColors.line))),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
                       Text(k, style: AppText.s(11.5, W.w6, color: AppColors.muted)),
-                      Text(v, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w8)),
+                      CutText(v, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w8)),
                     ]),
                   ),
                 ),

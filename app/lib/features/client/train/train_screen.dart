@@ -13,6 +13,7 @@ import '../home/home_model.dart' show clock;
 import '../home/home_parts.dart';
 import 'train_model.dart';
 import 'train_parts.dart';
+import '../../../core/widgets/tooltip.dart';
 import 'workout_model.dart' show WorkoutController;
 
 /// Train tab (boards `ClientTrain` phone and `ClientTrainWeb`): the week, today's workout, the
@@ -221,7 +222,7 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
       mark = Container(width: size, height: size, decoration: const BoxDecoration(color: AppColors.sub, shape: BoxShape.circle));
     }
     final wdText = Text(wd, style: AppText.s(web ? 11 : 10.5, W.w6, color: today ? AppColors.sessText : AppColors.muted));
-    final name = Text(rest ? 'Rest' : (day.name.isEmpty ? '—' : day.name),
+    final name = CutText(rest ? 'Rest' : (day.name.isEmpty ? '—' : day.name),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: AppText.s(web ? (narrow ? 12 : 12.5) : 10, rest ? W.w6 : W.w7, color: rest && !today ? AppColors.muted : ink));
@@ -450,7 +451,7 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(live.pausedAt != null ? 'TIMER PAUSED' : 'WORKOUT IN PROGRESS', style: AppText.s(11, W.w7, color: AppColors.muted, ls: .55)),
-              Text(live.name, overflow: TextOverflow.ellipsis, style: AppText.s(15, W.w8)),
+              CutText(live.name, overflow: TextOverflow.ellipsis, style: AppText.s(15, W.w8)),
             ]),
           ),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
@@ -536,7 +537,7 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
                     height: web ? 40 : 44,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(color: h ? AppColors.badText : AppColors.red, borderRadius: BorderRadius.circular(web ? 10 : 12)),
-                    child: Text('Discard workout', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(web ? 14 : 14.5, W.w7, color: AppColors.white)),
+                    child: CutText('Discard workout', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(web ? 14 : 14.5, W.w7, color: AppColors.white)),
                   );
                 },
               ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../icons/app_icon.dart';
 import '../theme/theme.dart';
 import 'hover.dart';
+import 'tooltip.dart';
 
 /// `.card`: white, 1px line, radius 12. [padded] = `18px 20px`.
 class AppCard extends StatelessWidget {
@@ -40,7 +41,7 @@ class CardHeader extends StatelessWidget {
         child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-              Row(spacing: 8, children: [Flexible(child: Text(title, style: AppText.s(15.5, W.w7, ls: -0.15), overflow: TextOverflow.ellipsis)), ?count]),
+              Row(spacing: 8, children: [Flexible(child: CutText(title, style: AppText.s(15.5, W.w7, ls: -0.15), overflow: TextOverflow.ellipsis)), ?count]),
               if (sub != null) Text(sub!, style: AppText.cap),
             ]),
           ),
@@ -68,8 +69,8 @@ class AppRow extends StatelessWidget {
             ?leading,
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, spacing: 2, children: [
-                titleWidget ?? Text(title, style: AppText.rowTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
-                if (sub != null) Text(sub!, style: AppText.rowSub, maxLines: 1, overflow: TextOverflow.ellipsis),
+                titleWidget ?? CutText(title, style: AppText.rowTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+                if (sub != null) CutText(sub!, style: AppText.rowSub, maxLines: 1, overflow: TextOverflow.ellipsis),
               ]),
             ),
             ?trailing,

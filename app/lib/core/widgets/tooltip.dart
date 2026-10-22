@@ -7,11 +7,14 @@ enum TipSide { above, below, left, right }
 /// The board tooltip (`[data-tip]:hover::after`): white card, thin line border, soft shadow,
 /// dark 12.5/600 text, no arrow. Shows while the pointer is on [child], on the given [side].
 class AppTooltip extends StatefulWidget {
-  const AppTooltip({super.key, required this.message, required this.child, this.side = TipSide.above, this.gap = 6});
+  const AppTooltip({super.key, required this.message, required this.child, this.side = TipSide.above, this.gap = 6, this.when});
   final String message;
   final Widget child;
   final TipSide side;
   final double gap;
+
+  /// Shown only when this says yes for the child's size at hover time (CutText: only when the text is cut).
+  final bool Function(Size size)? when;
 
   @override
   State<AppTooltip> createState() => _AppTooltipState();
@@ -24,6 +27,7 @@ class _AppTooltipState extends State<AppTooltip> {
   void _show() {
     final box = context.findRenderObject() as RenderBox?;
     if (box == null || !box.hasSize) return;
+    if (widget.when != null && !widget.when!(box.size)) return;
     final overlay = Overlay.maybeOf(context)?.context.findRenderObject() as RenderBox?;
     final o = box.localToGlobal(Offset.zero, ancestor: overlay);
     setState(() => _target = o & box.size);
@@ -108,4 +112,45 @@ class _TipCard extends StatelessWidget {
         ),
         child: Text(text, style: AppText.s(12.5, W.w6, h: 1.3)),
       );
+}
+
+/// A Text that ends in "…" when there is no room, and then shows the whole text in a tooltip on hover
+/// (Gautam, 22 Oct: every cut text shows its full text on hover). Same look as Text; one line unless [maxLines].
+class CutText extends StatelessWidget {
+  const CutText(String this.data, {super.key, this.style, this.maxLines, this.textAlign, this.overflow = TextOverflow.ellipsis, this.softWrap}) : span = null;
+
+  /// For a Text.rich ("Riya Sharma · Daily check-in"): the tooltip shows the plain text.
+  const CutText.rich(InlineSpan this.span, {super.key, this.style, this.maxLines, this.textAlign, this.overflow = TextOverflow.ellipsis, this.softWrap}) : data = null;
+  final String? data;
+  final InlineSpan? span;
+  final TextStyle? style;
+  final int? maxLines;
+  final TextAlign? textAlign;
+  final TextOverflow overflow;
+  final bool? softWrap;
+
+  @override
+  Widget build(BuildContext context) {
+    // an ellipsis with no line limit still cuts at the end of the first line (Flutter), so that is 1
+    final lines = maxLines ?? (overflow == TextOverflow.ellipsis || softWrap == false ? 1 : null);
+    final base = DefaultTextStyle.of(context).style.merge(style);
+    return AppTooltip(
+      message: data ?? span!.toPlainText(),
+      when: (size) {
+        final tp = TextPainter(
+          text: TextSpan(text: data, style: base, children: span == null ? null : [span!]),
+          maxLines: lines,
+          textDirection: Directionality.of(context),
+          textScaler: MediaQuery.textScalerOf(context),
+        )..layout(maxWidth: size.width);
+        // with a line limit: more lines than allowed; without one: taller than the room it got
+        final cut = lines != null ? tp.didExceedMaxLines : tp.height > size.height + 1;
+        tp.dispose();
+        return cut;
+      },
+      child: data != null
+          ? Text(data!, style: style, maxLines: maxLines, textAlign: textAlign, overflow: overflow, softWrap: softWrap)
+          : Text.rich(span!, style: style, maxLines: maxLines, textAlign: textAlign, overflow: overflow, softWrap: softWrap),
+    );
+  }
 }

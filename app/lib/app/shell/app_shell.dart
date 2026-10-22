@@ -213,8 +213,8 @@ class _Sidebar extends StatelessWidget {
                   if (!mini)
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                        Text('Train With Vimal', style: AppText.s(15, W.w8, ls: -0.15), overflow: TextOverflow.ellipsis),
-                        Text(roleLine, style: AppText.s(12, W.w5, color: AppColors.muted), overflow: TextOverflow.ellipsis),
+                        CutText('Train With Vimal', style: AppText.s(15, W.w8, ls: -0.15), overflow: TextOverflow.ellipsis),
+                        CutText(roleLine, style: AppText.s(12, W.w5, color: AppColors.muted), overflow: TextOverflow.ellipsis),
                       ]),
                     ),
                 ]),
@@ -257,7 +257,7 @@ class _NavTile extends StatelessWidget {
             }
             return Row(spacing: 10, children: [
               icon,
-              Expanded(child: Text(item.label, style: AppText.s(13.5, W.w6, color: on || h ? AppColors.text : AppColors.text2), overflow: TextOverflow.ellipsis)),
+              Expanded(child: CutText(item.label, style: AppText.s(13.5, W.w6, color: on || h ? AppColors.text : AppColors.text2), overflow: TextOverflow.ellipsis)),
               if (n > 0) AppCount(n),
             ]);
           },

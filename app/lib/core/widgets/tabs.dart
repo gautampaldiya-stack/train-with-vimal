@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/theme.dart';
 import 'hover.dart';
+import 'tooltip.dart';
 
 class TabItem<T> {
   const TabItem(this.value, this.label, {this.count});
@@ -43,9 +44,9 @@ class SegmentedTabs<T> extends StatelessWidget {
               child: Row(mainAxisSize: MainAxisSize.min, spacing: 6, children: [
                 // stretched tabs share the width, so a long label shortens instead of overflowing
                 if (expand)
-                  Flexible(child: Text(it.label, maxLines: 1, style: AppText.s(13, W.w6, color: on ? AppColors.text : AppColors.text2), overflow: TextOverflow.ellipsis))
+                  Flexible(child: CutText(it.label, maxLines: 1, style: AppText.s(13, W.w6, color: on ? AppColors.text : AppColors.text2), overflow: TextOverflow.ellipsis))
                 else
-                  Text(it.label, style: AppText.s(13, W.w6, color: on ? AppColors.text : AppColors.text2), overflow: TextOverflow.ellipsis),
+                  CutText(it.label, style: AppText.s(13, W.w6, color: on ? AppColors.text : AppColors.text2), overflow: TextOverflow.ellipsis),
                 if (it.count != null) Text('${it.count}', style: AppText.s(12, W.w6, color: AppColors.muted)),
               ]),
             );

@@ -10,6 +10,7 @@ import '../../../core/widgets/badge.dart';
 import '../../../core/widgets/hover.dart';
 import 'me_common.dart';
 import 'me_model.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Overview tab: Professional details, Contact and account, Certificates (left); This week, Clients who need you,
 /// Recent activity (right).
@@ -156,8 +157,8 @@ Widget _row({required bool first, required Widget lead, required String title, S
           lead,
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-              Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(13, small ? W.w4 : W.w6, color: onTap != null && h ? AppColors.accent : AppColors.text)),
-              if (sub.isNotEmpty) Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
+              CutText(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(13, small ? W.w4 : W.w6, color: onTap != null && h ? AppColors.accent : AppColors.text)),
+              if (sub.isNotEmpty) CutText(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
             ]),
           ),
           ?trail,

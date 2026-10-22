@@ -18,6 +18,7 @@ import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/tabs.dart';
 import 'clients_model.dart';
 import 'clients_parts.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// My clients (boards `TrainerClients` + `TrainerClientsMobile`). Only the trainer's own clients (the API
 /// starts from `visible_clients`). Web: table, row ⋯ menu, pager. Phone: one line per client.
@@ -259,8 +260,8 @@ class _TrainerClientsScreenState extends State<TrainerClientsScreen> {
                 SizedBox(width: 40, child: Align(alignment: Alignment.centerLeft, child: _av(r))),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-                    Text(r.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w7)),
-                    Text(r.goal.isEmpty ? '—' : r.goal, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted)),
+                    CutText(r.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w7)),
+                    CutText(r.goal.isEmpty ? '—' : r.goal, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted)),
                   ]),
                 ),
                 Padding(padding: const EdgeInsets.only(left: 8, right: 2), child: _badge(r)),
@@ -314,23 +315,23 @@ class _TableRow extends StatelessWidget {
                 child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Hover(
                     onTap: onOpen,
-                    builder: (_, hn, _) => Text(r.name,
+                    builder: (_, hn, _) => CutText(r.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppText.s(13.5, W.w7, color: hn ? AppColors.accentText : AppColors.text)),
                   ),
-                  Text(r.email.isEmpty ? '—' : r.email, maxLines: 1, overflow: TextOverflow.ellipsis, style: cap),
+                  CutText(r.email.isEmpty ? '—' : r.email, maxLines: 1, overflow: TextOverflow.ellipsis, style: cap),
                 ]),
               ),
             ]),
           ),
-          cell(1, Text(r.goal.isEmpty ? '—' : r.goal, maxLines: 1, overflow: TextOverflow.ellipsis, style: body)),
+          cell(1, CutText(r.goal.isEmpty ? '—' : r.goal, maxLines: 1, overflow: TextOverflow.ellipsis, style: body)),
           cell(2, _badge(r)),
           cell(
             3,
             Row(spacing: 8, children: [
               ProgressBar(value: r.onbDone <= 1 ? 0 : r.onb, width: 90),
-              Flexible(child: Text(r.onbText, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis, style: cap)),
+              Flexible(child: CutText(r.onbText, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis, style: cap)),
             ]),
           ),
           cell(4, Text(r.phoneText, maxLines: 1, softWrap: false, style: cap)),
