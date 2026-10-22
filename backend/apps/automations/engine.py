@@ -244,11 +244,11 @@ def candidates(automation, now):
     elif t == "birthday" and _in_window(now, cfg.get("time", "09:00")):
         for c in _clients().filter(date_of_birth__month=today.month, date_of_birth__day=today.day):
             yield c, f"bday:{today.year}"
-    elif t == "package_ending":
+    elif t == "package_ending" and _in_window(now, cfg.get("time", "09:00")):
         target = today + timedelta(days=int(cfg.get("days_before", 7)))
         for c in _clients().filter(client_profile__package_ends_on=target):
             yield c, f"pkg:{target}"
-    elif t == "plan_ends":
+    elif t == "plan_ends" and _in_window(now, cfg.get("time", "09:00")):
         target = today + timedelta(days=int(cfg.get("days_before", 3)))
         if cfg.get("plan_type", "any") in ("any", "program"):
             for a in ProgramAssignment.objects.filter(status="active", end_date=target).select_related(
@@ -312,7 +312,7 @@ def candidates(automation, now):
                 continue
             kgs = [w for w, _ in ws]
             spans_period = min(d for _, d in ws) <= since + timedelta(days=3)
-            if spans_period and max(kgs) - min(kgs) <= 0.3:
+            if spans_period and max(kgs) - min(kgs) <= 0.5:
                 yield c, f"flat:{today.isocalendar()[1]}"
 
 

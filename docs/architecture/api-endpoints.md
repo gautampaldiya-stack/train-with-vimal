@@ -43,15 +43,15 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 
 | Path | Methods | View | Notes |
 |---|---|---|---|
-| `automations/` | GET, POST | AutomationViewSet | Automations are gym-wide: only the admin builds them. |
+| `automations/` | GET, POST | AutomationViewSet | Admin only, oldest first (D-51). Rows: trigger_line (board words), scope_package, scope_trainer + scope_trainer_name, stop_on_response, steps (each with summary), counts {running, finished, stopped}. POST saves as draft. |
 | `automations/<pk>/` | GET, PUT, PATCH, DELETE | AutomationViewSet | Automations are gym-wide: only the admin builds them. |
 | `automations/<pk>/duplicate/` | POST | AutomationViewSet | Automations are gym-wide: only the admin builds them. |
 | `automations/<pk>/restore/` | POST | AutomationViewSet | Automations are gym-wide: only the admin builds them. |
-| `automations/<pk>/runs/` | GET | AutomationViewSet | Automations are gym-wide: only the admin builds them. |
+| `automations/<pk>/runs/` | GET | AutomationViewSet | Builder → Last 30 days: started / finished / stopped (last 30 days) + the latest 20 runs (client, status, step_index, steps_total, last_message). |
 | `automations/<pk>/save-draft/` | POST | AutomationViewSet | Automations are gym-wide: only the admin builds them. |
 | `automations/<pk>/turn-off/` | POST | AutomationViewSet | Automations are gym-wide: only the admin builds them. |
-| `automations/<pk>/turn-on/` | POST | AutomationViewSet | Automations are gym-wide: only the admin builds them. |
-| `automations/catalog/` | GET | AutomationViewSet | Automations are gym-wide: only the admin builds them. |
+| `automations/<pk>/turn-on/` | POST | AutomationViewSet | Turns it on; 400 `not_ready` with fields.problems when something is missing. |
+| `automations/catalog/` | GET | AutomationViewSet | Triggers (group, line, settings with limits; Plan ends / Package ending have a time) and starters (with trigger_line and step_count). |
 | `automations/from-starter/` | POST | AutomationViewSet | Automations are gym-wide: only the admin builds them. |
 | `automations/packages/` | GET | AutomationViewSet | Automations are gym-wide: only the admin builds them. |
 | `automations/stats/` | GET | AutomationViewSet | Automations are gym-wide: only the admin builds them. |

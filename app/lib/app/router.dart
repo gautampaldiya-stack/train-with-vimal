@@ -6,6 +6,8 @@ import '../core/leave/leave_guard.dart';
 import '../core/widgets/button.dart';
 import '../core/widgets/card.dart';
 import '../core/widgets/overlays.dart';
+import '../features/admin/automations/automation_builder_screen.dart';
+import '../features/admin/automations/automations_screen.dart';
 import '../features/admin/forms/form_builder_screen.dart';
 import '../features/admin/forms/forms_screen.dart';
 import '../features/admin/dashboard/admin_dashboard_screen.dart';
@@ -173,6 +175,8 @@ final Map<String, Widget Function(GoRouterState)> adminScreens = {
   // Forms & check-ins and the Form builder (D-50)
   '/forms': (_) => const FormsScreen(),
   '/forms/:id': (st) => FormBuilderScreen(key: ValueKey('form-${st.pathParameters['id']}'), id: st.pathParameters['id']!),
+  '/automations': (_) => const AutomationsScreen(),
+  '/automations/:id': (st) => AutomationBuilderScreen(key: ValueKey(st.uri.toString()), id: st.pathParameters['id']!, starter: st.uri.queryParameters['starter']),
   for (final k in ['/programs', '/programs/:id', '/nutrition', '/nutrition/:id', '/habits', '/exercises', '/exercises/:id', '/content', '/content/:id'])
     k: trainerScreens[k]!,
 };

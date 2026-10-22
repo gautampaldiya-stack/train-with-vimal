@@ -55,6 +55,9 @@ class _AppTextFieldState extends State<AppTextField> {
   late final FocusNode _focus = widget.focusNode ?? FocusNode();
   bool _hover = false;
 
+  /// Keeps the text box (and its focus) when an error line appears or goes while typing.
+  final _box = GlobalKey();
+
   @override
   void initState() {
     super.initState();
@@ -81,6 +84,7 @@ class _AppTextFieldState extends State<AppTextField> {
     final multi = widget.maxLines > 1 || (widget.minLines ?? 1) > 1;
     // The text itself is only one line tall: a click anywhere in the box (padding, near the border) focuses it too.
     final field = MouseRegion(
+      key: _box,
       cursor: widget.enabled ? SystemMouseCursors.text : MouseCursor.defer,
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),

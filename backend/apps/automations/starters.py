@@ -20,9 +20,9 @@ TRIGGER_TEXT = {
 
 # Settings each trigger needs, with limits (the builder shows only these).
 TRIGGER_CONFIG = {
-    "plan_ends": {"days_before": (0, 14, 3), "plan_type": ["any", "program", "meal_plan"]},
+    "plan_ends": {"days_before": (0, 14, 3), "time": "09:00"},
     "plan_starts": {"plan_type": ["any", "program", "meal_plan"]},
-    "package_ending": {"days_before": (1, 30, 7)},
+    "package_ending": {"days_before": (1, 30, 7), "time": "09:00"},
     "birthday": {"time": "09:00"},
     "every_week": {"weekday": (0, 6, 6), "time": "09:00"},
     "every_day": {"time": "08:00"},

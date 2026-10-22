@@ -659,6 +659,8 @@ Har automation ka card: naam, trigger line (*"When a new client is approved"*), 
 | `Message templates` | Emails & alerts page. |
 | `New automation` | **New automation screen** (`AutomationNew`). |
 
+**Built (D-51), route `/automations`:** row click (or ⋯ Edit) opens the builder; the switch turns it on / off at once with toast + Undo (a Draft says *"Finish it before turning it on"*; one that is not ready shows *"Not ready to turn on"* + the first problem). Steps show as many chips as fit on one line, the rest in *"+N more"* (tip lists them). Changed = `Today` / `20 Sep`. Counts come from `automations/stats/`. Note bar *"Emails and WhatsApp go out from Train With Vimal until you set your own sender."* + `Sender settings` (Settings). Narrow pages (under 760 px of content) use the board's phone cards.
+
 Mock: Client onboarding (On, 3 running / 41 finished) · Weekly check-in (On, 38 / 412, package *Quarterly Transformation*) · Missed workouts nudge (Off) · Renewal reminder (On) · Birthday wish (Draft).
 
 ### 2.19 New automation — `AutomationNew` / `AutomationNewMobile`
@@ -675,11 +677,15 @@ Starter list: har starter card pe naam, ek line explanation, trigger aur step co
 | Welcome week | A welcome message, the health screening on day 2 and a first-week call. |
 | Birthday wish | A birthday message at 9 am and a reminder for the trainer. |
 
+**Built (D-51):** `New automation` opens this as a modal (phone: sheet), first starter picked; each row shows *"<trigger line> · N steps"*. `Use this` → `/automations/new?starter=<key>` (blank → `/automations/new`). Nothing is saved until the builder saves.
+
 Saath me ek **Blank** option. Buttons `Cancel` + `Use this` — starter chuna ho to builder usi ke steps ke saath khulta hai, blank pe khaali builder.
 
 ### 2.20 Automation builder — `AutomationBuilder` / `AutomationBuilderMobile`
 
 Header: automation naam, status badge, `Cancel` · `Save as draft` · `Turn on` / `Save and keep on`.
+
+**Built (D-51), routes `/automations/new`, `/automations/<id>`:** nothing is saved until `Save as draft` (toast *"Saved as a draft — Turn it on when it is ready"*) or `Turn on` / `Save and keep on` (toast *"<name> is on — It starts with the next trigger"*). No name → field error *"Name the automation."*. Turn on with something missing → toast *"Not ready to turn on"* + the first line of the In plain words warning. `Cancel` / crumb with changes → *"Leave without saving?"*. Trigger settings as the board (half-hour time stepper, day boxes, number steppers with limits, date stepper, form select). Steps: Wait (1–72, Hours / Days), Send message (template, Send by chips, preview of the first picked channel with text), Send form (published forms, `Open forms & check-ins`), Assign task (text, Assigned trainer / Owner); ⋯ Move up / Move down / Remove (toast + Undo); `Add a step` menu *"It is added after the last step"* (toast *"Step added"*). Last 30 days: started / finished / stopped early + latest clients (row opens the client).
 
 **Trigger** — abhi tak na chuna ho to **15 trigger** group chips ke saath: `All` · Client · Schedule · Activity · Progress.
 

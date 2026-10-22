@@ -87,15 +87,15 @@ Status: **Done** (built and checked in a browser against the board, phone and de
 | ActivityMobile | Done | Phone layout of `/activity` (D-48), Export icon only. Checked 390 on 2026-10-22. |
 | AdminDashboard | Done | `/dashboard` (admin). Checked 1440 / 1280 / 1024 / 768. CTAs open Approvals, Clients, Trainers, Activity log (built); Check-ins and Settings not built yet (holding page). |
 | AdminDashboardMobile | Done | Checked at 390 in debug mode. |
-| AdminMoreMobile | Done | `/more` (admin). Trainers, Activity log and Forms & check-ins rows open built pages; Automations, Emails, Settings not built yet. |
+| AdminMoreMobile | Done | `/more` (admin). Trainers, Activity log, Forms & check-ins and Automations rows open built pages; Emails, Settings not built yet. |
 | Approvals | Done | `/approvals` (`?tab=history`), D-47: Waiting / History tabs with counts, search, Filter (5 groups / 3 groups) with chips, table (sideways scroll when narrow, as on the board), Review drawer (‹ › step, trainer pick, approve switches), Reject, Ask for info, Move back modals, toasts with Undo / View, pager 20 a page, sidebar badge. Not built: the board's invite-link summary card (same data in Invite link → All links). Checked 390, 768, 900, 1024, 1280, 1440 in debug mode on 2026-10-22, no overflow. |
 | ApprovalsMobile | Done | One line per person (avatar, name, inviter, waiting, health note, Review), History rows with badge, reason, date and Move back; drawer as a tall sheet. Checked 390. |
-| AutomationBuilder | Not started |  |
-| AutomationBuilderMobile | Not started |  |
-| AutomationNew | Not started |  |
-| AutomationNewMobile | Not started |  |
-| Automations | Not started |  |
-| AutomationsMobile | Not started |  |
+| AutomationBuilder | Done | `/automations/<id>` (and `/automations/new?starter=`) (D-51). Checked 390–1440 in debug. Message templates / Sender settings open Emails & alerts and Settings (not built yet). |
+| AutomationBuilderMobile | Done | `/automations/<id>` (and `/automations/new?starter=`) (D-51). Checked 390–1440 in debug. Message templates / Sender settings open Emails & alerts and Settings (not built yet). |
+| AutomationNew | Done | `/automations/new` (D-51). Checked 390–1440 in debug. Message templates / Sender settings open Emails & alerts and Settings (not built yet). |
+| AutomationNewMobile | Done | `/automations/new` (D-51). Checked 390–1440 in debug. Message templates / Sender settings open Emails & alerts and Settings (not built yet). |
+| Automations | Done | `/automations` (D-51). Checked 390–1440 in debug. Message templates / Sender settings open Emails & alerts and Settings (not built yet). |
+| AutomationsMobile | Done | `/automations` (D-51). Checked 390–1440 in debug. Message templates / Sender settings open Emails & alerts and Settings (not built yet). |
 | Calendar | Done | `/calendar` for admin (D-48): All trainers pick, Busiest trainer, trainer on blocks, Trainer in the session panel, New session with Client + Trainer, Availability per trainer. Checked 390–1440 on 2026-10-22. |
 | CalendarMobile | Done | Phone layout of admin `/calendar` (D-48): All trainers + Week / Day on one row. Checked 390 on 2026-10-22. |
 | Clients | Done | `/clients` (admin), My clients code with admin extras (D-47): sub line with need-a-trainer count, Invite link (modal with QR) and Add client (drawer) at the top, Trainer + Joined columns, Trainer filter, row ⋯ Change trainer / Pause / Resume / Delete with Undo. Export and select boxes off, same as My clients (D-33). Checked 390, 768, 900, 1024, 1280, 1440 in debug mode on 2026-10-22, no overflow. |

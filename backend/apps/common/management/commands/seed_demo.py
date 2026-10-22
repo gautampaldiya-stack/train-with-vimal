@@ -74,6 +74,7 @@ class Command(BaseCommand):
             self.library_link()
             self.aman_dashboard(program, plan)
             self.onboarding_answers()
+            self.automations(vimal)
             self.settle_old_rows()
         self.stdout.write(self.style.SUCCESS(f"Demo ready. Log in with any demo email and {PASSWORD}"))
         self.stdout.write("Demo links (the reset link works for 15 minutes; run seed_demo again for new ones):")
@@ -949,6 +950,72 @@ class Command(BaseCommand):
             cp.terms_agreed_at = timezone.make_aware(timezone.datetime.combine(start, timezone.datetime.min.time())) \
                 - timedelta(days=1) + timedelta(hours=20)
             cp.save()
+
+    def automations(self, vimal):
+        """Admin → Automations (board `Automations`): five flows with a few clients already in them.
+        Weekly check-in stays off here because the client app already sends that form every week."""
+        from apps.automations.models import Automation, AutomationRun, Step
+        from apps.checkins.models import Form
+
+        if Automation.all_objects.exists():
+            return
+        forms = {f.name: str(f.id) for f in Form.objects.filter(client__isnull=True).exclude(status="client")}
+
+        def form(name, ch):
+            return ("form", {"form": forms.get(name, ""), "form_name": name, "channels": ch})
+
+        def msg(key, ch):
+            return ("message", {"template": key, "channels": ch})
+
+        def wait(days=0, hours=0):
+            return ("wait", {"days": days, "hours": hours})
+
+        def task(title, who="trainer"):
+            return ("task", {"title": title, "assignee": who, "due_days": 1})
+
+        flows = [
+            ("Client onboarding", "on", "client_approved", {}, "", True,
+             [form("New client questionnaire", ["push", "email"]), wait(1),
+              msg("onboarding-form-reminder", ["whatsapp"]), wait(2), task("Call the client about the onboarding form")]),
+            ("Weekly check-in", "off", "every_week", {"weekday": 6, "time": "09:00"}, "3 months · Gym", True,
+             [form("Weekly check-in", ["push", "whatsapp"]), wait(hours=24), msg("checkin-reminder", ["push", "whatsapp"]),
+              task("Review the weekly check-in")]),
+            ("Missed workouts nudge", "off", "missed_workouts", {"count": 3}, "", True,
+             [msg("missed-workouts-nudge", ["push", "in_app"]), wait(2), task("Call the client")]),
+            ("Renewal reminder", "on", "package_ending", {"days_before": 7, "time": "09:00"}, "", False,
+             [msg("renewal-reminder", ["email", "whatsapp"]), wait(4), msg("renewal-reminder", ["whatsapp"]), wait(1),
+              task("Talk about renewal")]),
+            ("Birthday wish", "draft", "birthday", {"time": "09:00"}, "", False,
+             [msg("birthday-wish", ["push", "whatsapp"]), task("Wish the client a happy birthday")]),
+        ]
+        made = {}
+        for name, status, trig, cfg, pkg, stop, steps in flows:
+            a = Automation.objects.create(name=name, status=status, trigger=trig, trigger_config=cfg, scope_package=pkg,
+                                          stop_on_response=stop, created_by=vimal)
+            for i, (kind, c) in enumerate(steps):
+                Step.objects.create(automation=a, kind=kind, config=c, order=i)
+            made[name] = a
+        now = timezone.now()
+        runs = [
+            ("Client onboarding", "riya@example.com", "stopped", 1, "Sent the form · stopped at step 1", 2 * 24),
+            ("Client onboarding", "kavya@example.com", "waiting", 2, "Wait 1 day", 5),
+            ("Client onboarding", "ishaan@example.com", "finished", 5, "Trainer task made", 3 * 24),
+            ("Client onboarding", "priya@example.com", "finished", 5, "Trainer task made", 6 * 24),
+            ("Renewal reminder", "dev@example.com", "waiting", 2, "Wait 4 days", 26),
+            ("Renewal reminder", "pooja@example.com", "finished", 5, "Trainer task made", 9 * 24),
+        ]
+        from apps.accounts.models import User
+
+        for name, email, status, idx, last, hours_ago in runs:
+            c = User.objects.filter(email=email).first()
+            if c is None:
+                continue
+            at = now - timedelta(hours=hours_ago)
+            r = AutomationRun.objects.create(
+                automation=made[name], client=c, status=status, step_index=idx, dedupe_key="demo", last_message=last,
+                next_run_at=at + timedelta(days=1) if status == "waiting" else None,
+                finished_at=at if status in ("finished", "stopped") else None)
+            AutomationRun.objects.filter(id=r.id).update(created_at=at - timedelta(days=1), updated_at=at)
 
     def settle_old_rows(self):
         """Everything the demo made at once looks "added this week". Clients and plans that started before this

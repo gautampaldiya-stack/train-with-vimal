@@ -1,4 +1,5 @@
 from datetime import timedelta
+from types import SimpleNamespace
 
 from django.db import transaction
 from django.db.models import Count, Q
@@ -54,11 +55,13 @@ class StepSerializer(serializers.ModelSerializer):
         return attrs
 
 
+CH_LABEL = {"email": "Email", "push": "Push", "whatsapp": "WhatsApp", "in_app": "In-app"}
+
+
 def step_line(kind, c):
-    """Plain line for the step card and the preview panel."""
+    """Plain line for the step card, the "+N more" tip and In plain words (board text)."""
     c = c or {}
-    chans = " and ".join({"email": "Email", "push": "Push", "whatsapp": "WhatsApp", "in_app": "In-app"}[x]
-                         for x in c.get("channels", []) if x in CHANNELS)
+    chans = " and ".join(CH_LABEL[x] for x in c.get("channels", []) if x in CHANNELS) or "No channel yet"
     if kind == "wait":
         d, h = c.get("days", 0), c.get("hours", 0)
         if d:
@@ -68,54 +71,84 @@ def step_line(kind, c):
         from apps.notifications.models import MessageTemplate
 
         t = MessageTemplate.objects.filter(key=c.get("template")).values_list("name", flat=True).first()
-        return f"Send the message '{t or c.get('template')}'" + (f" by {chans}" if chans else "")
+        return f"Send \u201c{t or 'Choose a template'}\u201d by {chans}"
     if kind == "form":
         name = c.get("form_name")
         if c.get("form"):
             from apps.checkins.models import Form
 
             name = Form.objects.filter(id=c["form"]).values_list("name", flat=True).first() or name
-        return f"Send the form '{name}'" + (f" by {chans}" if chans else "")
-    who = "the owner" if c.get("assignee") == "owner" else "the assigned trainer"
-    return f"Task for {who}: {c.get('title', '')}"
+        return f"Send the form \u201c{name or 'Choose a form'}\u201d by {chans}"
+    who = "owner" if c.get("assignee") == "owner" else "assigned trainer"
+    return f"Task for the {who}: {c.get('title', '')}"
+
+
+def clock(hhmm, full=False):
+    """'09:00' → '9 am' (list) or '9:00 am' (builder)."""
+    try:
+        h, m = (int(x) for x in str(hhmm or "09:00").split(":")[:2])
+    except ValueError:
+        h, m = 9, 0
+    ap = "am" if h < 12 else "pm"
+    h12 = h % 12 or 12
+    return f"{h12}:{m:02d} {ap}" if (m or full) else f"{h12} {ap}"
 
 
 def trigger_line(a):
+    """The automation's trigger as the list shows it ("Every Sunday at 9 am")."""
     c = a.trigger_config or {}
     t = a.trigger
     days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    if t == "on_date":
+        from datetime import date
+
+        try:
+            d = date.fromisoformat(str(c.get("date")))
+            when = f"{d.day} {d.strftime('%b %Y')}"
+        except ValueError:
+            when = "a date"
+    db = int(c.get("days_before", 3) or 0)
     return {
         "client_approved": "When a new client is approved",
         "plan_starts": "When a plan starts",
-        "plan_ends": f"{c.get('days_before', 3)} days before a plan ends",
+        "plan_ends": f"{db} day{'s' if db != 1 else ''} before a plan ends" if db else "On the day a plan ends",
         "package_ending": f"{c.get('days_before', 7)} days before a package ends",
-        "birthday": f"On the client's birthday at {c.get('time', '09:00')}",
-        "every_week": f"Every {days[int(c.get('weekday', 6))]} at {c.get('time', '09:00')}",
-        "every_day": f"Every day at {c.get('time', '08:00')}",
-        "on_date": f"On {c.get('date')} at {c.get('time', '09:00')}",
+        "birthday": f"On the client\u2019s birthday at {clock(c.get('time'))}",
+        "every_week": f"Every {days[int(c.get('weekday', 6))]} at {clock(c.get('time'))}",
+        "every_day": f"Every day at {clock(c.get('time', '08:00'))}",
+        "on_date": f"On {when if t == 'on_date' else ''} at {clock(c.get('time'))}",
         "missed_checkin": f"When a check-in is not sent within {c.get('hours', 24)} hours",
-        "missed_workouts": f"When {c.get('count', 2)} workouts are missed in a row",
+        "missed_workouts": f"When {c.get('count', 2)} workouts in a row are missed",
         "no_activity": f"When the app is not opened for {c.get('days', 7)} days",
-        "form_sent": "When a client sends the form",
+        "form_sent": "When a client sends a form",
         "workout_streak": f"After {c.get('days', 7)} workout days in a row",
         "goal_weight": "When weight reaches the goal",
         "weight_flat": f"When weight stays the same for {c.get('weeks', 3)} weeks",
-    }.get(t, "Pick a trigger")
+    }.get(t, "Pick what starts it")
 
 
 class AutomationSerializer(serializers.ModelSerializer):
     steps = StepSerializer(many=True, required=False)
     trigger_line = serializers.SerializerMethodField()
     counts = serializers.SerializerMethodField()
+    scope_trainer_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Automation
         fields = ["id", "name", "status", "trigger", "trigger_config", "trigger_line", "scope_package",
-                  "scope_trainer", "stop_on_response", "starter", "steps", "counts", "updated_at", "created_at"]
+                  "scope_trainer", "scope_trainer_name", "stop_on_response", "starter", "steps", "counts", "updated_at", "created_at"]
         read_only_fields = ["status"]
 
     def get_trigger_line(self, obj):
         return trigger_line(obj)
+
+    def get_scope_trainer_name(self, obj):
+        return obj.scope_trainer.full_name if obj.scope_trainer_id else ""
+
+    def validate_scope_trainer(self, u):
+        if u is not None and u.role not in ("trainer", "admin"):
+            raise serializers.ValidationError("Pick a trainer.")
+        return u
 
     def get_counts(self, obj):
         return {"running": getattr(obj, "n_running", None), "finished": getattr(obj, "n_finished", None),
@@ -205,7 +238,7 @@ class AutomationViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
             n_running=Count("runs", filter=Q(runs__status__in=["running", "waiting"]), distinct=True),
             n_finished=Count("runs", filter=Q(runs__status="finished"), distinct=True),
             n_stopped=Count("runs", filter=Q(runs__status__in=["stopped", "failed"]), distinct=True),
-        ).prefetch_related("steps")
+        ).select_related("scope_trainer").prefetch_related("steps").order_by("created_at")
 
     def perform_create(self, serializer):
         a = serializer.save(created_by=self.request.user, status=Automation.Status.DRAFT)
@@ -254,6 +287,8 @@ class AutomationViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
                                        for s, v in TRIGGER_CONFIG.get(k, {}).items()}}
                          for k, label in Trigger.choices],
             "starters": [{**{k: v for k, v in s.items() if k != "steps"}, "step_count": len(s["steps"]),
+                          "trigger_line": trigger_line(SimpleNamespace(trigger=s["trigger"],
+                                                                       trigger_config=s["trigger_config"])),
                           "steps": [{**st, "summary": step_line(st["kind"], st["config"])} for st in s["steps"]]}
                          for s in STARTERS],
         })
@@ -321,12 +356,14 @@ class AutomationViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
 
     @action(detail=True)
     def runs(self, request, pk=None):
+        """Builder → Last 30 days: counts and the latest clients."""
         a = self.get_object()
-        qs = a.runs.select_related("client", "automation").order_by("-created_at")
+        since = timezone.now() - timedelta(days=30)
+        qs = a.runs.filter(created_at__gte=since).select_related("client", "automation").order_by("-updated_at")
         return Response({
             "started": qs.count(), "finished": qs.filter(status="finished").count(),
             "stopped": qs.filter(status__in=["stopped", "failed"]).count(),
-            "rows": RunSerializer(qs[:100], many=True).data,
+            "rows": RunSerializer(qs[:20], many=True).data,
         })
 
     @action(detail=False)

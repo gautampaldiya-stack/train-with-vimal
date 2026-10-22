@@ -142,7 +142,7 @@ Constraints: uniq_dismissed_item
 | `name` | CharField |  |
 | `status` | CharField | choices: on, off, draft; indexed |
 | `trigger` | CharField | choices: client_approved, plan_starts, plan_ends, package_ending, birthday, every_week, every_day, on_date, missed_checkin, misse; indexed |
-| `trigger_config` | JSONField |  |
+| `trigger_config` | JSONField | Settings the trigger needs (D-51): days_before + time (plan_ends, package_ending), plan_type, weekday 0–6 + time, date + time, hours, count, days, weeks, form. Times "HH:MM" in half hours. |
 | `scope_package` | CharField |  |
 | `scope_trainer` | ForeignKey | → User; optional; indexed |
 | `stop_on_response` | BooleanField |  |
