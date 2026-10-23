@@ -43,7 +43,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 
 | Path | Methods | View | Notes |
 |---|---|---|---|
-| `automations/` | GET, POST | AutomationViewSet | Admin, or a trainer with `automations.manage` (D-54); oldest first (D-51). Rows: trigger_line (board words), scope_package, scope_trainer + scope_trainer_name, stop_on_response, steps (each with summary), counts {running, finished, stopped}. POST saves as draft. |
+| `automations/` | GET, POST | AutomationViewSet | Admin, or a trainer with `automations.manage` (D-54); oldest first (D-51). Automations with a hidden trigger (`package_ending`, D-55) are not listed or counted. Rows: trigger_line (board words), scope_package, scope_trainer + scope_trainer_name, stop_on_response, steps (each with summary), counts {running, finished, stopped}. POST saves as draft. |
 | `automations/<pk>/` | GET, PUT, PATCH, DELETE | AutomationViewSet | Automations are gym-wide: only the admin builds them. |
 | `automations/<pk>/duplicate/` | POST | AutomationViewSet | Automations are gym-wide: only the admin builds them. |
 | `automations/<pk>/restore/` | POST | AutomationViewSet | Automations are gym-wide: only the admin builds them. |
@@ -51,7 +51,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `automations/<pk>/save-draft/` | POST | AutomationViewSet | Automations are gym-wide: only the admin builds them. |
 | `automations/<pk>/turn-off/` | POST | AutomationViewSet | Automations are gym-wide: only the admin builds them. |
 | `automations/<pk>/turn-on/` | POST | AutomationViewSet | Turns it on; 400 `not_ready` with fields.problems when something is missing. |
-| `automations/catalog/` | GET | AutomationViewSet | Triggers (group, line, settings with limits; Plan ends / Package ending have a time) and starters (with trigger_line and step_count). |
+| `automations/catalog/` | GET | AutomationViewSet | Triggers (group, line, settings with limits; Plan ends / Package ending have a time) and starters (with trigger_line and step_count). Package ending and its Renewal reminder starter are hidden (D-55). |
 | `automations/from-starter/` | POST | AutomationViewSet | Automations are gym-wide: only the admin builds them. |
 | `automations/packages/` | GET | AutomationViewSet | Automations are gym-wide: only the admin builds them. |
 | `automations/stats/` | GET | AutomationViewSet | Automations are gym-wide: only the admin builds them. |
@@ -180,7 +180,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `settings/branding/reset/` | POST | BrandingResetView | Blue + light, live at once. |
 | `settings/gym/` | GET, PATCH | GymProfileView | Gym profile incl. social links `website`, `instagram`, `youtube`, `facebook` (moves `profile_saved_at`) and Regional & defaults (`default_units`, `week_start`, `timezone`, `language`); GET adds `timezones`, `languages`. |
 | `settings/integrations/` | GET | IntegrationListView | whatsapp, email_domain, health with `status`, `config`, `meta` (card line) and `used` (Used in links). |
-| `settings/integrations/<str:kind>/<str:op>/` | POST | IntegrationActionView | op connect / save (`config`: number, domain or types), check (email DNS), disconnect, undo (`status`). WhatsApp off skips WhatsApp sends; a verified domain is the from-address. |
+| `settings/integrations/<str:kind>/<str:op>/` | POST | IntegrationActionView | op connect / save (`config`: number, domain + `local` (From address part before @, D-55) or types), check (email DNS), disconnect, undo (`status`). WhatsApp off skips WhatsApp sends; a verified domain is the from-address. |
 | `settings/roles/` | GET, PUT | RoleMatrixView | Matrix plus `defaults`, `locked` cells and `counts` (active trainers, active clients). Locked cells keep their value on PUT. |
 
 ## habits
@@ -219,7 +219,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `gym-news/` | GET, POST | GymNewsViewSet | Admin → Gym news: post a notice to the team. Each trainer with Gym news on gets it in the bell (and push). |
 | `me/reminders/` | GET, POST, PUT, PATCH | ReminderPreferenceView |  |
 | `me/staff-notifications/` | GET, PUT, PATCH | StaffNotificationPreferenceView |  |
-| `message-templates/` | GET, POST | MessageTemplateViewSet | Emails & alerts → Client messages (admin only; a trainer with `automations.manage` can read the list for the builder, D-54). Board order, custom last. Each row has `when`, `sent_by`, `used_in` [{id, name, status, line}]. POST {name, group, channels[]} (+ `key`, `texts` for Undo after a delete). |
+| `message-templates/` | GET, POST | MessageTemplateViewSet | Emails & alerts → Client messages (admin only; a trainer with `automations.manage` can read the list for the builder, D-54). Board order, custom last. Packages group hidden (D-55). Each row has `when`, `sent_by`, `used_in` [{id, name, status, line}]. POST {name, group, channels[]} (+ `key`, `texts` for Undo after a delete). |
 | `message-templates/<pk>/` | GET, PUT, PATCH, DELETE | MessageTemplateViewSet | Emails & alerts → Client messages (admin only). |
 | `message-templates/<pk>/preview/` | GET | MessageTemplateViewSet | Emails & alerts → Client messages (admin only). |
 | `message-templates/<pk>/reset/` | POST | MessageTemplateViewSet | Emails & alerts → Client messages (admin only). |

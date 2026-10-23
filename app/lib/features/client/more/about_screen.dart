@@ -270,7 +270,7 @@ class _ClientAboutScreenState extends State<ClientAboutScreen> {
       showToast(context, 'Opening the store', sub: 'Rate Train With Vimal', kind: ToastKind.info);
       return;
     }
-    await _open(Uri.parse('https://play.google.com/store/apps/details?id=com.trainwithvimal.twv'), 'Opening the store',
+    await _open(Uri.parse('https://play.google.com/store/apps/details?id=com.trainwithvimal.app'), 'Opening the store',
         kIsWeb ? 'Rate Train With Vimal on Google Play or the App Store' : 'Rate Train With Vimal', '');
   }
 

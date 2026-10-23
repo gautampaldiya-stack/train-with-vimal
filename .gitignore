@@ -22,6 +22,7 @@ app/ios/Runner/GoogleService-Info.plist
 # Secrets and editors
 *.pem
 *service-account*.json
+secrets/
 .env
 .idea/
 .vscode/

@@ -22,8 +22,12 @@ class Trigger(models.TextChoices):
     WEIGHT_FLAT = "weight_flat", "Weight not changing"
 
 
+# Packages are not used for now (Gautam 2026-10-23): the "Package ending" trigger, the Package filter and the
+# Renewal reminder starter are hidden and never run. Remove a key here to bring it back.
+HIDDEN_TRIGGERS = {"package_ending"}
+
 TRIGGER_GROUPS = {
-    "client": ["client_approved", "plan_starts", "plan_ends", "package_ending", "birthday"],
+    "client": ["client_approved", "plan_starts", "plan_ends", "birthday"],  # "package_ending" hidden
     "schedule": ["every_week", "every_day", "on_date"],
     "activity": ["missed_checkin", "missed_workouts", "no_activity", "form_sent", "workout_streak"],
     "progress": ["goal_weight", "weight_flat"],

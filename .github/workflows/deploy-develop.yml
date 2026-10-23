@@ -1,0 +1,127 @@
+# Push to `develop` → tests → the whole app (web + API, Docker) to https://twv.prowavetech.in (CloudPanel VPS).
+# One-time setup (secrets, server folders): deploy/README.md.
+name: Deploy develop
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-develop
+  cancel-in-progress: false
+
+env:
+  API_URL: https://twv.prowavetech.in   # one domain: the app and its API (/api, /ws, /media)
+  FLUTTER_VERSION: "3.47.7"
+  APP_DIR: twv                          # ~/twv on the server (home of VPS_USER, e.g. /root/twv); made by the first deploy
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_USER: twv, POSTGRES_PASSWORD: twv, POSTGRES_DB: twv }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U twv" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13", cache: pip, cache-dependency-path: backend/requirements*.txt }
+      - name: Backend tests
+        working-directory: backend
+        env:
+          SECRET_KEY: ci-only-secret
+          DATABASE_URL: postgres://twv:twv@localhost:5432/twv
+          REDIS_URL: ""
+          CHANNELS_REDIS_URL: ""
+        run: |
+          pip install -r requirements-dev.txt
+          python -m pytest --create-db -q -p no:cacheprovider
+      - uses: subosito/flutter-action@v2
+        with: { flutter-version: "${{ env.FLUTTER_VERSION }}", channel: stable, cache: true }
+      - name: App analyzer
+        working-directory: app
+        run: |
+          flutter pub get
+          flutter analyze lib
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      SSH: ssh -i /home/runner/.ssh/id_deploy -p ${{ secrets.VPS_PORT || 22 }}
+      TARGET: ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:twv
+    steps:
+      - name: Check the server secrets
+        id: chk
+        run: |
+          if [ -z "${{ secrets.VPS_HOST }}" ] || [ -z "${{ secrets.VPS_USER }}" ] || [ -z "${{ secrets.VPS_SSH_KEY }}" ]; then
+            echo "::warning::Not deployed: add VPS_HOST, VPS_USER, and VPS_SSH_KEY in GitHub → Settings → Secrets (deploy/README.md)."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.chk.outputs.ok == 'true'
+      - uses: subosito/flutter-action@v2
+        if: steps.chk.outputs.ok == 'true'
+        with: { flutter-version: "${{ env.FLUTTER_VERSION }}", channel: stable, cache: true }
+      - name: Build web app
+        if: steps.chk.outputs.ok == 'true'
+        working-directory: app
+        run: |
+          flutter pub get
+          flutter build web --release --no-web-resources-cdn --dart-define=API_URL=$API_URL
+      - name: SSH key
+        if: steps.chk.outputs.ok == 'true'
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          # this runs on GitHub's machine (not the server): it stores the deploy key for the next steps
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" | tr -d '\r' > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
+          ssh-keygen -y -f ~/.ssh/id_deploy > /dev/null \
+            || { echo "::error::VPS_SSH_KEY is not a valid private key: paste the whole twv_deploy file (not .pub), BEGIN to END lines"; exit 1; }
+          HOST=$(printf '%s' "$VPS_HOST" | tr -d ' \r\n')
+          ssh-keyscan -T 20 -p "${{ secrets.VPS_PORT || 22 }}" "$HOST" >> ~/.ssh/known_hosts 2>/dev/null && [ -s ~/.ssh/known_hosts ] \
+            || { echo "::error::Cannot reach the server on SSH port ${{ secrets.VPS_PORT || 22 }}: VPS_HOST must be only the IP (no root@, no http), and the port must be open"; exit 1; }
+      - name: Make the app folders on the server
+        if: steps.chk.outputs.ok == 'true'
+        # first deploy makes APP_DIR and its folders; it stops here until backend/.env is filled in
+        run: |
+          $SSH "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "mkdir -p ~/$APP_DIR/web ~/$APP_DIR/backend ~/$APP_DIR/deploy ~/$APP_DIR/secrets"
+      - name: Upload web app, backend and docker files
+        if: steps.chk.outputs.ok == 'true'
+        # backend/.env, secrets/ and the docker volumes (database, uploads) stay on the server
+        run: |
+          rsync -az --no-owner --no-group --delete -e "$SSH" app/build/web/ "$TARGET/web/"
+          rsync -az --no-owner --no-group --delete --exclude ".env" --exclude "media/" --exclude "staticfiles/" --exclude "__pycache__/" \
+            -e "$SSH" backend/ "$TARGET/backend/"
+          rsync -az --no-owner --no-group -e "$SSH" docker-compose.prod.yml "$TARGET/"
+          rsync -az --no-owner --no-group --delete -e "$SSH" deploy/ "$TARGET/deploy/"
+      - name: Start the new version
+        if: steps.chk.outputs.ok == 'true'
+        run: |
+          $SSH "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
+            "cd ~/$APP_DIR && { test -f backend/.env || { echo 'backend/.env is missing on the server (deploy/README.md step 6)'; exit 1; }; } && docker compose -f docker-compose.prod.yml up -d --build --remove-orphans && docker image prune -f"
+      - name: Health check
+        if: steps.chk.outputs.ok == 'true'
+        run: |
+          # first inside the server (docker answers?), then the public address (CloudPanel + SSL answer?)
+          for i in $(seq 1 30); do
+            $SSH "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "curl -fsS -H 'Host: twv.prowavetech.in' -H 'X-Forwarded-Proto: https' http://127.0.0.1:8080/health/" && break
+            [ $i = 30 ] && { echo "::error::The app did not start on the server (127.0.0.1:8080). Logs below.";
+              $SSH "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "cd ~/$APP_DIR && docker compose -f docker-compose.prod.yml ps; docker compose -f docker-compose.prod.yml logs --tail 60 api web"; exit 1; }
+            sleep 10
+          done
+          for i in $(seq 1 6); do
+            curl -fsS "$API_URL/health/" && curl -fsS -o /dev/null "$API_URL/" && exit 0
+            sleep 10
+          done
+          echo "::error::The app runs on the server, but $API_URL does not answer: check DNS, the CloudPanel Reverse Proxy site (http://127.0.0.1:8080) and its SSL certificate."
+          curl -sS -o /dev/null -w "HTTP %{http_code}\n" "$API_URL/health/" || true
+          exit 1

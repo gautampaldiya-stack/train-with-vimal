@@ -14,7 +14,8 @@ const auTriggers = <(String, String, String, String, AppIconData)>[
   ('client_approved', 'New client approved', 'As soon as they are approved.', 'client', AppIcons.usersAlt),
   ('plan_starts', 'Plan starts', 'A program or meal plan starts.', 'client', AppIcons.target),
   ('plan_ends', 'Plan ends', 'Before a plan ends.', 'client', AppIcons.flag),
-  ('package_ending', 'Package ending', 'Before a package ends.', 'client', AppIcons.clock),
+  // Packages are not used for now (Gautam 2026-10-23); the server hides this trigger too (HIDDEN_TRIGGERS).
+  // ('package_ending', 'Package ending', 'Before a package ends.', 'client', AppIcons.clock),
   ('birthday', 'Client birthday', 'On the client’s birthday.', 'client', AppIcons.star),
   ('every_week', 'Every week', 'Same day and time each week.', 'schedule', AppIcons.calendarAlt),
   ('every_day', 'Every day', 'Same time every day.', 'schedule', AppIcons.sun),

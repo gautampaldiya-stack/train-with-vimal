@@ -1,8 +1,9 @@
+import re
+
 from django.conf import settings
-from django.conf.urls.static import static
 from django.contrib import admin
 from django.http import JsonResponse
-from django.urls import include, path
+from django.urls import include, path, re_path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 
@@ -34,7 +35,10 @@ urlpatterns = [
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="api-docs"),
 ]
 
-if settings.DEBUG:
+# Media from the server disk: in dev, and on a single VPS without S3 (SERVE_MEDIA=True in .env).
+if settings.DEBUG or settings.SERVE_MEDIA:
     from apps.common.media import serve_media
 
-    urlpatterns += static(settings.MEDIA_URL, view=serve_media, document_root=settings.MEDIA_ROOT)
+    # `static()` adds nothing when DEBUG is off, so the route is written out here.
+    urlpatterns += [re_path(r"^%s(?P<path>.*)$" % re.escape(settings.MEDIA_URL.lstrip("/")), serve_media,
+                            {"document_root": settings.MEDIA_ROOT})]

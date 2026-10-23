@@ -1,4 +1,4 @@
-"""Dev-only media view with HTTP Range support, so a browser can seek in a Library video (Django's own
+"""Media view with HTTP Range support (dev, and a single VPS with SERVE_MEDIA=True), so a browser can seek in a Library video (Django's own
 `static.serve` always sends the whole file, and Chrome then restarts the video on every seek).
 Production serves media from S3, which handles Range itself."""
 

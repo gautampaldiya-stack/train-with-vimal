@@ -22,6 +22,7 @@ from .models import (
     ReminderPreference,
     StaffNotificationPreference,
     TeamAlertSetting,
+    TemplateGroup,
 )
 from .realtime import send_to_user
 from .rendering import VARIABLES, context_for, render
@@ -148,7 +149,8 @@ class MessageTemplateViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Built-in messages in the board's order, then custom ones oldest first."""
         order = Case(*[When(key=k, then=Value(i)) for i, (k, *_r) in enumerate(TEMPLATES)], default=Value(len(TEMPLATES)))
-        return MessageTemplate.objects.order_by(order, "created_at")
+        # Packages group (Renewal reminder) hidden: packages are not used for now (Gautam 2026-10-23).
+        return MessageTemplate.objects.exclude(group=TemplateGroup.PACKAGES).order_by(order, "created_at")
 
     def get_serializer_context(self):
         ctx = super().get_serializer_context()

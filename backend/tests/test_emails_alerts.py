@@ -20,8 +20,7 @@ def test_list_reads_like_the_board(admin):
     assert t["checkin-reminder"]["when"] == "When a check-in is due or was missed"
     assert t["welcome"]["sent_by"] == "Sent by the app when you approve someone in Approvals"
     assert t["welcome"]["channels"]["push"]["title"] == "Welcome aboard, {{first_name}}"
-    used = {u["name"]: u["line"] for u in t["renewal-reminder"]["used_in"]}
-    assert used == {"Renewal reminder": "Steps 1 and 3"}
+    assert "renewal-reminder" not in t  # Packages group is hidden (D-55)
     assert t["onboarding-form-reminder"]["used_in"][0]["line"] == "Step 3 · WhatsApp"
 
 

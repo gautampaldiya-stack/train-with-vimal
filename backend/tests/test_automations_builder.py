@@ -27,13 +27,13 @@ def test_list_reads_like_the_board(admin):
     assert onb["steps"][4]["summary"].startswith("Task for the assigned trainer: ")
     assert rows["Missed workouts nudge"]["trigger_line"] == "When 3 workouts in a row are missed"
     s = admin.get(URL + "stats/").json()
-    assert s["on"] == 2 and s["total"] == 5 and s["in_flow"] == 2
+    assert s["on"] == 1 and s["total"] == 4 and s["in_flow"] == 2  # Renewal reminder (package) is hidden
 
 
 def test_starters_carry_their_trigger_line(admin):
     cat = admin.get(URL + "catalog/").json()
     st = {s["key"]: s for s in cat["starters"]}
-    assert st["renewal"]["trigger_line"] == "7 days before a package ends" and st["renewal"]["step_count"] == 5
+    assert "renewal" not in st  # packages are not used (D-55)
     plan_ends = next(t for t in cat["triggers"] if t["key"] == "plan_ends")
     assert plan_ends["settings"] == {"days_before": [0, 14, 3], "time": "09:00"}
 

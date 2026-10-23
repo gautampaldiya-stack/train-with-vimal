@@ -14,7 +14,7 @@ from apps.common.mixins import SoftDeleteViewMixin
 from apps.common.permissions import HasTrainerPermission, IsStaff
 
 from . import engine
-from .models import TRIGGER_GROUPS, Automation, AutomationRun, Step, TrainerTask, Trigger
+from .models import HIDDEN_TRIGGERS, TRIGGER_GROUPS, Automation, AutomationRun, Step, TrainerTask, Trigger
 from .starters import STARTERS, TRIGGER_CONFIG, TRIGGER_TEXT
 
 CHANNELS = {"email", "push", "whatsapp", "in_app"}
@@ -239,7 +239,8 @@ class AutomationViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
             n_running=Count("runs", filter=Q(runs__status__in=["running", "waiting"]), distinct=True),
             n_finished=Count("runs", filter=Q(runs__status="finished"), distinct=True),
             n_stopped=Count("runs", filter=Q(runs__status__in=["stopped", "failed"]), distinct=True),
-        ).select_related("scope_trainer").prefetch_related("steps").order_by("created_at")
+        ).exclude(trigger__in=HIDDEN_TRIGGERS).select_related("scope_trainer").prefetch_related("steps").order_by(
+            "created_at")
 
     def perform_create(self, serializer):
         a = serializer.save(created_by=self.request.user, status=Automation.Status.DRAFT)
@@ -262,7 +263,7 @@ class AutomationViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
         from apps.notifications.models import Delivery
 
         month = timezone.localdate().replace(day=1)
-        qs = Automation.objects.all()
+        qs = Automation.objects.exclude(trigger__in=HIDDEN_TRIGGERS)
         d = Delivery.objects.filter(automation_run__isnull=False, created_at__date__gte=month)
         total = d.count()
         delivered = d.filter(status__in=["delivered", "opened", "sent"]).count()
@@ -286,12 +287,12 @@ class AutomationViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
             "triggers": [{"key": k, "label": label, "line": TRIGGER_TEXT[k],
                           "settings": {s: (list(v) if isinstance(v, tuple) else v)
                                        for s, v in TRIGGER_CONFIG.get(k, {}).items()}}
-                         for k, label in Trigger.choices],
+                         for k, label in Trigger.choices if k not in HIDDEN_TRIGGERS],
             "starters": [{**{k: v for k, v in s.items() if k != "steps"}, "step_count": len(s["steps"]),
                           "trigger_line": trigger_line(SimpleNamespace(trigger=s["trigger"],
                                                                        trigger_config=s["trigger_config"])),
                           "steps": [{**st, "summary": step_line(st["kind"], st["config"])} for st in s["steps"]]}
-                         for s in STARTERS],
+                         for s in STARTERS if s["trigger"] not in HIDDEN_TRIGGERS],
         })
 
     @action(detail=False, methods=["post"], url_path="from-starter")

@@ -1,0 +1,55 @@
+# Server stack (CloudPanel VPS, deploy/README.md), all in Docker on ONE domain (twv.prowavetech.in):
+# web (nginx: the Flutter web app + /api, /ws, /media → api) on 127.0.0.1:8080, API, Celery worker and beat,
+# Postgres, Redis. CloudPanel has one reverse proxy site twv.prowavetech.in → http://127.0.0.1:8080.
+#   docker compose -f docker-compose.prod.yml up -d --build
+# Settings come from backend/.env on the server (never in git); see deploy/env.example.
+services:
+  web:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    volumes:
+      - ./web:/usr/share/nginx/html:ro          # Flutter web build (uploaded by the deploy workflow)
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports: ["127.0.0.1:8080:80"]
+    depends_on: [api]
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    env_file: ./backend/.env          # POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB
+    volumes: [pgdata:/var/lib/postgresql/data]
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    volumes: [redisdata:/data]
+  api:
+    build: ./backend
+    restart: unless-stopped
+    env_file: ./backend/.env
+    environment: &env
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      REDIS_URL: redis://redis:6379/0
+      CHANNELS_REDIS_URL: redis://redis:6379/2
+    command: >-
+      sh -c "python manage.py migrate --noinput && python manage.py collectstatic --noinput &&
+      uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --workers 2 --proxy-headers --forwarded-allow-ips='*'"
+    volumes: [media:/app/media, ./secrets:/app/secrets:ro]   # secrets/: Firebase service-account JSON
+    depends_on: [db, redis]
+  worker:
+    build: ./backend
+    restart: unless-stopped
+    env_file: ./backend/.env
+    environment: *env
+    command: celery -A config worker -l info --concurrency 2
+    volumes: [media:/app/media, ./secrets:/app/secrets:ro]
+    depends_on: [db, redis]
+  beat:
+    build: ./backend
+    restart: unless-stopped
+    env_file: ./backend/.env
+    environment: *env
+    command: celery -A config beat -l info -s /tmp/celerybeat-schedule
+    depends_on: [db, redis]
+volumes:
+  pgdata:
+  redisdata:
+  media:

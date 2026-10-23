@@ -71,10 +71,12 @@ def apply_config(integ, data):
         cfg = NotificationSettings.load()
         cfg.whatsapp_number = data["number"]
         cfg.save(update_fields=["whatsapp_number"])
-    elif integ.kind == Integration.Kind.EMAIL_DOMAIN and data.get("domain"):
-        if data["domain"] != (integ.config or {}).get("domain"):
+    elif integ.kind == Integration.Kind.EMAIL_DOMAIN and (data.get("domain") or data.get("local")):
+        local = data.get("local") or (integ.config or {}).get("local") or "hello"
+        if data.get("domain") and data["domain"] != (integ.config or {}).get("domain"):
             integ.config = {"domain": data["domain"]}  # a new domain is checked from scratch
             integ.status = Integration.Status.PENDING
+        integ.config = {**(integ.config or {}), "local": local}
     elif integ.kind == Integration.Kind.HEALTH and data.get("types"):
         integ.config = {**(integ.config or {}), "types": data["types"]}
 
@@ -107,7 +109,7 @@ def check_domain(integ):
     if all(r["ok"] for r in records):
         integ.status = Integration.Status.CONNECTED
         if was != Integration.Status.CONNECTED:
-            _tell_owner(f"hello@{domain}")
+            _tell_owner(f"{integ.config.get('local') or 'hello'}@{domain}")
     elif was == Integration.Status.CONNECTED:
         integ.status = Integration.Status.PENDING  # a record was removed: back to the platform address
     return integ

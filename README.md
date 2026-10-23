@@ -78,6 +78,9 @@ Debug and profile builds allow plain `http` to the laptop (`android/app/src/debu
 release builds need `https`. The app compiles against Android SDK 37 because `permission_handler` needs it
 (`android/app/build.gradle.kts`); Android Studio downloads SDK Platform 37 the first time if it is missing.
 
+## Deploy (server)
+One domain, all in Docker, behind CloudPanel; push to `develop` deploys. Steps: [`deploy/README.md`](deploy/README.md).
+
 ## Branches
 `working` (daily work) → `develop` (testing / staging) → `main` (production).
 

@@ -132,7 +132,8 @@ class Integration(models.Model):
 
     @classmethod
     def from_email(cls):
-        """Own-domain sender ("hello@trainwithvimal.com") once its DNS records are verified, else None."""
+        """Own-domain sender ("hello@trainwithvimal.com"; the part before @ is set in Email sending) once its DNS records are verified, else None."""
         row = cls.objects.filter(kind=cls.Kind.EMAIL_DOMAIN, status=cls.Status.CONNECTED).first()
-        domain = (row.config or {}).get("domain") if row else None
-        return f"hello@{domain}" if domain else None
+        cfg = (row.config or {}) if row else {}
+        domain = cfg.get("domain")
+        return f"{cfg.get('local') or 'hello'}@{domain}" if domain else None

@@ -12,7 +12,7 @@ Date: 2026-10-16 · Asked by: Gautam ("client about banado", "homehero ye hero w
    uses the same support hours.
 3. **App facts stay in the app**: version `1.0.0 (1)`, What's new, terms, privacy and licences text (they change
    with an app release).
-4. **Rate the app** opens the Play Store page (`com.trainwithvimal.twv`); on iOS it only shows the toast until the
+4. **Rate the app** opens the Play Store page (`com.trainwithvimal.app`); on iOS it only shows the toast until the
    app is in the App Store.
 5. **Home hero**: phone Home is the ClientHomeHero board (the blue hero runs under the status bar with light
    status-bar icons; the week strip overlaps it). Line under "Hey Riya" = today's workout name or "Rest day today."

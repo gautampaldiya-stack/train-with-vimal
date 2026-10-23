@@ -17,7 +17,7 @@ from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from .models import EVENT_TRIGGERS, Automation, AutomationRun, Step, TrainerTask
+from .models import EVENT_TRIGGERS, HIDDEN_TRIGGERS, Automation, AutomationRun, Step, TrainerTask
 
 log = logging.getLogger(__name__)
 User = get_user_model()
@@ -244,6 +244,8 @@ def candidates(automation, now):
     elif t == "birthday" and _in_window(now, cfg.get("time", "09:00")):
         for c in _clients().filter(date_of_birth__month=today.month, date_of_birth__day=today.day):
             yield c, f"bday:{today.year}"
+    elif t in HIDDEN_TRIGGERS:
+        return  # packages are not used for now (Gautam 2026-10-23)
     elif t == "package_ending" and _in_window(now, cfg.get("time", "09:00")):
         target = today + timedelta(days=int(cfg.get("days_before", 7)))
         for c in _clients().filter(client_profile__package_ends_on=target):

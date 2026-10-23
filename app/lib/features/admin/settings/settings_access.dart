@@ -499,6 +499,8 @@ Future<Object?> showIntegrationModal(BuildContext context, Map x, {required Futu
   final numC = TextEditingController(text: kind == 'whatsapp' && status != 'not_connected' ? '${x['meta'] ?? ''}' : '');
   if (numC.text == 'No business number yet') numC.clear();
   final domC = TextEditingController(text: '${cfg['domain'] ?? ''}');
+  // The part before @ of the From address (Gautam 2026-10-23).
+  final localC = TextEditingController(text: '${cfg['local'] ?? 'hello'}');
   final types = <String, bool>{for (final h in _health) h.$1: ((cfg['types'] as Map?)?[h.$1] ?? h.$1 != 'hr') == true};
   final err = ValueNotifier<String?>(null);
   final busy = ValueNotifier<bool>(false);
@@ -522,9 +524,10 @@ Future<Object?> showIntegrationModal(BuildContext context, Map x, {required Futu
           err.value = 'Enter the domain your emails should come from.';
           return;
         }
-        final same = domC.text.trim().toLowerCase() == '${cfg['domain'] ?? ''}'.toLowerCase();
+        final local = localC.text.trim().toLowerCase().isEmpty ? 'hello' : localC.text.trim().toLowerCase();
+        final same = domC.text.trim().toLowerCase() == '${cfg['domain'] ?? ''}'.toLowerCase() && local == '${cfg['local'] ?? 'hello'}';
         o = !conn ? 'connect' : (same ? 'check' : 'save');
-        body = o == 'check' ? null : {'config': {'domain': domC.text.trim()}};
+        body = o == 'check' ? null : {'config': {'domain': domC.text.trim(), 'local': local}};
       default:
         if (!types.values.any((v) => v)) {
           err.value = 'Turn on at least one.';
@@ -540,7 +543,7 @@ Future<Object?> showIntegrationModal(BuildContext context, Map x, {required Futu
     } on ApiError catch (e) {
       busy.value = false;
       final f = e.fields;
-      err.value = (f['number'] ?? f['domain'] ?? f['types'] ?? f['config'])?.first ?? e.message;
+      err.value = (f['number'] ?? f['domain'] ?? f['local'] ?? f['types'] ?? f['config'])?.first ?? e.message;
     }
   }
 
@@ -586,14 +589,25 @@ Future<Object?> showIntegrationModal(BuildContext context, Map x, {required Futu
           ]),
         if (kind == 'whatsapp') field('Business number', numC, 'Registered with the WhatsApp Business API', TextInputType.phone),
         if (kind == 'email_domain') ...[
+          field('Sending domain', domC, 'The domain you add the DNS records to', TextInputType.url),
+          // From address: "hello" @ the domain. Replies go to Emails & alerts → Sender → Reply-to.
           ListenableBuilder(
-            listenable: domC,
-            builder: (_, _) => field(
-              'Sending domain',
-              domC,
-              'Emails come from hello@${domC.text.trim().isEmpty ? 'yourdomain.com' : domC.text.trim().toLowerCase()} once verified',
-              TextInputType.url,
-            ),
+            listenable: Listenable.merge([domC, localC]),
+            builder: (_, _) {
+              final d = domC.text.trim().isEmpty ? 'yourdomain.com' : domC.text.trim().toLowerCase();
+              final l = localC.text.trim().isEmpty ? 'hello' : localC.text.trim().toLowerCase();
+              return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
+                Text('From address', style: AppText.label),
+                AppTextField(
+                  controller: localC,
+                  placeholder: 'hello',
+                  suffix: Padding(padding: const EdgeInsets.only(right: 12), child: Text('@$d', style: AppText.s(13.5, W.w6, color: AppColors.muted))),
+                  onChanged: (_) => err.value = null,
+                ),
+                CutText('Emails come from $l@$d once verified. Replies go to the Reply-to in Emails & alerts → Sender.',
+                    maxLines: 2, style: AppText.s(12, W.w5, color: AppColors.muted, h: 1.4)),
+              ]);
+            },
           ),
           Container(
             decoration: BoxDecoration(border: Border.all(color: AppColors.line), borderRadius: AppRadius.all(10)),
@@ -646,5 +660,5 @@ Future<Object?> showIntegrationModal(BuildContext context, Map x, {required Futu
         builder: (_, b, _) => AppButton.primary(goLabel, icon: AppIcons.check, loading: b, onPressed: () => go(ctx), expand: ctx.isPhone),
       ),
     ],
-  ).whenComplete(() => disposeLater([numC, domC, err, busy]));
+  ).whenComplete(() => disposeLater([numC, domC, localC, err, busy]));
 }

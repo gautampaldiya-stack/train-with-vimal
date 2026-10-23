@@ -644,7 +644,7 @@ Singleton holding the trainer and client columns of the permission matrix.
 | `updated_at` | DateTimeField |  |
 
 ### Integration
-Settings → Integrations. config: whatsapp {}, email_domain {domain, records, checked_at}, health {types}. WhatsApp number lives in NotificationSettings.whatsapp_number.
+Settings → Integrations. config: whatsapp {}, email_domain {domain, local (From address before @, default hello, D-55), records, checked_at}, health {types}. WhatsApp number lives in NotificationSettings.whatsapp_number.
 
 | Field | Type | Notes |
 |---|---|---|

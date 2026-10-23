@@ -1,4 +1,4 @@
-package com.trainwithvimal.twv
+package com.trainwithvimal.app
 
 import io.flutter.embedding.android.FlutterActivity
 

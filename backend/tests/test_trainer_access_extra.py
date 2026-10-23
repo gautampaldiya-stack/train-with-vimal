@@ -49,3 +49,29 @@ def test_gym_social_links(admin):
     assert r.status_code == 200 and r.json()["youtube"] == "youtube.com/@twv" and r.json()["profile_saved_at"]
     pub = admin.get("/api/v1/gym/").json()
     assert pub["facebook"] == "facebook.com/twv"
+
+
+def test_from_address_part_before_at(admin):
+    from apps.gym.models import Integration
+
+    url = "/api/v1/settings/integrations/email_domain/"
+    assert admin.post(url + "save/", {"config": {"domain": "prowavetech.in", "local": "Bad Name"}},
+                      format="json").status_code == 400
+    r = admin.post(url + "save/", {"config": {"domain": "prowavetech.in", "local": "coach"}}, format="json")
+    assert r.status_code == 200, r.content
+    integ = Integration.objects.get(kind="email_domain")
+    integ.status = Integration.Status.CONNECTED
+    integ.save()
+    assert Integration.from_email() == "coach@prowavetech.in"
+
+
+def test_packages_are_hidden(admin):
+    rows = admin.get("/api/v1/automations/").json()
+    rows = rows.get("results", rows) if isinstance(rows, dict) else rows
+    assert all(a["trigger"] != "package_ending" for a in rows)
+    cat = admin.get("/api/v1/automations/catalog/").json()
+    assert "package_ending" not in [t["key"] for t in cat["triggers"]]
+    assert all(s["trigger"] != "package_ending" for s in cat["starters"])
+    tpls = admin.get("/api/v1/message-templates/").json()
+    tpls = tpls.get("results", tpls) if isinstance(tpls, dict) else tpls
+    assert all(t["group"] != "packages" for t in tpls)

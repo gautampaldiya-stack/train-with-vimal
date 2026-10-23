@@ -20,12 +20,13 @@ import '../forms/forms_common.dart' show FmCheck;
 
 const emChannels = ['email', 'push', 'whatsapp', 'in_app'];
 const emChannelLabel = {'email': 'Email', 'push': 'Push', 'whatsapp': 'WhatsApp', 'in_app': 'In-app'};
-const emGroups = [('access', 'Access'), ('coaching', 'Coaching'), ('packages', 'Packages'), ('team', 'Team')];
+// Packages group hidden: packages are not used for now (Gautam 2026-10-23).
+const emGroups = [('access', 'Access'), ('coaching', 'Coaching'), /* ('packages', 'Packages'), */ ('team', 'Team')];
 
 /// Message length per channel (server `CHANNEL_LIMITS`) and the subject / title limit.
 const emBodyLimit = {'email': 2000, 'push': 120, 'whatsapp': 1000, 'in_app': 500};
 const emSubjectLimit = 50;
-const emVariables = ['first_name', 'coach_name', 'gym_name', 'package_name', 'date'];
+const emVariables = ['first_name', 'coach_name', 'gym_name', /* 'package_name', (packages hidden) */ 'date'];
 
 /// "How Sana, a sample client, would see it" (board sample values).
 const emSample = {
@@ -242,7 +243,7 @@ Future<Map?> showNewTemplate(BuildContext context) {
           Align(
             alignment: Alignment.centerLeft,
             child: SegmentedTabs<String>(
-              items: const [TabItem('access', 'Access'), TabItem('coaching', 'Coaching'), TabItem('packages', 'Packages')],
+              items: const [TabItem('access', 'Access'), TabItem('coaching', 'Coaching') /* , TabItem('packages', 'Packages') */],
               value: group,
               onChanged: (v) => set(() => group = v),
             ),

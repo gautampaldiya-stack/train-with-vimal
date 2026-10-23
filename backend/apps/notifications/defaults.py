@@ -17,7 +17,7 @@ TEMPLATES = [
     ("client-invite", "Client invite", "access", _ch(
         email=("{{coach_name}} invited you to {{gym_name}}",
                "Hi {{first_name}},\n\n{{coach_name}} has invited you to {{gym_name}}. Create your account to see your "
-               "plan: {{package_name}}.\n\nThe invite is valid until {{date}}."),
+               "plan.\n\nThe invite is valid until {{date}}."),
         whatsapp=("", "Hi {{first_name}}, {{coach_name}} has invited you to {{gym_name}}. Open the invite to create "
                       "your account. It is valid until {{date}}."),
     )),

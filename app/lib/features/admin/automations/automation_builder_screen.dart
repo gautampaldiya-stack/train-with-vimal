@@ -485,13 +485,14 @@ class _AutomationBuilderScreenState extends State<AutomationBuilderScreen> {
   // ─────────────────────────────── 2 Who is it for?
 
   Widget _who() {
-    final pkg = drField(
-      'Package',
-      AppSelect(scopePackage.isEmpty ? 'Any package' : scopePackage, entries: [
-        MenuEntry('Any package', selected: scopePackage.isEmpty, onTap: () => _edit(() => scopePackage = '')),
-        for (final p in packages) MenuEntry(p, selected: p == scopePackage, onTap: () => _edit(() => scopePackage = p)),
-      ]),
-    );
+    // Package filter hidden: packages are not used for now (Gautam 2026-10-23).
+    // final pkg = drField(
+    //   'Package',
+    //   AppSelect(scopePackage.isEmpty ? 'Any package' : scopePackage, entries: [
+    //     MenuEntry('Any package', selected: scopePackage.isEmpty, onTap: () => _edit(() => scopePackage = '')),
+    //     for (final p in packages) MenuEntry(p, selected: p == scopePackage, onTap: () => _edit(() => scopePackage = p)),
+    //   ]),
+    // );
     final tr = drField(
       'Trainer',
       AppSelect(scopeTrainer.isEmpty ? 'Any trainer' : scopeTrainerName, entries: [
@@ -503,10 +504,9 @@ class _AutomationBuilderScreenState extends State<AutomationBuilderScreen> {
               })),
       ]),
     );
+    // with the Package filter: phone Column [pkg, tr], wide Row [Expanded(pkg), Expanded(tr)]
     return _section(2, 'Who is it for?', [
-      context.isPhone
-          ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [pkg, tr])
-          : Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 12, children: [Expanded(child: pkg), Expanded(child: tr)]),
+      context.isPhone ? tr : Row(children: [Expanded(child: tr), const Spacer()]),
       DrSwitch(
         title: 'Stop when the client responds',
         sub: 'The remaining steps are skipped once the client sends the form or replies.',

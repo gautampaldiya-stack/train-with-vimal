@@ -157,6 +157,9 @@ class IntegrationConfigSerializer(serializers.Serializer):
 
     number = serializers.CharField(required=False, allow_blank=True)
     domain = serializers.CharField(required=False)
+    # The part before @ of the From address (Gautam 2026-10-23); "hello" when not set.
+    local = serializers.RegexField(r"^[a-z0-9]([a-z0-9._-]{0,38}[a-z0-9])?$", required=False,
+                                   error_messages={"invalid": "Use letters, numbers, dots or dashes, like hello or coach."})
     types = serializers.DictField(child=serializers.BooleanField(), required=False)
 
     def validate_number(self, v):
@@ -164,6 +167,9 @@ class IntegrationConfigSerializer(serializers.Serializer):
         if not PHONE_RE.match(v):
             raise serializers.ValidationError("Use digits, spaces and + only, like +91 98200 12345.")
         return v
+
+    def validate_local(self, v):
+        return v.strip().lower()
 
     def validate_domain(self, v):
         v = v.strip().lower().removeprefix("https://").removeprefix("http://").removeprefix("www.").rstrip("/")
