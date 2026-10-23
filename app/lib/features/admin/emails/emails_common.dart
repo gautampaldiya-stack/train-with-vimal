@@ -12,6 +12,7 @@ import '../../../core/widgets/input.dart';
 import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/tabs.dart';
+import '../../../core/widgets/tooltip.dart';
 import '../../trainer/client_profile/cp_content_drawers.dart' show drField;
 import '../forms/forms_common.dart' show FmCheck;
 
@@ -160,8 +161,8 @@ class EmMail extends StatelessWidget {
               AppAvatar(sender, size: 24, initials: 'TV', colors: AppColors.avatarCode('c1')),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                  Text(sender, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w7)),
-                  Text(line, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11, W.w5, color: AppColors.muted)),
+                  CutText(sender, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w7)),
+                  CutText(line, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11, W.w5, color: AppColors.muted)),
                 ]),
               ),
             ]),
@@ -193,8 +194,8 @@ class EmUsedRow extends StatelessWidget {
             const AppIcon(AppIcons.bolt, size: 15, color: AppColors.fmBolt),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6, color: h ? AppColors.accentText : AppColors.text)),
-                Text(line, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w6, color: AppColors.muted)),
+                CutText(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6, color: h ? AppColors.accentText : AppColors.text)),
+                CutText(line, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w6, color: AppColors.muted)),
               ]),
             ),
             const AppIcon(AppIcons.chevronRight, size: 15, color: AppColors.muted),
@@ -237,11 +238,14 @@ Future<Map?> showNewTemplate(BuildContext context) {
         ]),
         drField(
           'Group',
-          SegmentedTabs<String>(
-            expand: true,
-            items: const [TabItem('access', 'Access'), TabItem('coaching', 'Coaching'), TabItem('packages', 'Packages')],
-            value: group,
-            onChanged: (v) => set(() => group = v),
+          // Fit-width tabs, not stretched (Gautam 2026-10-23).
+          Align(
+            alignment: Alignment.centerLeft,
+            child: SegmentedTabs<String>(
+              items: const [TabItem('access', 'Access'), TabItem('coaching', 'Coaching'), TabItem('packages', 'Packages')],
+              value: group,
+              onChanged: (v) => set(() => group = v),
+            ),
           ),
         ),
         Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
@@ -265,13 +269,16 @@ Future<Map?> showNewTemplate(BuildContext context) {
             ),
           Text('You can turn channels on or off later in the editor.', style: AppText.s(12, W.w5, color: AppColors.muted)),
         ]),
-        Row(mainAxisAlignment: MainAxisAlignment.end, spacing: 8, children: [
-          if (!ctx.isPhone) AppButton('Cancel', onPressed: () => Navigator.of(ctx).pop()),
+        // Smaller buttons with room under them (Gautam 2026-10-23).
+        Padding(
+          padding: const EdgeInsets.only(top: 4, bottom: 12),
+          child: Row(mainAxisAlignment: MainAxisAlignment.end, spacing: 8, children: [
+          if (!ctx.isPhone) AppButton('Cancel', size: BtnSize.sm, onPressed: () => Navigator.of(ctx).pop()),
           Expanded(
             flex: ctx.isPhone ? 1 : 0,
             child: Opacity(
               opacity: picked.isEmpty ? .5 : 1,
-              child: AppButton.primary('Create template', icon: AppIcons.check, loading: saving, expand: ctx.isPhone, onPressed: () async {
+              child: AppButton.primary('Create template', icon: AppIcons.check, size: BtnSize.sm, loading: saving, expand: ctx.isPhone, onPressed: () async {
                 final n = name.text.trim();
                 if (n.isEmpty) return set(() => error = 'Give the template a name.');
                 if (picked.isEmpty) {
@@ -296,6 +303,7 @@ Future<Map?> showNewTemplate(BuildContext context) {
             ),
           ),
         ]),
+        ),
       ]),
     ),
   );

@@ -31,6 +31,7 @@ import '../lib_common.dart' show plural;
 import '../programs/builder_sheets.dart' show showNameModal;
 import 'ct_common.dart';
 import '../../../core/widgets/tooltip.dart';
+import '../../../core/widgets/scroll_after.dart';
 
 // Content library drawers and modals (boards `Content` / `ContentMobile`): the item drawer, New / Edit content,
 // Assign to clients, New category and Delete.
@@ -471,7 +472,7 @@ class _LinkList extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(borderRadius: AppRadius.all(10), border: Border.all(color: AppColors.line)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        child: ScrollAfter(children: [
           for (final (i, r) in rows.indexed)
             Container(decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line))), child: r),
         ]),

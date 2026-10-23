@@ -36,6 +36,9 @@ class Me {
   bool get needsVerify => role == Role.client && (email ?? '').isNotEmpty && !emailVerified;
   Role get role => switch (json['role']) { 'admin' => Role.admin, 'trainer' => Role.trainer, _ => Role.client };
   bool get isStaff => role != Role.client;
+
+  /// Staff access: the admin can do everything; a trainer only what their access includes (`permissions`).
+  bool can(String key) => role == Role.admin || (json['permissions'] as Map?)?[key] == true;
   String get status => '${json['status'] ?? 'active'}';
 
   /// Client signed up from an invite link and waits in Approvals.

@@ -12,7 +12,8 @@ class NavItem {
 }
 
 /// Sidebar order from docs/design.md §2.1.
-List<NavItem> sidebarFor(Role role) => switch (role) {
+/// A trainer given "Create and edit automations" also gets Automations ([automations]).
+List<NavItem> sidebarFor(Role role, {bool automations = false}) => switch (role) {
       Role.admin => const [
           NavItem('Dashboard', '/dashboard', AppIcons.dashboard),
           NavItem('Clients', '/clients', AppIcons.clients),
@@ -30,17 +31,18 @@ List<NavItem> sidebarFor(Role role) => switch (role) {
           NavItem('Emails & alerts', '/emails', AppIcons.emails, group: 'Engage'),
           NavItem('Settings', '/settings', AppIcons.settings, group: 'Workspace'),
         ],
-      Role.trainer => const [
-          NavItem('Dashboard', '/dashboard', AppIcons.home),
-          NavItem('My clients', '/clients', AppIcons.clientsAlt),
-          NavItem('Check-ins', '/checkins', AppIcons.clipboard, badgeKey: 'checkins'),
-          NavItem('Calendar', '/calendar', AppIcons.calendarAlt),
-          NavItem('Programs', '/programs', AppIcons.dumbbell, group: 'Library'),
-          NavItem('Exercises', '/exercises', AppIcons.exercisesAlt, group: 'Library'),
-          NavItem('Nutrition & foods', '/nutrition', AppIcons.apple, group: 'Library'),
-          NavItem('Habits & supplements', '/habits', AppIcons.checkCircle, group: 'Library'),
-          NavItem('Content library', '/content', AppIcons.library, group: 'Library'),
-          NavItem('My profile', '/me', AppIcons.person, group: 'You'),
+      Role.trainer => [
+          const NavItem('Dashboard', '/dashboard', AppIcons.home),
+          const NavItem('My clients', '/clients', AppIcons.clientsAlt),
+          const NavItem('Check-ins', '/checkins', AppIcons.clipboard, badgeKey: 'checkins'),
+          const NavItem('Calendar', '/calendar', AppIcons.calendarAlt),
+          const NavItem('Programs', '/programs', AppIcons.dumbbell, group: 'Library'),
+          const NavItem('Exercises', '/exercises', AppIcons.exercisesAlt, group: 'Library'),
+          const NavItem('Nutrition & foods', '/nutrition', AppIcons.apple, group: 'Library'),
+          const NavItem('Habits & supplements', '/habits', AppIcons.checkCircle, group: 'Library'),
+          const NavItem('Content library', '/content', AppIcons.library, group: 'Library'),
+          if (automations) const NavItem('Automations', '/automations', AppIcons.automations, group: 'Library'),
+          const NavItem('My profile', '/me', AppIcons.person, group: 'You'),
         ],
       Role.client => const [
           NavItem('Today', '/home', AppIcons.home),

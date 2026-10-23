@@ -34,6 +34,8 @@ class TrainerMoreScreen extends StatelessWidget {
           MoreMeCard(initials: me.initials, name: me.name, sub: 'Trainer · My profile', onTap: () => context.go('/me')),
           MoreGroup('Library', [
             for (final (t, sub, path, icon, bg, fg) in _library) MoreRow(t, sub: sub, icon: icon, bg: bg, fg: fg, onTap: () => context.go(path)),
+            if (me.can('automations.manage'))
+              MoreRow('Automations', sub: 'Messages, forms and tasks that go out by themselves', icon: AppIcons.automations, onTap: () => context.go('/automations')),
           ]),
           MoreGroup('You', [
             MoreRow('My profile', sub: 'Details, documents and your activity', icon: AppIcons.person, onTap: () => context.go('/me')),

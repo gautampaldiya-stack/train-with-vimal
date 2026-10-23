@@ -358,6 +358,7 @@ class _FormsScreenState extends State<FormsScreen> {
   }
 
   Future<void> _duplicate(Map f) async {
+    if (!await confirmDuplicate(context, '"${f['name']}"')) return;
     final r = await _call(() => Services.api.post<Map>('forms/${f['id']}/duplicate/'), 'Could not duplicate the form');
     if (r == null || !mounted) return;
     load();

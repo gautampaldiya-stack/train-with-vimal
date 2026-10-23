@@ -14,7 +14,7 @@ from .serializers import (LANGUAGES, BrandingSerializer, GymProfileSerializer, I
                           IntegrationSerializer, LogoSerializer, RoleMatrixSerializer)
 
 # Fields of the Gym profile card; saving one of them moves "Last saved".
-PROFILE_FIELDS = {"name", "email", "phone", "address", "instagram", "website"}
+PROFILE_FIELDS = {"name", "email", "phone", "address", "instagram", "website", "youtube", "facebook"}
 # Timezone select on Regional & defaults (board: "Asia/Kolkata (IST)").
 TIMEZONES = [
     ("Asia/Kolkata", "Asia/Kolkata (IST)"), ("Asia/Dubai", "Asia/Dubai (GST)"), ("Asia/Singapore", "Asia/Singapore (SGT)"),
@@ -33,6 +33,7 @@ class PublicGymView(APIView):
         g = GymSettings.load()
         return Response({
             "name": g.name, "email": g.email, "phone": g.phone, "address": g.address, "instagram": g.instagram,
+            "youtube": g.youtube, "facebook": g.facebook,
             "logo": request.build_absolute_uri(g.logo.url) if g.logo else None,
             "accent_color": g.accent_color, "theme": g.theme, "timezone": g.timezone,
             "tagline": g.tagline, "website": g.website, "whatsapp": g.whatsapp or g.phone, "hours": g.support_hours,

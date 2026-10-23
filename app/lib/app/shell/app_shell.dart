@@ -118,7 +118,7 @@ class _AppShellState extends State<AppShell> {
             MouseRegion(
               onEnter: (_) => setState(() => _sideHover = true),
               onExit: (_) => setState(() => _sideHover = false),
-              child: _Sidebar(items: sidebarFor(me.role), location: widget.location, mini: mini, me: me),
+              child: _Sidebar(items: sidebarFor(me.role, automations: me.can('automations.manage')), location: widget.location, mini: mini, me: me),
             ),
             Expanded(
               child: Container(

@@ -257,6 +257,15 @@ Future<bool> confirmAction(BuildContext context,
   return r ?? false;
 }
 
+/// Every Duplicate asks first (Gautam 2026-10-23). [what] is the thing being copied, e.g. "Fat loss 12 weeks".
+Future<bool> confirmDuplicate(BuildContext context, String what, {String? body}) => confirmAction(
+      context,
+      title: 'Duplicate $what?',
+      body: body ?? 'A copy is made with the same content. The original stays as it is.',
+      confirm: 'Duplicate',
+      icon: AppIcons.copy,
+    );
+
 // ─────────────────────────────── Drawer (§4.3): right side, 520 / 640 wide. Phone: full sheet.
 
 Future<T?> showAppDrawer<T>(

@@ -18,6 +18,7 @@ import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/pager.dart';
 import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/tooltip.dart';
+import '../../../core/widgets/table_head.dart';
 import '../../trainer/clients/clients_parts.dart' show clientGoals;
 import '../../trainer/me/me_common.dart';
 import '../../trainer/me/me_model.dart';
@@ -249,15 +250,17 @@ class _TpClientsTabState extends State<TpClientsTab> {
     ('Program', 210, false),
     ('Adherence', 96, true),
     ('Last check-in', 130, false),
-    ('Status', 96, false),
-    ('With him since', 120, false),
+    ('Status', 116, false),
+    ('With him since', 130, false),
     ('', 56, true),
   ];
 
   Widget _table() => LayoutBuilder(builder: (context, box) {
-        final min = _cols.fold<double>(0, (a, x) => a + x.$2);
+        String head(int i) => i == 5 ? 'With ${c.him} since' : _cols[i].$1;
+        final base = [for (final (i, x) in _cols.indexed) headFit(head(i), x.$2, pad: i == 0 || i == _cols.length - 1 ? 28 : 24)];
+        final min = base.fold<double>(0, (a, w) => a + w);
         final extra = (box.maxWidth - min).clamp(0.0, double.infinity);
-        final widths = [for (final (i, x) in _cols.indexed) x.$2 + (i == 0 ? extra * .5 : (i == 1 ? extra * .5 : 0))];
+        final widths = [for (final (i, w) in base.indexed) w + (i == 0 ? extra * .5 : (i == 1 ? extra * .5 : 0))];
         Widget cell(int i, Widget child, {bool right = false}) => Container(
               width: widths[i],
               padding: EdgeInsets.fromLTRB(i == 0 ? 16 : 12, 0, i == _cols.length - 1 ? 16 : 12, 0),
@@ -273,7 +276,7 @@ class _TpClientsTabState extends State<TpClientsTab> {
               decoration: const BoxDecoration(color: AppColors.tableHeadDt, border: Border.symmetric(horizontal: BorderSide(color: AppColors.line))),
               child: Row(children: [
                 for (final (i, x) in _cols.indexed)
-                  cell(i, Text((i == 5 ? 'With ${c.him} since' : x.$1).toUpperCase(), maxLines: 1, style: AppText.s(11.5, W.w7, color: AppColors.muted, ls: .58)), right: x.$3),
+                  cell(i, Text(head(i).toUpperCase(), maxLines: 1, softWrap: false, style: tableHeadStyle), right: x.$3),
               ]),
             ),
             for (final (i, r) in rows.indexed)

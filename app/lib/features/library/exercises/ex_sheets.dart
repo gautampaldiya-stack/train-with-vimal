@@ -139,6 +139,8 @@ Future<void> showAddToProgram(BuildContext context, Map e) async {
 
 /// "Duplicate to edit": an editable copy, opened in the edit page.
 Future<void> duplicateExercise(BuildContext context, Map e) async {
+  if (!await confirmDuplicate(context, '"${e['name']}"', body: 'You get your own copy to edit. The original stays as it is.')) return;
+  if (!context.mounted) return;
   try {
     final c = await Services.api.post<Map>('exercises/${e['id']}/duplicate/');
     if (!context.mounted) return;

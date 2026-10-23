@@ -128,7 +128,14 @@ class TrainerViewSet(viewsets.ModelViewSet):
     search_fields = ["full_name", "email", "phone"]
     ordering_fields = ["full_name", "n_clients", "avg_adherence", "n_review", "trainer_profile__joining_date"]
     ordering = ["-trainer_profile__is_owner", "full_name"]
-    http_method_names = ["get", "post", "patch"]
+    # PUT is for the access and visibility actions only (a full replace of a trainer is not offered).
+    http_method_names = ["get", "post", "put", "patch"]
+
+    def update(self, request, *args, **kwargs):
+        if not kwargs.get("partial"):
+            return Response({"error": {"code": "method_not_allowed", "message": 'Method "PUT" not allowed.', "fields": {}}},
+                            status=405)
+        return super().update(request, *args, **kwargs)
 
     def get_permissions(self):
         if self.action in ("list", "retrieve", "options_for_move"):

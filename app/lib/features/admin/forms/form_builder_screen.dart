@@ -362,7 +362,10 @@ class _FormBuilderScreenState extends State<FormBuilderScreen> {
   void _qMenu(BuildContext anchor, int i) => showAppMenu(anchor, width: 220, [
         MenuEntry.header('Question ${i + 1}'),
         MenuEntry('Edit question', icon: AppIcons.edit, onTap: () => _edit(i)),
-        MenuEntry('Duplicate', icon: AppIcons.copy, onTap: () => _change(() => qs.insert(i + 1, qs[i].copy(asNew: true)), toast: 'Question duplicated')),
+        MenuEntry('Duplicate', icon: AppIcons.copy, onTap: () async {
+          if (!await confirmDuplicate(context, 'question ${i + 1}', body: 'A copy is added under it. You can still undo before saving.') || !mounted) return;
+          _change(() => qs.insert(i + 1, qs[i].copy(asNew: true)), toast: 'Question duplicated');
+        }),
         if (i > 0) MenuEntry('Move up', icon: AppIcons.chevronUpAlt, onTap: () => _change(() => qs.insert(i - 1, qs.removeAt(i)))),
         if (i < qs.length - 1) MenuEntry('Move down', icon: AppIcons.chevronDown, onTap: () => _change(() => qs.insert(i + 1, qs.removeAt(i)))),
         const MenuEntry.separator(),
@@ -502,6 +505,8 @@ class _FormBuilderScreenState extends State<FormBuilderScreen> {
   }
 
   Future<void> _duplicate() async {
+    if (!await confirmDuplicate(context, 'this form')) return;
+    if (!mounted) return;
     final r = await _post('duplicate/', 'Could not duplicate the form');
     if (r == null || !mounted) return;
     context.go('/forms/${r['id']}');

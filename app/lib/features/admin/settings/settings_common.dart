@@ -4,6 +4,7 @@ import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
 import '../../../core/widgets/card.dart';
 import '../../../core/widgets/hover.dart';
+import '../../../core/widgets/tooltip.dart';
 
 /// Shared parts of Admin → Settings (boards `Settings` + `SettingsMobile`, D-53).
 
@@ -59,7 +60,7 @@ class StEditCard extends StatelessWidget {
 }
 
 /// `.dr-fnote`: grey note in a card footer.
-Widget stFootNote(String text) => Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted));
+Widget stFootNote(String text) => CutText(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted));
 
 /// `.st-row`: words on the left, the control on the right; on a phone the control goes under the words.
 class StRow extends StatelessWidget {
@@ -103,8 +104,8 @@ class StLinkRow extends StatelessWidget {
             AppIcon(icon, size: 15, color: AppColors.fmBolt),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6, color: h ? AppColors.accentText : AppColors.text)),
-                Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w6, color: AppColors.muted)),
+                CutText(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6, color: h ? AppColors.accentText : AppColors.text)),
+                CutText(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w6, color: AppColors.muted)),
               ]),
             ),
             const AppIcon(AppIcons.chevronRight, size: 15, color: AppColors.muted),

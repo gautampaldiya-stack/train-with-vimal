@@ -613,6 +613,8 @@ Singleton: Settings → Gym profile, Regional & defaults, Branding.
 | `phone` | CharField |  |
 | `address` | CharField |  |
 | `instagram` | CharField |  |
+| `youtube` | CharField | social link (D-54) |
+| `facebook` | CharField | social link (D-54) |
 | `tagline` | CharField |  |
 | `website` | CharField |  |
 | `whatsapp` | CharField |  |

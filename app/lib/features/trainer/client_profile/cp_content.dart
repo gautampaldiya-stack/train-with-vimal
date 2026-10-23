@@ -13,6 +13,7 @@ import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/pager.dart';
 import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/tooltip.dart';
+import '../../../core/widgets/table_head.dart';
 import 'cp_common.dart';
 import 'cp_content_drawers.dart';
 import 'cp_model.dart';
@@ -230,10 +231,11 @@ class _CpContentTabState extends State<CpContentTab> {
   static const _cols = <(String, double)>[('Title', 300), ('Type', 96), ('', 250), ('Added by', 150), ('Seen', 150), ('', 56)];
 
   Widget _table() => LayoutBuilder(builder: (context, box) {
-        final min = _cols.fold<double>(0, (a, x) => a + x.$2);
-        final extra = (box.maxWidth - min).clamp(0.0, double.infinity);
-        final widths = [for (final (i, x) in _cols.indexed) x.$2 + (i == 0 ? extra : 0)];
         final head = ['Title', 'Type', 'Why ${c.first} sees it', 'Added by', 'Seen', ''];
+        final base = [for (final (i, x) in _cols.indexed) headFit(head[i], x.$2, pad: i == 0 ? 28 : 24)];
+        final min = base.fold<double>(0, (a, w) => a + w);
+        final extra = (box.maxWidth - min).clamp(0.0, double.infinity);
+        final widths = [for (final (i, w) in base.indexed) w + (i == 0 ? extra : 0)];
         final table = SizedBox(
           width: min + extra,
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -246,7 +248,7 @@ class _CpContentTabState extends State<CpContentTab> {
                     width: widths[i],
                     padding: EdgeInsets.fromLTRB(12, 0, 12, 0),
                     alignment: Alignment.centerLeft,
-                    child: Text(l.toUpperCase(), maxLines: 1, style: AppText.s(11.5, W.w7, color: AppColors.muted, ls: .58)),
+                    child: Text(l.toUpperCase(), maxLines: 1, softWrap: false, style: tableHeadStyle),
                   ),
               ]),
             ),

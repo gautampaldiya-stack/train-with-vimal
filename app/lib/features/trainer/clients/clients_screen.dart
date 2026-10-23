@@ -23,6 +23,7 @@ import '../../../core/widgets/tabs.dart';
 import 'clients_model.dart';
 import 'clients_parts.dart';
 import '../../../core/widgets/tooltip.dart';
+import '../../../core/widgets/table_head.dart';
 
 /// My clients (boards `TrainerClients` + `TrainerClientsMobile`). Only the trainer's own clients (the API
 /// starts from `visible_clients`). Web: table, row ⋯ menu, pager. Phone: one line per client.
@@ -228,6 +229,8 @@ class _TrainerClientsScreenState extends State<TrainerClientsScreen> {
   void _menu(BuildContext anchor, McRow r) => showAppMenu(anchor, [
         MenuEntry('View profile', icon: AppIcons.eye, onTap: () => _open(r)),
         MenuEntry('Edit details', icon: AppIcons.edit, onTap: () => _edit(r)),
+        // A trainer with "Assign and reassign clients" can move a client to another trainer too.
+        if (!widget.admin && (Services.session.me?.can('clients.assign') ?? false)) MenuEntry('Change trainer', icon: AppIcons.person, onTap: () => _changeTrainer(r)),
         if (widget.admin) ...[
           MenuEntry('Change trainer', icon: AppIcons.person, onTap: () => _changeTrainer(r)),
           if (r.status == 'paused')
@@ -336,9 +339,10 @@ class _TrainerClientsScreenState extends State<TrainerClientsScreen> {
   ];
 
   Widget _table() => LayoutBuilder(builder: (context, box) {
-        final min = _cols.fold<double>(0, (a, x) => a + x.$2);
+        final base = [for (final (i, x) in _cols.indexed) headFit(x.$1, x.$2, pad: i == 0 ? 28 : 24)];
+        final min = base.fold<double>(0, (a, w) => a + w);
         final extra = (box.maxWidth - min).clamp(0.0, double.infinity);
-        final widths = [for (final (i, x) in _cols.indexed) x.$2 + (i == 0 ? extra : 0)];
+        final widths = [for (final (i, w) in base.indexed) w + (i == 0 ? extra : 0)];
         // final allOn = c.rows.isNotEmpty && c.rows.every((r) => c.selected.contains(r.id));
         final table = SizedBox(
           width: min + extra,
@@ -356,7 +360,7 @@ class _TrainerClientsScreenState extends State<TrainerClientsScreen> {
                     padding: EdgeInsets.fromLTRB(i == 0 ? 16 : 12, 0, 12, 0),
                     alignment: x.$3 ? Alignment.centerRight : Alignment.centerLeft,
                     // child: i == 0 ? AppCheckbox(value: allOn, onChanged: (_) => c.toggleAll()) : …
-                    child: Text(x.$1.toUpperCase(), maxLines: 1, style: AppText.s(11.5, W.w7, color: AppColors.muted, ls: .58)),
+                    child: Text(x.$1.toUpperCase(), maxLines: 1, softWrap: false, style: tableHeadStyle),
                   ),
               ]),
             ),

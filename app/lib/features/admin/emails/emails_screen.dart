@@ -671,7 +671,11 @@ class _EmailsScreenState extends State<EmailsScreen> {
   // ─────────────────────────────── Team alerts
 
   Widget _alertsTab(double cw) {
-    final side = Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [_quietCard(), _digestCard()]);
+    final side = Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [
+      _quietCard(),
+      // Daily digest card hidden for now (Gautam 2026-10-23); it comes back with the Daily summary design.
+      // _digestCard(),
+    ]);
     if (cw < 820) return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [_alertsCard(cw), side]);
     return Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 16, children: [Expanded(child: _alertsCard(cw)), SizedBox(width: 320, child: side)]);
   }
@@ -812,6 +816,7 @@ class _EmailsScreenState extends State<EmailsScreen> {
     );
   }
 
+  // ignore: unused_element
   Widget _digestCard() {
     final d = '${settings['digest'] ?? 'off'}';
     return AppCard(

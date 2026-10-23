@@ -173,6 +173,8 @@ const _asks = [
   ('training.edit_templates', 'Edit gym templates', 'Change master programs and meal plans'),
   ('checkins.edit_forms', 'Edit check-in forms', 'Change the gym’s forms'),
   ('clients.pause', 'Pause or resume clients', ''),
+  ('clients.assign', 'Assign clients', 'Pick or change the trainer of a client'),
+  ('automations.manage', 'Automations', 'Create and edit automations'),
 ];
 
 /// My access: level card (Switched on, Clients you see, Asked for, Ask for more access) and the read-only

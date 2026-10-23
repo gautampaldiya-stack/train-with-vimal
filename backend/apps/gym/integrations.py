@@ -41,7 +41,7 @@ def _used():
                      {"label": n(wa_msgs, "client message", "client messages"), "path": "/emails"},
                      {"label": "Invite links", "path": "/approvals"}],
         "email_domain": [{"label": n(em_msgs, "client message", "client messages"), "path": "/emails"},
-                         {"label": "Team alerts and digest", "path": "/emails?tab=alerts"},
+                         {"label": "Team alerts", "path": "/emails?tab=alerts"},
                          {"label": "Forms sent by email", "path": "/forms"}],
         "health": [{"label": "Client profiles", "path": "/clients"},
                    {"label": "Habits (steps)", "path": "/habits"},

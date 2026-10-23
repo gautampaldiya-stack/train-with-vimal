@@ -11,7 +11,7 @@ from rest_framework.response import Response
 
 from apps.activity.services import log as activity_log
 from apps.common.mixins import SoftDeleteViewMixin
-from apps.common.permissions import IsAdmin, IsStaff
+from apps.common.permissions import HasTrainerPermission, IsStaff
 
 from . import engine
 from .models import TRIGGER_GROUPS, Automation, AutomationRun, Step, TrainerTask, Trigger
@@ -226,10 +226,11 @@ class RunSerializer(serializers.ModelSerializer):
 
 
 class AutomationViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
-    """Automations are gym-wide: only the admin builds them."""
+    """Automations are gym-wide: the admin builds them, and a trainer given "Create and edit automations"."""
 
     serializer_class = AutomationSerializer
-    permission_classes = [IsAdmin]
+    permission_classes = [HasTrainerPermission]
+    required_permission = "automations.manage"
     pagination_class = None
     http_method_names = ["get", "post", "patch", "delete"]
 

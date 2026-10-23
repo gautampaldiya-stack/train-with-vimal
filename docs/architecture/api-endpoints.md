@@ -16,7 +16,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `auth/login-link/not-me/` | POST | LoginLinkNotMeView | Login link page → "These are not my details" → "This is not me": the link stops working and the coach is told. |
 | `auth/login/` | POST | LoginView |  |
 | `auth/logout/` | POST | LogoutView |  |
-| `auth/me/` | GET, PUT, PATCH | MeView |  |
+| `auth/me/` | GET, PUT, PATCH | MeView | Includes `permissions` for a trainer (effective permissions, D-54), null for others. |
 | `auth/password/change/` | POST | PasswordChangeView |  |
 | `auth/password/forgot/` | POST | ForgotPasswordView | Board `ClientResetPassword`: an unknown email gets "No account uses this email. Check for a typo." |
 | `auth/password/reset/` | POST | ResetPasswordView |  |
@@ -43,7 +43,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 
 | Path | Methods | View | Notes |
 |---|---|---|---|
-| `automations/` | GET, POST | AutomationViewSet | Admin only, oldest first (D-51). Rows: trigger_line (board words), scope_package, scope_trainer + scope_trainer_name, stop_on_response, steps (each with summary), counts {running, finished, stopped}. POST saves as draft. |
+| `automations/` | GET, POST | AutomationViewSet | Admin, or a trainer with `automations.manage` (D-54); oldest first (D-51). Rows: trigger_line (board words), scope_package, scope_trainer + scope_trainer_name, stop_on_response, steps (each with summary), counts {running, finished, stopped}. POST saves as draft. |
 | `automations/<pk>/` | GET, PUT, PATCH, DELETE | AutomationViewSet | Automations are gym-wide: only the admin builds them. |
 | `automations/<pk>/duplicate/` | POST | AutomationViewSet | Automations are gym-wide: only the admin builds them. |
 | `automations/<pk>/restore/` | POST | AutomationViewSet | Automations are gym-wide: only the admin builds them. |
@@ -116,9 +116,9 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `clients/<client_pk>[0-9a-f-]+)/notes/<pk>/` | GET, PUT, PATCH, DELETE | ClientNoteViewSet | /clients/<client_id>/notes/ — staff-only notes. |
 | `clients/<client_pk>[0-9a-f-]+)/notes/<pk>/restore/` | POST | ClientNoteViewSet | /clients/<client_id>/notes/ — staff-only notes. |
 | `clients/<pk>/` | GET, PUT, PATCH, DELETE | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
-| `clients/<pk>/change-trainer/` | POST | ClientViewSet | Admin. `{trainer, move_checkins (default true), tell_old, note}`. Same trainer → 400, full trainer → 400. `move_checkins=false` marks open check-ins as seen so the new trainer starts fresh; the note is saved as a client note; `trainer_since` is set (D-47). |
+| `clients/<pk>/change-trainer/` | POST | ClientViewSet | Admin, or a trainer with `clients.assign` / `clients.view_all` (D-54). `{trainer, move_checkins (default true), tell_old, note}`. Same trainer → 400, full trainer → 400. `move_checkins=false` marks open check-ins as seen so the new trainer starts fresh; the note is saved as a client note; `trainer_since` is set (D-47). |
 | `clients/<pk>/send-reset/` | POST | ClientViewSet | Admin. Emails a password reset link → `{sent_to}`; 400 `no_email`. |
-| `clients/<pk>/trainers/` | GET | ClientViewSet | Admin. Change trainer drawer: `{trainers: [{…, clients, max_clients, current, full, good_fit}], current, since, open_checkins}`. |
+| `clients/<pk>/trainers/` | GET | ClientViewSet | Admin, or a trainer with `clients.assign` / `clients.view_all` (D-54). Change trainer drawer: `{trainers: [{…, clients, max_clients, current, full, good_fit}], current, since, open_checkins}`. |
 | `clients/<pk>/history/` | GET | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
 | `clients/<pk>/overview/` | GET | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
 | `clients/<pk>/pause/` | POST | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
@@ -173,12 +173,12 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 
 | Path | Methods | View | Notes |
 |---|---|---|---|
-| `gym/` | GET | PublicGymView | Gym name, contact and live branding. Public: the signed-out "Need help logging in?" sheet uses it too. |
+| `gym/` | GET | PublicGymView | Gym name, contact (+ `website`, `instagram`, `youtube`, `facebook`) and live branding. Public: the signed-out "Need help logging in?" sheet uses it too. |
 | `settings/branding/` | GET, PATCH | BrandingView | PATCH saves a draft ("Not applied yet"); picking the live value again clears it. GET also gives `logo_name`, `logo_px`, `name`. |
 | `settings/branding/apply/` | POST | BrandingApplyView | Makes the draft live. |
 | `settings/branding/logo/` | POST, DELETE | LogoView | PNG / JPG / WebP / SVG, at least 512 x 512, max 5 MB; live at once. |
 | `settings/branding/reset/` | POST | BrandingResetView | Blue + light, live at once. |
-| `settings/gym/` | GET, PATCH | GymProfileView | Gym profile (moves `profile_saved_at`) and Regional & defaults (`default_units`, `week_start`, `timezone`, `language`); GET adds `timezones`, `languages`. |
+| `settings/gym/` | GET, PATCH | GymProfileView | Gym profile incl. social links `website`, `instagram`, `youtube`, `facebook` (moves `profile_saved_at`) and Regional & defaults (`default_units`, `week_start`, `timezone`, `language`); GET adds `timezones`, `languages`. |
 | `settings/integrations/` | GET | IntegrationListView | whatsapp, email_domain, health with `status`, `config`, `meta` (card line) and `used` (Used in links). |
 | `settings/integrations/<str:kind>/<str:op>/` | POST | IntegrationActionView | op connect / save (`config`: number, domain or types), check (email DNS), disconnect, undo (`status`). WhatsApp off skips WhatsApp sends; a verified domain is the from-address. |
 | `settings/roles/` | GET, PUT | RoleMatrixView | Matrix plus `defaults`, `locked` cells and `counts` (active trainers, active clients). Locked cells keep their value on PUT. |
@@ -219,7 +219,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `gym-news/` | GET, POST | GymNewsViewSet | Admin → Gym news: post a notice to the team. Each trainer with Gym news on gets it in the bell (and push). |
 | `me/reminders/` | GET, POST, PUT, PATCH | ReminderPreferenceView |  |
 | `me/staff-notifications/` | GET, PUT, PATCH | StaffNotificationPreferenceView |  |
-| `message-templates/` | GET, POST | MessageTemplateViewSet | Emails & alerts → Client messages (admin only). Board order, custom last. Each row has `when`, `sent_by`, `used_in` [{id, name, status, line}]. POST {name, group, channels[]} (+ `key`, `texts` for Undo after a delete). |
+| `message-templates/` | GET, POST | MessageTemplateViewSet | Emails & alerts → Client messages (admin only; a trainer with `automations.manage` can read the list for the builder, D-54). Board order, custom last. Each row has `when`, `sent_by`, `used_in` [{id, name, status, line}]. POST {name, group, channels[]} (+ `key`, `texts` for Undo after a delete). |
 | `message-templates/<pk>/` | GET, PUT, PATCH, DELETE | MessageTemplateViewSet | Emails & alerts → Client messages (admin only). |
 | `message-templates/<pk>/preview/` | GET | MessageTemplateViewSet | Emails & alerts → Client messages (admin only). |
 | `message-templates/<pk>/reset/` | POST | MessageTemplateViewSet | Emails & alerts → Client messages (admin only). |
@@ -316,7 +316,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `trainers/<pk>/password-reset/` | POST | TrainerViewSet | Admin → Trainers. Trainers can read the team list (for "Move to another trainer"). |
 | `trainers/<pk>/reactivate/` | POST | TrainerViewSet | Admin → Trainers. Trainers can read the team list (for "Move to another trainer"). |
 | `trainers/<pk>/stats/` | GET | TrainerViewSet | Admin → Trainers. Trainers can read the team list (for "Move to another trainer"). |
-| `trainers/<pk>/visibility/` | GET, PUT | TrainerViewSet | Admin → Trainers. Trainers can read the team list (for "Move to another trainer"). |
+| `trainers/<pk>/visibility/` | GET, PUT | TrainerViewSet | Admin → Trainers. PUT allowed for this and `access/` (was 405, D-54); a plain PUT on `trainers/<pk>/` stays 405. Trainers can read the team list (for "Move to another trainer"). |
 | `trainers/<trainer_pk>me|[0-9a-f-]+)/documents/` | GET, POST | TrainerDocumentViewSet | Documents tab. Admin manages any trainer's documents; a trainer uploads and sees their own |
 | `trainers/<trainer_pk>me|[0-9a-f-]+)/documents/<pk>/` | GET, PUT, PATCH, DELETE | TrainerDocumentViewSet | Documents tab. Admin manages any trainer's documents; a trainer uploads and sees their own |
 | `trainers/<trainer_pk>me|[0-9a-f-]+)/documents/<pk>/verify/` | POST | TrainerDocumentViewSet | Documents tab. Admin manages any trainer's documents; a trainer uploads and sees their own |

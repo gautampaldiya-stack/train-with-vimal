@@ -47,6 +47,7 @@ class UserSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(read_only=True)
     email_verified = serializers.SerializerMethodField()
     client = serializers.SerializerMethodField()
+    permissions = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -54,9 +55,14 @@ class UserSerializer(serializers.ModelSerializer):
             "id", "email", "phone", "full_name", "first_name", "initials", "avatar_color", "avatar", "role",
             "status", "gender", "date_of_birth", "city", "email_verified", "pending_email",
             "unit_weight", "unit_length", "unit_water", "timezone", "week_start", "theme", "share_photos",
-            "usage_data", "date_joined", "last_seen_at", "deletion_requested_at", "client",
+            "usage_data", "date_joined", "last_seen_at", "deletion_requested_at", "client", "permissions",
         ]
         read_only_fields = fields
+
+    def get_permissions(self, obj):
+        """Trainers: their effective access, so the app shows only what they may open (e.g. Automations)."""
+        tp = getattr(obj, "trainer_profile", None) if obj.role == Role.TRAINER else None
+        return tp.effective_permissions() if tp else None
 
     def get_email_verified(self, obj):
         return obj.email_verified_at is not None

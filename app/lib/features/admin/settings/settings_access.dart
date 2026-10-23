@@ -400,7 +400,8 @@ class _IntegrationsTabState extends State<IntegrationsTab> {
     if (loading && ints.isEmpty) return stLoading();
     final cw = widget.cw;
     final wide = cw >= 980;
-    final cards = [for (final x in ints) _IntCard(x: x, fill: wide, onOpen: () => _open(x))];
+    // Apple Health / Health Connect card hidden for now (Gautam 2026-10-23): the phone side is not built yet.
+    final cards = [for (final x in ints.where((x) => x['kind'] != 'health')) _IntCard(x: x, fill: wide, onOpen: () => _open(x))];
     final note = Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(color: AppColors.sub, borderRadius: AppRadius.all(8)),
@@ -480,7 +481,7 @@ class _IntCard extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(top: 4),
           child: Row(spacing: 8, children: [
-            Expanded(child: Text('${x['meta'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.cap)),
+            Expanded(child: CutText('${x['meta'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.cap)),
             status == 'not_connected'
                 ? AppButton.primary('Connect', size: BtnSize.sm, onPressed: onOpen)
                 : AppButton('Manage', size: BtnSize.sm, onPressed: onOpen),
@@ -603,7 +604,7 @@ Future<Object?> showIntegrationModal(BuildContext context, Map x, {required Futu
                   decoration: i == 0 ? null : const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
                   child: Row(spacing: 10, children: [
                     SizedBox(width: 56, child: Text(d.$1, style: AppText.s(13, W.w7))),
-                    Expanded(child: Text('TXT · ${d.$2}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.mono(12.5, color: AppColors.muted))),
+                    Expanded(child: CutText('TXT · ${d.$2}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.mono(12.5, color: AppColors.muted))),
                     Builder(builder: (_) {
                       final ok = status == 'connected' || records.any((r) => r['label'] == d.$1 && r['ok'] == true);
                       return AppBadge(ok ? 'Verified' : 'Waiting', tone: ok ? Tone.ok : Tone.warn, plain: true);

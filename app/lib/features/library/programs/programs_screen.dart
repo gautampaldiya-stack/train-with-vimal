@@ -120,11 +120,14 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
     if (mounted) _load();
   }
 
-  void _duplicate(Map p) => _run(() async {
+  Future<void> _duplicate(Map p) async {
+    if (!await confirmDuplicate(context, '"${p['name']}"', body: 'Same weeks and workouts, no clients. The original stays as it is.')) return;
+    await _run(() async {
         final c = await Services.api.post<Map>('programs/${p['id']}/duplicate/');
         if (!mounted) return;
         showToast(context, 'Program duplicated', sub: '${c['name']}', action: 'Undo', onAction: () => _run(() => Services.api.delete('programs/${c['id']}/')));
       }, fail: 'Could not duplicate it');
+  }
 
   void _archive(Map p) {
     final arch = p['archived'] == true;

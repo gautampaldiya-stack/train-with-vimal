@@ -182,13 +182,16 @@ class _ProgramBuilderScreenState extends State<ProgramBuilderScreen> {
     }, fail: 'Could not rename it');
   }
 
-  void _duplicate() => _run(() async {
+  Future<void> _duplicate() async {
+    if (!await confirmDuplicate(context, 'this program', body: 'Same weeks and workouts, no clients. The original stays as it is.')) return;
+    await _run(() async {
         await m.flushNow();
         final c = await Services.api.post<Map>('programs/${m.id}/duplicate/');
         if (!mounted) return;
         context.go('/programs/${c['id']}');
         showToast(context, 'Program duplicated', sub: 'Now editing ${c['name']}');
       }, fail: 'Could not duplicate it');
+  }
 
   void _archive() {
     final arch = m.archived;

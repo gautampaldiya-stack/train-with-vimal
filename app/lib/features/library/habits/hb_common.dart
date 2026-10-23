@@ -14,6 +14,7 @@ import '../../../core/widgets/input.dart';
 import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/tooltip.dart';
+import '../../../core/widgets/scroll_after.dart';
 import '../../trainer/client_profile/cp_content_drawers.dart' show drEveryone, DrOpt, DrScrollList;
 import '../lib_common.dart';
 
@@ -238,6 +239,7 @@ class HbAssignedCard extends StatelessWidget {
             Expanded(child: Text(empty, style: AppText.s(13, W.w5, color: AppColors.muted, h: 1.5))),
           ])
         else
+          ScrollAfter(children: [
           for (final c in list)
             Hover(
               onTap: () => context.go('/clients/${c['id']}?tab=plans'),
@@ -255,6 +257,7 @@ class HbAssignedCard extends StatelessWidget {
                 ]),
               ),
             ),
+          ]),
       ],
     );
   }

@@ -67,7 +67,7 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
         title: 'Automations',
         sub: 'Forms, messages and tasks that go out by themselves when something happens.',
         actions: [
-          AppButton('Message templates', icon: AppIcons.mail, iconOnly: compact, tooltip: 'Message templates', onPressed: () => context.go('/emails')),
+          if (Services.session.me?.role == Role.admin) AppButton('Message templates', icon: AppIcons.mail, iconOnly: compact, tooltip: 'Message templates', onPressed: () => context.go('/emails')),
           AppButton.primary('New automation', icon: AppIcons.plus, iconOnly: compact, tooltip: 'New automation', onPressed: _new),
         ],
       ),
@@ -118,15 +118,15 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: narrow ? 6 : 8, children: [
             Row(spacing: 6, children: [
               AppIcon(c.$1, size: 15, color: AppColors.hbTones[c.$2].$2),
-              Expanded(child: Text(c.$3, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.text2))),
+              Expanded(child: CutText(c.$3, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.text2))),
             ]),
             if (narrow) ...[
               Text(c.$4, style: AppText.s(22, W.w8, h: 1, tabular: true)),
-              Text(c.$5, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w5, color: AppColors.muted)),
+              CutText(c.$5, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w5, color: AppColors.muted)),
             ] else
               Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, spacing: 8, children: [
                 Text(c.$4, style: AppText.s(24, W.w8, h: 1, tabular: true)),
-                Expanded(child: Text(c.$5, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted))),
+                Expanded(child: CutText(c.$5, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted))),
               ]),
           ]),
         );
@@ -143,32 +143,32 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
 
   // ─────────────────────────────── Web list (`.au-row` grid)
 
-  static const _gap = 14.0;
+  static const _gap = 12.0;
 
+  /// Compact row (Gautam 2026-10-23: "congested"): switch | trigger | name + when/who | steps | clients | changed | ⋯.
+  /// Running and finished share one "Clients" column, so the name and the steps get the room.
   Widget _cols({required List<Widget> cells}) => Row(children: [
         SizedBox(width: 40, child: cells[0]),
         const SizedBox(width: _gap),
         SizedBox(width: 34, child: cells[1]),
         const SizedBox(width: _gap),
-        Expanded(flex: 9, child: ConstrainedBox(constraints: const BoxConstraints(minWidth: 200), child: cells[2])),
+        Expanded(flex: 11, child: ConstrainedBox(constraints: const BoxConstraints(minWidth: 200), child: cells[2])),
+        const SizedBox(width: _gap * 1.5),
+        Expanded(flex: 10, child: cells[3]),
         const SizedBox(width: _gap),
-        Expanded(flex: 13, child: cells[3]),
+        SizedBox(width: 92, child: cells[4]),
         const SizedBox(width: _gap),
-        SizedBox(width: 64, child: cells[4]),
-        const SizedBox(width: _gap),
-        SizedBox(width: 64, child: cells[5]),
-        const SizedBox(width: _gap),
-        SizedBox(width: 64, child: cells[6]),
-        const SizedBox(width: _gap),
-        SizedBox(width: 32, child: cells[7]),
+        SizedBox(width: 60, child: cells[5]),
+        const SizedBox(width: 4),
+        SizedBox(width: 32, child: cells[6]),
       ]);
 
   Widget _head() {
-    Text t(String s, {bool r = false}) => Text(s.toUpperCase(), maxLines: 1, textAlign: r ? TextAlign.right : null, style: AppText.s(11, W.w7, color: AppColors.muted, ls: .45));
+    Widget t(String s, {bool r = false}) => CutText(s.toUpperCase(), maxLines: 1, textAlign: r ? TextAlign.right : null, style: AppText.s(11, W.w7, color: AppColors.muted, ls: .45));
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
       decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.card))),
-      child: _cols(cells: [const SizedBox(), const SizedBox(), t('Automation'), t('Steps'), t('Running', r: true), t('Finished', r: true), t('Changed', r: true), const SizedBox()]),
+      child: _cols(cells: [const SizedBox(), const SizedBox(), t('Automation'), t('Steps'), t('Clients', r: true), t('Changed', r: true), const SizedBox()]),
     );
   }
 
@@ -187,8 +187,7 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
           AuTriggerTile('${a['trigger']}', tone: auListTone('${a['trigger']}')),
           _main(a, h, dim),
           _flow(a),
-          _num('${_n(a, 'running')}'),
-          _num('${_n(a, 'finished')}'),
+          _clients(a),
           Text(_changed(a['updated_at']), maxLines: 1, textAlign: TextAlign.right, style: AppText.s(12, W.w5, color: AppColors.muted)),
           _dots(a),
         ]),
@@ -205,14 +204,29 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
     return DateFormat(d.year == now.year ? 'd MMM' : 'd MMM yy').format(d);
   }
 
-  Widget _num(String v) => Text(v, maxLines: 1, textAlign: TextAlign.right, style: AppText.s(15, W.w7, tabular: true));
+  /// "3 running" over "12 finished".
+  Widget _clients(Map a) => Column(crossAxisAlignment: CrossAxisAlignment.end, spacing: 1, children: [
+        Text.rich(
+            TextSpan(children: [
+              TextSpan(text: '${_n(a, 'running')}', style: AppText.s(14, W.w7, tabular: true)),
+              TextSpan(text: ' running', style: AppText.s(12, W.w5, color: AppColors.muted)),
+            ]),
+            maxLines: 1),
+        Text('${_n(a, 'finished')} finished', maxLines: 1, style: AppText.s(11.5, W.w5, color: AppColors.muted, tabular: true)),
+      ]);
 
   Widget _main(Map a, bool h, bool dim, {bool wrap = false}) => Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 3, children: [
-        Wrap(spacing: 8, runSpacing: 3, crossAxisAlignment: WrapCrossAlignment.center, children: [
-          Text('${a['name']}', style: AppText.s(14.5, W.w7, color: h ? AppColors.accentText : (dim ? AppColors.text2 : AppColors.text), h: 1.3)),
-          auBadge('${a['status']}'),
-        ]),
-        Text('${a['trigger_line']} · ${auAudience(a)}',
+        if (wrap)
+          Wrap(spacing: 8, runSpacing: 3, crossAxisAlignment: WrapCrossAlignment.center, children: [
+            Text('${a['name']}', style: AppText.s(14.5, W.w7, color: h ? AppColors.accentText : (dim ? AppColors.text2 : AppColors.text), h: 1.3)),
+            auBadge('${a['status']}'),
+          ])
+        else
+          Row(spacing: 8, children: [
+            Flexible(child: CutText('${a['name']}', maxLines: 1, style: AppText.s(14, W.w7, color: h ? AppColors.accentText : (dim ? AppColors.text2 : AppColors.text), h: 1.3))),
+            auBadge('${a['status']}'),
+          ]),
+        CutText('${a['trigger_line']} · ${auAudience(a)}',
             maxLines: wrap ? 3 : 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted, h: 1.4)),
       ]);
 
@@ -221,23 +235,25 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
     final steps = _steps(a);
     return LayoutBuilder(builder: (_, box) {
       final lines = [for (final s in (a['steps'] as List?) ?? const []) '${(s as Map)['summary']}'];
+      // a few px spare: the measured text can come out a hair narrower than the drawn chip (was 2.9 px over)
+      final max = box.maxWidth - 6;
       var fit = 0;
       var used = 0.0;
       for (final (i, s) in steps.indexed) {
         final w = AuChip.widthOf(s.kind, s.chip) + (i > 0 ? 20 : 0);
         final left = steps.length - i - 1;
-        final room = box.maxWidth - (left > 0 ? AuChip.widthOf(null, '+$left more') + 20 : 0);
+        final room = max - (left > 0 ? AuChip.widthOf(null, '+$left more') + 20 : 0);
         if (used + w > room) break;
         used += w;
         fit++;
       }
-      return Row(children: [
+      return ClipRect(child: Row(children: [
         for (final (i, s) in steps.take(fit).indexed) ...[if (i > 0) auArrow, AuChip(s.kind, s.chip)],
         if (fit < steps.length) ...[
           if (fit > 0) auArrow,
           AppTooltip(message: lines.skip(fit).join('  ·  '), child: AuChip(null, '+${steps.length - fit} more')),
         ],
-      ]);
+      ]));
     });
   }
 
@@ -293,7 +309,10 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
   /// `.au-snd`: until the gym sets its own sender.
   Widget _senderNote(bool narrow) {
     final text = Text('Emails and WhatsApp go out from Train With Vimal until you set your own sender.', style: AppText.s(12.5, W.w6, color: AppColors.text2, h: 1.45));
-    final link = AppButton('Sender settings', kind: BtnKind.text, onPressed: () => context.go('/settings'));
+    // Emails & alerts → Sender is admin only; a trainer with automation access reads the note without the link.
+    final link = Services.session.me?.role == Role.admin
+        ? AppButton('Sender settings', kind: BtnKind.text, onPressed: () => context.go('/emails?tab=sender'))
+        : const SizedBox.shrink();
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(color: AppColors.sub, borderRadius: AppRadius.all(10)),
@@ -348,6 +367,7 @@ class _AutomationsScreenState extends State<AutomationsScreen> {
   }
 
   Future<void> _duplicate(Map a) async {
+    if (!await confirmDuplicate(context, '"${a['name']}"', body: 'The copy starts as a draft. The original stays as it is.')) return;
     final r = await _call(() => Services.api.post<Map>('automations/${a['id']}/duplicate/'), 'Could not duplicate it');
     if (r == null || !mounted) return;
     load();

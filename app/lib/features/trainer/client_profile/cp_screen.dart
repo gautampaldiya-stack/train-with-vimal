@@ -54,10 +54,13 @@ const _badges = {
 class _TrainerClientProfileScreenState extends State<TrainerClientProfileScreen> {
   late final c = CpController(widget.id, admin: widget.admin);
 
+  /// The admin, or a trainer with "Assign and reassign clients".
+  bool get _canAssign => widget.admin || (Services.session.me?.can('clients.assign') ?? false);
+
   @override
   void initState() {
     super.initState();
-    if (widget.admin) c.changeTrainer = _changeTrainer;
+    if (_canAssign) c.changeTrainer = _changeTrainer;
     if (widget.tab != null && CpController.tabs.any((t) => t.$1 == widget.tab)) c.tab = widget.tab!;
     c.load();
   }
@@ -211,7 +214,7 @@ class _TrainerClientProfileScreenState extends State<TrainerClientProfileScreen>
 
   void _moreMenu(BuildContext anchor) => showAppMenu(anchor, [
         MenuEntry('Edit profile details', icon: AppIcons.edit, onTap: _edit),
-        if (widget.admin) MenuEntry('Change trainer', icon: AppIcons.swap, onTap: _changeTrainer),
+        if (_canAssign) MenuEntry('Change trainer', icon: AppIcons.swap, onTap: _changeTrainer),
         MenuEntry('Assign a plan', icon: AppIcons.plus, onTap: () => Future.microtask(() {
               if (anchor.mounted) _assignMenu(anchor);
             })),
@@ -228,7 +231,7 @@ class _TrainerClientProfileScreenState extends State<TrainerClientProfileScreen>
       load: () => Services.api.get<Map>('clients/${c.id}/'),
       onSave: (data) => Services.api.patch('clients/${c.id}/', data),
       admin: widget.admin,
-      onChangeTrainer: widget.admin ? _changeTrainer : null,
+      onChangeTrainer: _canAssign ? _changeTrainer : null,
     );
     if (saved == true && mounted) {
       showToast(context, '${c.first}’s details saved', kind: ToastKind.ok);

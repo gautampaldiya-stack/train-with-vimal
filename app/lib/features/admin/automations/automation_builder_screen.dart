@@ -16,6 +16,7 @@ import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/select.dart';
 import '../../../core/widgets/tabs.dart';
+import '../../../core/widgets/tooltip.dart';
 import '../../library/nutrition/meal_builder_sheets.dart' show NuStep;
 import '../../trainer/client_profile/cp_content_drawers.dart' show DrSwitch, drField;
 import '../../trainer/me/me_docs.dart' show DashedBox;
@@ -193,7 +194,7 @@ class _AutomationBuilderScreenState extends State<AutomationBuilderScreen> {
         Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: phone ? 12 : 14, children: [_crumb(), _head(phone)]),
         LayoutBuilder(builder: (context, c) {
           final two = c.maxWidth >= 900;
-          final main = Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [_start(c.maxWidth - (two ? 356 : 0)), _who(), _next()]);
+          final main = Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [_start(), _who(), _next()]);
           final side = Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [_plain(), _last30()]);
           if (!two) return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [main, side]);
           return Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 16, children: [Expanded(child: main), SizedBox(width: 340, child: side)]);
@@ -208,7 +209,7 @@ class _AutomationBuilderScreenState extends State<AutomationBuilderScreen> {
           builder: (_, h, _) => Text('Automations', style: AppText.s(13, W.w5, color: h ? AppColors.text : AppColors.muted)),
         ),
         const AppIcon(AppIcons.chevronRight, size: 13, color: AppColors.chevron),
-        Flexible(child: Text(isNew ? 'New automation' : 'Edit automation', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6))),
+        Flexible(child: CutText(isNew ? 'New automation' : 'Edit automation', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6))),
       ]);
 
   Widget _head(bool phone) {
@@ -261,9 +262,7 @@ class _AutomationBuilderScreenState extends State<AutomationBuilderScreen> {
 
   // ─────────────────────────────── 1 When does it start?
 
-  Widget _start(double width) {
-    final inner = width - (context.isPhone ? 28 : 36) - 4;
-    final cols = inner >= 600 ? 3 : (inner >= 420 ? 2 : 1);
+  Widget _start() {
     final shown = [for (final t in auTriggers) if (group == 'all' || t.$4 == group) t];
     return _section(1, 'When does it start?', [
       drField('Automation name', AppTextField(controller: name, placeholder: 'e.g. Welcome series', error: nameError, onChanged: (_) => _edit(() => nameError = null)), ),
@@ -280,14 +279,18 @@ class _AutomationBuilderScreenState extends State<AutomationBuilderScreen> {
           onChanged: (v) => setState(() => group = v),
         ),
       ),
-      Column(spacing: cols == 1 ? 6 : 8, children: [
-        for (var i = 0; i < shown.length; i += cols)
-          IntrinsicHeight(
-            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
-              for (var j = i; j < i + cols; j++) Expanded(child: j < shown.length ? _triggerCard(shown[j], cols == 1) : const SizedBox()),
-            ]),
-          ),
-      ]),
+      // Columns from the room the grid really gets (the third column was cut when worked out from the page width).
+      LayoutBuilder(builder: (_, box) {
+        final cols = box.maxWidth >= 640 ? 3 : (box.maxWidth >= 420 ? 2 : 1);
+        return Column(spacing: cols == 1 ? 6 : 8, children: [
+          for (var i = 0; i < shown.length; i += cols)
+            IntrinsicHeight(
+              child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
+                for (var j = i; j < i + cols; j++) Expanded(child: j < shown.length ? _triggerCard(shown[j], cols == 1) : const SizedBox()),
+              ]),
+            ),
+        ]);
+      }),
       trigger.isEmpty ? _noTrigger() : _triggerDetail(),
     ]);
   }
@@ -564,7 +567,7 @@ class _AutomationBuilderScreenState extends State<AutomationBuilderScreen> {
 
   Widget _stepHead(int i, AuStep s, bool phone) {
     final title = Text('Step ${i + 1} · ${auKindLabel(s.kind)}', style: AppText.s(13, W.w7, h: 1.35));
-    final line = Text(_line(s), maxLines: phone ? 3 : 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted, h: 1.4));
+    final line = CutText(_line(s), maxLines: phone ? 3 : 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted, h: 1.4));
     final dots = Builder(builder: (b) => AppIconButton(AppIcons.dots, tooltip: 'Step options', small: true, ghost: true, onPressed: () => _stepMenu(b, i)));
     if (phone) {
       return Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 8, children: [
@@ -625,7 +628,8 @@ class _AutomationBuilderScreenState extends State<AutomationBuilderScreen> {
             : AppSelect(_templateName(s.template), entries: [
                 for (final t in templates) MenuEntry('${t['name']}', icon: AppIcons.send, selected: t['key'] == s.template, onTap: () => _edit(() => s.template = '${t['key']}')),
               ]),
-        Align(
+        if (Services.session.me?.role == Role.admin)
+          Align(
           alignment: Alignment.centerLeft,
           child: _link(isForm ? 'Open forms & check-ins' : 'Edit message templates', () => context.go(isForm ? (s.form.isEmpty ? '/forms' : '/forms/${s.form}') : '/emails')),
         ),
@@ -857,8 +861,8 @@ class _AutomationBuilderScreenState extends State<AutomationBuilderScreen> {
           AppAvatar('${c['full_name']}', size: 26, colors: AppColors.avatarCode('${c['avatar_color'] ?? 'c1'}'), initials: '${c['initials'] ?? ''}'),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-              Text('${c['full_name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w7, color: h ? AppColors.accentText : AppColors.text)),
-              Text(line, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted)),
+              CutText('${c['full_name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w7, color: h ? AppColors.accentText : AppColors.text)),
+              CutText(line, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted)),
             ]),
           ),
           Text(auAgo(r['updated_at'] ?? r['created_at']), style: AppText.s(11.5, W.w6, color: AppColors.muted)),

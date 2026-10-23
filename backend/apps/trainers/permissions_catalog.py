@@ -6,6 +6,7 @@ GROUPS = [
         ("clients.view_all", "View all clients", ""),
         ("clients.approve_signups", "Approve sign-ups", "Only people invited by him"),
         ("clients.pause", "Pause or resume clients", ""),
+        ("clients.assign", "Assign and reassign clients", "Pick or change the trainer of a client"),
     ]),
     ("Training", [
         ("training.programs_edit", "Create and edit programs", "For his clients"),
@@ -32,13 +33,16 @@ GROUPS = [
     ("Content", [
         ("content.manage", "Manage content library", ""),
     ]),
+    ("Automations", [
+        ("automations.manage", "Create and edit automations", "Gym-wide flows: messages, forms, tasks"),
+    ]),
 ]
 
 ALL_KEYS = [k for _, items in GROUPS for k, _, _ in items]
 
 ASSIGNED_PRESET = {
     "clients.view_assigned": True, "clients.view_all": False, "clients.approve_signups": False,
-    "clients.pause": False,
+    "clients.pause": False, "clients.assign": False,
     "training.programs_edit": True, "training.use_templates": True, "training.edit_templates": False,
     "training.custom_exercises": True,
     "nutrition.meal_plans": True, "nutrition.foods": True, "nutrition.supplements": True,
@@ -46,6 +50,7 @@ ASSIGNED_PRESET = {
     "checkins.daily": True, "checkins.weekly": True, "checkins.edit_forms": False, "checkins.photos": True,
     "schedule.own_calendar": True, "schedule.book_sessions": True,
     "content.manage": True,
+    "automations.manage": False,
 }
 
 ALL_CLIENTS_PRESET = {**ASSIGNED_PRESET, "clients.view_all": True, "clients.pause": True,
@@ -60,7 +65,7 @@ MATRIX_CEILING = {
     "content.manage": "manage_content",
     "schedule.book_sessions": "schedule_sessions",
 }
-MATRIX_GRANT = {"clients.view_all": "view_all_clients"}
+MATRIX_GRANT = {"clients.view_all": "view_all_clients", "clients.assign": "assign_clients"}
 
 # Fields on "What clients see" (Trainer profile tab), default on/off.
 VISIBILITY_DEFAULTS = {

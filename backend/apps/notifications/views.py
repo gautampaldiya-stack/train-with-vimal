@@ -3,12 +3,12 @@ from django.utils import timezone
 from django.utils.text import slugify
 from rest_framework import generics, mixins, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import SAFE_METHODS, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.common.pagination import TimelineCursorPagination
-from apps.common.permissions import IsAdmin, IsStaff
+from apps.common.permissions import HasTrainerPermission, IsAdmin, IsStaff
 
 from .defaults import TEMPLATES, default_channels_for
 from .models import (
@@ -132,10 +132,17 @@ class StaffNotificationPreferenceView(generics.RetrieveUpdateAPIView):
 
 
 class MessageTemplateViewSet(viewsets.ModelViewSet):
-    """Emails & alerts → Client messages (admin only)."""
+    """Emails & alerts → Client messages (admin only). A trainer who may build automations can read the list
+    to pick a message for a Send message step."""
 
     serializer_class = MessageTemplateSerializer
     permission_classes = [IsAdmin]
+    required_permission = "automations.manage"
+
+    def get_permissions(self):
+        if self.request.method in SAFE_METHODS:
+            return [HasTrainerPermission()]
+        return super().get_permissions()
     pagination_class = None
 
     def get_queryset(self):

@@ -150,6 +150,9 @@ final Map<String, Widget Function(GoRouterState)> trainerScreens = {
     if (st.uri.queryParameters['edit'] == '1') return ExerciseEditScreen(key: ValueKey(st.uri.toString()), id: id);
     return ExerciseDetailScreen(key: ValueKey(st.uri.toString()), id: id);
   },
+  // A trainer with "Create and edit automations" (trainer access) builds automations too.
+  '/automations': (_) => const AutomationsScreen(),
+  '/automations/:id': (st) => AutomationBuilderScreen(key: ValueKey(st.uri.toString()), id: st.pathParameters['id']!, starter: st.uri.queryParameters['starter']),
   '/me': (_) => const TrainerMeScreen(key: ValueKey('me')),
   '/me/:id': (st) => TrainerMeScreen(key: const ValueKey('me'), tab: st.pathParameters['id']),
   '/clients/:id': (st) => TrainerClientProfileScreen(key: ValueKey(st.uri.toString()), id: st.pathParameters['id']!, tab: st.uri.queryParameters['tab']),

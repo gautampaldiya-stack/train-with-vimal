@@ -393,6 +393,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
 
   Future<void> _dupHabit() async {
     if (!await _askDiscard(context)) return;
+    if (!mounted || !await confirmDuplicate(context, 'this habit', body: 'Same habit, no clients. The original stays as it is.')) return;
     await _run(() async {
       final r = await Services.api.post<Map>('habits/${c.hid}/duplicate/');
       await c.load();
@@ -452,6 +453,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
 
   Future<void> _dupPlan() async {
     if (!await _askDiscard(context)) return;
+    if (!mounted || !await confirmDuplicate(context, 'this plan', body: 'Same items, no clients. The original stays as it is.')) return;
     await _run(() async {
       final r = await Services.api.post<Map>('supplement-plans/${c.sid}/duplicate/');
       await c.load();

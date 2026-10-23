@@ -20,6 +20,7 @@ import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/tabs.dart';
 import '../../../core/widgets/tooltip.dart';
+import '../../../core/widgets/scroll_after.dart';
 import '../../trainer/client_profile/cp_plans_meal_edit.dart'
     show DangerText, MatchBadge, MatchPill, MealItemMath, askFoodUnit, portionLabel, showFoodPicker;
 import '../lib_common.dart';
@@ -172,7 +173,9 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
     }, fail: 'Could not rename it');
   }
 
-  void _duplicate() => _run(() async {
+  Future<void> _duplicate() async {
+    if (!await confirmDuplicate(context, 'this meal plan', body: 'Same meals, no clients. The original stays as it is.')) return;
+    await _run(() async {
         final c = await Services.api.post<Map>('meal-plans/${m.id}/duplicate/');
         if (!mounted) return;
         if (m.unsaved) {
@@ -182,6 +185,7 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
         context.go('/nutrition/${c['id']}');
         showToast(context, 'Plan duplicated', sub: '${c['name']} · same meals, no clients');
       }, fail: 'Could not duplicate it');
+  }
 
   Future<void> _delete() async {
     int n = 0;
@@ -305,6 +309,12 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
 
   List _optList(Map meal) => (meal['options'] as List?) ?? (meal['options'] = []);
 
+  Future<void> _dupOption(Map meal) async {
+    final cur = m.optionsOf(meal)[m.shownOf(meal)];
+    if (!await confirmDuplicate(context, '${cur['name']}', body: 'A new option with the same foods is added to ${meal['name']}.') || !mounted) return;
+    _addOption(meal, copy: true);
+  }
+
   void _addOption(Map meal, {required bool copy}) {
     final os = _optList(meal);
     final cur = m.optionsOf(meal)[m.shownOf(meal)];
@@ -330,7 +340,7 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
     showAppMenu(anchor, width: 260, [
       MenuEntry.header('Add option to ${meal['name']}'),
       MenuEntry('Blank', icon: AppIcons.plus, sub: 'Empty option, add the foods yourself', onTap: () => _addOption(meal, copy: false)),
-      MenuEntry('Duplicate current option', icon: AppIcons.copy, sub: 'Copy of ${cur['name']}', onTap: () => _addOption(meal, copy: true)),
+      MenuEntry('Duplicate current option', icon: AppIcons.copy, sub: 'Copy of ${cur['name']}', onTap: () => _dupOption(meal)),
     ]);
   }
 
@@ -348,7 +358,7 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
     showAppMenu(anchor, width: 250, [
       MenuEntry.header('${o['name']}'),
       MenuEntry('Rename', icon: AppIcons.edit, onTap: () => _renameOption(meal, o)),
-      MenuEntry('Duplicate', icon: AppIcons.copy, sub: 'Same foods, new option', onTap: () => _addOption(meal, copy: true)),
+      MenuEntry('Duplicate', icon: AppIcons.copy, sub: 'Same foods, new option', onTap: () => _dupOption(meal)),
       if (!def)
         MenuEntry('Set as default', icon: AppIcons.check, sub: 'The client sees this one first', onTap: () => _change(() {
               for (final x in os) {
@@ -1203,7 +1213,6 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
 
   Widget _clientsCard() {
     final list = _clients;
-    const show = 5;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
       Row(children: [
         Expanded(child: Text('Clients on this plan', style: AppText.s(14.5, W.w8))),
@@ -1213,8 +1222,10 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
         const Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent)))
       else if (list.isEmpty)
         Text('Not assigned to anyone yet.', style: AppText.s(13, W.w5, color: AppColors.muted))
-      else ...[
-        for (final c in list.take(show))
+      else
+        // more than 5 scroll inside the card (Gautam 2026-10-23)
+        ScrollAfter(spacing: 10, children: [
+        for (final c in list)
           Hover(
             onTap: () => context.go('/clients/${c['id']}?tab=plans'),
             builder: (_, h, _) {
@@ -1233,9 +1244,7 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
               ]);
             },
           ),
-        if (list.length > show)
-          Align(alignment: Alignment.centerLeft, child: AppButton('+${list.length - show} more', kind: BtnKind.text, size: BtnSize.sm, onPressed: _manage)),
-      ],
+        ]),
       Text('Changes to the master reach everyone. A version note keeps one client\'s changes.', style: AppText.s(12, W.w5, color: AppColors.muted, h: 1.5)),
     ]);
   }

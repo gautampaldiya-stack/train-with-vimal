@@ -198,11 +198,14 @@ class _NutritionScreenState extends State<NutritionScreen> {
     if (mounted) _reload();
   }
 
-  void _duplicate(Map p) => _run(() async {
+  Future<void> _duplicate(Map p) async {
+    if (!await confirmDuplicate(context, '"${p['name']}"', body: 'Same meals, no clients. The original stays as it is.')) return;
+    await _run(() async {
         final c = await Services.api.post<Map>('meal-plans/${p['id']}/duplicate/');
         if (!mounted) return;
         showToast(context, 'Plan duplicated', sub: 'Same meals, no clients', action: 'Undo', onAction: () => _run(() => Services.api.delete('meal-plans/${c['id']}/')));
       }, fail: 'Could not duplicate it');
+  }
 
   Future<void> _delete(Map p) async {
     int n = 0;
@@ -264,7 +267,9 @@ class _NutritionScreenState extends State<NutritionScreen> {
     _reload();
   }
 
-  void _dupFood(Map f) => _run(() async {
+  Future<void> _dupFood(Map f) async {
+    if (!await confirmDuplicate(context, '"${f['name']}"')) return;
+    await _run(() async {
         final c = await Services.api.post<Map>('foods/${f['id']}/duplicate/');
         if (!mounted) return;
         setState(() {
@@ -273,6 +278,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
         });
         showToast(context, 'Food duplicated', sub: '${c['name']} is in My foods', action: 'Undo', onAction: () => _run(() => Services.api.delete('foods/${c['id']}/')));
       }, fail: 'Could not duplicate it');
+  }
 
   Future<void> _delFood(Map f) async {
     final used = (f['used_in'] as List?)?.length ?? 0;

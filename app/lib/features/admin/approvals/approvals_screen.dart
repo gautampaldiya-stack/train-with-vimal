@@ -15,6 +15,7 @@ import '../../../core/widgets/pager.dart';
 import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/tabs.dart';
 import '../../../core/widgets/tooltip.dart';
+import '../../../core/widgets/table_head.dart';
 import '../clients/admin_client_drawers.dart';
 import '../clients/invite_links_modal.dart';
 import 'approvals_model.dart';
@@ -293,9 +294,10 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
 
   Widget _table() => LayoutBuilder(builder: (context, box) {
         final cols = _hist ? _histCols : _waitCols;
-        final min = cols.fold<double>(0, (a, x) => a + x.$2);
+        final base = [for (final (i, x) in cols.indexed) headFit(x.$1, x.$2, pad: i == 0 ? 28 : 24)];
+        final min = base.fold<double>(0, (a, w) => a + w);
         final extra = (box.maxWidth - min).clamp(0.0, double.infinity);
-        final widths = [for (final (i, x) in cols.indexed) x.$2 + (i == 0 ? extra : 0)];
+        final widths = [for (final (i, w) in base.indexed) w + (i == 0 ? extra : 0)];
         final table = SizedBox(
           width: min + extra,
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -311,7 +313,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
                     width: widths[i],
                     padding: EdgeInsets.fromLTRB(i == 0 ? 16 : 12, 0, 12, 0),
                     alignment: x.$3 ? Alignment.centerRight : Alignment.centerLeft,
-                    child: Text(x.$1.toUpperCase(), maxLines: 1, style: AppText.s(11.5, W.w7, color: AppColors.muted, ls: .58)),
+                    child: Text(x.$1.toUpperCase(), maxLines: 1, softWrap: false, style: tableHeadStyle),
                   ),
               ]),
             ),

@@ -15,6 +15,7 @@ import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/input.dart';
 import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
+// ignore: unused_import (Timezone / language selects are hidden for now)
 import '../../../core/widgets/select.dart';
 import '../../../core/widgets/tabs.dart';
 import '../../../core/widgets/tooltip.dart';
@@ -113,7 +114,7 @@ class _GeneralTabState extends State<_GeneralTab> {
   ApiError? error;
   bool loading = true, saving = false, savedNow = false;
   Map<String, String?> errs = {};
-  final c = {for (final k in ['name', 'email', 'phone', 'address', 'instagram']) k: TextEditingController()};
+  final c = {for (final k in ['name', 'email', 'phone', 'address', 'website', 'instagram', 'youtube', 'facebook']) k: TextEditingController()};
 
   @override
   void initState() {
@@ -202,10 +203,11 @@ class _GeneralTabState extends State<_GeneralTab> {
     }
   }
 
-  Widget _field(String key, Widget label, {TextInputType? keyboard, int maxLines = 1}) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
+  Widget _field(String key, Widget label, {TextInputType? keyboard, int maxLines = 1, String? placeholder}) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
         label,
         AppTextField(
           controller: c[key],
+          placeholder: placeholder,
           keyboard: keyboard,
           maxLines: maxLines,
           minLines: 1,
@@ -238,7 +240,18 @@ class _GeneralTabState extends State<_GeneralTab> {
             Expanded(child: _field('phone', Text('Phone / WhatsApp', style: AppText.label), keyboard: TextInputType.phone)),
           ]),
         _field('address', Text('Address', style: AppText.label), maxLines: phone ? 2 : 1),
-        _field('instagram', Text('Website / Instagram', style: AppText.label), keyboard: TextInputType.url),
+        // Social links (Gautam 2026-10-23): one field each instead of the board's single "Website / Instagram".
+        Text('Social media', style: AppText.s(13.5, W.w7)),
+        for (final pair in const [
+          [('website', 'Website', 'trainwithvimal.com'), ('instagram', 'Instagram', '@trainwithvimal')],
+          [('youtube', 'YouTube', 'youtube.com/@trainwithvimal'), ('facebook', 'Facebook', 'facebook.com/trainwithvimal')],
+        ])
+          if (phone)
+            for (final f in pair) _field(f.$1, Text(f.$2, style: AppText.label), keyboard: TextInputType.url, placeholder: f.$3)
+          else
+            Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 12, children: [
+              for (final f in pair) Expanded(child: _field(f.$1, Text(f.$2, style: AppText.label), keyboard: TextInputType.url, placeholder: f.$3)),
+            ]),
       ]),
       foot: phone
           ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
@@ -249,16 +262,17 @@ class _GeneralTabState extends State<_GeneralTab> {
     );
 
     final units = '${gym['default_units'] ?? 'metric'}';
-    final tz = [for (final t in (gym['timezones'] as List? ?? [])) t as Map];
-    final langs = [for (final t in (gym['languages'] as List? ?? [])) t as Map];
-    String label(List<Map> list, String v) => '${(list.where((t) => t['value'] == v).firstOrNull ?? {'label': v})['label']}';
-    Widget select(List<Map> list, String key) {
-      final v = '${gym[key] ?? ''}';
-      final s = AppSelect(label(list, v), entries: [
-        for (final t in list) MenuEntry('${t['label']}', selected: t['value'] == v, onTap: () => _patch({key: t['value']})),
-      ]);
-      return phone ? s : SizedBox(width: 220, child: s);
-    }
+    // Timezone + App language selects, hidden for now (see the commented rows below).
+    // final tz = [for (final t in (gym['timezones'] as List? ?? [])) t as Map];
+    // final langs = [for (final t in (gym['languages'] as List? ?? [])) t as Map];
+    // String label(List<Map> list, String v) => '${(list.where((t) => t['value'] == v).firstOrNull ?? {'label': v})['label']}';
+    // Widget select(List<Map> list, String key) {
+    //   final v = '${gym[key] ?? ''}';
+    //   final s = AppSelect(label(list, v), entries: [
+    //     for (final t in list) MenuEntry('${t['label']}', selected: t['value'] == v, onTap: () => _patch({key: t['value']})),
+    //   ]);
+    //   return phone ? s : SizedBox(width: 220, child: s);
+    // }
 
     final regional = StEditCard(
       cw: cw,
@@ -291,8 +305,9 @@ class _GeneralTabState extends State<_GeneralTab> {
             onChanged: (v) => _patch({'week_start': v}),
           ),
         ),
-        StRow(phone: phone, stretch: true, title: 'Timezone', sub: 'Reminders and automations run on this clock', control: select(tz, 'timezone')),
-        StRow(phone: phone, stretch: true, title: 'App language', sub: 'Menus and default messages', control: select(langs, 'language')),
+        // Hidden for now (Gautam 2026-10-23): the gym runs on IST and the app is English only.
+        // StRow(phone: phone, stretch: true, title: 'Timezone', sub: 'Reminders and automations run on this clock', control: select(tz, 'timezone')),
+        // StRow(phone: phone, stretch: true, title: 'App language', sub: 'Menus and default messages', control: select(langs, 'language')),
       ]),
     );
 
@@ -573,7 +588,7 @@ class _BrandingTabState extends State<_BrandingTab> {
       ]),
       foot: Row(spacing: 10, children: [
         AppButton('Reset', kind: BtnKind.text, icon: AppIcons.undo, onPressed: _reset),
-        Expanded(child: Text(applied ? 'Applied' : 'Not applied yet', textAlign: TextAlign.right, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted))),
+        Expanded(child: CutText(applied ? 'Applied' : 'Not applied yet', textAlign: TextAlign.right, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted))),
         AppButton.primary('Apply', icon: AppIcons.check, loading: applying, onPressed: _apply),
       ]),
     );
@@ -613,7 +628,7 @@ class _BrandingTabState extends State<_BrandingTab> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
               Row(spacing: 8, children: [
                 _logo(28, 8, 10.5),
-                Expanded(child: Text('${br['name'] ?? 'Train With Vimal'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w7, color: txt))),
+                Expanded(child: CutText('${br['name'] ?? 'Train With Vimal'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w7, color: txt))),
               ]),
               Text('Good morning, Sana', style: AppText.s(16, W.w8, color: txt)),
               Container(

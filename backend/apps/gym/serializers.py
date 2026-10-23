@@ -15,7 +15,7 @@ LANGUAGES = {"en": "English"}
 class GymProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = GymSettings
-        fields = ["name", "email", "phone", "address", "instagram", "timezone", "language", "tagline", "website", "whatsapp",
+        fields = ["name", "email", "phone", "address", "instagram", "youtube", "facebook", "timezone", "language", "tagline", "website", "whatsapp",
                   "support_hours", "coach_role", "coach_intro", "coach_stats", "default_units", "week_start",
                   "profile_saved_at"]
         read_only_fields = ["profile_saved_at"]

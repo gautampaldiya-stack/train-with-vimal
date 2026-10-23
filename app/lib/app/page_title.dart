@@ -33,7 +33,7 @@ String pageTitle(String path) {
   if (name == null && parts.isNotEmpty) {
     final role = Services.session.me?.role;
     if (role != null) {
-      for (final n in sidebarFor(role)) {
+      for (final n in sidebarFor(role, automations: true)) {
         if (n.path == '/${parts.first}') {
           name = n.label;
           break;

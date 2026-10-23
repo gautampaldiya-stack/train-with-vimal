@@ -20,6 +20,7 @@ import '../lib_common.dart';
 import 'ex_common.dart';
 import 'ex_sheets.dart';
 import '../../../core/widgets/tooltip.dart';
+import '../../../core/widgets/scroll_after.dart';
 
 /// Exercise page (boards `ExerciseDetail` / `ExerciseDetailMobile`): header with the cover, Default sets and reps,
 /// How to · Form cues · Muscles (body map), Video, Details and Used in N programs. Built-in exercises are read-only
@@ -435,6 +436,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
           _cardHead(used.isEmpty ? 'Not in a program yet' : 'Used in ${plural(used.length, 'program')}'),
           if (used.isEmpty)
             Padding(padding: const EdgeInsets.only(bottom: 10), child: Text('Add it to a program with Add to program.', style: AppText.s(13, W.w5, color: AppColors.muted))),
+          ScrollAfter(children: [
           for (final p in used)
             Hover(
               onTap: () => context.go('/programs/${p['id']}'),
@@ -459,6 +461,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                 ]),
               ),
             ),
+          ]),
         ]),
       );
 }

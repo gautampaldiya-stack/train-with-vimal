@@ -195,7 +195,8 @@ class ClientViewSet(viewsets.ModelViewSet):
                                         "Last active"], rows)
 
     def _can_change_trainer(self, user):
-        return user.is_admin or user.trainer_profile.has_perm("clients.view_all")
+        tp = user.trainer_profile
+        return user.is_admin or tp.has_perm("clients.assign") or tp.has_perm("clients.view_all")
 
     @action(detail=True)
     def trainers(self, request, pk=None):

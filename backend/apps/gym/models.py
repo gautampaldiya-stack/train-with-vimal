@@ -11,6 +11,9 @@ class GymSettings(models.Model):
     phone = models.CharField(max_length=20, blank=True, default="")
     address = models.CharField(max_length=300, blank=True, default="")
     instagram = models.CharField(max_length=100, blank=True, default="")
+    # Social links on Settings → Gym profile (Gautam 2026-10-23: website, Instagram, YouTube, Facebook).
+    youtube = models.CharField(max_length=200, blank=True, default="")
+    facebook = models.CharField(max_length=200, blank=True, default="")
     # Client About page (ClientAbout board): tagline, website, support hours and the head coach card.
     tagline = models.CharField(max_length=120, blank=True, default="Online coaching for weight gain and muscle gain")
     website = models.CharField(max_length=200, blank=True, default="trainwithvimal.com")
@@ -83,8 +86,7 @@ DEFAULT_ROLE_MATRIX = {
 
 
 LOCKED_CELLS = {
-    "trainer": {"view_assigned_clients": True, "assign_clients": False, "add_trainers": False,
-                "automations_settings": False},
+    "trainer": {"view_assigned_clients": True, "add_trainers": False, "automations_settings": False},
     "client": dict(DEFAULT_ROLE_MATRIX["client"]),
 }
 
