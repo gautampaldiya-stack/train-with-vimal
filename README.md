@@ -78,6 +78,39 @@ Debug and profile builds allow plain `http` to the laptop (`android/app/src/debu
 release builds need `https`. The app compiles against Android SDK 37 because `permission_handler` needs it
 (`android/app/build.gradle.kts`); Android Studio downloads SDK Platform 37 the first time if it is missing.
 
+## Push notifications on your PC (Firebase, D-56)
+Without these steps everything works except phone / browser push (in-app and live notifications still work).
+
+**1. App keys → `app/firebase.json`** (not in git). Copy `app/firebase.example.json` to `app/firebase.json` and fill:
+
+| Key | Where in Firebase console (Project settings) |
+|---|---|
+| `FB_PROJECT_ID` | General → Project ID |
+| `FB_SENDER_ID` | Cloud Messaging → Sender ID (same as `messagingSenderId`) |
+| `FB_WEB_API_KEY`, `FB_WEB_APP_ID`, `FB_AUTH_DOMAIN`, `FB_STORAGE_BUCKET` | General → Your apps → **Train With Vimal Web** → SDK setup and configuration → **Config**: `apiKey`, `appId`, `authDomain`, `storageBucket` |
+| `FB_VAPID_KEY` | Cloud Messaging → Web Push certificates → Key pair (Generate key pair once) |
+| `FB_ANDROID_API_KEY`, `FB_ANDROID_APP_ID` | General → Your apps → **Train With Vimal** (Android) → download `google-services.json`: `client[0].api_key[0].current_key` and `client[0].client_info.mobilesdk_app_id` |
+| `FB_IOS_API_KEY`, `FB_IOS_APP_ID` | later (with the Apple developer account): `GoogleService-Info.plist` → `API_KEY`, `GOOGLE_APP_ID` |
+
+Then once (and after every change of `firebase.json`): `cd app && dart run tool/firebase_web.dart`
+(writes `app/web/firebase-config.js` for the web push service worker, also not in git).
+Run the app with the keys: add `--dart-define-from-file=firebase.json` to `flutter run`, for example
+`flutter run -d chrome --dart-define=API_URL=http://localhost:8000 --dart-define-from-file=firebase.json`.
+
+**2. Server key → `backend/secrets/firebase-service-account.json`** (not in git). Firebase → Project settings →
+Service accounts → Generate new private key → save the file there with that name. In `backend/.env`:
+```
+PUSH_PROVIDER=fcm
+FCM_PROJECT_ID=<Project ID>
+FCM_SERVICE_ACCOUNT_FILE=secrets/firebase-service-account.json
+```
+Restart the API (and the Celery worker if you run one).
+
+**3. Try it:** log in (web: allow notifications when Chrome asks), close the tab or put the phone app in the
+background, then make something that notifies that user (for example the trainer reviews a check-in). The push
+opens the right page when tapped.
+iPhone push needs the Apple developer account (APNs key) first.
+
 ## Deploy (server)
 One domain, all in Docker, behind CloudPanel; push to `develop` deploys. Steps: [`deploy/README.md`](deploy/README.md).
 

@@ -27,3 +27,5 @@ secrets/
 .idea/
 .vscode/
 .DS_Store
+app/firebase.json
+app/web/firebase-config.js

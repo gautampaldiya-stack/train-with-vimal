@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-23 · Push notifications (Firebase) in the app + handoff
+- **Pehle:** Server push bhej sakta tha, par app phone / browser ko register hi nahi karta tha, isliye push kabhi nahi aata. Firebase keys kahan daalni hai, tay nahi tha. HANDOFF.md 18 Oct ka tha.
+- **Ab:** Login ke baad app permission maangta hai aur device ko `devices/` me save karta hai. Log out par device hat jaata hai. Push tap karne par sahi page khulta hai. Web push service worker se aata hai. Saari app keys ek file `app/firebase.json` me (git me nahi), server key `secrets/` me. Live site ke liye GitHub secret `FIREBASE_JSON`. iPhone baad me (Apple account). HANDOFF.md naye account ke liye poora update hua (live server, deploy, push, parked list, branch rule).
+- **Kyun:** Gautam: "mere local me bhi set kar do... notification and all", "ye copy ki hui kaha daalni hai", "handoff update kar dena... dusre account se continue karunga".
+- **Updated:** app (pubspec firebase_core + firebase_messaging, lib/core/push/push.dart, lib/app/services.dart, lib/main.dart, web/firebase-messaging-sw.js, tool/firebase_web.dart, firebase.example.json), .gitignore, backend/.env.example, .github/workflows/deploy-develop.yml, README.md, deploy/README.md, docs/HANDOFF.md · Decision D-56
+
 ### 2026-10-23 · From address, package hide, icon + splash, deploy
 - **Pehle:** Integrations me sirf domain tha, emails hamesha hello@domain se. Automations / Emails me Package trigger, Who → Package, Renewal reminder aur Packages tab the (par client ka package set karne ki jagah hi nahi thi). App icon / splash Flutter default. Server deploy ka koi setup nahi tha.
 - **Ab:** Integrations → Email sending me "From address" (jaise coach@domain). Package har jagah hidden (code me comment, wapas la sakte hai). Gautam ke logo se app icon + splash (Android, iOS, web). Ek hi domain twv.prowavetech.in: CloudPanel reverse proxy → Docker nginx → app + API, sab Docker me. develop par push = auto test + deploy (GitHub Actions). App id ab `com.trainwithvimal.app` (Firebase apps jaisa). Server folder `~/twv` (root = `/root/twv`, workflow me likha hai) deploy khud banata hai. Detailed steps (SSH key, GitHub secrets, .env, Firebase file `secrets/` me) deploy/README.md me; app me push ka code Firebase project banne ke baad.

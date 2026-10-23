@@ -72,9 +72,13 @@ jobs:
       - name: Build web app
         if: steps.chk.outputs.ok == 'true'
         working-directory: app
+        env:
+          FIREBASE_JSON: ${{ secrets.FIREBASE_JSON }}   # app/firebase.json content; empty = push off (D-56)
         run: |
           flutter pub get
-          flutter build web --release --no-web-resources-cdn --dart-define=API_URL=$API_URL
+          printf '%s' "${FIREBASE_JSON:-{\}}" > firebase.json
+          dart run tool/firebase_web.dart
+          flutter build web --release --no-web-resources-cdn --dart-define=API_URL=$API_URL --dart-define-from-file=firebase.json
       - name: SSH key
         if: steps.chk.outputs.ok == 'true'
         env:

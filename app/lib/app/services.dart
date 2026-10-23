@@ -5,6 +5,7 @@ import '../core/api/api_error.dart';
 import '../core/api/token_store.dart';
 import '../core/offline/cache.dart';
 import '../core/offline/outbox.dart';
+import '../core/push/push.dart';
 import '../core/realtime/realtime.dart';
 
 enum Role { admin, trainer, client }
@@ -66,6 +67,7 @@ class Services {
   static final outbox = Outbox(api);
   static final cache = ReadCache();
   static final realtime = Realtime();
+  static final push = Push(api);
   static final session = Session();
 }
 
@@ -150,7 +152,10 @@ class Session extends ChangeNotifier {
   void _syncRealtime() {
     final token = Services.tokens.access;
     if (token != null && me != null && !me!.pending) {
-      if (!Services.realtime.active) Services.realtime.connect(token);
+      if (!Services.realtime.active) {
+        Services.realtime.connect(token);
+        Services.push.start(platform); // phone / browser push when the app is closed (D-56)
+      }
     } else {
       Services.realtime.disconnect();
     }
@@ -158,6 +163,7 @@ class Session extends ChangeNotifier {
 
   Future<void> signOut({bool remote = true}) async {
     if (remote) {
+      await Services.push.stop();
       try {
         await Services.api.post('auth/logout/', {'refresh': Services.tokens.refresh});
       } catch (_) {}

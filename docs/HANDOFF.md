@@ -1,7 +1,8 @@
 # Handoff — continue this project from a new Claude account
 
-Written 2026-10-18 when Gautam moved the work to another claude.ai account. A new Claude (or developer) reading only
-this repo should be able to carry on without asking anything. Read this, then the files in "Read before any work".
+First written 2026-10-18; **rewritten 2026-10-23** when Gautam moved to another claude.ai account again. A new Claude
+(or developer) reading only this repo should be able to carry on without asking anything. Read this, then the
+files in "Read before any work".
 
 ## 1. What the app is
 **Train With Vimal** — a coaching app for one gym (owner: Vimal). One Flutter codebase for Android, iOS and web,
@@ -36,48 +37,55 @@ Gautam has to share it from the old account, or just use `design/screens/` from 
 2. `docs/phases/CURRENT.md` — what is happening now / next (handoff note, updated with every push)
 3. `docs/screens/status.md` — every board, Done / Partial / Not started
 4. `docs/rulebooks/definition-of-done.md` — when a screen counts as done
-5. `docs/decisions/` — D-1 … D-38, why things are the way they are
+5. `docs/decisions/` — D-1 … D-56, why things are the way they are
 6. `docs/memory/README.md` — every decision and answer from Gautam (long list, read it all)
 7. For a screen: its board in `design/screens/`, its section in `docs/screens/behaviour.md`, tokens in `docs/design-system.md`
 
-## 4. What is built (as of 2026-10-18)
-`docs/screens/status.md`: **49 Done, 54 Not started** (of 104; `Main` is the design-system board).
+## 4. What is built (as of 2026-10-23)
+`docs/screens/status.md`: **every board is Done** (101). Not built on purpose: `ClientFood*` / `ClientNutrition*`
+(replaced by the combined Food page `ClientMealNutrition`), `Main` (canvas index, not a screen).
 
-- **Login / onboarding**: all Done — intro, welcome, log in, forgot / reset password, join (invite) link, login link,
-  verify email, permissions, approval wait, setup (the gym's 9-step coaching form, D-36), health.
-- **Client app**: all Done — Home (phone uses the **hero** design, Gautam's pick), Train + workout logger, Food
-  (combined `ClientMealNutrition` page) + Log food, Habits & supplements, Check-ins, Progress (+ history, photos,
-  compare, body measurements), More / My account, Library, About.
-  `ClientFood*` and `ClientNutrition*` are **replaced on purpose** by the combined Food page (not to be built).
-  `ClientProfile` / `ClientProfileMobile` are the staff view of a client, built as the trainer Client profile.
-- **Trainer**: Done — Dashboard, My clients, Client profile (all 9 tabs), Check-ins, Calendar, My profile (TrainerMe).
-- **Backend**: complete, incl. Daily summary sending (8 AM) and the Gym news API.
+- **Login / onboarding, client app, trainer app, library screens** (Programs, Exercises, Nutrition & foods, Habits &
+  supplements, Content library) and **all admin screens** (Dashboard, Clients, Approvals, Trainers, Trainer profile,
+  Calendar, Activity log, Forms & check-ins + builder, Automations + builder, Emails & alerts, Settings).
+- **Last rounds (23 Oct):** D-54 (trainer access, settings trims, tables, tooltips), D-55 (From address in
+  Integrations, packages hidden, app icon + splash, one-domain Docker deploy + CI/CD), D-56 (push notifications in the
+  app, Firebase config). Details: `docs/changes.md` (newest first) and `docs/phases/CURRENT.md`.
+- **Next:** whatever Gautam asks after testing the live site. Open items: Firebase keys from Gautam (section 6),
+  Android push test on a real phone, iPhone push after the Apple account, the parked list (section 6b).
 
-## 5. What is left (Not started, by board name)
-- **Trainer app**: only `TrainerMoreMobile` (phone More tab: Library links + Log out; do this next). The trainer's own
-  My profile is `TrainerMe` / `TrainerMeMobile` and is **Done**.
-- **Polish asked by Gautam (18 Oct):** trainer My profile on phone (`TrainerMeMobile`, route of `TrainerMe`) needs a
-  better mobile layout: all details, cards and buttons must fit and line up well at 390 (and under 600), every tab,
-  modal and sheet included. Check against `design/screens/TrainerMeMobile.dc.html` in the browser and in debug mode.
-- **Library screens TrainerMoreMobile and the client profile link to** (also admin): `Programs`, `ProgramBuilder`, `ExerciseLibrary`,
-  `ExerciseDetail`, `ExerciseAdd`, `Nutrition`, `MealPlanBuilder`, `Habits`, `Content` (each + `Mobile`).
-- **Admin**: `Trainers` (Vimal's list of trainers, behaviour 2.7), `TrainerProfile` (Vimal's view of one trainer,
-  breadcrumb Trainers / Aman Verma, behaviour 2.24), `AdminDashboard`, `AdminMoreMobile`, `Clients`, `Approvals`, `Calendar`, `Activity`, `Forms`,
-  `FormBuilder`, `Automations`, `AutomationNew`, `AutomationBuilder`, `Emails`, `Settings` (each + `Mobile`).
-- Not checked yet: the 9 setup steps and the new Edit profile drawer sections against the setup boards (phone / desktop).
-- Not built (small): guide video player for uploaded videos without YouTube, saving images to the phone gallery,
-  dark theme, coach pickers that belong to admin screens.
+## 5. Live server and deploy (D-55)
+- **Live (staging):** https://twv.prowavetech.in on Gautam's CloudPanel VPS. One domain: CloudPanel reverse proxy ->
+  `127.0.0.1:8080` -> Docker nginx (`deploy/nginx.conf`) -> Flutter web + Django API. Containers: web, api, worker,
+  beat, db, redis (`docker-compose.prod.yml`). Server folder `/root/twv` (deploy runs as root, like Gautam's other
+  project `/root/probid_v2`). Server `.env` = `/root/twv/backend/.env` (made by hand from `deploy/env.example`; it
+  must use the docker names `db` and `redis`, not localhost).
+- **Auto deploy:** push to `develop` -> `.github/workflows/deploy-develop.yml`: tests -> build web -> rsync over SSH ->
+  `docker compose up -d --build` -> health check. GitHub secrets: `VPS_HOST`, `VPS_USER` (root), `VPS_SSH_KEY`,
+  optional `VPS_PORT`, optional `FIREBASE_JSON`. First green deploy 2026-10-23.
+- **Branch rule (Gautam 2026-10-23):** push daily work to `working` only. Merge to `develop` **only when Gautam asks**
+  (every push to develop deploys the live site).
+- Full steps, handy commands, backups: `deploy/README.md`.
 
-**Order (from CURRENT.md):** My profile mobile polish → TrainerMoreMobile → library screens (Programs, Exercises, Nutrition & foods, Habits &
-supplements, Content library) → admin screens (incl. Trainers, TrainerProfile).
+## 6. Push notifications (D-56)
+- Server sends push through FCM HTTP v1 when `PUSH_PROVIDER=fcm` (`backend/apps/notifications/providers.py`).
+- App registers the phone / browser after login (`app/lib/core/push/push.dart`, `devices/` API) and removes it on
+  log out; tapping a push opens its page (`data.route`). Web uses `app/web/firebase-messaging-sw.js`.
+- Firebase keys are **not in git**: `app/firebase.json` (copy of `app/firebase.example.json`, passed with
+  `--dart-define-from-file=firebase.json`; `dart run tool/firebase_web.dart` writes `web/firebase-config.js`) and the
+  server key `backend/secrets/firebase-service-account.json` (server: `/root/twv/secrets/`). Steps: root `README.md`
+  -> "Push notifications on your PC". Without the keys push is off and everything else works.
+- Firebase project: apps for `com.trainwithvimal.app` (Android, iOS) and a Web app. **iPhone push waits** for the
+  Apple developer account (APNs key). Push was not tried with real keys yet (Gautam fills `firebase.json` himself).
 
-## 6. Parked — remember, but do NOT build until Gautam asks ("baad me karenge", 18 Oct)
-1. **Trainer Daily summary** — toggle in My profile → Account → Notifications (board text "Email at 8:00 am with
-   your day"). Backend already sends at 8:00 AM as bell + push + plain email (`backend/apps/notifications/staff.py`).
-   Missing: a designed email template and an in-app view (no board exists). Agree the look with Gautam first.
-2. **Gym news / announcements** ("Notices from Vimal") — `GymNews` model + admin-only `gym-news/` API exist and
-   deliver to trainers. Missing: the **admin screen to post** news and a place in the app to read past notices
-   (no board). Propose a design when admin screens start.
+## 6b. Parked — remember, but do NOT build until Gautam asks
+1. **Trainer Daily summary** design (backend sends at 8:00 AM; needs an email design + in-app view; the Daily digest
+   card in Emails & alerts is hidden until then).
+2. **Gym news admin screen** ("Notices from Vimal"): API exists, no admin screen / reading place yet.
+3. **Client brand colour / dark theme** across the client app (Settings -> Branding saves them; the app ignores them).
+4. **Phone health data** (Apple Health / Health Connect reading), "7th point abhi rehne do". Card hidden.
+5. **WhatsApp** (Meta Cloud API keys) later. **Packages** are not used (hidden, code commented, D-55).
+6. Timezone / App language rows in Settings are hidden (IST + English for now).
 
 ## 7. Gautam's preferences (short; full list in `docs/memory/README.md`)
 - Talk to Gautam in **Hinglish**, short and simple.
@@ -99,7 +107,7 @@ supplements, Content library) → admin screens (incl. Trainers, TrainerProfile)
 - Write even small changes in the docs (`docs/changes.md` + the doc they touch).
 
 ## 8. Git and push rules
-- Work on branch **`working`**. `develop` = staging (only when Gautam wants to test), `main` = production at the end.
+- Work on branch **`working`**. `develop` = staging and **auto-deploys the live site**, so merge only when Gautam asks; `main` = production at the end.
 - Commit author and committer **`Gautam <gautampaldiya@gmail.com>`**:
   `git -c user.name=Gautam -c user.email=gautampaldiya@gmail.com commit ...`
 - **No Claude / Anthropic name anywhere** in commits: no `Co-Authored-By`, no session links. No tiny commits.
@@ -111,7 +119,7 @@ supplements, Content library) → admin screens (incl. Trainers, TrainerProfile)
 ## 9. Run it
 - Docker: `docker compose up --build`, then `docker compose exec api python manage.py seed_defaults` and `seed_demo`.
 - Without Docker (Windows): Python 3.12+, PostgreSQL 16, `REDIS_URL=` empty in `backend/.env` (see `docs/rulebooks/local-setup.md`).
-- App: `cd app && flutter run -d chrome --dart-define=API_URL=http://localhost:8000`.
+- App: `cd app && flutter run -d chrome --dart-define=API_URL=http://localhost:8000` (add `--dart-define-from-file=firebase.json` for push, section 6).
 - Demo logins (password `Demo@1234`): vimal@trainwithvimal.com (admin), aman@trainwithvimal.com (trainer),
   riya@example.com (client). More in `CURRENT.md`.
 - Browser checks: boards via `design/screens/serve.py`, app via `flutter build web --no-web-resources-cdn`, Playwright
@@ -144,7 +152,7 @@ supplements, Content library) → admin screens (incl. Trainers, TrainerProfile)
 7. **Before push:** `cd backend && pytest` all green, `cd app && flutter analyze` with no issues.
 8. **Docs in the same commit:** row in `docs/screens/status.md` (Done only after the browser check, else Partial
    with what is missing), `docs/phases/CURRENT.md` (Done / Doing now / Next), a decision file in `docs/decisions/`
-   for new rules (next number D-39), Gautam's answers in `docs/memory/README.md`, and `docs/changes.md` (newest
+   for new rules (next number **D-57**), Gautam's answers in `docs/memory/README.md`, and `docs/changes.md` (newest
    first, Pehle / Ab / Kyun / Updated) when something earlier changes.
 9. **Commit and push:** one meaningful commit per screen / module (or per round of Gautam's fixes), author and
    committer Gautam, message in plain English saying what was built ("Trainer Calendar and My profile"). No
@@ -171,18 +179,19 @@ in the browser, push one commit for the round ("Client profile round 3: …").
 ### Project instructions (paste as is)
 ```
 Repo gautampaldiya-stack/train-with-vimal, branch "working". Har kaam se pehle CLAUDE.md, docs/HANDOFF.md, docs/phases/CURRENT.md, docs/screens/status.md, docs/rulebooks/definition-of-done.md, docs/memory/README.md aur docs/decisions padho.
-- Design repo ke design/ folder me hai (online canvas: https://claude.ai/artifact/3xeZtZYPoU5NPKqyKk1Wah). Har screen board jaisi hi banao: har button, modal, sheet aur dropdown. Flow ke saare pages ek saath banao. Jo nahi bana, wo status.md me board ke naam se likho.
-- Phone layout sirf 600 se kam width par. Har screen 600, 768, 900, 1024 aur 1280 width par browser me check karo. Board tabhi Done jab browser me design se mil jaye.
+- Design repo ke design/ folder me hai. Har screen board jaisi hi banao: har button, modal, sheet aur dropdown. Flow ke saare pages ek saath banao. Jo nahi bana, wo status.md me board ke naam se likho.
+- Phone layout sirf 600 se kam width par. Har screen 390, 600, 768, 900, 1024 aur 1280 width par browser me check karo.
 - Main Flutter web DEBUG mode me Windows par test karta hoon: koi debug assertion nahi aana chahiye.
-- Backend Django me banao, security aur validation strong rakho. Data client, trainer aur admin teeno me same dikhna chahiye.
-- Push se pehle backend tests chalao (naye API ke naye tests likho), flutter analyze clean rakho, aur screen browser me try karo.
-- Commit author "Gautam <gautampaldiya@gmail.com>". Claude ka naam ya Co-Authored-By kahin nahi. Chhoti-chhoti commits mat karo.
-- Har screen ya module poora hote hi working pe push karo, aur CURRENT.md me "abhi kya chal raha hai / aage kya" update karo.
-- Daily summary design aur Gym news admin screen abhi park hai, jab tak main na bolun mat banao.
-- Mujhse Hinglish me baat karo.
+- Backend Django me, security aur validation strong. Data client, trainer aur admin teeno me same dikhna chahiye.
+- Push se pehle backend tests chalao (naye API ke naye tests), flutter analyze clean, aur screen browser me try karo.
+- Commit author "Gautam <gautampaldiya@gmail.com>". Claude ka naam ya Co-Authored-By kahin nahi. Commit message detailed. Chhoti-chhoti commits mat karo.
+- Har kaam ke saath docs update karo (changes.md, CURRENT.md, status.md, decisions, memory).
+- Roz ka kaam sirf working par push karo. develop me merge tabhi jab main bolun (develop par push = live site deploy).
+- Daily summary design, Gym news admin screen, client brand colour / dark theme, phone health data aur WhatsApp abhi park hai, jab tak main na bolun mat banao.
+- Mujhse Hinglish me, chhota aur simple baat karo.
 ```
 
 ### First message in the new project
 ```
-Ye project mere purane account se aa raha hai. Pehle docs/HANDOFF.md aur usme likhi saari files padho, phir mujhe 5-6 line me batao ki kya ban chuka hai aur aage kya hai. Uske baad trainer My profile ka mobile layout theek karo (HANDOFF section 5), phir TrainerMoreMobile (branch working).
+Ye project mere purane account se aa raha hai. Pehle docs/HANDOFF.md aur usme likhi saari files padho, phir mujhe 5-6 line me batao ki kya ban chuka hai, live server (twv.prowavetech.in) ka kya haal hai aur aage kya bacha hai. Kaam branch working par; develop me tabhi merge jab main bolun.
 ```

@@ -141,6 +141,7 @@ GitHub → repo `train-with-vimal` → **Settings → Secrets and variables → 
 | `VPS_USER` | `root` |
 | `VPS_SSH_KEY` | the whole **private** key: PowerShell `Get-Content $HOME\.ssh\twv_deploy -Raw \| Set-Clipboard`, then paste (from `-----BEGIN` to `END … KEY-----`) |
 | `VPS_PORT` | only if SSH is not on port 22 |
+| `FIREBASE_JSON` | optional: content of `app/firebase.json` (web push on the live site, see Firebase below) |
 
 ### Step 8. First deploy
 GitHub → **Actions → Deploy develop → Run workflow** (branch `develop`), or push anything to `develop`.
@@ -158,14 +159,13 @@ Open https://twv.prowavetech.in and log in. From now on: merge `working` → `de
 
 ## Firebase (push notifications)
 Firebase project "Train With Vimal" exists with apps for package / bundle id **`com.trainwithvimal.app`** (the app
-uses the same id). **Server side is ready. The app does not register for push yet**: it is built once these
-files are shared.
+uses the same id). Server and app (Android + web) are built (D-56); iPhone waits for the Apple account.
 
-1. **Project settings → General → Your apps**:
-   - Android app → **google-services.json** (download).
-   - iOS app → **GoogleService-Info.plist** (download).
-   - Web app → **SDK setup and configuration → Config**: copy the `firebaseConfig = { … }` values.
-2. **Project settings → Cloud Messaging → Web Push certificates → Generate key pair** → copy the key (VAPID).
+1. **App keys:** fill `app/firebase.json` on your PC exactly as in the root `README.md` → "Push notifications on
+   your PC" (web Config values, VAPID key, Android keys from `google-services.json`).
+2. **Same keys for the live site:** GitHub → Settings → Secrets → Actions → New secret **`FIREBASE_JSON`** = the
+   whole content of `app/firebase.json`. Every deploy then builds the web app with push on. (APK: build with
+   `--dart-define-from-file=firebase.json`.)
 3. iPhone only: Apple Developer account → **Certificates, IDs & Profiles → Keys → +** → tick **Apple Push
    Notifications service (APNs)** → download the `.p8` file (once only). Firebase → **Cloud Messaging → Apple app
    configuration → APNs Authentication Key → Upload**, with its Key ID and your Team ID.
@@ -182,8 +182,8 @@ files are shared.
    ```
    `/app/secrets/` is the same `secrets` folder as seen inside Docker (`./secrets:/app/secrets` in the compose
    file), so this path stays as written. Apply: `cd ~/twv && docker compose -f docker-compose.prod.yml up -d`.
-5. Share the files from steps 1 and 2 (**not** the service-account file) so the app side can be wired and tested.
-   None of these files go into git (`.gitignore` blocks them).
+None of these files go into git (`.gitignore` blocks `firebase.json`, `google-services.json`,
+`GoogleService-Info.plist`, `secrets/` and every `*service-account*.json`).
 
 ---
 
@@ -197,7 +197,7 @@ files are shared.
 ## Phone app (APK)
 ```bash
 cd app
-flutter build apk --release --dart-define=API_URL=https://twv.prowavetech.in
+flutter build apk --release --dart-define=API_URL=https://twv.prowavetech.in --dart-define-from-file=firebase.json
 # → app/build/app/outputs/flutter-apk/app-release.apk
 ```
 
