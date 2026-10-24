@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-24 · Firebase on the PC — file table, FlutterFire clean-up
+- **Pehle:** README me Firebase steps the, par kaun si file kahan jaati hai ek jagah nahi tha. `flutterfire configure` chalane par apna `app/firebase.json` ban jaata hai jo D-56 wali key file ko replace karta hai, aur push chupchap band rehta hai.
+- **Ab:** README "Push notifications on your PC" me files ki table aur FlutterFire clean-up ke steps.
+- **Kyun:** Probid ne pehle PC par terminal se FlutterFire jaise commands chalaye the; ab D-56 wala ek hi tarika.
+- **Updated:** README.md · docs/changes.md
+
 ### 2026-10-24 · Admin trainer profile — admin hamesha trainer bhi
 - **Pehle:** Admin ka TrainerProfile sirf `seed_demo` me Vimal ke liye banta tha. Admin khud ko trainer ke roop me invite link / clients me use nahi kar sakta tha.
 - **Ab:** Har admin ka trainer profile (is_owner=True) apne aap banta hai (post_save signal + migration `trainers/0003`). Invite link me admin khud ko ya kisi trainer ko chun sakta hai. Link trainer nahi chuna to admin ke naam se banta hai.

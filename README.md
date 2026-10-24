@@ -111,6 +111,24 @@ background, then make something that notifies that user (for example the trainer
 opens the right page when tapped.
 iPhone push needs the Apple developer account (APNs key) first.
 
+**Files at a glance (all outside git):**
+
+| File | Where | Made how |
+|---|---|---|
+| `firebase.json` (FB_* keys) | `app/firebase.json` | copy of `app/firebase.example.json`, filled by hand |
+| `firebase-config.js` | `app/web/firebase-config.js` | `cd app && dart run tool/firebase_web.dart` |
+| `firebase-service-account.json` | `backend/secrets/` (PC), `~/twv/secrets/` (server) | Firebase → Service accounts → Generate new private key |
+| `.env` lines | `backend/.env` | `PUSH_PROVIDER`, `FCM_PROJECT_ID`, `FCM_SERVICE_ACCOUNT_FILE` |
+
+**Ran `flutterfire configure` / `firebase login` before?** This app does not use FlutterFire (no
+`firebase_options.dart`, no `google-services.json`, D-56). FlutterFire writes its **own** `app/firebase.json`
+(`{"flutter": {...}}`), which replaces the FB_* key file, and then push silently stays off. Clean up:
+1. Delete `app/firebase.json` if it starts with `{"flutter"`, then make it again from `app/firebase.example.json`.
+2. Delete `app/lib/firebase_options.dart`, `app/android/app/google-services.json`, `app/.firebaserc` if present.
+3. `git status` in `app/` must show no change to `android/settings.gradle.kts` or `android/app/build.gradle.kts`
+   (FlutterFire adds the `com.google.gms.google-services` plugin there): `git checkout -- android` undoes it.
+The Firebase CLI login itself can stay; it is not needed.
+
 ## Deploy (server)
 One domain, all in Docker, behind CloudPanel; push to `develop` deploys. Steps: [`deploy/README.md`](deploy/README.md).
 
