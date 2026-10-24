@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-24 · Admin trainer profile — admin hamesha trainer bhi
+- **Pehle:** Admin ka TrainerProfile sirf `seed_demo` me Vimal ke liye banta tha. Admin khud ko trainer ke roop me invite link / clients me use nahi kar sakta tha.
+- **Ab:** Har admin ka trainer profile (is_owner=True) apne aap banta hai (post_save signal + migration `trainers/0003`). Invite link me admin khud ko ya kisi trainer ko chun sakta hai. Link trainer nahi chuna to admin ke naam se banta hai.
+- **Kyun:** Probid ne kaha admin bhi trainer ho sakta hai, jaise demo me Vimal hai.
+- **Updated:** backend/apps/trainers (services, signals, apps, migration 0003) · backend/apps/common seed_demo · backend/tests/test_invite_links.py · docs/changes.md · Decision: admin = trainer
+
 ### 2026-10-23 · Push notifications (Firebase) in the app + handoff
 - **Pehle:** Server push bhej sakta tha, par app phone / browser ko register hi nahi karta tha, isliye push kabhi nahi aata. Firebase keys kahan daalni hai, tay nahi tha. HANDOFF.md 18 Oct ka tha.
 - **Ab:** Login ke baad app permission maangta hai aur device ko `devices/` me save karta hai. Log out par device hat jaata hai. Push tap karne par sahi page khulta hai. Web push service worker se aata hai. Saari app keys ek file `app/firebase.json` me (git me nahi), server key `secrets/` me. Live site ke liye GitHub secret `FIREBASE_JSON`. iPhone baad me (Apple account). HANDOFF.md naye account ke liye poora update hua (live server, deploy, push, parked list, branch rule).

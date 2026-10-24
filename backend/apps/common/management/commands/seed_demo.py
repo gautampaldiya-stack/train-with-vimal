@@ -97,10 +97,11 @@ class Command(BaseCommand):
 
         vimal, made = self.user(email="vimal@trainwithvimal.com", phone="+919810000001", full_name="Vimal Singh",
                                 role=Role.ADMIN, status=AccountStatus.ACTIVE, city="Delhi", gender="male")
-        if made:
-            TrainerProfile.objects.create(user=vimal, is_owner=True, speciality=["Strength", "Fat loss"],
-                                          max_clients=40, access_mode=AccessMode.ALL, experience_since=2012,
-                                          languages=["Hindi", "English"])
+        # The post_save signal already creates the admin's trainer profile; fill in the demo details here.
+        TrainerProfile.objects.update_or_create(
+            user=vimal, defaults={"is_owner": True, "speciality": ["Strength", "Fat loss"], "max_clients": 40,
+                                  "access_mode": AccessMode.ALL, "experience_since": 2012,
+                                  "languages": ["Hindi", "English"]})
         trainers = {"": vimal}
         today = timezone.localdate()
         for name, email, phone, spec, cap, active in TRAINERS:
