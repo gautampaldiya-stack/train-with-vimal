@@ -59,4 +59,5 @@ One file per decision. Add a new file for every new decision (next number), and 
 | [D-54](0054-feedback-oct23-access-and-polish.md) | Gautam's 23 Oct feedback: trainer Automations + Assign clients access, PUT fix, social links, hidden timezone / language / health / digest, Duplicate asks first, no cut headers, tooltips, lists scroll after 5 | 2026-10-23 |
 | [D-55](0055-from-address-packages-icon-deploy.md) | From address in Integrations, packages hidden, app icon + splash, one-domain Docker deploy behind CloudPanel, develop auto-deploys | 2026-10-23 |
 | [D-56](0056-push-notifications-in-the-app.md) | Push notifications in the app (Android + web, iOS later): register after login, remove on log out, tap opens the page; Firebase keys in app/firebase.json and secrets/, never in git | 2026-10-23 |
+| [D-57](0057-admin-is-also-a-trainer.md) | Admin is always a trainer too (profile made on save + migration), so invite links work when there are no trainers | 2026-10-24 |
 | [D-31](0031-trainer-activity-and-fixes.md) | Trainer Activity card, stat cards fill the row, menus fit the screen, readable guides | 2026-10-16 |

@@ -27,8 +27,8 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 ### 2026-10-24 · Admin trainer profile — admin hamesha trainer bhi
 - **Pehle:** Admin ka TrainerProfile sirf `seed_demo` me Vimal ke liye banta tha. Admin khud ko trainer ke roop me invite link / clients me use nahi kar sakta tha.
 - **Ab:** Har admin ka trainer profile (is_owner=True) apne aap banta hai (post_save signal + migration `trainers/0003`). Invite link me admin khud ko ya kisi trainer ko chun sakta hai. Link trainer nahi chuna to admin ke naam se banta hai.
-- **Kyun:** Probid ne kaha admin bhi trainer ho sakta hai, jaise demo me Vimal hai.
-- **Updated:** backend/apps/trainers (services, signals, apps, migration 0003) · backend/apps/common seed_demo · backend/tests/test_invite_links.py · docs/changes.md · Decision: admin = trainer
+- **Kyun:** Probid ne kaha admin bhi trainer ho sakta hai, jaise demo me Vimal hai. Live admin `createsuperuser` se bana tha, uska profile nahi tha, isliye invite modal me trainer list khali aur Create link band tha.
+- **Updated:** backend/apps/trainers (services, signals, apps, migration 0003) · backend/apps/common seed_demo · backend/tests/test_invite_links.py · docs/changes.md · docs/phases/CURRENT.md · docs/memory · Decision D-57
 
 ### 2026-10-23 · Push notifications (Firebase) in the app + handoff
 - **Pehle:** Server push bhej sakta tha, par app phone / browser ko register hi nahi karta tha, isliye push kabhi nahi aata. Firebase keys kahan daalni hai, tay nahi tha. HANDOFF.md 18 Oct ka tha.

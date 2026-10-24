@@ -47,3 +47,20 @@ def test_admin_can_pick_a_trainer_for_link(db):
 
     assert r.status_code == 201, r.content
     assert r.json()["trainer"]["id"] == str(aman.id)
+
+
+def test_new_admin_shows_in_trainer_list_for_invite_picker(db):
+    """createsuperuser se bana admin (live site jaisa) bhi trainers list me aaye, warna invite modal me
+    koi trainer nahi milta aur 'Create link' band rehta hai."""
+    admin = User.objects.get(role=Role.ADMIN)
+    TrainerProfile.objects.filter(user=admin).delete()
+    admin.save()  # same signal as createsuperuser / any admin save
+    User.objects.filter(role=Role.TRAINER).update(status="deactivated")
+    c = admin_client(admin)
+
+    r = c.get("/api/v1/trainers/", {"page_size": 100})
+
+    active = [t for t in r.json()["results"] if t["status"] == "active"]
+    assert [t["id"] for t in active] == [str(admin.id)]
+    code = c.get("/api/v1/invite-links/suggest-code/", {"trainer": str(admin.id)}).json()["code"]
+    assert code.startswith("VIMAL-")
