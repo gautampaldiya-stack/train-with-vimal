@@ -9,7 +9,7 @@ from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
@@ -415,13 +415,29 @@ class InviteLinkViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
             qs = qs.filter(trainer=user)
         return qs.order_by("-created_at")
 
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        user = request.user
+        # Trainer profile → Access: "Invite with his link" off = no links at all; "Make new invite links" off =
+        # he shares the links he has but can't make one.
+        if user.is_trainer and not user.trainer_profile.has_perm("clients.invite"):
+            raise PermissionDenied("Vimal has switched off invite links for you.")
+        if (user.is_trainer and self.action in ("create", "suggest_code")
+                and not user.trainer_profile.has_perm("clients.invite_new")):
+            raise PermissionDenied("Vimal has switched off making new invite links for you.")
+
     def perform_create(self, serializer):
         user = self.request.user
         trainer = serializer.validated_data.get("trainer") or user
-        if user.is_trainer and not user.trainer_profile.has_perm("clients.view_all"):
+        if user.is_trainer:  # a trainer makes links only for himself
             trainer = user
         code = serializer.validated_data.get("code") or services.make_link_code(trainer)
         serializer.save(trainer=trainer, code=code, created_by=user)
+
+    def perform_update(self, serializer):
+        if self.request.user.is_trainer and serializer.validated_data.get("trainer") not in (None, serializer.instance.trainer):
+            raise PermissionDenied("Only Vimal can send a link's sign-ups to another trainer.")
+        serializer.save()
 
     @action(detail=False)
     def summary(self, request):
@@ -596,7 +612,7 @@ class ApprovalViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets
     def _waiting(self):
         a = self.get_object()
         if a.status != Approval.Status.WAITING:
-            from rest_framework.exceptions import ValidationError
+            from rest_framework.exceptions import PermissionDenied, ValidationError
 
             raise ValidationError({"non_field_errors": ["This person was already decided."]})
         return a

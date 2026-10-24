@@ -300,12 +300,13 @@ class InviteLinkSerializer(serializers.ModelSerializer):
     state = serializers.CharField(read_only=True)
     joined = serializers.IntegerField(read_only=True)
     waiting = serializers.IntegerField(read_only=True)
+    access_off = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = InviteLink
         fields = ["id", "code", "url", "trainer", "trainer_id", "label", "expires_at", "max_uses", "needs_approval",
-                  "is_on", "state", "joined", "waiting", "created_at"]
-        read_only_fields = ["id", "url", "state", "joined", "waiting", "created_at"]
+                  "is_on", "state", "access_off", "joined", "waiting", "created_at"]
+        read_only_fields = ["id", "url", "state", "access_off", "joined", "waiting", "created_at"]
         extra_kwargs = {"code": {"required": False}}
 
     def get_url(self, obj):

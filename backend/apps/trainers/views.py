@@ -21,7 +21,7 @@ from apps.common.permissions import IsAdmin, IsStaff, IsTrainer
 from apps.notifications.services import notify
 
 from .models import AccessMode, AccessRequest, TrainerDocument, TrainerProfile
-from .permissions_catalog import ALL_CLIENTS_PRESET, ALL_KEYS, ASSIGNED_PRESET
+from .permissions_catalog import ALL_CLIENTS_PRESET, ALL_KEYS, ASSIGNED_PRESET, GROUPS
 from .serializers import (
     AccessRequestSerializer,
     AccessSerializer,
@@ -424,6 +424,7 @@ class TrainerViewSet(viewsets.ModelViewSet):
             s = AccessSerializer(data=request.data)
             s.is_valid(raise_exception=True)
             old = tp.get_access_mode_display()
+            before = tp.effective_permissions()
             tp.access_mode = s.validated_data["access_mode"]
             if tp.access_mode == AccessMode.CUSTOM:
                 tp.permissions = {k: bool(v) for k, v in s.validated_data.get("permissions", {}).items()}
@@ -432,8 +433,13 @@ class TrainerViewSet(viewsets.ModelViewSet):
             tp.save(update_fields=["access_mode", "permissions", "updated_at"])
             activity_log("changed access", "team", actor=request.user, target=user, target_label=user.full_name,
                          change=(old, tp.get_access_mode_display()), trainer=user)
-            notify(user, "access_changed", "Your access was updated", "Open Me → My access to see what changed.",
-                   actor=request.user, data={"route": "/me/access"})
+            after = tp.effective_permissions()
+            labels = {k: label for _, items in GROUPS for k, label, _ in items}
+            changed = [f"{labels[k]}: {'on' if after.get(k) else 'off'}" for k in ALL_KEYS
+                       if bool(before.get(k)) != bool(after.get(k))]
+            if changed:
+                notify(user, "access_changed", f"{request.user.first_name} changed your access",
+                       " · ".join(changed), actor=request.user, data={"route": "/me/access"})
         perms = tp.effective_permissions()
         return Response({"access_mode": tp.access_mode, "groups": permission_groups(perms),
                          "on": sum(1 for v in perms.values() if v), "total": len(ALL_KEYS)})

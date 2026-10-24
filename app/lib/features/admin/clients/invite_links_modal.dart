@@ -80,11 +80,14 @@ class _InviteLinksState extends State<_InviteLinks> {
       if (!mounted) return;
       setState(() {
         links = [for (final x in r[0] as List) x as Map];
-        trainers = [for (final t in ((r[1] as Map)['results'] as List? ?? const [])) if ('${(t as Map)['status']}' == 'active') t];
+        trainers = [
+          for (final t in ((r[1] as Map)['results'] as List? ?? const []))
+            if ('${(t as Map)['status']}' == 'active' && (!_trainer || '${t['id']}' == Services.session.me?.id)) t,
+        ];
         openId ??= (links.where((l) => l['state'] == 'on').firstOrNull ?? links.firstOrNull)?['id']?.toString();
         loading = false;
         error = null;
-        if (tab == 'main' && links.isEmpty) tab = 'new';
+        if (tab == 'main' && links.isEmpty && _canNew) tab = 'new';
       });
       if (tab == 'new' && codes.isEmpty) _startNew();
     } on ApiError catch (e) {
@@ -96,6 +99,10 @@ class _InviteLinksState extends State<_InviteLinks> {
       }
     }
   }
+
+  /// A trainer makes links only for himself, and only with "Make new invite links" on (Trainer profile → Access).
+  bool get _trainer => Services.session.me?.role == Role.trainer;
+  bool get _canNew => Services.session.me?.can('clients.invite_new') ?? false;
 
   Map? get _open => links.where((l) => '${l['id']}' == openId).firstOrNull;
   int get _on => links.where((l) => l['state'] == 'on').length;
@@ -280,7 +287,7 @@ class _InviteLinksState extends State<_InviteLinks> {
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(spacing: 20, children: [
-            for (final (k, l, n) in [('main', 'Invite link', null), ('new', 'New link', null), ('all', 'All links', links.length)])
+            for (final (k, l, n) in [('main', 'Invite link', null), if (_canNew) ('new', 'New link', null), ('all', 'All links', links.length)])
               Hover(
                 onTap: tab == k ? null : () => _go(k),
                 builder: (_, h, _) => Container(
@@ -318,11 +325,17 @@ class _InviteLinksState extends State<_InviteLinks> {
   List<Widget> _mainBody() {
     final l = _open;
     if (l == null) {
-      return [EmptyState('No invite link yet', sub: 'Make one for a trainer or a campaign.', action: AppButton.primary('New link', icon: AppIcons.plus, onPressed: () => _go('new')))];
+      return [
+        _canNew
+            ? EmptyState('No invite link yet', sub: 'Make one for a trainer or a campaign.', action: AppButton.primary('New link', icon: AppIcons.plus, onPressed: () => _go('new')))
+            : const EmptyState('No invite link yet', sub: 'Ask Vimal to make one for you.'),
+      ];
     }
     final appr = l['needs_approval'] == true;
     final tr = _trName(l['trainer'] as Map?);
-    final stateWord = '${l['state']}' == 'on' ? (appr ? 'Sign-ups wait in Approvals' : 'Sign-ups join straight away') : 'This link is ${_state(l).$1.toLowerCase()}';
+    final stateWord = '${l['state']}' == 'on'
+        ? (appr ? 'Sign-ups wait in Approvals' : 'Sign-ups join straight away')
+        : (l['access_off'] == true ? 'Off: $tr can’t invite (Access)' : 'This link is ${_state(l).$1.toLowerCase()}');
     final meta = '$stateWord · ${l['joined'] ?? 0} joined · ${l['waiting'] ?? 0} waiting · ${_till(l)}';
     final url = _short('${l['url']}');
     final cut = url.lastIndexOf('/') + 1;
@@ -359,7 +372,7 @@ class _InviteLinksState extends State<_InviteLinks> {
       Padding(padding: const EdgeInsets.only(top: 4), child: Text('Link settings', style: AppText.s(12.5, W.w8))),
       _grid([
         _f('Clients go to', AppSelect(tr, entries: [
-          for (final t in trainers)
+          for (final t in _trainer ? const [] : trainers)
             MenuEntry('${t['full_name']}', selected: '${t['id']}' == '${(l['trainer'] as Map?)?['id']}', onTap: () => _patch(l, {'trainer_id': '${t['id']}'}, done: 'Sign-ups now go to ${t['full_name']}')),
         ]), hint: 'This trainer sees them first'),
         _f('Link works for', AppSelect(_worksFor(l), entries: [
@@ -505,7 +518,7 @@ class _InviteLinksState extends State<_InviteLinks> {
         ),
       ),
       if (links.isEmpty)
-        EmptyState('No links yet', action: AppButton.primary('New link', icon: AppIcons.plus, onPressed: () => _go('new')))
+        EmptyState('No links yet', action: _canNew ? AppButton.primary('New link', icon: AppIcons.plus, onPressed: () => _go('new')) : null)
       else
         ConstrainedBox(
           constraints: const BoxConstraints(maxHeight: 236),

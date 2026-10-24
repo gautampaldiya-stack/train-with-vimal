@@ -133,8 +133,8 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `clients/check-phone/` | GET | ClientViewSet | Admin, Add client while typing: `?phone=` → `{valid, taken}` (`taken` = "phone" when a client or sign-up has it). |
 | `clients/export/` | GET | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
 | `clients/remind-at-risk/` | POST | ClientViewSet | Clients (admin) and My clients (trainer). Trainers only ever see their own clients. |
-| `invite-links/` | GET, POST | InviteLinkViewSet |  |
-| `invite-links/<pk>/` | GET, PUT, PATCH, DELETE | InviteLinkViewSet |  |
+| `invite-links/` | GET, POST | InviteLinkViewSet | A trainer needs `clients.invite` (else 403 for every invite-links call); POST also needs `clients.invite_new` and always makes the link for himself. Rows carry `access_off` (the trainer's invite access is off, so the link is `off`). |
+| `invite-links/<pk>/` | GET, PUT, PATCH, DELETE | InviteLinkViewSet | A trainer cannot move a link to another trainer (403). |
 | `invite-links/<pk>/restore/` | POST | InviteLinkViewSet |  |
 | `invite-links/suggest-code/` | GET | InviteLinkViewSet |  |
 | `invite-links/summary/` | GET | InviteLinkViewSet |  |

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../core/api/api_client.dart';
@@ -142,9 +144,17 @@ class Session extends ChangeNotifier {
     notifyListeners();
   }
 
+  StreamSubscription<RealtimeEvent>? _accessSub;
+
   void _afterSignIn() {
     Services.outbox.start();
     _syncRealtime();
+    // Vimal changed this trainer's access: menus and buttons follow at once, no reload.
+    _accessSub ??= Services.realtime.events.listen((e) {
+      if (e.event == 'notification' && const ['access_changed', 'access_request_decided'].contains(e.payload['event']) && signedIn) {
+        refreshMe().catchError((_) {});
+      }
+    });
   }
 
   /// Realtime is only for people who may use the app: the server refuses the socket while an

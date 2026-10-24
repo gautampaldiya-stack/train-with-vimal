@@ -914,7 +914,7 @@ Neeche permission groups (default on = ✓):
 
 | Group | Permissions |
 |---|---|
-| Clients | View assigned clients ✓ · View all clients · Approve sign-ups (*only people invited by him*) · Pause or resume clients |
+| Clients | View assigned clients ✓ · View all clients · Approve sign-ups (*only people invited by him*) · Pause or resume clients · Assign and reassign clients · Invite with his link ✓ (*off: his links stop working*) · Make new invite links ✓ (*only for himself*) |
 | Training | Create and edit programs ✓ (*for his clients*) · Use gym templates ✓ (*copy master programs*) · Edit gym templates (*changes master programs*) · Add custom exercises ✓ |
 | Nutrition | Meal plans ✓ · Add foods and recipes ✓ · Supplement plans ✓ · See food logs ✓ |
 | Check-ins | Review daily check-ins ✓ · Review weekly check-ins ✓ · Edit check-in forms (*changes master forms*) · Progress photos ✓ |

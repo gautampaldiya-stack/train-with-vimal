@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-24 · Trainer invite-link access; access notice says what changed
+- **Pehle:** Access save par trainer ko sirf "Your access was updated" jata tha (kya badla, nahi likha). Trainer app me Invite link ka button nahi tha, aur invite link ke liye koi access switch nahi tha.
+- **Ab:** Access → Clients me do naye switch: **Invite with his link** (on; off karte hi uske banaye/uske naam ke links band, join page "turned off" dikhata hai) aur **Make new invite links** (on; sirf apne liye). Trainer ke My clients header me `Invite link` (switch on ho to). Trainer link sirf apne naam se banata hai, dusre trainer pe nahi bhej sakta. Notice: "Vimal changed your access" + badle hue switch ("Approve sign-ups: on"); kuch na badle to notice nahi. Trainer ka app notice aate hi apna access dobara padhta hai.
+- **Kyun:** Gautam: approve wala on kiya to Aman ko pata nahi chala; trainer apne link se invite kar sake ya nahi, aur naya link sirf apne liye bana sake.
+- **Updated:** backend/apps/trainers/permissions_catalog.py, trainers/views.py, clients/models.py, clients/views.py, clients/serializers.py, tests/test_invite_access.py, app invite_links_modal.dart, clients_screen.dart, me_tabs.dart, services.dart, docs/screens/behaviour.md, docs/architecture/api-endpoints.md
+
 ### 2026-10-24 · Notifications everywhere, live toast fix, admin My profile, email links
 - **Pehle:** Live site par toast / live bell 15 min baad band ho jaate the (socket purane token se reconnect karta tha). Trainer ko personal best, goal weight, chhoda workout, plan khatam hone ki khabar nahi milti thi. Client ko plan update / khatam / habit hatane par kuch nahi aata tha. Admin ko trainer join ya client delete request nahi dikhti thi. Reset password email me `localhost:5173` link. Admin ka apna profile page nahi tha.
 - **Ab:** Ye sab notifications (D-60). Socket har reconnect par naya token leta hai. Prod me `FRONTEND_URL` default live site. Admin `/me` (My profile) sidebar, account menu aur More se.

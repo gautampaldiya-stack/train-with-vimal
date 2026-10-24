@@ -7,6 +7,8 @@ GROUPS = [
         ("clients.approve_signups", "Approve sign-ups", "Only people invited by him"),
         ("clients.pause", "Pause or resume clients", ""),
         ("clients.assign", "Assign and reassign clients", "Pick or change the trainer of a client"),
+        ("clients.invite", "Invite with his link", "Off: his links stop working"),
+        ("clients.invite_new", "Make new invite links", "Only for himself"),
     ]),
     ("Training", [
         ("training.programs_edit", "Create and edit programs", "For his clients"),
@@ -42,7 +44,7 @@ ALL_KEYS = [k for _, items in GROUPS for k, _, _ in items]
 
 ASSIGNED_PRESET = {
     "clients.view_assigned": True, "clients.view_all": False, "clients.approve_signups": False,
-    "clients.pause": False, "clients.assign": False,
+    "clients.pause": False, "clients.assign": False, "clients.invite": True, "clients.invite_new": True,
     "training.programs_edit": True, "training.use_templates": True, "training.edit_templates": False,
     "training.custom_exercises": True,
     "nutrition.meal_plans": True, "nutrition.foods": True, "nutrition.supplements": True,

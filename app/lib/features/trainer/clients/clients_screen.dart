@@ -101,6 +101,13 @@ class _TrainerClientsScreenState extends State<TrainerClientsScreen> {
                 : PageTop(
                     title: 'My clients',
                     sub: n.isEmpty ? ' ' : '${n['all']} client${n['all'] == 1 ? '' : 's'} given to you · ${n['active']} active · ${n['at_risk']} at risk',
+                    // Trainer profile → Access "Invite with his link" (on by default)
+                    actions: [
+                      if (Services.session.me?.can('clients.invite') ?? false)
+                        compactTop(context)
+                            ? AppIconButton(AppIcons.link, tooltip: 'Invite link', onPressed: () => showInviteLinksModal(context))
+                            : AppButton('Invite link', icon: AppIcons.link, onPressed: () => showInviteLinksModal(context)),
+                    ],
                   ),
             children: [
               Align(

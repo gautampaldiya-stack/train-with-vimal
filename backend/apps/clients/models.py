@@ -168,7 +168,13 @@ class InviteLink(SoftDeleteModel):
             return "expired"
         if self.max_uses is not None and self.clients.count() >= self.max_uses:
             return "full"
-        return None if self.is_on else "off"
+        return None if self.is_on and not self.access_off else "off"
+
+    @property
+    def access_off(self):
+        """The trainer's "Invite with his link" access is off (Trainer profile → Access): the link stops."""
+        t = self.trainer
+        return bool(t.is_trainer and hasattr(t, "trainer_profile") and not t.trainer_profile.has_perm("clients.invite"))
 
     @property
     def state(self):

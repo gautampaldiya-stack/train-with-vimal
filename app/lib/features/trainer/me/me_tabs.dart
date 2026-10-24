@@ -163,6 +163,8 @@ const _hints = {
   'clients.view_assigned': 'Profile, plans and logs',
   'clients.view_all': 'Every client of the gym',
   'clients.approve_signups': 'Only people invited by you',
+  'clients.invite': 'Off: your links stop working',
+  'clients.invite_new': 'Only for yourself',
   'training.programs_edit': 'For your clients',
   'nutrition.meal_plans': 'Make and change',
 };
