@@ -59,9 +59,9 @@ class UrlChip extends StatelessWidget {
       );
 }
 
-/// The link the browser is on, shortened for [UrlChip]: `trainwithvimal.app/join/AMAN-4821`.
+/// The link the browser is on, shortened for [UrlChip]: `twv.prowavetech.in/join/AMAN-4821`.
 String shownUrl(String path) {
-  final host = Uri.base.host.isEmpty ? 'trainwithvimal.app' : Uri.base.host;
+  final host = Uri.base.host.isEmpty ? 'twv.prowavetech.in' : Uri.base.host;
   return '$host$path';
 }
 

@@ -141,8 +141,8 @@ class _JoinScreenState extends State<JoinScreen> {
           'Coaches can limit how many people join from one link.', 'time', 'Ask $_first for a new link', 'I already have an account'),
       'offline' => const _Broken('You are offline', 'Connect to the internet, then open the link again.', 'Your invite still works once you are back online.', 'time',
           'Try again', 'I already have an account'),
-      _ => const _Broken('This link does not work', 'Check you opened the whole link your coach sent, or ask them for a new one.',
-          'Invite links look like trainwithvimal.app/join/AMAN-4821.', 'time', 'Get help', 'I already have an account'),
+      _ => _Broken('This link does not work', 'Check you opened the whole link your coach sent, or ask them for a new one.',
+          'Invite links look like ${shownUrl('/join/AMAN-4821')}.', 'time', 'Get help', 'I already have an account'),
     };
   }
 

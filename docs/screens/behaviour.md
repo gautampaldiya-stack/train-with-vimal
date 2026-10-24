@@ -135,7 +135,7 @@ Footer note *"Only name and mobile are needed"*, buttons `Cancel` + primary (lab
 
 **Invite link drawer** — 3 tabs
 
-1. **`Invite link`** (default) — ek link card: `trainwithvimal.app/join/AMAN-4821`, buttons `Copy link` (primary sm) · `WhatsApp` · `Email` · `Download QR` (text). Neeche **Link settings**: trainer (*"This trainer sees them first"*), aur ek toggle **"New sign-ups wait in Approvals"** (*"You approve each person before they can log in"*). Toggle off karte hi step-3 text badal jaata hai: on → *"She waits in Approvals. You or Aman Verma approve her, then she can log in."*, off → *"She can log in straight away. Aman Verma gets a notice."* Sabse neeche preview **"What she sees when she opens the link"**. Button `Done`.
+1. **`Invite link`** (default) — ek link card: `twv.prowavetech.in/join/AMAN-4821`, buttons `Copy link` (primary sm) · `WhatsApp` · `Email` · `Download QR` (text). Neeche **Link settings**: trainer (*"This trainer sees them first"*), aur ek toggle **"New sign-ups wait in Approvals"** (*"You approve each person before they can log in"*). Toggle off karte hi step-3 text badal jaata hai: on → *"She waits in Approvals. You or Aman Verma approve her, then she can log in."*, off → *"She can log in straight away. Aman Verma gets a notice."* Sabse neeche preview **"What she sees when she opens the link"**. Button `Done`.
 2. **`New link`** — Trainer select · Name/label (`Instagram · October`, *"Only you see this"*) · Expiry select (`30 days · till 8 Nov`) · Max people (`No limit`) · Code (`AMAN-5530`, *"Made from the trainer name"*) · note *"The old links keep working"*. `Create link` dabate hi naya link ban ke list me sabse upar aa jaata hai aur drawer `Invite link` tab pe us naye link ke saath khul jaata hai.
 3. **`All links N`** — har link ki row: code, label, trainer · bana kab · kab tak, `N joined`, `N waiting`, aur status badge `On` (green) / `Off` (grey) / `Ended` (grey). Row click → wo link `Invite link` tab me khul jaata hai. Row ka 3-dot: `Open link and QR` · `Copy link` · `Turn off` / `Turn on` · `Delete link` (laal). Off/Ended rows dim dikhti hain. Upar summary: *"4 of 5 links are on"* aur counts (links · on now · people joined · waiting now).
 
@@ -1473,7 +1473,7 @@ Pehli baar app kholne pe slides — jaise *"WHY IT MATTERS — Good health is yo
 
 Do tarah ke link:
 
-**Invite link** (`trainwithvimal.app/join/<code>`) — `You're invited`, trainer `AV` card, pill `Link works`. Form: `Full name` · `Email` · `Phone number` · `Password` + `Terms of use` / `Privacy policy`. App store buttons `Google Play` · `App Store`. Sign-up ke baad Approvals me jata hai (agar wo setting on hai).
+**Invite link** (`twv.prowavetech.in/join/<code>`) — `You're invited`, trainer `AV` card, pill `Link works`. Form: `Full name` · `Email` · `Phone number` · `Password` + `Terms of use` / `Privacy policy`. App store buttons `Google Play` · `App Store`. Sign-up ke baad Approvals me jata hai (agar wo setting on hai).
 
 **Coach login link** — `Your coach added you`, sub *"Aman Verma made your Train With Vimal account. Pick a password and you are in. No approval needed."* Details dikhte hain + link `These are not my details`. Fields `New password` + `Confirm password` → `Create my account`.
 

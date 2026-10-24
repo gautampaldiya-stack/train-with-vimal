@@ -20,6 +20,7 @@ import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/select.dart';
 import '../../../core/widgets/tooltip.dart';
+import '../../auth/account_widgets.dart' show shownUrl;
 import '../../trainer/client_profile/cp_content_drawers.dart' show DrOpts, DrSwitch;
 
 /// Invite links modal (boards Clients / Approvals `invo`): three tabs.
@@ -465,7 +466,7 @@ class _InviteLinksState extends State<_InviteLinks> {
           Expanded(
             child: Text.rich(TextSpan(children: [
               const TextSpan(text: 'The link will be '),
-              TextSpan(text: 'trainwithvimal.app/join/${newCode ?? '…'}', style: AppText.s(12.5, W.w7, color: AppColors.text)),
+              TextSpan(text: shownUrl('/join/${newCode ?? '…'}'), style: AppText.s(12.5, W.w7, color: AppColors.text)),
             ]), style: AppText.s(12.5, W.w5, color: AppColors.text2)),
           ),
         ]),

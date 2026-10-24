@@ -442,7 +442,7 @@ Send a form to one client later or again and again (Client profile → Send a fo
 | `stats_updated_at` | DateTimeField | optional |
 
 ### InviteLink
-trainwithvimal.app/join/<code> — sign-up links shared by the team.
+<FRONTEND_URL>/join/<code> (live: twv.prowavetech.in/join/<code>) — sign-up links shared by the team.
 
 | Field | Type | Notes |
 |---|---|---|

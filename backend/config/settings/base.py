@@ -261,7 +261,8 @@ CELERY_BEAT_SCHEDULE = {
 # ---------------------------------------------------------------- App settings
 APP_NAME = "Train With Vimal"
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173")
-INVITE_BASE_URL = env("INVITE_BASE_URL", default="https://trainwithvimal.app/join")
+# Invite links live on the same site as the app (live: https://twv.prowavetech.in/join/<code>).
+INVITE_BASE_URL = env("INVITE_BASE_URL", default=FRONTEND_URL.rstrip("/") + "/join")
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
 EMAIL_HOST = env("EMAIL_HOST", default="")
 EMAIL_PORT = env.int("EMAIL_PORT", default=587)

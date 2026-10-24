@@ -150,7 +150,7 @@ class ClientProfile(TimeStampedModel):
 
 
 class InviteLink(SoftDeleteModel):
-    """trainwithvimal.app/join/<code> — sign-up links shared by the team."""
+    """<FRONTEND_URL>/join/<code> (live: twv.prowavetech.in/join/<code>) — sign-up links shared by the team."""
 
     code = models.CharField(max_length=24, unique=True)
     trainer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="invite_links")

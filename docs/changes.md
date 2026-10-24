@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-24 · Invite link — twv.prowavetech.in domain
+- **Pehle:** Invite link `trainwithvimal.app/join/...` dikhata tha. Woh domain hai hi nahi, isliye link khulta nahi tha.
+- **Ab:** Link `FRONTEND_URL` se banta hai (`https://twv.prowavetech.in/join/...`). `INVITE_BASE_URL` sirf tab chahiye jab alag domain ho. App me preview / join page bhi wahi host dikhate hain.
+- **Kyun:** Probid (2026-10-24): "ye link hai, sahi karo sab jagah".
+- **Updated:** backend/config/settings/base.py, clients/models.py, app auth/account_widgets.dart, join_screen.dart, admin invite_links_modal.dart, docs/architecture/data-model.md, docs/screens/behaviour.md
+
 ### 2026-10-24 · Deploy — web restart after a new api container
 - **Pehle:** D-58 ke deploy me nginx (`web`) purane api container ka address yaad rakhe raha, isliye health check 502 par fail hua. Code aur migration theek chal gaye the.
 - **Ab:** Deploy `up -d --build` ke baad `restart web` bhi karta hai, taaki nginx naye api ko dhoondh le.
