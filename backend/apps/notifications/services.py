@@ -61,6 +61,10 @@ def _serialize(n):
         "created_at": n.created_at.isoformat(),
         "read_at": None,
         "actor": str(n.actor_id) if n.actor_id else None,
+        # Same names as the list rows, so the Notifications page can put a live row on top as it is.
+        "actor_name": n.actor.full_name if n.actor_id else None,
+        "actor_initials": n.actor.initials if n.actor_id else None,
+        "actor_color": n.actor.avatar_color if n.actor_id else None,
     }
 
 

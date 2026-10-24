@@ -59,7 +59,9 @@ class NotificationViewSet(mixins.ListModelMixin, mixins.DestroyModelMixin, views
 
     @action(detail=False)
     def unread(self, request):
-        return Response({"count": unread_count(request.user)})
+        """Bell count; `total` is for the Notifications page sub line ("3 unread · 24 in all")."""
+        total = Notification.objects.filter(recipient=request.user, in_app=True).count()
+        return Response({"count": unread_count(request.user), "total": total})
 
     @action(detail=True, methods=["post"])
     def read(self, request, pk=None):

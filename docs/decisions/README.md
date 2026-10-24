@@ -61,4 +61,5 @@ One file per decision. Add a new file for every new decision (next number), and 
 | [D-56](0056-push-notifications-in-the-app.md) | Push notifications in the app (Android + web, iOS later): register after login, remove on log out, tap opens the page; Firebase keys in app/firebase.json and secrets/, never in git | 2026-10-23 |
 | [D-57](0057-admin-is-also-a-trainer.md) | Admin is always a trainer too (profile made on save + migration), so invite links work when there are no trainers | 2026-10-24 |
 | [D-58](0058-notification-toast-bell-count-settings-logout.md) | Toast for each new notification while the app is open, unread count on every bell, Log out in admin Settings, seed_demo works with the live admin | 2026-10-24 |
+| [D-59](0059-staff-notifications-page.md) | Notifications page for admin and trainer (/notifications): All / Unread, rows by day, open, mark read / unread, delete with Undo, live, Show more; bell → See all | 2026-10-24 |
 | [D-31](0031-trainer-activity-and-fixes.md) | Trainer Activity card, stat cards fill the row, menus fit the screen, readable guides | 2026-10-16 |

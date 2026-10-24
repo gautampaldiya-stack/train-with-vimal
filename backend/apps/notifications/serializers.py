@@ -47,11 +47,12 @@ def used_in_map():
 class NotificationSerializer(serializers.ModelSerializer):
     actor_name = serializers.CharField(source="actor.full_name", default=None)
     actor_initials = serializers.CharField(source="actor.initials", default=None)
+    actor_color = serializers.CharField(source="actor.avatar_color", default=None)
 
     class Meta:
         model = Notification
         fields = ["id", "event", "title", "body", "data", "read_at", "created_at", "actor", "actor_name",
-                  "actor_initials"]
+                  "actor_initials", "actor_color"]
         read_only_fields = fields
 
 

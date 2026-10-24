@@ -47,7 +47,7 @@ Title left, actions right ek line me. Title width ke saath 28 → 20 shrink hota
 | Control | Click pe |
 |---|---|
 | Search icon | Search field focus. |
-| Bell icon | Notifications. Dot tab dikhta hai jab unread ho. |
+| Bell icon | Notifications dropdown, unread count ke saath (D-58). Neeche **See all notifications** → `/notifications` (D-59). |
 | Profile (round 36 photo) | Account menu khulta hai. Naam tooltip me hai, menu ke andar bhi. |
 | Main action (e.g. `Add client`) | Us page ka primary drawer/modal. Niche har screen me likha hai. |
 
@@ -986,6 +986,8 @@ Phone (`TrainerDashboardMobile`): blue hero status bar ke neeche tak (date · Tr
 Review drawer ki Photos: photo par click → full screen (zoom, swipe), title *"Riya’s photos"*.
 
 **Bell** — *Notifications* list (unread blue), `Mark all read`; check-in wali notice review drawer kholti hai.
+
+**Notifications page** (`/notifications`, admin aur trainer, D-59; board nahi hai) — bell → *See all notifications* ya More → Notifications. Top: *Notifications*, sub *"5 unread · 38 in all"* / *"All caught up · 38 in all"*, `Mark all read` (toast *"All marked as read"* + Undo), gear → notification settings (admin: Emails & alerts → Team alerts, trainer: My profile → Account). Tabs `All N` · `Unread N` (`?tab=unread`). Rows din ke hisaab se (*TODAY · 3*, *YESTERDAY*, *THU, 22 OCT*): initials (ya bell), title, body, time, unread blue dot. Row tap → read + uska page. ⋯ → `Open`, `Mark as read` / `Mark as unread`, `Delete` (toast *"Notification deleted"* + Undo, 10 s baad server se delete). Naya notification live upar aata hai. Footer *"Showing 30 of 38"* + `Show more`. Empty: *"No notifications yet"* / Unread me *"All caught up"*.
 
 **`New session` modal** — Client (sirf apne active clients), Day (aaj + 13 din), Time (15 min steps), Length `30 / 45 / 60 / 90 min`, Where `Gym floor` / `Video call`, note (*Bring your lifting belt*). `Cancel` + `Add session` → toast *"Session added · Neha Jain · today 17:30"* + `Undo` (bina client message ke cancel). Day / Time list jis taraf jagah ho us taraf khulti hai, screen ke andar rehti hai, scroll hoti hai aur chuna hua din / time beech me dikhta hai.
 

@@ -31,6 +31,7 @@ class AdminMoreScreen extends StatelessWidget {
       ('Emails & alerts', '/emails', AppIcons.emails, AppColors.mbPurpleBg, AppColors.mbPurpleFg),
     ]),
     ('Workspace', [
+      ('Notifications', '/notifications', AppIcons.bell, AppColors.mbBlueBg, AppColors.accent),
       ('Settings', '/settings', AppIcons.settings, AppColors.sub, AppColors.text2),
     ]),
   ];

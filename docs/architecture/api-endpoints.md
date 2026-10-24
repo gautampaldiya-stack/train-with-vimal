@@ -225,12 +225,12 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `message-templates/<pk>/reset/` | POST | MessageTemplateViewSet | Emails & alerts → Client messages (admin only). |
 | `message-templates/stats/` | GET | MessageTemplateViewSet | Emails & alerts → Client messages (admin only). |
 | `message-templates/variables/` | GET | MessageTemplateViewSet | Emails & alerts → Client messages (admin only). |
-| `notifications/` | GET | NotificationViewSet | Bell panel / Notifications page. ?unread=1 for the Unread tab. |
+| `notifications/` | GET | NotificationViewSet | Bell panel / Notifications page (client `/more/notifications`, staff `/notifications`). Cursor paged, ?unread=1 for the Unread tab. Rows carry `actor_name`, `actor_initials`, `actor_color`. |
 | `notifications/<pk>/` | DELETE | NotificationViewSet | Bell panel / Notifications page. ?unread=1 for the Unread tab. |
 | `notifications/<pk>/read/` | POST | NotificationViewSet | Bell panel / Notifications page. ?unread=1 for the Unread tab. |
 | `notifications/<pk>/unread_one/` | POST | NotificationViewSet | Bell panel / Notifications page. ?unread=1 for the Unread tab. |
 | `notifications/read_all/` | POST | NotificationViewSet | Bell panel / Notifications page. ?unread=1 for the Unread tab. |
-| `notifications/unread/` | GET | NotificationViewSet | Bell panel / Notifications page. ?unread=1 for the Unread tab. |
+| `notifications/unread/` | GET | NotificationViewSet | `{count, total}`: bell count and the Notifications page sub line (D-59). |
 | `settings/notifications/` | GET, PUT, PATCH | NotificationSettingsView | Quiet hours, daily digest (`digest` off / daily / weekly) and sender identity. |
 | `team-alerts/` | GET | TeamAlertSettingViewSet | Emails & alerts → Team alerts, board order, with `label` + `description`. |
 | `team-alerts/<pk>/` | PUT, PATCH | TeamAlertSettingViewSet | {channels}: missing channels become off. |

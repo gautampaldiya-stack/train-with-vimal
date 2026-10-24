@@ -190,9 +190,33 @@ None of these files go into git (`.gitignore` blocks `firebase.json`, `google-se
 ## Handy commands (on the server, in `~/twv`)
 - Logs: `docker compose -f docker-compose.prod.yml logs -f api` (or `web`, `worker`, `beat`)
 - Restart one part: `docker compose -f docker-compose.prod.yml restart api`
-- After changing `.env`: `docker compose -f docker-compose.prod.yml up -d`
+- After changing `.env`: `docker compose -f docker-compose.prod.yml up -d` (502 afterwards? see below)
 - Database backup: `docker compose -f docker-compose.prod.yml exec db pg_dump -U twv twv > twv-$(date +%F).sql`
 - Uploads backup: `docker run --rm -v twv_media:/m -v $PWD:/b alpine tar czf /b/media-$(date +%F).tgz -C /m .`
+
+## Site shows 502 ("Something went wrong (502)")
+502 means nginx (`web`) got no answer from Django (`api`). Run these on the server, in `~/twv`, in order:
+
+1. **Restart nginx.** This fixes the common case: after a deploy or `up -d` (for example after changing `.env`) the
+   api container is new and has a new address, but an older nginx still remembers the old one.
+   ```bash
+   docker compose -f docker-compose.prod.yml restart web
+   ```
+   Refresh the page. Since 2026-10-24 `deploy/nginx.conf` looks the address up again every 10 s
+   (`resolver 127.0.0.11`), and the deploy also runs `restart web`, so this case should no longer happen once that
+   version is deployed.
+2. **Still 502? Check that the api is up and see why it fails.**
+   ```bash
+   docker compose -f docker-compose.prod.yml ps                  # api must be "Up", not "Restarting"
+   docker compose -f docker-compose.prod.yml logs --tail=60 api  # the error is at the bottom
+   curl -sI http://127.0.0.1:8080/health/                        # 200 = the app works behind CloudPanel
+   ```
+   The usual causes are a wrong line in `.env` (for example a wrong `FCM_SERVICE_ACCOUNT_FILE` path or a broken
+   `DATABASE_URL`) or a failed migration. Fix it, then run `docker compose -f docker-compose.prod.yml up -d` and step 1 again.
+3. **`curl` gives 200 but the browser still shows 502?** Then the problem is in CloudPanel's reverse proxy (the site
+   must point to `http://127.0.0.1:8080`), not in Docker.
+
+When you send a screenshot of logs or `.env`, hide passwords and keys.
 
 ## Phone app (APK)
 ```bash

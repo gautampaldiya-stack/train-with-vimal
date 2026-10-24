@@ -18,6 +18,18 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-24 · Deploy — nginx finds a new api container by itself, 502 steps in README
+- **Pehle:** nginx (`web`) api ka address sirf start par dhoondhta tha. `.env` badal ke `up -d` chalane par naya api container banta tha aur site 502 deti thi, jab tak `restart web` na karo.
+- **Ab:** `deploy/nginx.conf` Docker DNS (`resolver 127.0.0.11 valid=10s`) se api ka address har 10 s me dobara leta hai. `deploy/README.md` me "Site shows 502" steps likhe hain, aur root README me ek line.
+- **Kyun:** Probid ko 2026-10-24 ko phir 502 aaya ("ye esa readme.md me likh do").
+- **Updated:** deploy/nginx.conf, deploy/README.md, README.md
+
+### 2026-10-24 · Notifications page for admin and trainer
+- **Pehle:** Admin / trainer ke paas sirf bell dropdown tha (latest 8). Purane notifications dekhne ki koi jagah nahi thi, aur dropdown se kholne par row read nahi hoti thi.
+- **Ab:** `/notifications` page: All / Unread tabs, din ke hisaab se rows, tap se page khulta hai aur read hota hai, ⋯ me Open / Mark as read-unread / Delete (Undo ke saath), Mark all read (Undo), Show more, naya notification live upar aata hai. Bell dropdown me "See all notifications", More me Notifications row. API: `notifications/unread/` ab `total` bhi deta hai, rows me `actor_color`.
+- **Kyun:** Probid (2026-10-24): "sare notifications dekhne ka page bhi banana hai".
+- **Updated:** app/lib/features/trainer/notifications/notifications_screen.dart, app/router.dart, trainer dashboard_parts.dart, admin + trainer More · backend notifications serializers / services / views, tests/test_notifications_page.py · docs/architecture/api-endpoints.md, screens/behaviour.md, screens/status.md · Decision D-59
+
 ### 2026-10-24 · Invite link — twv.prowavetech.in domain
 - **Pehle:** Invite link `trainwithvimal.app/join/...` dikhata tha. Woh domain hai hi nahi, isliye link khulta nahi tha.
 - **Ab:** Link `FRONTEND_URL` se banta hai (`https://twv.prowavetech.in/join/...`). `INVITE_BASE_URL` sirf tab chahiye jab alag domain ho. App me preview / join page bhi wahi host dikhate hain.

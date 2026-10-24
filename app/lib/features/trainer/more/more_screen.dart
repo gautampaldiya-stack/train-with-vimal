@@ -38,6 +38,7 @@ class TrainerMoreScreen extends StatelessWidget {
               MoreRow('Automations', sub: 'Messages, forms and tasks that go out by themselves', icon: AppIcons.automations, onTap: () => context.go('/automations')),
           ]),
           MoreGroup('You', [
+            MoreRow('Notifications', sub: 'Everything the bell has shown you', icon: AppIcons.bell, bg: AppColors.mbBlueBg, fg: AppColors.accent, onTap: () => context.go('/notifications')),
             MoreRow('My profile', sub: 'Details, documents and your activity', icon: AppIcons.person, onTap: () => context.go('/me')),
             MoreRow('Calendar', sub: 'Sessions and check-in days', icon: AppIcons.calendar, bg: AppColors.mbAmberBg, fg: AppColors.mbAmberFg, onTap: () => context.go('/calendar')),
           ]),

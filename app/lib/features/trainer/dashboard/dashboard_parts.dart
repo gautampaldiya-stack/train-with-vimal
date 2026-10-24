@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../app/services.dart';
 
 import '../../../core/api/api_error.dart';
 import '../../../core/icons/app_icons.dart';
@@ -75,6 +78,11 @@ Future<void> showNotesDropdown(BuildContext anchor, NoticesSource c, {required v
                           Hover(
                             onTap: () {
                               Navigator.of(ctx).pop();
+                              // Opening one reads it (the bell count drops over the socket).
+                              if (!n.read) {
+                                n.read = true;
+                                Services.api.post('notifications/${n.id}/read/').catchError((_) => null);
+                              }
                               onOpen(n);
                             },
                             builder: (_, h, _) => Container(
@@ -95,6 +103,24 @@ Future<void> showNotesDropdown(BuildContext anchor, NoticesSource c, {required v
                             ),
                           ),
                       ]),
+                    ),
+                  ),
+                  // Every notification, read ones too (D-59).
+                  Container(
+                    margin: const EdgeInsets.only(top: 6),
+                    padding: const EdgeInsets.only(top: 4),
+                    decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
+                    child: Hover(
+                      onTap: () {
+                        Navigator.of(ctx).pop();
+                        GoRouter.of(anchor).go('/notifications');
+                      },
+                      builder: (_, h, _) => Container(
+                        height: 34,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(color: h ? AppColors.sub : null, borderRadius: AppRadius.all(AppRadius.item)),
+                        child: Text('See all notifications', style: AppText.s(12.5, W.w7, color: AppColors.accentText)),
+                      ),
                     ),
                   ),
                 ]);

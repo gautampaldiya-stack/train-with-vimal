@@ -131,6 +131,8 @@ The Firebase CLI login itself can stay; it is not needed.
 
 ## Deploy (server)
 One domain, all in Docker, behind CloudPanel; push to `develop` deploys. Steps: [`deploy/README.md`](deploy/README.md).
+Site shows **502**? Run `docker compose -f docker-compose.prod.yml restart web` in `~/twv`; the full checklist is in
+[`deploy/README.md` → "Site shows 502"](deploy/README.md#site-shows-502-something-went-wrong-502).
 
 ## Branches
 `working` (daily work) → `develop` (testing / staging) → `main` (production).

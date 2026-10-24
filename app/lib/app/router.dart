@@ -49,6 +49,7 @@ import '../features/library/programs/builder_screen.dart';
 import '../features/library/programs/programs_screen.dart';
 import '../features/trainer/more/more_screen.dart';
 import '../features/admin/activity/activity_screen.dart';
+import '../features/trainer/notifications/notifications_screen.dart';
 import '../features/trainer/calendar/cal_screen.dart';
 import '../features/admin/trainers/trainer_profile_screen.dart';
 import '../features/admin/trainers/trainers_screen.dart';
@@ -153,6 +154,8 @@ final Map<String, Widget Function(GoRouterState)> trainerScreens = {
   // A trainer with "Create and edit automations" (trainer access) builds automations too.
   '/automations': (_) => const AutomationsScreen(),
   '/automations/:id': (st) => AutomationBuilderScreen(key: ValueKey(st.uri.toString()), id: st.pathParameters['id']!, starter: st.uri.queryParameters['starter']),
+  // Every notification (D-59): bell dropdown → See all, More → Notifications. ?tab=unread opens Unread.
+  '/notifications': (st) => StaffNotificationsScreen(key: ValueKey(st.uri.toString()), unreadOnly: st.uri.queryParameters['tab'] == 'unread'),
   '/me': (_) => const TrainerMeScreen(key: ValueKey('me')),
   '/me/:id': (st) => TrainerMeScreen(key: const ValueKey('me'), tab: st.pathParameters['id']),
   '/clients/:id': (st) => TrainerClientProfileScreen(key: ValueKey(st.uri.toString()), id: st.pathParameters['id']!, tab: st.uri.queryParameters['tab']),
@@ -174,6 +177,7 @@ final Map<String, Widget Function(GoRouterState)> adminScreens = {
       ),
   '/calendar': (_) => const TrainerCalendarScreen(admin: true),
   '/activity': (_) => const AdminActivityScreen(),
+  '/notifications': (st) => StaffNotificationsScreen(key: ValueKey(st.uri.toString()), unreadOnly: st.uri.queryParameters['tab'] == 'unread'),
   // Dashboard → Check-ins to review: the trainer page over every client (no Check-ins board for the admin, D-49).
   '/checkins': (_) => const TrainerCheckinsScreen(),
   '/checkins/:id': (st) => TrainerCheckinsScreen(id: st.pathParameters['id']),
