@@ -194,6 +194,19 @@ None of these files go into git (`.gitignore` blocks `firebase.json`, `google-se
 - Database backup: `docker compose -f docker-compose.prod.yml exec db pg_dump -U twv twv > twv-$(date +%F).sql`
 - Uploads backup: `docker run --rm -v twv_media:/m -v $PWD:/b alpine tar czf /b/media-$(date +%F).tgz -C /m .`
 
+## Email (Gmail) — set up and test
+1. In `backend/.env`, set `EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend` (only once, not commented out),
+   `EMAIL_HOST=smtp.gmail.com`, `EMAIL_PORT=587`, `EMAIL_USE_TLS=True`, `EMAIL_HOST_USER=<the Gmail>`,
+   `EMAIL_HOST_PASSWORD=<that Gmail's 16-letter App password, no spaces>` and
+   `DEFAULT_FROM_EMAIL=Train With Vimal <the same Gmail>` (Gmail only sends from the address you log in with).
+2. Make the containers read it:
+   `docker compose -f docker-compose.prod.yml up -d --force-recreate api worker beat && docker compose -f docker-compose.prod.yml restart web`
+3. Test: `docker compose -f docker-compose.prod.yml exec api python manage.py sendtestemail you@gmail.com`
+   - If the whole mail is **printed** in the terminal, the server still uses the console backend (step 1 not applied).
+   - If nothing is printed and no error shows, the mail went out; check Inbox and Spam.
+   - `SMTPAuthenticationError`: wrong Gmail or App password.
+4. Real flow: the login page → Forgot password with your email.
+
 ## Site shows 502 ("Something went wrong (502)")
 502 means nginx (`web`) got no answer from Django (`api`). Run these on the server, in `~/twv`, in order:
 
