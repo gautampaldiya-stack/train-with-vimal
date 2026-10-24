@@ -111,7 +111,7 @@ jobs:
         if: steps.chk.outputs.ok == 'true'
         run: |
           $SSH "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
-            "cd ~/$APP_DIR && { test -f backend/.env || { echo 'backend/.env is missing on the server (deploy/README.md step 6)'; exit 1; }; } && docker compose -f docker-compose.prod.yml up -d --build --remove-orphans && docker image prune -f"
+            "cd ~/$APP_DIR && { test -f backend/.env || { echo 'backend/.env is missing on the server (deploy/README.md step 6)'; exit 1; }; } && docker compose -f docker-compose.prod.yml up -d --build --remove-orphans && docker compose -f docker-compose.prod.yml restart web && docker image prune -f"
       - name: Health check
         if: steps.chk.outputs.ok == 'true'
         run: |

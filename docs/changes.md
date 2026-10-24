@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-24 · Deploy — web restart after a new api container
+- **Pehle:** D-58 ke deploy me nginx (`web`) purane api container ka address yaad rakhe raha, isliye health check 502 par fail hua. Code aur migration theek chal gaye the.
+- **Ab:** Deploy `up -d --build` ke baad `restart web` bhi karta hai, taaki nginx naye api ko dhoondh le.
+- **Kyun:** Deploy run 7 (2026-10-24) fail hua tha. Server par haath se ek baar `restart web` chalana pada.
+- **Updated:** .github/workflows/deploy-develop.yml · docs/changes.md
+
 ### 2026-10-24 · Notifications — toast, bell count, Settings Log out, demo data on live
 - **Pehle:** Naya notification sirf bell panel me dikhta tha, bell par sirf red dot (board jaisa). Admin Settings me Log out nahi tha. Live par `seed_demo` fail hota (createsuperuser wala admin hai, doosra admin nahi ban sakta).
 - **Ab:** App khula ho to har naye notification ka toast (Open se uska page). Har bell par unread count (9+ tak). Admin Settings me Log out. `seed_demo` live admin ko hi "Vimal" maan ke demo trainers / clients bana deta hai, admin ka login nahi badalta.
