@@ -474,7 +474,17 @@ class MySubmissionViewSet(mixins.RetrieveModelMixin, mixins.CreateModelMixin, mi
         PhotoSet.objects.filter(submission=sub).delete()
         if sub.request_id:  # a form the coach sent goes back to "To fill"
             FormRequest.objects.filter(id=sub.request_id).update(filled_at=None)
+        # The coach's "sent their check-in" bell row goes too (it would open a check-in that is gone).
+        from apps.notifications.models import Notification
+        from apps.notifications.realtime import send_to_user
+        from apps.notifications.services import unread_count
+
+        staff = list(Notification.objects.filter(event="checkin_submitted", data__submission=str(sub.id))
+                     .values_list("recipient_id", flat=True))
+        Notification.objects.filter(event="checkin_submitted", data__submission=str(sub.id)).delete()
         sub.delete()
+        for uid in set(staff):
+            transaction.on_commit(lambda uid=uid: send_to_user(uid, "unread", {"count": unread_count(uid)}))
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

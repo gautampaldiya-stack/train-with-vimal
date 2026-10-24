@@ -278,11 +278,18 @@ def _after_submit(client, sub):
     trainer = client.client_profile.trainer
     if trainer and sub.form_type in (FormType.WEEKLY, FormType.DAILY, FormType.SURVEY):
         if sub.form_type == FormType.DAILY:
-            # Daily pulses are many: no push, only a live refresh of the review queue.
-            from apps.notifications.realtime import send_to_user
+            # Daily pulses are many: only the trainer's bell (and the toast while the app is open), no push or
+            # email, and never the admin. Off with Me → Notifications → New check-in, like the weekly one.
+            from apps.notifications.models import Channel, StaffNotificationPreference
+            from apps.notifications.services import notify
 
-            transaction.on_commit(lambda: send_to_user(trainer.id, "checkin_submitted",
-                                                       {"id": str(sub.id), "client": str(client.id)}))
+            from .serializers import summary_line
+
+            p = StaffNotificationPreference.objects.filter(user=trainer).first()
+            if p is None or p.new_checkin:
+                notify(trainer, "checkin_submitted", f"{client.full_name} sent their daily check-in",
+                       summary_line(sub), actor=client, channels=[Channel.IN_APP],
+                       data={"route": f"/checkins/{sub.id}", "submission": str(sub.id)})
         else:
             from apps.notifications.staff import team_alert
 

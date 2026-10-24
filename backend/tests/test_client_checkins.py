@@ -166,3 +166,51 @@ def test_daily_sent_has_its_answers_for_edit(client_user):
     assert r.status_code == 201, r.content
     sent = _page(client_user, tab="daily")["daily"]["sent"]
     assert sent["answers"] == {k: v for k, v in answers.items()}
+
+
+def _daily_answers(f):
+    return {_qid(f, "Morning weight"): 68.3, _qid(f, "Sleep last night"): "6.5 h", _qid(f, "Energy"): 4,
+            _qid(f, "Mood"): 4, _qid(f, "Hunger"): 3, _qid(f, "Soreness"): 2}
+
+
+def test_daily_checkin_rings_the_coach_bell_only(client_user, django_capture_on_commit_callbacks):
+    """Daily check-in → the trainer's bell (in-app, live toast), no push / email, not the admin. Undo removes it."""
+    from apps.notifications.models import Delivery, Notification
+
+    f = _page(client_user)["daily"]["form"]
+    with django_capture_on_commit_callbacks(execute=True):
+        r = client_user.post("/api/v1/me/submissions/", {"form": f["id"], "answers": _daily_answers(f)}, format="json")
+    assert r.status_code == 201, r.content
+    sid = r.json()["id"]
+    n = Notification.objects.get(event="checkin_submitted", data__submission=sid)
+    assert n.recipient.email == "aman@trainwithvimal.com" and n.in_app
+    assert n.title == "Riya Sharma sent their daily check-in" and "Weight 68.3 kg" in n.body
+    assert n.data["route"] == f"/checkins/{sid}"
+    assert not Delivery.objects.filter(notification=n).exists()
+    assert Notification.objects.filter(data__submission=sid).count() == 1  # not the admin
+    assert client_user.delete(f"/api/v1/me/submissions/{sid}/").status_code == 204
+    assert not Notification.objects.filter(data__submission=sid).exists()
+
+
+def test_daily_checkin_bell_follows_the_new_checkin_switch(client_user, trainer):
+    from apps.notifications.models import Notification
+
+    trainer.put("/api/v1/trainers/me/notifications/", {"new_checkin": False}, format="json")
+    f = _page(client_user)["daily"]["form"]
+    r = client_user.post("/api/v1/me/submissions/", {"form": f["id"], "answers": _daily_answers(f)}, format="json")
+    assert r.status_code == 201
+    assert not Notification.objects.filter(data__submission=r.json()["id"]).exists()
+
+
+def test_review_with_a_reply_tells_the_client(trainer):
+    from apps.notifications.models import Notification
+
+    subs = Submission.objects.filter(client__email="riya@example.com", reviewed_at__isnull=True)
+    a, b = subs[0], subs[1]
+    before = Notification.objects.filter(recipient__email="riya@example.com").count()
+    assert trainer.post(f"/api/v1/checkins/{a.id}/review/", {"reply": "Good job"}, format="json").status_code == 200
+    n = Notification.objects.filter(recipient__email="riya@example.com").order_by("-created_at").first()
+    assert n.title == "Coach Aman Verma replied" and n.in_app and n.data["route"] == f"/checkins/{a.id}"
+    # Mark reviewed with no reply: nothing to read, so no notification.
+    assert trainer.post(f"/api/v1/checkins/{b.id}/review/", {}, format="json").status_code == 200
+    assert Notification.objects.filter(recipient__email="riya@example.com").count() == before + 1

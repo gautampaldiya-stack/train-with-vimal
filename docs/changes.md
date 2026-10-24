@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-24 · Check-ins — daily check-in rings the coach's bell
+- **Pehle:** Client daily check-in bhejta to trainer ko koi notification nahi jaata tha (sirf ek socket event, jise app use nahi karta). Client Undo kare to bhi kuch hatana nahi padta tha.
+- **Ab:** Daily check-in par sirf assigned trainer ke bell me row aati hai ("Riya Sharma sent their daily check-in" + weight / sleep / energy), aur app khula ho to toast. Push / email nahi jaata, admin ko nahi jaata. Ye Me → Notifications → New check-in switch ke hisaab se chalta hai. Client Undo kare to wo row hat jaati hai. Review par client ko notification pehle jaisa sirf tab jaata hai jab reply likha ho ("Coach Aman Verma replied").
+- **Kyun:** Probid (2026-10-24): "daily checkin submit karta hai to trainer ke pass notification nahi jata".
+- **Updated:** backend/apps/checkins/services.py, views.py, tests/test_client_checkins.py · docs/changes.md
+
 ### 2026-10-24 · Deploy — nginx finds a new api container by itself, 502 steps in README
 - **Pehle:** nginx (`web`) api ka address sirf start par dhoondhta tha. `.env` badal ke `up -d` chalane par naya api container banta tha aur site 502 deti thi, jab tak `restart web` na karo.
 - **Ab:** `deploy/nginx.conf` Docker DNS (`resolver 127.0.0.11 valid=10s`) se api ka address har 10 s me dobara leta hai. `deploy/README.md` me "Site shows 502" steps likhe hain, aur root README me ek line.
