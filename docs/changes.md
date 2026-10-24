@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-24 · Notifications — toast, bell count, Settings Log out, demo data on live
+- **Pehle:** Naya notification sirf bell panel me dikhta tha, bell par sirf red dot (board jaisa). Admin Settings me Log out nahi tha. Live par `seed_demo` fail hota (createsuperuser wala admin hai, doosra admin nahi ban sakta).
+- **Ab:** App khula ho to har naye notification ka toast (Open se uska page). Har bell par unread count (9+ tak). Admin Settings me Log out. `seed_demo` live admin ko hi "Vimal" maan ke demo trainers / clients bana deta hai, admin ka login nahi badalta.
+- **Kyun:** Probid (2026-10-24).
+- **Updated:** app/lib/app/unread.dart, app.dart, core/widgets/badge.dart, button.dart, admin dashboard, admin settings, trainer dashboard, client home / more · backend seed_demo, tests/test_seed_demo.py · Decision D-58
+
 ### 2026-10-24 · Firebase on the PC — file table, FlutterFire clean-up
 - **Pehle:** README me Firebase steps the, par kaun si file kahan jaati hai ek jagah nahi tha. `flutterfire configure` chalane par apna `app/firebase.json` ban jaata hai jo D-56 wali key file ko replace karta hai, aur push chupchap band rehta hai.
 - **Ab:** README "Push notifications on your PC" me files ki table aur FlutterFire clean-up ke steps.

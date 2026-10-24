@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/services.dart';
+import '../../../app/unread.dart';
 import '../../../app/shell/page.dart';
 import '../../../core/api/api_error.dart';
 import '../../../core/icons/app_icons.dart';
@@ -69,7 +70,7 @@ class _TrainerDashboardScreenState extends State<TrainerDashboardScreen> {
   Widget _web(TrainerHome d) => StaffPage(
         onRefresh: c.load,
         header: PageTop(title: d.greeting, sub: d.subline, actions: [
-          Builder(builder: (b) => AppIconButton(AppIcons.bell, tooltip: 'Notifications', dot: d.unread > 0, onPressed: () => _notes(b, d))),
+          UnreadCount(fallback: d.unread, builder: (b, n) => AppIconButton(AppIcons.bell, tooltip: 'Notifications', count: n, onPressed: () => _notes(b, d))),
           AppButton.primary('New session', icon: AppIcons.plus, iconOnly: compactTop(context), onPressed: () => _newSession(d)),
         ]),
         children: [
@@ -130,7 +131,7 @@ class _TrainerDashboardScreenState extends State<TrainerDashboardScreen> {
             Expanded(
               child: CutText('${d.date} · Trainer workspace', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.homeHeroSub)),
             ),
-            Builder(builder: (b) => _HeroButton(AppIcons.bell, label: 'Notifications', dot: d.unread > 0, onTap: () => _notes(b, d))),
+            UnreadCount(fallback: d.unread, builder: (b, n) => _HeroButton(AppIcons.bell, label: 'Notifications', count: n, onTap: () => _notes(b, d))),
             _HeroButton(AppIcons.plus, label: 'New session', onTap: () => _newSession(d)),
             Semantics(
               label: 'My profile',
@@ -657,11 +658,11 @@ class _NameLink extends StatelessWidget {
 }
 
 class _HeroButton extends StatelessWidget {
-  const _HeroButton(this.icon, {required this.label, required this.onTap, this.dot = false});
+  const _HeroButton(this.icon, {required this.label, required this.onTap, this.count = 0});
   final AppIconData icon;
   final String label;
   final VoidCallback onTap;
-  final bool dot;
+  final int count;
   @override
   Widget build(BuildContext context) => Semantics(
         label: label,
@@ -672,18 +673,9 @@ class _HeroButton extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(color: h ? AppColors.homeHeroSub.withValues(alpha: .3) : AppColors.homeHeroBtn, borderRadius: BorderRadius.circular(12)),
-            child: Stack(alignment: Alignment.center, children: [
+            child: Stack(alignment: Alignment.center, clipBehavior: Clip.none, children: [
               AppIcon(icon, size: 18, color: AppColors.white),
-              if (dot)
-                Positioned(
-                  top: 7,
-                  right: 8,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(color: AppColors.red, shape: BoxShape.circle, border: Border.all(color: AppColors.homeHeroDotRing, width: 2)),
-                  ),
-                ),
+              if (count > 0) Positioned(top: -2, right: -2, child: BellCount(count, ring: AppColors.homeHeroDotRing)),
             ]),
           ),
         ),

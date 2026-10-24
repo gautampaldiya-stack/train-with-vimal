@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../icons/app_icon.dart';
 import '../theme/theme.dart';
+import 'badge.dart';
 import 'hover.dart';
 import 'tooltip.dart';
 
@@ -84,11 +85,14 @@ class AppButton extends StatelessWidget {
 
 /// Square icon button `.ibtn`: 36×36 radius 10 (sm 30×30 radius 8), optional red dot.
 class AppIconButton extends StatelessWidget {
-  const AppIconButton(this.icon, {super.key, required this.tooltip, this.onPressed, this.small = false, this.ghost = false, this.dot = false, this.color, this.fill = false});
+  const AppIconButton(this.icon, {super.key, required this.tooltip, this.onPressed, this.small = false, this.ghost = false, this.dot = false, this.count = 0, this.color, this.fill = false});
   final AppIconData icon;
   final String tooltip;
   final VoidCallback? onPressed;
   final bool small, ghost, dot;
+
+  /// Unread count on a bell (shown instead of the dot when above 0).
+  final int count;
   final Color? color;
 
   /// Filled glyph (`.i.fill`, e.g. the ⋯ dots).
@@ -109,9 +113,11 @@ class AppIconButton extends StatelessWidget {
             borderRadius: AppRadius.all(small ? 8 : 10),
             border: Border.all(color: ghost && !hov ? Colors.transparent : AppColors.line),
           ),
-          child: Stack(alignment: Alignment.center, children: [
+          child: Stack(alignment: Alignment.center, clipBehavior: Clip.none, children: [
             AppIcon(icon, size: small ? 15 : 16, fill: fill, color: color ?? (hov ? AppColors.text : AppColors.text2)),
-            if (dot)
+            if (count > 0)
+              Positioned(top: -1, right: -1, child: BellCount(count))
+            else if (dot)
               Positioned(
                 top: small ? 6 : 8,
                 right: small ? 6 : 8,

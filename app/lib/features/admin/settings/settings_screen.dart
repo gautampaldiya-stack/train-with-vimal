@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/router.dart' show confirmLogOut;
 import '../../../app/services.dart';
 import '../../../app/shell/page.dart';
 import '../../../core/api/api_error.dart';
@@ -46,6 +47,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       header: PageTop(
         title: 'Settings',
         subWrap: true,
+        // Admin's second way out besides the dashboard account menu (Probid, 2026-10-24).
+        actions: [AppButton('Log out', icon: AppIcons.logout, onPressed: () => confirmLogOut(context))],
         sub: switch (tab) {
           'b' => 'How your app, emails and invite links look to clients.',
           'r' => 'Who can see and change what. Trainer access is fine-tuned on each trainer profile.',

@@ -5,6 +5,7 @@ import 'services.dart';
 import '../core/widgets/overlays.dart';
 import 'page_title.dart';
 import 'router.dart';
+import 'unread.dart';
 
 class TwvApp extends StatelessWidget {
   const TwvApp({super.key});
@@ -16,7 +17,7 @@ class TwvApp extends StatelessWidget {
         theme: buildTheme(),
         routerConfig: appRouter,
         // The tab title follows the page ("My clients · Train With Vimal"); this Title sits under the app's own, so it wins.
-        builder: (context, child) => _PageTitle(child: ToastHost(child: child ?? const SizedBox())),
+        builder: (context, child) => _PageTitle(child: ToastHost(child: NotificationToasts(child: child ?? const SizedBox()))),
       );
 }
 

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
+import '../../../core/widgets/badge.dart';
 import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
 
@@ -180,10 +181,10 @@ class ChSection extends StatelessWidget {
       Padding(padding: const EdgeInsets.only(left: 2, top: 4), child: Pull(bottom: 4, child: Text(text, style: AppText.s(15, W.w8))));
 }
 
-/// `.ca-ib`: 38px icon button with an optional red dot (the bell).
+/// `.ca-ib`: 38px icon button with the unread count (the bell).
 class ChBell extends StatelessWidget {
-  const ChBell({super.key, required this.dot, required this.onTap});
-  final bool dot;
+  const ChBell({super.key, required this.count, required this.onTap});
+  final int count;
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) => Semantics(
@@ -195,18 +196,9 @@ class ChBell extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(color: h ? AppColors.outlineHover : AppColors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.line)),
-            child: Stack(alignment: Alignment.center, children: [
+            child: Stack(alignment: Alignment.center, clipBehavior: Clip.none, children: [
               const AppIcon(AppIcons.bell, size: 19, color: AppColors.text2),
-              if (dot)
-                Positioned(
-                  top: 7,
-                  right: 8,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(color: AppColors.red, shape: BoxShape.circle, border: Border.all(color: AppColors.white, width: 2)),
-                  ),
-                ),
+              if (count > 0) Positioned(top: -2, right: -2, child: BellCount(count)),
             ]),
           ),
         ),

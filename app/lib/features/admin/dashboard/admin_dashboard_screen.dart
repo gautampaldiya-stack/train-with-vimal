@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart' show confirmLogOut;
 import '../../../app/services.dart';
+import '../../../app/unread.dart';
 import '../../../app/shell/page.dart';
 import '../../../core/api/api_error.dart';
 import '../../../core/icons/app_icons.dart';
@@ -92,7 +93,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   // ─────────────────────────────── Header
 
   List<Widget> _actions(AdminHome d) => [
-        Builder(builder: (b) => AppIconButton(AppIcons.bell, tooltip: 'Notifications', dot: d.unread > 0, onPressed: () => _notes(b))),
+        UnreadCount(fallback: d.unread, builder: (b, n) => AppIconButton(AppIcons.bell, tooltip: 'Notifications', count: n, onPressed: () => _notes(b))),
         AppButton.primary('Add client', icon: AppIcons.plus, iconOnly: compactTop(context), onPressed: _addClient),
         Builder(builder: (b) => _Profile(onTap: () => _account(b))),
       ];

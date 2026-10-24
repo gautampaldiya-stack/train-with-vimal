@@ -95,13 +95,19 @@ class Command(BaseCommand):
         from apps.clients.models import ClientProfile
         from apps.trainers.models import AccessMode, TrainerProfile
 
-        vimal, made = self.user(email="vimal@trainwithvimal.com", phone="+919810000001", full_name="Vimal Singh",
-                                role=Role.ADMIN, status=AccountStatus.ACTIVE, city="Delhi", gender="male")
-        # The post_save signal already creates the admin's trainer profile; fill in the demo details here.
-        TrainerProfile.objects.update_or_create(
-            user=vimal, defaults={"is_owner": True, "speciality": ["Strength", "Fat loss"], "max_clients": 40,
-                                  "access_mode": AccessMode.ALL, "experience_since": 2012,
-                                  "languages": ["Hindi", "English"]})
+        from apps.accounts.models import User
+
+        # Only one admin may exist. On the live site he was made with createsuperuser: the demo clients go to
+        # him, and his login and profile stay as they are (D-57).
+        vimal = User.objects.filter(role=Role.ADMIN).first()
+        if vimal is None or vimal.email.lower() == "vimal@trainwithvimal.com":
+            vimal, made = self.user(email="vimal@trainwithvimal.com", phone="+919810000001", full_name="Vimal Singh",
+                                    role=Role.ADMIN, status=AccountStatus.ACTIVE, city="Delhi", gender="male")
+            # The post_save signal already creates the admin's trainer profile; fill in the demo details here.
+            TrainerProfile.objects.update_or_create(
+                user=vimal, defaults={"is_owner": True, "speciality": ["Strength", "Fat loss"], "max_clients": 40,
+                                      "access_mode": AccessMode.ALL, "experience_since": 2012,
+                                      "languages": ["Hindi", "English"]})
         trainers = {"": vimal}
         today = timezone.localdate()
         for name, email, phone, spec, cap, active in TRAINERS:
@@ -516,11 +522,11 @@ class Command(BaseCommand):
         """Exercise guide media, one of each kind: Leg Press an uploaded video, Romanian Deadlift a picture, Walking
         Lunge a YouTube video. The uploads are not shared with clients, so they show in the guide, not the Library.
         Running it again fills a video that has no file yet (older demo data made without ffmpeg)."""
-        from apps.accounts.models import User
+        from apps.accounts.models import Role, User
         from apps.content.models import ContentItem
         from apps.training.models import Exercise
 
-        vimal = User.objects.get(email="vimal@trainwithvimal.com")
+        vimal = User.objects.get(role=Role.ADMIN)
         for name, kind, title, sec in [("Leg Press", "video", "Leg press: how to", 42),
                                        ("Romanian Deadlift", "image", "Romanian deadlift: the hinge", 0)]:
             ex = Exercise.objects.filter(name=name, is_builtin=True).first()
@@ -577,7 +583,7 @@ class Command(BaseCommand):
         """Library board: eight items (2 videos, 3 PDFs, 1 image, 2 articles) shared four ways: by Aman with a
         note, with the program, with the meal plan, and for all clients. Videos, PDFs and the image are small real
         files made here (videos need ffmpeg; without it they have no file and the app says so)."""
-        from apps.accounts.models import User
+        from apps.accounts.models import Role, User
         from apps.content.models import ContentItem, ContentShare, ContentView
 
         riya = User.objects.get(email="riya@example.com")
@@ -588,7 +594,7 @@ class Command(BaseCommand):
             _file_content()
             return
         aman = User.objects.get(email="aman@trainwithvimal.com")
-        vimal = User.objects.get(email="vimal@trainwithvimal.com")
+        vimal = User.objects.get(role=Role.ADMIN)
         sahil = User.objects.get(email="sahil@trainwithvimal.com")
         today = timezone.localdate()
         program, plan = "Fat loss · 8 weeks", "your meal plan"

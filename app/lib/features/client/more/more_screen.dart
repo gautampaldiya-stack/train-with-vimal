@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../app/router.dart' show confirmLogOut;
 import '../../../app/services.dart';
+import '../../../app/unread.dart';
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
 import '../../../core/widgets/client.dart';
@@ -245,7 +246,7 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
               Text('Your account, coach and settings', style: AppText.s(13, W.w5, color: AppColors.muted)),
             ]),
           ),
-          ChBell(dot: d.unread > 0, onTap: () => context.go('/more/notifications')),
+          UnreadCount(fallback: d.unread, builder: (_, n) => ChBell(count: n, onTap: () => context.go('/more/notifications'))),
         ]),
         if (d.deletionOn != null) _deletionBanner(d),
         _profileCard(d),

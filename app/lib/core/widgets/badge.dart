@@ -41,6 +41,24 @@ class AppCount extends StatelessWidget {
       );
 }
 
+/// Unread count on a bell: red pill (min 16×16, 700/10, white text) with a ring in the button's colour,
+/// "9+" above nine. Replaces the board's red dot (Probid, 2026-10-24: show how many are unread).
+class BellCount extends StatelessWidget {
+  const BellCount(this.n, {super.key, this.ring = AppColors.white});
+  final int n;
+  final Color ring;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        constraints: const BoxConstraints(minWidth: 18),
+        height: 18,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(color: AppColors.red, borderRadius: AppRadius.all(9), border: Border.all(color: ring, width: 2)),
+        child: Text(n > 9 ? '9+' : '$n', style: AppText.s(10, W.w7, color: AppColors.white, h: 1)),
+      );
+}
+
 /// `.fchip` kind filter (28 high, active = dark fill) with optional count.
 class FilterChipX extends StatelessWidget {
   const FilterChipX(this.label, {super.key, this.selected = false, this.count, this.onTap, this.icon});

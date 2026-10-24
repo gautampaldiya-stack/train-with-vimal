@@ -3,8 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/unread.dart';
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
+import '../../../core/widgets/badge.dart';
 import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/overlays.dart';
@@ -128,19 +130,13 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(color: h ? AppColors.homeHeroSub.withValues(alpha: .3) : AppColors.homeHeroBtn, borderRadius: BorderRadius.circular(12)),
-                  child: Stack(alignment: Alignment.center, children: [
-                    const AppIcon(AppIcons.bell, size: 18, color: AppColors.white),
-                    if (d.unread > 0)
-                      Positioned(
-                        top: 7,
-                        right: 8,
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(color: AppColors.red, shape: BoxShape.circle, border: Border.all(color: AppColors.homeHeroDotRing, width: 2)),
-                        ),
-                      ),
-                  ]),
+                  child: UnreadCount(
+                    fallback: d.unread,
+                    builder: (_, n) => Stack(alignment: Alignment.center, clipBehavior: Clip.none, children: [
+                      const AppIcon(AppIcons.bell, size: 18, color: AppColors.white),
+                      if (n > 0) Positioned(top: -2, right: -2, child: BellCount(n, ring: AppColors.homeHeroDotRing)),
+                    ]),
+                  ),
                 ),
               ),
             ),
@@ -243,7 +239,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
               Text('Hey ${d.firstName}', style: AppText.s(web ? 30 : 26, W.w8, ls: web ? -0.3 : -0.26)),
             ]),
           ),
-          Builder(builder: (bell) => ChBell(dot: d.unread > 0, onTap: () => web ? _notesMenu(bell) : showNoticesSheet(context, c))),
+          UnreadCount(fallback: d.unread, builder: (bell, n) => ChBell(count: n, onTap: () => web ? _notesMenu(bell) : showNoticesSheet(context, c))),
         ]),
       );
 
