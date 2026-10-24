@@ -32,11 +32,19 @@ class _PageTitle extends StatefulWidget {
 }
 
 class _PageTitleState extends State<_PageTitle> {
-  final _source = Listenable.merge([appRouter.routerDelegate, Services.session]);
+  // The unread count goes in front of the tab title ("(3) Clients - Train With Vimal"), so a tab in the
+  // background shows that something came in.
+  final _source = Listenable.merge(
+      [appRouter.routerDelegate, Services.session, Services.realtime.unread, Services.realtime.connected]);
   String _title = appName;
   bool _queued = false;
 
-  String get _now => pageTitle(appRouter.routerDelegate.currentConfiguration.uri.path);
+  String get _now {
+    final t = pageTitle(appRouter.routerDelegate.currentConfiguration.uri.path);
+    final rt = Services.realtime;
+    final n = Services.session.signedIn && rt.connected.value ? rt.unread.value : 0;
+    return n > 0 ? '(${n > 99 ? '99+' : n}) $t' : t;
+  }
 
   @override
   void initState() {
