@@ -308,6 +308,45 @@ def nightly_client_stats():
     return n
 
 
+# ---------------------------------------------------------------- coach notices (D-60)
+@shared_task
+def coach_daily_notices(today=None):
+    """9 am, to each client's trainer: "Riya missed yesterday's workout" (a planned training day with no finished
+    workout and no session; bell only, Me → Notifications → Missed workouts) and "Riya's plan ends Fri, 6 Nov"
+    (once per plan, 7 days before; bell and push)."""
+    from apps.clients.metrics import active_program, program_day_for
+    from apps.scheduling.models import Session
+    from apps.training.models import AssignmentStatus, ProgramAssignment, WorkoutLog
+
+    from .staff import coach_notice
+
+    today = today or _local_now().date()
+    yday = today - timedelta(days=1)
+    sent = 0
+    for c in _active_clients().filter(client_profile__trainer__isnull=False):
+        pd = program_day_for(active_program(c, yday), yday)
+        if pd is None or pd.is_rest:
+            continue
+        if WorkoutLog.objects.filter(client=c, date=yday, status=WorkoutLog.Status.COMPLETED).exists():
+            continue
+        if Session.objects.filter(client=c, start__date=yday).exclude(status="cancelled").exists():
+            continue
+        if once(c, "missed_coach", pd.id, yday):
+            sent += len(coach_notice(c, "client_missed_workout", f"{c.first_name} missed yesterday’s workout",
+                                     pd.name or "Planned training day", pref="missed_workouts",
+                                     route=f"/clients/{c.id}?tab=logs"))
+    for a in (ProgramAssignment.objects.filter(status=AssignmentStatus.ACTIVE, end_date__gte=today,
+                                               end_date__lte=today + timedelta(days=7),
+                                               client__client_profile__trainer__isnull=False)
+              .select_related("client__client_profile__trainer", "program", "custom_program")):
+        if once(a.client, "plan_end_coach", a.id, a.end_date):
+            days = (a.end_date - today).days
+            when = "today" if days == 0 else ("tomorrow" if days == 1 else dfmt(a.end_date, "%a, %-d %b"))
+            sent += len(coach_notice(a.client, "client_plan_ending", f"{a.client.first_name}’s plan ends {when}",
+                                     f"{a.effective_program.name} · pick what comes next", push=True))
+    return sent
+
+
 # ---------------------------------------------------------------- housekeeping
 @shared_task
 def roll_plans():

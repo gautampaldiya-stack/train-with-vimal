@@ -58,6 +58,11 @@ def _set_clients(model, field, obj, ids, actor, label):
     for c in get_user_model().objects.filter(id__in=removed) if removed else []:
         activity_log("removed a habit" if model is HabitAssignment else "removed supplements", "plan", actor=actor,
                      target=c, target_label=label, client=c)
+    if removed:
+        from apps.notifications.services import tell_clients
+
+        tell_clients(list(get_user_model().objects.filter(id__in=removed)), "plan_removed",
+                     f"Removed from your plan: {label}", "", actor=actor, route="/habits")
     return len(added), len(removed)
 
 
@@ -258,6 +263,10 @@ class _ClientSlot(viewsets.ViewSet):
         a.save(update_fields=["active", "updated_at"])
         activity_log("ended a plan", "plan", actor=request.user, target=client,
                      target_label=getattr(a, self.field).name, client=client)
+        from apps.notifications.services import tell_clients
+
+        tell_clients([client], "plan_removed", f"Removed from your plan: {getattr(a, self.field).name}", "",
+                     actor=request.user, route="/habits")
         return Response(self._rows(client))
 
 

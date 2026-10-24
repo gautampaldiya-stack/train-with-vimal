@@ -312,6 +312,23 @@ class ResetPasswordView(AuthThrottleMixin, APIView):
         return Response({"detail": "Password saved. Log in with your new password."})
 
 
+def _tell_team_joined(user):
+    """First login from "your coach added you" / the trainer invite (D-60): a trainer → the admin's bell; a client →
+    their trainer and the admin."""
+    if user.last_login:
+        return  # not the first time (a later login link)
+    from apps.notifications.services import notify
+    from apps.notifications.staff import coach_notice
+
+    if user.is_trainer:
+        admins = list(User.objects.filter(role="admin", is_active=True))
+        notify(admins, "trainer_joined", f"{user.full_name} joined the team", "They set a password and can log in now.",
+               actor=user, data={"route": f"/trainers/{user.id}"})
+    elif user.is_client:
+        coach_notice(user, "client_joined", f"{user.full_name} set up their account", "They can log in now.",
+                     owners=True)
+
+
 class AcceptLoginLinkView(AuthThrottleMixin, APIView):
     """"Your coach added you": pick a password and you are in (no approval needed)."""
 
@@ -334,6 +351,7 @@ class AcceptLoginLinkView(AuthThrottleMixin, APIView):
         user.save(update_fields=["password", "password_changed_at", "email_verified_at"])
         row.used_at = timezone.now()
         row.save(update_fields=["used_at"])
+        _tell_team_joined(user)
         tokens = start_session(user, request)
         return Response({**tokens, "user": UserSerializer(user, context={"request": request}).data})
 
@@ -451,6 +469,10 @@ class DeleteAccountView(APIView):
         request.user.deletion_requested_at = timezone.now()
         request.user.save(update_fields=["deletion_requested_at"])
         activity_log("asked to delete their account", "client", actor=request.user, client=request.user)
+        from apps.notifications.staff import coach_notice
+
+        coach_notice(request.user, "client_deletion", f"{request.user.full_name} asked to delete their account",
+                     f"Their data goes in {self.GRACE_DAYS} days unless they cancel.", owners=True, push=True)
         return Response({"deletion_requested_at": request.user.deletion_requested_at, "grace_days": self.GRACE_DAYS})
 
     def delete(self, request):

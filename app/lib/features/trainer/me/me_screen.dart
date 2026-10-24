@@ -70,7 +70,7 @@ class _TrainerMeScreenState extends State<TrainerMeScreen> {
               ]),
               UnderlineTabs<String>(
                 items: [
-                  for (final (k, l) in MeController.tabs) TabItem(k, l, count: k == 'documents' && c.docs.isNotEmpty ? c.docs.length : null),
+                  for (final (k, l) in c.tabList) TabItem(k, l, count: k == 'documents' && c.docs.isNotEmpty ? c.docs.length : null),
                 ],
                 value: c.tab,
                 onChanged: _tab,

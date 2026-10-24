@@ -168,3 +168,26 @@ def send_digests(now=None, first=None):
         sent += notify(u, "digest", title, body, channels=[Channel.EMAIL], in_app=False,
                        email_subject=f"{title} · {dfmt(now, '%-d %b')}")
     return sent
+
+
+# ---------------------------------------------------------------- coach notices (D-60)
+def coach_notice(client, event, title, body="", *, route=None, push=False, pref=None, actor=None, owners=False):
+    """One line in the assigned trainer's bell about their client (toast while the app is open). `push` also
+    sends it to their phone / browser when their own Push switch is on; `pref` is a Me → Notifications switch
+    that turns it off. The admin only with `owners` (or when the admin is the client's trainer, D-57)."""
+    cp = getattr(client, "client_profile", None)
+    trainer = getattr(cp, "trainer", None) if cp else None
+    people = [trainer] if trainer is not None and trainer.is_active else []
+    if owners:  # admin-level news (account deletion, someone joined): the owner too, once
+        people += [u for u in User.objects.filter(role="admin", is_active=True) if u not in people]
+    sent = []
+    for u in people:
+        p = StaffNotificationPreference.objects.filter(user=u).first()
+        if pref and p is not None and not getattr(p, pref):
+            continue
+        channels = [Channel.IN_APP]
+        if push and (p is None or p.push):
+            channels.append(Channel.PUSH)
+        sent += notify(u, event, title, body, actor=actor or client, channels=channels,
+                       data={"route": route or f"/clients/{client.id}"})
+    return sent

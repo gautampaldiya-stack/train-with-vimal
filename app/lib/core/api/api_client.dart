@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -34,7 +35,7 @@ class Api {
               return h.next(e2);
             }
           }
-          onSignedOut?.call();
+          if (tokens.refresh == null) onSignedOut?.call(); // refused, not just offline
         }
         h.next(e);
       },
@@ -46,6 +47,28 @@ class Api {
   VoidCallback? onSignedOut;
   Completer<bool>? _refreshing;
 
+  /// An access token good for at least another minute (refreshed first if not), for callers outside dio:
+  /// the realtime socket reconnects with this, never with the token it first got (they last 15 min).
+  Future<String?> freshAccess() async {
+    final a = tokens.access;
+    if (a == null) return null;
+    final exp = _expiry(a);
+    if (exp != null && exp.difference(DateTime.now()) > const Duration(minutes: 1)) return a;
+    if (tokens.refresh == null || !await _refresh()) return null;
+    return tokens.access;
+  }
+
+  /// `exp` from the JWT payload (null when it can't be read: the server then says no and we refresh on retry).
+  static DateTime? _expiry(String jwt) {
+    try {
+      final part = jwt.split('.')[1];
+      final m = jsonDecode(utf8.decode(base64Url.decode(base64Url.normalize(part)))) as Map;
+      return DateTime.fromMillisecondsSinceEpoch(((m['exp'] as num).toInt()) * 1000);
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<bool> _refresh() async {
     if (_refreshing != null) return _refreshing!.future;
     final c = _refreshing = Completer<bool>();
@@ -53,8 +76,12 @@ class Api {
       final r = await _dio.post('auth/refresh/', data: {'refresh': tokens.refresh}, options: Options(extra: {'auth': false}));
       await tokens.save(r.data['access'], r.data['refresh']);
       c.complete(true);
+    } on DioException catch (e) {
+      // Only a refused refresh token signs out; no network / server restarting keeps it for the next try.
+      final code = e.response?.statusCode;
+      if (code == 400 || code == 401) await tokens.clear();
+      c.complete(false);
     } catch (_) {
-      await tokens.clear();
       c.complete(false);
     } finally {
       _refreshing = null;

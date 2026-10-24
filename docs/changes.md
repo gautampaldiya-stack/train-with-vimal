@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-24 · Notifications everywhere, live toast fix, admin My profile, email links
+- **Pehle:** Live site par toast / live bell 15 min baad band ho jaate the (socket purane token se reconnect karta tha). Trainer ko personal best, goal weight, chhoda workout, plan khatam hone ki khabar nahi milti thi. Client ko plan update / khatam / habit hatane par kuch nahi aata tha. Admin ko trainer join ya client delete request nahi dikhti thi. Reset password email me `localhost:5173` link. Admin ka apna profile page nahi tha.
+- **Ab:** Ye sab notifications (D-60). Socket har reconnect par naya token leta hai. Prod me `FRONTEND_URL` default live site. Admin `/me` (My profile) sidebar, account menu aur More se.
+- **Kyun:** Probid (2026-10-24).
+- **Updated:** app realtime / api_client / services / router / nav_items / me, admin dashboard + More · backend notifications staff / services / reminders, training, nutrition, habits, checkins, accounts, settings · tests/test_coach_notices.py · Decision D-60
+
 ### 2026-10-24 · Check-ins — daily check-in rings the coach's bell
 - **Pehle:** Client daily check-in bhejta to trainer ko koi notification nahi jaata tha (sirf ek socket event, jise app use nahi karta). Client Undo kare to bhi kuch hatana nahi padta tha.
 - **Ab:** Daily check-in par sirf assigned trainer ke bell me row aati hai ("Riya Sharma sent their daily check-in" + weight / sleep / energy), aur app khula ho to toast. Push / email nahi jaata, admin ko nahi jaata. Ye Me → Notifications → New check-in switch ke hisaab se chalta hai. Client Undo kare to wo row hat jaati hai. Review par client ko notification pehle jaisa sirf tab jaata hai jab reply likha ho ("Coach Aman Verma replied").

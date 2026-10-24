@@ -423,6 +423,7 @@ class ProgramViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
         s = StructureSerializer(data=request.data)
         s.is_valid(raise_exception=True)
         services.sync_structure(p, s.validated_data["weeks"])
+        services.tell_plan_changed(p, actor=request.user)
         p = Program.objects.prefetch_related("program_weeks__days__exercises__exercise").get(id=p.id)
         return Response(ProgramDetailSerializer(p, context=self.get_serializer_context()).data)
 
@@ -583,6 +584,7 @@ class ClientProgramViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             s = StructureSerializer(data=request.data)
             s.is_valid(raise_exception=True)
             services.sync_structure(copy, s.validated_data["weeks"])
+            services.tell_plan_changed(copy, actor=request.user, assignments=[a])
         prog = a.custom_program or a.program
         prog = Program.objects.prefetch_related("program_weeks__days__exercises__exercise").get(id=prog.id)
         return Response(ProgramDetailSerializer(prog).data)

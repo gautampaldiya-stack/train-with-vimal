@@ -31,7 +31,10 @@ class MeController extends ChangeNotifier {
     ('clients-see', 'What clients see'),
   ];
 
-  List<(String, String)> get tabList => admin ? adminTabs : tabs;
+  /// The owner on their own My profile (admin is a trainer too, D-57): no "My access" tab, they have every right.
+  bool get owner => !admin && Services.session.me?.role == Role.admin;
+
+  List<(String, String)> get tabList => admin ? adminTabs : owner ? [for (final t in tabs) if (t.$1 != 'access') t] : tabs;
 
   /// Words for the admin's texts ("Clients who need him"); "you" on My profile.
   String get he => admin ? switch ('${me['gender'] ?? ''}') { 'female' => 'she', 'male' => 'he', _ => 'they' } : 'you';

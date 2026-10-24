@@ -548,6 +548,11 @@ def end_client_plan(a, *, actor):
     a.end_reason = "ended"
     a.save(update_fields=["status", "end_date", "end_reason", "updated_at"])
     activity_log("ended a meal plan", "plan", actor=actor, target=a.client, target_label=a.plan.name, client=a.client)
+    from apps.notifications.services import tell_clients
+
+    tell_clients([a.client], "plan_ended", "Your meal plan has ended",
+                 f"{a.plan.name} · {actor.first_name if actor else 'Your coach'} will set what is next",
+                 actor=actor, route="/food")
 
 
 # ---------------------------------------------------------------- one client's own copy (Plans → Edit for X)

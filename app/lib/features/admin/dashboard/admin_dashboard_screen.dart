@@ -117,6 +117,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final me = Services.session.me;
     showAppMenu(anchor, width: 220, [
       MenuEntry.header('${me?.name ?? 'Vimal'} · Admin'),
+      MenuEntry('My profile', icon: AppIcons.person, onTap: () => context.go('/me')),
       MenuEntry('Settings', icon: AppIcons.settings, onTap: () => context.go('/settings')),
       const MenuEntry.separator(),
       MenuEntry('Log out', icon: AppIcons.logout, danger: true, onTap: () => confirmLogOut(context)),

@@ -287,6 +287,19 @@ def _relink_logs(assignment, program):
 
 
 @transaction.atomic
+def tell_plan_changed(program, *, actor, assignments=None):
+    """Builder save: the clients doing this plan right now hear "Aman updated your workout plan" (once a day)."""
+    from apps.notifications.services import tell_clients
+
+    if assignments is None:
+        assignments = ProgramAssignment.objects.filter(program=program, custom_program__isnull=True,
+                                                       status=AssignmentStatus.ACTIVE).select_related("client")
+    rows = [a for a in assignments if a.status == AssignmentStatus.ACTIVE]
+    by = actor.first_name if actor else "Your coach"
+    return tell_clients([a.client for a in rows], "workout_plan_updated", f"{by} updated your workout plan",
+                        program.name, actor=actor, route="/train", daily_key=f"prog:{program.id}")
+
+
 def reset_to_master(assignment, *, actor):
     custom = assignment.custom_program
     if not custom:
@@ -297,6 +310,7 @@ def reset_to_master(assignment, *, actor):
     custom.soft_delete()
     activity_log("reset a plan to master", "plan", actor=actor, target=assignment.client,
                  target_label=assignment.program.name, client=assignment.client)
+    tell_plan_changed(assignment.program, actor=actor, assignments=[assignment])
     return assignment
 
 
@@ -307,6 +321,11 @@ def end_assignment(assignment, *, actor):
     assignment.save(update_fields=["status", "end_date", "end_reason", "updated_at"])
     activity_log("ended a plan", "plan", actor=actor, target=assignment.client,
                  target_label=assignment.effective_program.name, client=assignment.client)
+    from apps.notifications.services import tell_clients
+
+    tell_clients([assignment.client], "plan_ended", "Your workout plan has ended",
+                 f"{assignment.effective_program.name} · {actor.first_name if actor else 'Your coach'} will set what is next",
+                 actor=actor, route="/train")
 
 
 def roll_assignments(today=None):
@@ -504,9 +523,13 @@ def finish_workout(wl, *, effort=None, note="", duration_seconds=None, time_brea
     if best is not None:
         from apps.notifications.services import notify
 
+        from apps.notifications.staff import coach_notice
+
+        what = f"{best.exercise.name} {float(best.weight_kg):g} kg × {best.reps or 1}"
         notify(client, "personal_best", "New personal best",
-               f"{best.exercise.name} {float(best.weight_kg):g} kg × {best.reps or 1}"
-               + (f" on {wl.name}" if wl.name else ""), data={"route": "/progress"})
+               what + (f" on {wl.name}" if wl.name else ""), data={"route": "/progress"})
+        coach_notice(client, "client_personal_best", f"{client.first_name} hit a new personal best", what,
+                     route=f"/clients/{client.id}?tab=logs")
     if trainer:
         from apps.notifications.realtime import send_to_user
 

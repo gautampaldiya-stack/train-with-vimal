@@ -44,7 +44,7 @@ class AdminMoreScreen extends StatelessWidget {
       header: const PageTop(title: 'More'),
       children: [
         Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 16, children: [
-          MoreMeCard(initials: me.initials, name: me.name.split(' ').first, sub: 'Owner · Train With Vimal', onTap: () => context.go('/settings')),
+          MoreMeCard(initials: me.initials, name: me.name.split(' ').first, sub: 'Owner · Train With Vimal', onTap: () => context.go('/me')),
           for (final (label, rows) in _groups)
             MoreGroup(label, [
               for (final (t, path, icon, bg, fg) in rows) MoreRow(t, icon: icon, bg: bg, fg: fg, onTap: () => context.go(path)),

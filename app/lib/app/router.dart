@@ -189,6 +189,10 @@ final Map<String, Widget Function(GoRouterState)> adminScreens = {
   // Emails & alerts (D-52): ?tab=alerts or ?tab=sender opens that tab
   '/emails': (st) => EmailsScreen(key: ValueKey(st.uri.toString()), tab: st.uri.queryParameters['tab']),
   '/settings': (st) => SettingsScreen(key: ValueKey(st.uri.toString()), tab: st.uri.queryParameters['tab']),
+  // The owner's own details (name, photo, documents, password, devices, notifications): the trainer's My profile,
+  // since the admin is a trainer too (D-57). Account menu → My profile, More → the top card.
+  '/me': (_) => const TrainerMeScreen(key: ValueKey('me')),
+  '/me/:id': (st) => TrainerMeScreen(key: const ValueKey('me'), tab: st.pathParameters['id']),
   for (final k in ['/programs', '/programs/:id', '/nutrition', '/nutrition/:id', '/habits', '/exercises', '/exercises/:id', '/content', '/content/:id'])
     k: trainerScreens[k]!,
 };

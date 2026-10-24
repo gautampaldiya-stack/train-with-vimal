@@ -275,6 +275,15 @@ def _after_submit(client, sub):
         reached = Decimal(str(w)) <= target if losing else Decimal(str(w)) >= target
         if reached:
             transaction.on_commit(lambda: fire_event("goal_weight", client, dedupe="goal_weight"))
+            from datetime import date as _date
+
+            from apps.notifications.reminders import once
+            from apps.notifications.staff import coach_notice
+
+            # Once per goal (a new target can ring again): the day is a fixed marker, the ref carries the target.
+            if once(client, "goal_weight", f"{target}", _date(2000, 1, 1)):
+                coach_notice(client, "client_goal_reached", f"{client.full_name} reached their goal weight",
+                             f"{float(w):g} kg (goal {float(target):g} kg)", push=True)
     trainer = client.client_profile.trainer
     if trainer and sub.form_type in (FormType.WEEKLY, FormType.DAILY, FormType.SURVEY):
         if sub.form_type == FormType.DAILY:

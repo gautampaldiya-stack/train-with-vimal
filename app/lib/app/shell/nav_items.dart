@@ -29,6 +29,7 @@ List<NavItem> sidebarFor(Role role, {bool automations = false}) => switch (role)
           NavItem('Content library', '/content', AppIcons.content, group: 'Build'),
           NavItem('Automations', '/automations', AppIcons.automations, group: 'Engage'),
           NavItem('Emails & alerts', '/emails', AppIcons.emails, group: 'Engage'),
+          NavItem('My profile', '/me', AppIcons.person, group: 'Workspace'), // owner's own details (Probid)
           NavItem('Settings', '/settings', AppIcons.settings, group: 'Workspace'),
         ],
       Role.trainer => [

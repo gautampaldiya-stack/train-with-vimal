@@ -62,4 +62,5 @@ One file per decision. Add a new file for every new decision (next number), and 
 | [D-57](0057-admin-is-also-a-trainer.md) | Admin is always a trainer too (profile made on save + migration), so invite links work when there are no trainers | 2026-10-24 |
 | [D-58](0058-notification-toast-bell-count-settings-logout.md) | Toast for each new notification while the app is open, unread count on every bell, Log out in admin Settings, seed_demo works with the live admin | 2026-10-24 |
 | [D-59](0059-staff-notifications-page.md) | Notifications page for admin and trainer (/notifications): All / Unread, rows by day, open, mark read / unread, delete with Undo, live, Show more; bell → See all | 2026-10-24 |
+| [D-60](0060-notifications-for-every-change.md) | Live socket reconnects with a fresh token; coach / client / admin notifications for check-ins, bests, goals, missed workouts, plan changes and ends, joins and deletions; email links use the live site; admin My profile | 2026-10-24 |
 | [D-31](0031-trainer-activity-and-fixes.md) | Trainer Activity card, stat cards fill the row, menus fit the screen, readable guides | 2026-10-16 |

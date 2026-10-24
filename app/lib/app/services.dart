@@ -153,7 +153,7 @@ class Session extends ChangeNotifier {
     final token = Services.tokens.access;
     if (token != null && me != null && !me!.pending) {
       if (!Services.realtime.active) {
-        Services.realtime.connect(token);
+        Services.realtime.connect(Services.api.freshAccess);
         Services.push.start(platform); // phone / browser push when the app is closed (D-56)
       }
     } else {

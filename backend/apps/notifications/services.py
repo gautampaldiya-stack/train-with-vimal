@@ -17,7 +17,7 @@ from .rendering import context_for, render
 
 # Client More → Notification settings: these switch off the push / email copy (the in-app row stays).
 COACH_EVENTS = {"checkin_reviewed", "plan_assigned", "meal_plan_assigned", "meal_plan_updated", "trainer_changed",
-                "content_shared", "form_request"}
+                "content_shared", "form_request", "workout_plan_updated", "plan_ended", "plan_removed"}
 PROGRESS_EVENTS = {"personal_best", "milestone"}
 
 
@@ -156,3 +156,19 @@ def mark_delivery(delivery, status, provider_id="", error=""):
     if status in (Delivery.Status.SENT, Delivery.Status.DELIVERED):
         delivery.sent_at = timezone.now()
     delivery.save(update_fields=["status", "provider_id", "error", "sent_at", "attempts", "updated_at"])
+
+
+def tell_clients(clients, event, title, body="", *, actor=None, route, daily_key=None):
+    """The coach changed something in the client's plan (D-60): bell + push ("Coach updates" mutes the push).
+    `daily_key`: at most once a day per client for it (the program builder saves as you type)."""
+    from .reminders import once
+
+    out = []
+    today = timezone.localdate()
+    for c in clients:
+        if actor is not None and c.id == actor.id:
+            continue
+        if daily_key and not once(c, "coach_upd", daily_key, today):
+            continue
+        out += notify(c, event, title, body, actor=actor, data={"route": route})
+    return out

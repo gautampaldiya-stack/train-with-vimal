@@ -17,8 +17,9 @@ class Realtime {
   WebSocketChannel? _ch;
   StreamSubscription? _sub;
   Timer? _ping, _reconnect;
-  String? _token;
+  Future<String?> Function()? _token;
   int _attempt = 0;
+  int _gen = 0;
   final unread = ValueNotifier<int>(0);
   final connected = ValueNotifier<bool>(false);
   final _events = StreamController<RealtimeEvent>.broadcast();
@@ -27,16 +28,24 @@ class Realtime {
   /// Asked to stay connected (it may be between reconnects).
   bool get active => _token != null;
 
-  void connect(String token) {
+  /// [token] gives a fresh access token on every (re)connect: access tokens last 15 minutes, so reusing the first
+  /// one made every reconnect after that (a deploy, `restart web`, wifi, a sleeping laptop) fail for good.
+  void connect(Future<String?> Function() token) {
     _token = token;
+    _attempt = 0;
     _open();
   }
 
-  void _open() {
-    if (_token == null) return;
+  Future<void> _open() async {
+    final get = _token;
+    if (get == null) return;
     _close();
+    final gen = ++_gen;
+    final token = await get().catchError((_) => null);
+    if (gen != _gen || _token == null) return; // disconnected or reopened meanwhile
+    if (token == null) return _schedule();
     try {
-      _ch = WebSocketChannel.connect(Uri.parse('${AppConfig.wsUrl}?token=$_token'));
+      _ch = WebSocketChannel.connect(Uri.parse('${AppConfig.wsUrl}?token=$token'));
       _sub = _ch!.stream.listen(_onData, onDone: _schedule, onError: (_) => _schedule());
       // A refused handshake also fails `ready`; the stream's onError already reconnects.
       _ch!.ready.catchError((_) {});
@@ -76,6 +85,7 @@ class Realtime {
 
   void disconnect() {
     _token = null;
+    _gen++;
     _reconnect?.cancel();
     _close();
     connected.value = false;

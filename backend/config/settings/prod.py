@@ -10,6 +10,11 @@ SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=31536000)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
+# Links in emails and invites (reset password, join, verify) open the live site, never the dev default
+# (localhost:5173) when FRONTEND_URL is missing from the server .env.
+FRONTEND_URL = env("FRONTEND_URL", default="https://twv.prowavetech.in")
+INVITE_BASE_URL = env("INVITE_BASE_URL", default=FRONTEND_URL.rstrip("/") + "/join")
+
 if env("AWS_STORAGE_BUCKET_NAME", default=""):
     STORAGES["default"] = {  # noqa: F405
         "BACKEND": "storages.backends.s3.S3Storage",
