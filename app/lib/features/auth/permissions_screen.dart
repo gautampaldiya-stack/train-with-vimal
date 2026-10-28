@@ -138,6 +138,9 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
     if (!mounted) return;
     final ok = st.isGranted || st.isLimited || st.isProvisional;
     await _remember(ok ? 'allowed' : 'blocked');
+    // Save this phone / browser for push now (D-80): the start-up try can not ask on the web without a tap, so
+    // without this the device was only saved on the next app start.
+    if (ok && _k == PermKind.notifications && Services.session.me != null) Services.push.start(Session.platform);
     if (!mounted) return;
     setState(() {
       _busy = false;

@@ -60,6 +60,10 @@ class DeviceTokenSerializer(serializers.ModelSerializer):
     class Meta:
         model = DeviceToken
         fields = ["token", "platform"]
+        # The same phone / browser registers again on every start and after a log in as someone else: the view
+        # moves the token to this user (update_or_create). The model's unique check answered 400 "Please check the
+        # highlighted fields", so the token stayed with the person logged in first and pushes went to them (D-80).
+        extra_kwargs = {"token": {"validators": []}}
 
     def validate_token(self, value):
         if len(value) < 20:

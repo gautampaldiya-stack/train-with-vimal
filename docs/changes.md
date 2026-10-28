@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-28 · Push notifications reach the phone (D-80); working set back to develop
+- **Pehle:** Phone / browser par push nahi aata tha. App har start par token bhejta tha, server dusri baar 400 deta tha, isliye token pehle login wale account par atak jata. FCM ki kisi bhi INVALID_ARGUMENT galti par token delete ho jata. Server Android channel `default` maangta tha jo app me hai hi nahi. Ek device ki galti par baaki devices ko push nahi jata. Approval ka wait karne wale account aur "Allow notifications" ke baad device save nahi hota tha.
+- **Ab:** Token hamesha login wale account ke paas (204). Sirf mara hua token hatta hai. Har device ko try. Push har login par start, waiting account par bhi, aur Allow ke turant baad. FCM project key file se bhi milta hai. `manage.py push_test <email>` se seedha test. Android status bar me safed ghanti. FlutterFire ki file par saaf warning.
+- **Kyun:** Probid: "mere notification aane chaiye", ek-ek kaam ache se. Pehle `working` ko `develop` (4ccacdd) par wapas kiya (Probid ka kehna); purana working backup bundle me.
+- **Updated:** backend/apps/notifications/serializers.py, providers.py, tasks.py, apps/common/management/commands/push_test.py, tests/test_push_d80.py, app/lib/core/push/push.dart, sw_routes_*.dart, app/lib/app/services.dart, permissions_screen.dart, app/web/firebase-messaging-sw.js, app/tool/firebase_web.dart, AndroidManifest.xml, drawable/ic_stat_notify.xml, deploy/nginx.conf, README.md · Decision D-80
+
 ### 2026-10-24 · Trainer invite-link access; access notice says what changed
 - **Pehle:** Access save par trainer ko sirf "Your access was updated" jata tha (kya badla, nahi likha). Trainer app me Invite link ka button nahi tha, aur invite link ke liye koi access switch nahi tha.
 - **Ab:** Access → Clients me do naye switch: **Invite with his link** (on; off karte hi uske banaye/uske naam ke links band, join page "turned off" dikhata hai) aur **Make new invite links** (on; sirf apne liye). Trainer ke My clients header me `Invite link` (switch on ho to). Trainer link sirf apne naam se banata hai, dusre trainer pe nahi bhej sakta. Notice: "Vimal changed your access" + badle hue switch ("Approve sign-ups: on"); kuch na badle to notice nahi. Trainer ka app notice aate hi apna access dobara padhta hai.

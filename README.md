@@ -111,6 +111,13 @@ background, then make something that notifies that user (for example the trainer
 opens the right page when tapped.
 iPhone push needs the Apple developer account (APNs key) first.
 
+**4. Push not coming? (D-80)** The `flutter run` console says what happened: `Push: this android device is saved for
+the logged-in account` = good; `Push off: this build has no Firebase keys` = `--dart-define-from-file=firebase.json`
+missing or `firebase.json` is FlutterFire's file. Then send a test straight to that person:
+`python manage.py push_test riya@example.com` (Docker: `docker compose exec api python manage.py push_test …`).
+It prints the FCM project (must be the same as `FB_PROJECT_ID`), each saved device and FCM's answer.
+`FCM_PROJECT_ID` may stay empty: the server then takes `project_id` from the key file.
+
 **Files at a glance (all outside git):**
 
 | File | Where | Made how |

@@ -157,21 +157,27 @@ class Session extends ChangeNotifier {
     });
   }
 
+  String? _pushFor; // the account this device's push token was saved for
+
   /// Realtime is only for people who may use the app: the server refuses the socket while an
   /// account waits for approval, so connect once it is approved (checked on every refresh).
   void _syncRealtime() {
     final token = Services.tokens.access;
+    // Phone / browser push when the app is closed (D-56), once per logged-in account. Also while the account waits
+    // for approval (D-80): "You are approved" comes as a push, and the server takes the device from such accounts.
+    if (token != null && me != null && _pushFor != me!.id) {
+      _pushFor = me!.id;
+      Services.push.start(platform);
+    }
     if (token != null && me != null && !me!.pending) {
-      if (!Services.realtime.active) {
-        Services.realtime.connect(Services.api.freshAccess);
-        Services.push.start(platform); // phone / browser push when the app is closed (D-56)
-      }
+      if (!Services.realtime.active) Services.realtime.connect(Services.api.freshAccess);
     } else {
       Services.realtime.disconnect();
     }
   }
 
   Future<void> signOut({bool remote = true}) async {
+    _pushFor = null;
     if (remote) {
       await Services.push.stop();
       try {

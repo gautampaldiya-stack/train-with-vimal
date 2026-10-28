@@ -85,17 +85,24 @@ def send_delivery(self, delivery_id):
             if not tokens:
                 return mark_delivery(d, Delivery.Status.SKIPPED, error="No device")
             data = {"notification_id": str(d.notification_id), **(d.notification.data if d.notification else {})}
-            sent = 0
+            # Every device gets its try (D-80): one phone with a passing FCM error used to stop the loop, so the
+            # person's other phones / browsers got nothing and a retry sent it twice to the ones before it.
+            sent, error = 0, None
             for t in tokens:
                 try:
                     providers.send_push(t.token, d.subject or d.notification.title, d.body, data, t.platform)
                     sent += 1
                 except providers.ProviderError as exc:
+                    log.warning("push to %s (%s) failed: %s", user.email, t.platform, exc)
                     if exc.permanent:
                         t.delete()  # uninstalled app / expired browser subscription
                     else:
-                        raise
-            return mark_delivery(d, Delivery.Status.SENT if sent else Delivery.Status.SKIPPED)
+                        error = exc
+            if sent:
+                return mark_delivery(d, Delivery.Status.SENT)
+            if error:
+                raise error  # nothing reached the person: try again later
+            return mark_delivery(d, Delivery.Status.SKIPPED, error="No device")
     except providers.ProviderError as exc:
         if exc.permanent or self.request.retries >= MAX_ATTEMPTS:
             return mark_delivery(d, Delivery.Status.FAILED, error=str(exc))
