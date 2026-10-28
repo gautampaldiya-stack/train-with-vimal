@@ -117,3 +117,15 @@ def test_push_test_command_reports_each_device():
     assert "android: sent" in out.getvalue()
 
 
+
+
+@override_settings(PUSH_PROVIDER="fcm", FCM_PROJECT_ID="train-with-vimal-8a8fd")
+def test_google_services_json_as_server_key_says_so(tmp_path):
+    from django.core.cache import cache
+
+    cache.delete("fcm-access-token")
+    key = tmp_path / "sa.json"
+    key.write_text(json.dumps({"project_info": {"project_id": "train-with-vimal-8a8fd"}, "client": []}))
+    with override_settings(FCM_SERVICE_ACCOUNT_FILE=str(key)), \
+            pytest.raises(providers.ProviderError, match="Generate new private key"):
+        providers.send_push("abc", "Hi", "There")

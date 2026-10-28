@@ -46,12 +46,22 @@ def _fcm_access_token():
     if token:
         return token
     try:
+        with open(settings.FCM_SERVICE_ACCOUNT_FILE) as f:
+            info = json.load(f)
+    except (OSError, ValueError) as exc:
+        raise ProviderError(f"FCM server key not readable ({settings.FCM_SERVICE_ACCOUNT_FILE}): {exc}") from exc
+    if "private_key" not in info:
+        # D-80: on Probid's PC this was a copy of google-services.json (the app file), so no push could go out.
+        raise ProviderError("FCM server key is wrong: FCM_SERVICE_ACCOUNT_FILE has no private_key "
+                            "(google-services.json?). Firebase → Project settings → Service accounts → "
+                            "Generate new private key")
+    try:
         from google.auth.transport.requests import Request
         from google.oauth2 import service_account
     except ImportError as exc:  # pragma: no cover
-        raise ProviderError("google-auth is not installed; pip install google-auth") from exc
-    creds = service_account.Credentials.from_service_account_file(
-        settings.FCM_SERVICE_ACCOUNT_FILE, scopes=["https://www.googleapis.com/auth/firebase.messaging"]
+        raise ProviderError(f"google-auth / requests not installed ({exc}); pip install -r requirements.txt") from exc
+    creds = service_account.Credentials.from_service_account_info(
+        info, scopes=["https://www.googleapis.com/auth/firebase.messaging"]
     )
     creds.refresh(Request())
     cache.set("fcm-access-token", creds.token, 50 * 60)

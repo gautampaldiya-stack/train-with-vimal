@@ -31,10 +31,16 @@ Done on `working` after it was set back to `develop` (4ccacdd) on Probid's word;
    (`{"flutter": …}`); the app logs "Push off: this build has no Firebase keys" once. No FlutterFire files in the
    repo (no `firebase_options.dart`, no google-services plugin).
 
+9. **Server could never get an FCM access token.** `google-auth` needs the `requests` package for its token call,
+   and `requests` was not in `requirements.txt`: every push failed with "google-auth is not installed". Added.
+10. **Wrong server key file.** On Probid's PC `backend/secrets/firebase-service-account.json` was a copy of
+   `google-services.json` (the app file, no `private_key`). The server now says so plainly ("FCM server key is
+   wrong … Generate new private key") and `push_test` prints it.
+
 ## Not changed
 Setup stays D-56 (`app/firebase.json` FB_* keys, `web/firebase-config.js`, `backend/secrets/` server key, GitHub
 secret `FIREBASE_JSON`). iPhone push still needs the Apple account. No new screens.
 
 ## Checked
-`tests/test_push_d80.py` (7 tests: save twice and by another user, short token, dead tokens, project from key file,
+`tests/test_push_d80.py` (8 tests: wrong key file, save twice and by another user, short token, dead tokens, project from key file,
 no project error, one bad device, `push_test`). `flutter analyze` clean. Web debug run without assertions.
