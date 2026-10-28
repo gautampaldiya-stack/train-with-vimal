@@ -37,6 +37,16 @@ Done on `working` after it was set back to `develop` (4ccacdd) on Probid's word;
    `google-services.json` (the app file, no `private_key`). The server now says so plainly ("FCM server key is
    wrong … Generate new private key") and `push_test` prints it.
 
+11. **Icon (Probid: "icon nahi aata").** Status-bar icon is now the TWV logo cut out of a white circle
+   (`drawable-*/ic_stat_notify.png`, made from `assets/brand/icon_foreground.png`; Android draws that icon in one
+   colour only), tinted logo blue `#4FB8EF` in the notification (`default_notification_color`). The bell is gone.
+12. README "Daily local commands": pull, deps, API / worker / beat, app on Chrome and phone, push_test, checks
+   before a push, files that stay on the PC.
+
+## Checked on the phone
+2026-10-28 on Probid's moto g54 (Android 15) and in the browser: app logged "device is saved", `push_test` gave
+`android: sent` and `web: sent`, and the notification showed on both.
+
 ## Not changed
 Setup stays D-56 (`app/firebase.json` FB_* keys, `web/firebase-config.js`, `backend/secrets/` server key, GitHub
 secret `FIREBASE_JSON`). iPhone push still needs the Apple account. No new screens.

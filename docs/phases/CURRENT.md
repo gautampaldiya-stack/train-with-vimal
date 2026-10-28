@@ -9,8 +9,9 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
   `working`, kept in `/mnt/project-files/backup-oct28/working-before-rollback-d059df1.bundle`. Probid will bring work
   back one task at a time. First task D-80: push reaches the phone (token moves to the logged-in account, dead
   tokens only, every device tried, push starts for waiting accounts and after Allow, FCM project from the key file,
-  `push_test`). Tests + analyzer clean. **Next:** Probid tries push on his phone (README "Push not coming?"); merge
-  to develop only when he asks.
+  `push_test`). Tests + analyzer clean. **Works on Probid's moto g54 and web** (real server key + `requests`). Icon = TWV
+  logo; README "Daily local commands". **Next:** live server needs the same real key in `~/twv/secrets/` at the
+  develop merge (only when Probid asks); then the next task Probid picks.
 - 2026-10-24 (latest): D-59: Notifications page for admin and trainer (`/notifications`, bell → See all, More → Notifications). Invite links now use `FRONTEND_URL` (twv.prowavetech.in). Checked 390 / 768 / 1280 in debug. **Next:** merge to develop when Probid asks.
 - 2026-10-24: D-58: toast for each new notification while the app is open (Open → its page), unread count on every bell (admin, trainer, client), Log out in admin Settings, `seed_demo` reuses the live admin (no second admin). Checked 390 / 768 / 1280 in debug. Live: Probid set `FIREBASE_JSON`, the server key and `.env` on the VPS. **Next:** merge to develop when Probid asks, then try push and the demo data on the live site.
 - 2026-10-24: D-57: every admin also has a trainer profile (signal + migration `trainers/0003`), so the Invite links modal works on the live site where the admin comes from `createsuperuser` and there are no trainers. README Firebase section: table of which file goes where + clean-up if `flutterfire configure` was run. Tests, analyzer and browser check done. **Next:** Probid fills `app/firebase.json` and the server key, tries push locally; merge to develop only when he asks.

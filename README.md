@@ -8,6 +8,59 @@ Coaching app for Vimal's gym — admin, trainer and client apps on Android, iOS 
 - `design/screens/` — design canvas (source of truth for the UI)
 - `docs/` — PRD, architecture, decisions, rules, phases, memory, screen behaviour
 
+## Daily local commands (Windows PC, no Docker)
+Every command Probid's PC uses, in order. Git Bash from the repo folder; PowerShell users write
+`.venv\Scripts\Activate.ps1` instead of `source .venv/Scripts/activate`. First-time setup is in the sections below.
+
+**1. Get the latest code** (each morning / before testing)
+```bash
+git checkout working
+git pull origin working
+cd backend && source .venv/Scripts/activate && pip install -r requirements-dev.txt && python manage.py migrate && cd ..
+cd app && flutter pub get && dart run tool/firebase_web.dart && cd ..
+```
+
+**2. Start the backend** (one Git Bash window each; keep them open)
+```bash
+# window 1: API + live notifications, reachable from the phone
+cd backend && source .venv/Scripts/activate && uvicorn config.asgi:application --reload --host 0.0.0.0 --port 8000
+# window 2: Celery worker (sends push, email, reminders) — needs REDIS_URL in backend/.env
+cd backend && source .venv/Scripts/activate && celery -A config worker -l info --pool=solo
+# window 3: Celery beat (timed reminders: 9 am notices, workout nudges)
+cd backend && source .venv/Scripts/activate && celery -A config beat -l info
+```
+Without Redis (empty `REDIS_URL`) only window 1 is needed; push then goes out from the API itself.
+
+**3. Start the app** (`firebase.json` = push on; your PC's wifi IP from `ipconfig`, e.g. `192.168.1.18`)
+```bash
+cd app
+flutter devices                                             # lists Chrome, Windows and the phone (USB debugging on)
+flutter run -d chrome --dart-define=API_URL=http://localhost:8000 --dart-define-from-file=firebase.json
+flutter run -d <phone id> --dart-define=API_URL=http://192.168.1.18:8000 --dart-define-from-file=firebase.json
+```
+In the app console look for `Push: this android device is saved for the logged-in account` (push ready) or
+`Push off: …` (keys missing). In the console: `r` = hot reload, `R` = restart, `q` = quit.
+
+**4. Test a push** (log in on the phone, press Home, then)
+```bash
+cd backend && source .venv/Scripts/activate && python manage.py push_test riya@example.com
+```
+It prints the Firebase project and `android: sent` / `web: sent` per device, or the reason it failed.
+
+**5. Before every push to GitHub**
+```bash
+cd backend && source .venv/Scripts/activate && pytest -q && cd ..
+cd app && flutter analyze && cd ..
+git status                                                  # never commit backend/.env, firebase.json, secrets/
+git add -A && git -c user.name=Gautam -c user.email=gautampaldiya@gmail.com commit -m "…" && git push origin working
+```
+Demo logins (password `Demo@1234`): `vimal@trainwithvimal.com` (admin), `aman@trainwithvimal.com` (trainer),
+`riya@example.com` (client). Fresh demo data: `python manage.py seed_demo`.
+
+**Files that stay only on the PC (not in git):** `backend/.env`, `backend/secrets/firebase-service-account.json`
+(server key: Firebase → Project settings → Service accounts → Generate new private key), `app/firebase.json`
+(FB_* keys), `app/web/firebase-config.js` (made by `dart run tool/firebase_web.dart`).
+
 ## Run the backend
 
 ### With Docker (easiest)

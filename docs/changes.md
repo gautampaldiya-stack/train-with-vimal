@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-28 · Push icon = TWV logo; README daily commands (D-80)
+- **Pehle:** Notification me safed ghanti (ya grey square) dikhti thi. README me roz ke local commands ek jagah nahi the.
+- **Ab:** Status bar me TWV logo (safed), notification me logo blue. README me "Daily local commands": pull, API / Celery, app Chrome + phone, push_test, push se pehle checks.
+- **Kyun:** Probid: "icon nahi aata", "readme me sare commands likh do". Push moto g54 aur web par chal gaya (asli server key + `requests`).
+- **Updated:** app/android/app/src/main/res/drawable-*/ic_stat_notify.png, values/colors.xml, AndroidManifest.xml, README.md, docs/decisions/0080 · Decision D-80
+
 ### 2026-10-28 · Push notifications reach the phone (D-80); working set back to develop
 - **Pehle:** Phone / browser par push nahi aata tha. App har start par token bhejta tha, server dusri baar 400 deta tha, isliye token pehle login wale account par atak jata. FCM ki kisi bhi INVALID_ARGUMENT galti par token delete ho jata. Server Android channel `default` maangta tha jo app me hai hi nahi. Ek device ki galti par baaki devices ko push nahi jata. Approval ka wait karne wale account aur "Allow notifications" ke baad device save nahi hota tha.
 - **Ab:** Token hamesha login wale account ke paas (204). Sirf mara hua token hatta hai. Har device ko try. Push har login par start, waiting account par bhi, aur Allow ke turant baad. FCM project key file se bhi milta hai. `manage.py push_test <email>` se seedha test. Android status bar me safed ghanti. FlutterFire ki file par saaf warning. `requests` package add kiya (iske bina server FCM token le hi nahi sakta tha). Galat server key (google-services.json ki copy) par saaf error.
