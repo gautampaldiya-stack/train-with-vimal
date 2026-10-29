@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../app/shell/back_nav.dart';
 import '../../../app/services.dart';
 import '../../../core/api/api_error.dart';
 import '../../../core/icons/app_icons.dart';
@@ -208,8 +209,18 @@ class _ClientFormScreenState extends State<ClientFormScreen> {
 
   // ─────────────────────────────── Build
 
+  /// The phone's back button = the page's own back: saves a draft, then Check-ins (Phase 4).
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => BackIntercept(
+    onBack: () {
+      if (_f == null) return false;
+      _exit();
+      return true;
+    },
+    child: Builder(builder: _page),
+  );
+
+  Widget _page(BuildContext context) {
     if (_f == null) {
       return Center(
         child: _error == null

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/shell/back_nav.dart';
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
 import '../../../core/widgets/client.dart';
@@ -145,8 +146,18 @@ class _DailyCheckinState extends State<DailyCheckin> {
     }
   }
 
+  /// The phone's back button closes the edit first, like the page's own back (Phase 4).
   @override
-  Widget build(BuildContext context) => ListenableBuilder(
+  Widget build(BuildContext context) => BackIntercept(
+    onBack: () {
+      if (!_editing || today == null) return false;
+      setState(() => _editing = false);
+      return true;
+    },
+    child: Builder(builder: _page),
+  );
+
+  Widget _page(BuildContext context) => ListenableBuilder(
     listenable: c,
     builder: (context, _) {
       if (c.data == null || d.form == null) {

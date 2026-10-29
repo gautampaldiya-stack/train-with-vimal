@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
+import '../../../app/shell/back_nav.dart';
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
 import '../../../core/widgets/client.dart';
@@ -129,8 +130,19 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
   // ─────────────────────────────── Page
 
+  /// The phone's back button closes the rest panel first, then goes back to the Train overview (Phase 4).
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => BackIntercept(
+    onBack: () {
+      final c = w;
+      if (c == null || !c.restOpen) return false;
+      c.restShow(false);
+      return true;
+    },
+    child: Builder(builder: _page),
+  );
+
+  Widget _page(BuildContext context) {
     final c = w;
     if (_err != null || (c != null && c.failed != null)) return _problem(_err ?? c!.failed!);
     if (c == null || !c.ready) {

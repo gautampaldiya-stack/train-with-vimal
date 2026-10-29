@@ -18,6 +18,27 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-29 · Phase 4 — phone ka back button app band nahi karta (D-84)
+- **Pehle:**
+  - Train, Food, Progress ya kisi bhi page par Android back dabane se app band ho jaata tha.
+  - Wajah: har page `go` se khulta hai, router me ek hi page rehta tha, aur back sunne wala koi nahi tha.
+  - Client ki bottom bar har page par dikhti thi, logger par bhi.
+- **Ab:**
+  - Sub-page par back dabane se uska section khulta hai (Food log → Food, logger → Train).
+  - Tab par back dabane se Home khulta hai.
+  - More se khule page par back dabane se pehle More, phir Home khulta hai.
+  - Home par back dabane se "Do you want to exit the app?" sheet aati hai (Exit / Cancel). Workout chal raha ho to "Your workout is still in progress" aur Resume workout bhi dikhta hai.
+  - Check-in forms back par draft save karte hain, aur logger me back pehle rest panel band karta hai.
+  - Client bottom bar ab sirf Home, Train, Food, Progress aur More par dikhti hai.
+- **Kyun:** Probid ka batch 1, Phase 4.
+- **Updated:**
+  - app/lib/app/shell/back_nav.dart (naya), app_shell.dart
+  - app/lib/features/client/train/workout_model.dart, workout_screen.dart
+  - app/lib/features/client/checkins/checkins_weekly.dart, checkins_form.dart, checkins_daily.dart
+  - test/back_nav_test.dart, test/back_shell_test.dart
+  - docs/screenshots/batch1/phase4
+  - Decision D-84
+
 ### 2026-10-29 · Phase 3 — har food ka apna state, khaya vs plan, 4 photos tak (D-83)
 - **Pehle:**
   - Poora meal hi Logged ya Skipped hota tha. Ek food khaya, ek chhoda, ye nahi bata sakte the.

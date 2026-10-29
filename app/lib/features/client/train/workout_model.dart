@@ -258,6 +258,12 @@ class WorkoutController extends ChangeNotifier {
     await Services.cache.write(_cacheKey, null);
   }
 
+  /// A workout is running on this phone (started, not finished or discarded): the exit sheet offers Resume workout.
+  static Future<bool> hasLive() async {
+    final snap = await Services.cache.read(_cacheKey);
+    return snap is Map && snap['finished'] != true;
+  }
+
   /// The client left Train and the logger (decision D-17): the workout timer stops. Saved on the
   /// phone and sent through the outbox with the time it happened, so it works offline too.
   static Future<void> pauseLive() async {

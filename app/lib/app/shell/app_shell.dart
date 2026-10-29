@@ -12,6 +12,7 @@ import '../../core/widgets/responsive.dart';
 import '../../core/widgets/tooltip.dart';
 import '../../features/client/train/workout_model.dart' show WorkoutController;
 import '../services.dart';
+import 'back_nav.dart';
 import 'nav_items.dart';
 
 /// Live counts for nav badges (approvals waiting, check-ins to review). Refreshed by screens and realtime.
@@ -91,17 +92,28 @@ class _AppShellState extends State<AppShell> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => PopScope(
+        // The phone's back button follows the app's parents and ends at the exit sheet (Phase 4, back_nav.dart).
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) AppBack.handle(context, widget.location);
+        },
+        child: _build(context),
+      );
+
+  Widget _build(BuildContext context) {
     final me = Services.session.me!;
     final isClient = me.role == Role.client;
     if (context.isPhone) {
+      // Client: the bottom bar only on the main tabs; sub-pages and the workout logger have their own back button.
+      final bar = !isClient || AppBack.isTab(widget.location, me.role);
       return ToastOffset(
-        offset: 75,
+        offset: bar ? 75 : 20,
         child: Scaffold(
           backgroundColor: isClient ? AppColors.caBg : AppColors.panel,
           // Client Home and the trainer dashboard have a blue hero that runs under the status bar, so they keep the top inset themselves.
-          body: SafeArea(bottom: false, top: !(isClient ? widget.location == '/home' : me.role == Role.trainer && widget.location == '/dashboard'), child: widget.child),
-          bottomNavigationBar: _BottomBar(items: bottomFor(me.role), location: widget.location),
+          body: SafeArea(bottom: !bar, top: !(isClient ? widget.location == '/home' : me.role == Role.trainer && widget.location == '/dashboard'), child: widget.child),
+          bottomNavigationBar: bar ? _BottomBar(items: bottomFor(me.role), location: widget.location) : null,
         ),
       );
     }

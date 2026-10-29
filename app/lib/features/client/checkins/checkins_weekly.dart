@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../app/shell/back_nav.dart';
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
 import '../../../core/widgets/client.dart';
@@ -193,8 +194,18 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
     }
   }
 
+  /// The phone's back button = Save and exit (Phase 4).
   @override
-  Widget build(BuildContext context) => ListenableBuilder(
+  Widget build(BuildContext context) => BackIntercept(
+    onBack: () {
+      if (c.data == null || w.form == null) return false;
+      _exit();
+      return true;
+    },
+    child: Builder(builder: _page),
+  );
+
+  Widget _page(BuildContext context) => ListenableBuilder(
     listenable: c,
     builder: (context, _) {
       if (c.data == null || w.form == null) {
