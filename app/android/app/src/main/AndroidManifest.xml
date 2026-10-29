@@ -31,8 +31,8 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <!-- Push (D-80): the TWV logo in white for the status bar (Android shows only one colour there; without it a
-             grey square), tinted with the logo blue inside the notification. -->
+        <!-- Push (D-80): the TWV letters in white for the status bar (Android shows one colour there; without it a grey
+             square), tinted with the logo blue inside the notification. -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@drawable/ic_stat_notify" />
