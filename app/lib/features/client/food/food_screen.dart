@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/api/api_error.dart';
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
+import '../../../core/widgets/animated_rows.dart';
 import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/overlays.dart';
@@ -544,7 +545,7 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
           if (m.logged && m.photo != null) FdPhoto(m.photo!, name: m.name, all: m.photos),
           if (today && m.open && _photos[m.id] != null) FdPhoto(_photos[m.id]!, name: m.name),
           fdPill(pill),
-          if (today) CaIconBtn(AppIcons.menu, tooltip: 'Meal options', onTap: () => _menu(m)),
+          if (today) CaIconBtn(AppIcons.dots, tooltip: 'Meal options', onTap: () => _menu(m)),
         ]),
         Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           for (final it in m.items) _itemRow(d, m, it, swaps: swaps),
@@ -885,8 +886,9 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Text('Nothing logged on ${d.isToday ? 'today' : fdDay(d.date)}.', textAlign: TextAlign.center, style: AppText.s(13, W.w4, color: AppColors.muted)),
               )
-            : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                for (final (i, r) in rows.indexed) _logRow(d, r, first: i == 0),
+            // a food logged or deleted grows in / folds away (Phase 5)
+            : AnimatedRows(children: [
+                for (final (i, r) in rows.indexed) KeyedSubtree(key: ValueKey(r.meal != null ? 'meal:${r.meal!.id}' : 'entry:${r.entry!.id}'), child: _logRow(d, r, first: i == 0)),
               ]),
       ),
       if (d.isToday)

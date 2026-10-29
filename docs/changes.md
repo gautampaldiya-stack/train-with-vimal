@@ -18,6 +18,30 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-29 · Phase 5 — 3-dot menus, status bar, animations (D-85)
+- **Pehle:**
+  - Meal aur Workout options ☰ icon se khulte the.
+  - Home se nikalne ke baad status bar ke icons safed reh jaate the aur safed page par dikhte nahi the. Wajah: sirf Home/Dashboard style set karte the.
+  - Page badalna, button press, menu aur list sab bina animation ke the.
+- **Ab:**
+  - Menus ke liye ⋯ icon hai. More tab ☰ hi rehta hai, kyunki wo page kholta hai.
+  - Har page par status bar ke icons kaale hote hain. Sirf blue hero wale pages par safed.
+  - Page aur tab change fade ke saath hota hai (250 ms).
+  - Har tap par halka press effect hota hai.
+  - Field focus par border aur label animate hote hain.
+  - Menus, sheets aur dialogs smooth khulte hain.
+  - Food log aur workout sets me row add/remove animate hota hai.
+  - Phone me "Remove animations" on ho to koi animation nahi chalta.
+- **Kyun:** Probid ka batch 1, Phase 5.
+- **Updated:**
+  - app/lib/core/theme/motion.dart (naya), theme.dart
+  - app/lib/core/widgets/hover.dart, overlays.dart, input.dart, client.dart, animated_rows.dart (naya)
+  - app/lib/app/router.dart, shell/app_shell.dart
+  - app/lib/features/client/food/food_screen.dart, train/workout_screen.dart
+  - test/motion_test.dart
+  - docs/screenshots/batch1/phase5
+  - Decision D-85
+
 ### 2026-10-29 · Phase 4 — phone ka back button app band nahi karta (D-84)
 - **Pehle:**
   - Train, Food, Progress ya kisi bhi page par Android back dabane se app band ho jaata tha.

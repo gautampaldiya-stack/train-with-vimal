@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/icons/app_icons.dart';
 import '../core/leave/leave_guard.dart';
+import '../core/theme/motion.dart';
 import '../core/widgets/button.dart';
 import '../core/widgets/card.dart';
 import '../core/widgets/overlays.dart';
@@ -249,19 +250,19 @@ final appRouter = GoRouter(
           path: '/:section',
           // Library pages with an editor in the page (Habits & supplements) ask before they close too.
           onExit: (context, _) => LeaveGuard.ask(context),
-          pageBuilder: (_, st) => NoTransitionPage(child: _screen('/${st.pathParameters['section']}', st)),
+          pageBuilder: (_, st) => _page(st, _screen('/${st.pathParameters['section']}', st)),
           routes: [
             GoRoute(
               path: ':id',
               // A page with unsaved work (program builder, exercise form) is asked before it closes (D-43).
               onExit: (context, _) => LeaveGuard.ask(context),
-              pageBuilder: (_, st) => NoTransitionPage(child: _screen('/${st.pathParameters['section']}/:id', st)),
+              pageBuilder: (_, st) => _page(st, _screen('/${st.pathParameters['section']}/:id', st)),
               routes: [
                 // Three-part paths: `/checkins/forms/<id>` (a form the coach sent, D-49).
                 GoRoute(
                   path: ':sub',
                   onExit: (context, _) => LeaveGuard.ask(context),
-                  pageBuilder: (_, st) => NoTransitionPage(child: _screen('/${st.pathParameters['section']}/${st.pathParameters['id']}/:sub', st)),
+                  pageBuilder: (_, st) => _page(st, _screen('/${st.pathParameters['section']}/${st.pathParameters['id']}/:sub', st)),
                 ),
               ],
             ),
@@ -271,6 +272,23 @@ final appRouter = GoRouter(
     ),
   ],
 );
+
+/// Page and tab changes fade in with a short rise (Phase 5, 250 ms); nothing moves when the phone asks for no
+/// animations. A change of the query only (a tab inside a page) keeps the page, so it does not animate again.
+Page<void> _page(GoRouterState st, Widget child) => CustomTransitionPage<void>(
+      key: st.pageKey,
+      child: child,
+      transitionDuration: Motion.medium,
+      reverseTransitionDuration: Motion.short,
+      transitionsBuilder: (context, a, _, child) {
+        if (Motion.off(context)) return child;
+        final c = CurvedAnimation(parent: a, curve: Motion.curve);
+        return FadeTransition(
+          opacity: c,
+          child: SlideTransition(position: Tween(begin: const Offset(0, .02), end: Offset.zero).animate(c), child: child),
+        );
+      },
+    );
 
 Widget _screen(String key, GoRouterState st) {
   final map = switch (Services.session.me?.role) { Role.trainer => trainerScreens, Role.admin => adminScreens, _ => screens };

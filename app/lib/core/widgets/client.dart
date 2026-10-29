@@ -120,7 +120,8 @@ class CaCheckBox extends StatelessWidget {
   final bool on;
   @override
   Widget build(BuildContext context) => AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
+        duration: Motion.of(context, Motion.short),
+        curve: Motion.curve,
         width: 18,
         height: 18,
         alignment: Alignment.center,
@@ -346,7 +347,8 @@ class CaSeg extends StatelessWidget {
               child: Hover(
                 onTap: () => onPick(i),
                 builder: (_, _, _) => AnimatedContainer(
-                  duration: const Duration(milliseconds: 120),
+                  duration: Motion.of(context, Motion.short),
+                  curve: Motion.curve,
                   padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                   decoration: BoxDecoration(
                     color: i == index ? AppColors.white : null,
@@ -520,7 +522,13 @@ class _CaFieldState extends State<CaField> {
     final focused = _focus.hasFocus;
     final border = bad ? AppColors.badText : (focused || _hover ? AppColors.accent : AppColors.line2);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 5, children: [
-      Text(widget.label, style: AppText.s(12.5, W.w7, color: AppColors.text2)),
+      // the label takes the accent colour with the border while the field is focused (Phase 5)
+      AnimatedDefaultTextStyle(
+        duration: Motion.of(context, Motion.short),
+        curve: Motion.curve,
+        style: AppText.s(12.5, W.w7, color: bad ? AppColors.badText : (focused ? AppColors.accentText : AppColors.text2)),
+        child: Text(widget.label),
+      ),
       MouseRegion(
         onEnter: (_) => setState(() => _hover = true),
         onExit: (_) => setState(() => _hover = false),
@@ -533,7 +541,8 @@ class _CaFieldState extends State<CaField> {
             widget.onTap?.call();
           } : null,
           child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
+          duration: Motion.of(context, Motion.short),
+          curve: Motion.curve,
           height: 44,
           padding: EdgeInsets.only(left: 12, right: widget.trailing == null ? 12 : 8),
           decoration: BoxDecoration(

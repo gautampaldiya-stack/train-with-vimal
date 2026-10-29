@@ -5,6 +5,7 @@ import 'text.dart';
 
 export 'colors.dart';
 export 'metrics.dart';
+export 'motion.dart';
 export 'text.dart';
 
 ThemeData buildTheme() {

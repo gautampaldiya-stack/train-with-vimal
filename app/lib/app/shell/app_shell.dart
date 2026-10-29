@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -98,8 +99,17 @@ class _AppShellState extends State<AppShell> {
         onPopInvokedWithResult: (didPop, _) {
           if (!didPop) AppBack.handle(context, widget.location);
         },
-        child: _build(context),
+        // Status bar (Phase 5): dark icons on every page by default. Only pages with a blue hero (client Home, the
+        // trainer dashboard) set light icons, inside this region, so leaving them brings the dark icons back. Before,
+        // nothing set it here and the phone kept Home's white icons on white pages.
+        child: AnnotatedRegion<SystemUiOverlayStyle>(value: _statusDark, child: _build(context)),
       );
+
+  static const _statusDark = SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.dark, // Android
+    statusBarBrightness: Brightness.light, // iOS: light background → dark text
+  );
 
   Widget _build(BuildContext context) {
     final me = Services.session.me!;

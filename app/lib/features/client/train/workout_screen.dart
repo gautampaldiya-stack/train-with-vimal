@@ -10,6 +10,7 @@ import 'package:intl/intl.dart';
 import '../../../app/shell/back_nav.dart';
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
+import '../../../core/widgets/animated_rows.dart';
 import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/overlays.dart';
@@ -230,7 +231,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               ]),
             ]),
           ),
-          Builder(builder: (bc) => CaIconBtn(AppIcons.menu, tooltip: 'Workout options', onTap: () => _menu(bc, c))),
+          Builder(builder: (bc) => CaIconBtn(AppIcons.dots, tooltip: 'Workout options', onTap: () => _menu(bc, c))),
           CaButton('Finish', small: true, expand: false, onPressed: () => _askFinish(c)),
         ]),
       );
@@ -457,9 +458,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     final rows = <Widget>[];
     for (final (k, s) in xs.indexed) {
       if (!s.wu) wn += 1;
-      rows.add(_setRow(c, e, k, s, s.wu ? 'W' : '$wn', s.wu ? 'Warm-up' : c.prev(e, wn - 1), web: web));
+      rows.add(KeyedSubtree(key: ValueKey(s.key), child: _setRow(c, e, k, s, s.wu ? 'W' : '$wn', s.wu ? 'Warm-up' : c.prev(e, wn - 1), web: web)));
       final a = act;
-      if (!web && a != null && a.$1 == k) rows.add(_strip(c, e, s, a.$2));
+      if (!web && a != null && a.$1 == k) rows.add(KeyedSubtree(key: ValueKey('strip:${s.key}'), child: _strip(c, e, s, a.$2)));
     }
     return Container(
       padding: web ? const EdgeInsets.symmetric(horizontal: 16, vertical: 14) : const EdgeInsets.all(12),
@@ -480,7 +481,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           if (e.kind == ExKind.time) const SizedBox(),
           const SizedBox(),
         ])),
-        ...rows,
+        // a set added or removed grows in / folds away (Phase 5)
+        AnimatedRows(spacing: 8, children: rows),
         Row(children: [
           Hover(
             onTap: () {

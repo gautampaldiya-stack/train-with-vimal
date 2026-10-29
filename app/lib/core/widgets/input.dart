@@ -92,7 +92,8 @@ class _AppTextFieldState extends State<AppTextField> {
         behavior: HitTestBehavior.opaque,
         onTap: widget.enabled ? _focus.requestFocus : null,
         child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
+        duration: Motion.of(context, Motion.short),
+        curve: Motion.curve,
         height: multi ? null : (widget.height ?? 36),
         constraints: multi ? const BoxConstraints(minHeight: 92) : null,
         padding: EdgeInsets.symmetric(horizontal: 12, vertical: multi ? 10 : 0),
@@ -137,7 +138,14 @@ class _AppTextFieldState extends State<AppTextField> {
     );
     if (widget.label == null && widget.hint == null && !err) return field;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, spacing: 6, children: [
-      if (widget.label != null) Text(widget.label!, style: AppText.label),
+      if (widget.label != null)
+        // the label takes the accent colour with the border while the field is focused (Phase 5)
+        AnimatedDefaultTextStyle(
+          duration: Motion.of(context, Motion.short),
+          curve: Motion.curve,
+          style: AppText.label.copyWith(color: err ? AppColors.badText : (focused ? AppColors.accentText : null)),
+          child: Text(widget.label!),
+        ),
       field,
       if (err)
         Text(widget.error!, style: AppText.s(12, W.w6, color: AppColors.badText))

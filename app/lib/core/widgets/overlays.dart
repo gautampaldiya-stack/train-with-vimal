@@ -54,7 +54,8 @@ Future<void> showAppMenu(BuildContext anchor, List<MenuEntry> entries, {double w
     barrierDismissible: true,
     barrierLabel: 'menu',
     barrierColor: Colors.transparent,
-    transitionDuration: const Duration(milliseconds: 90),
+    transitionDuration: Motion.of(anchor, Motion.short),
+    transitionBuilder: _menuIn,
     pageBuilder: (ctx, _, _) => Stack(children: [
       Positioned(
         left: left.clamp(8, size.width - width - 8),
@@ -64,7 +65,6 @@ Future<void> showAppMenu(BuildContext anchor, List<MenuEntry> entries, {double w
         child: _MenuBox(entries: entries, maxHeight: maxH, start: start, close: () => Navigator.of(ctx).pop()),
       ),
     ]),
-    transitionBuilder: (_, a, _, child) => FadeTransition(opacity: a, child: child),
   );
 }
 
@@ -203,8 +203,8 @@ Future<T?> showAppModal<T>(
     barrierDismissible: true,
     barrierLabel: title,
     barrierColor: AppColors.scrimModal,
-    transitionDuration: const Duration(milliseconds: 140),
-    transitionBuilder: (_, a, _, child) => FadeTransition(opacity: a, child: ScaleTransition(scale: Tween(begin: .98, end: 1.0).animate(a), child: child)),
+    transitionDuration: Motion.of(context, Motion.medium),
+    transitionBuilder: _popIn,
     pageBuilder: (ctx, _, _) => Center(
       child: Material(
         color: Colors.transparent,
@@ -291,7 +291,7 @@ Future<T?> showAppDrawer<T>(
     barrierDismissible: true,
     barrierLabel: title,
     barrierColor: AppColors.scrimDrawer,
-    transitionDuration: const Duration(milliseconds: 200),
+    transitionDuration: Motion.of(context, Motion.medium),
     transitionBuilder: (_, a, _, child) => SlideTransition(
       position: Tween(begin: const Offset(1, 0), end: Offset.zero).animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
       child: child,
@@ -406,6 +406,9 @@ Future<T?> showAppSheet<T>(
       barrierColor: AppColors.scrimSheet,
       constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * (tall ? .92 : .82)),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.caSheet))),
+      sheetAnimationStyle: Motion.off(context)
+          ? AnimationStyle.noAnimation
+          : const AnimationStyle(duration: Motion.sheet, reverseDuration: Motion.short, curve: Motion.curve),
       builder: (ctx) => Padding(padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom), child: body(ctx, phone: true)),
     ));
   }
@@ -414,8 +417,8 @@ Future<T?> showAppSheet<T>(
     barrierDismissible: true,
     barrierLabel: title ?? 'sheet',
     barrierColor: AppColors.scrimSheet,
-    transitionDuration: const Duration(milliseconds: 140),
-    transitionBuilder: (_, a, _, child) => FadeTransition(opacity: a, child: child),
+    transitionDuration: Motion.of(context, Motion.medium),
+    transitionBuilder: _popIn,
     pageBuilder: (ctx, _, _) => Center(
       child: Material(
         color: Colors.transparent,
@@ -745,9 +748,9 @@ Future<void> showFilterMenu(BuildContext anchor, List<MenuGroup> groups, {VoidCa
     barrierDismissible: true,
     barrierLabel: 'menu',
     barrierColor: Colors.transparent,
-    transitionDuration: const Duration(milliseconds: 90),
+    transitionDuration: Motion.of(anchor, Motion.short),
     pageBuilder: (ctx, _, _) => _FilterMenu(groups: groups, onClear: onClear, left: left, top: top, width: width, screen: size, close: () => Navigator.of(ctx).pop()),
-    transitionBuilder: (_, a, _, child) => FadeTransition(opacity: a, child: child),
+    transitionBuilder: _menuIn,
   );
 }
 
@@ -854,4 +857,16 @@ class _FilterMenuState extends State<_FilterMenu> {
       ]),
     );
   }
+}
+
+/// Menus and dropdowns: fade in and grow a little from where they open (Phase 5).
+Widget _menuIn(BuildContext _, Animation<double> a, Animation<double> _, Widget child) {
+  final c = CurvedAnimation(parent: a, curve: Motion.curve, reverseCurve: Curves.easeIn);
+  return FadeTransition(opacity: c, child: ScaleTransition(scale: Tween(begin: .96, end: 1.0).animate(c), alignment: Alignment.topCenter, child: child));
+}
+
+/// Dialogs and web sheets: fade in, grow from 96 %.
+Widget _popIn(BuildContext _, Animation<double> a, Animation<double> _, Widget child) {
+  final c = CurvedAnimation(parent: a, curve: Motion.curve, reverseCurve: Curves.easeIn);
+  return FadeTransition(opacity: c, child: ScaleTransition(scale: Tween(begin: .96, end: 1.0).animate(c), child: child));
 }
