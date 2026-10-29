@@ -214,3 +214,41 @@ def test_review_with_a_reply_tells_the_client(trainer):
     # Mark reviewed with no reply: nothing to read, so no notification.
     assert trainer.post(f"/api/v1/checkins/{b.id}/review/", {}, format="json").status_code == 200
     assert Notification.objects.filter(recipient__email="riya@example.com").count() == before + 1
+
+
+def test_form_answers_show_the_photos_to_the_coach(client_user, admin, photo_week):
+    """Phase 2: the admin's form answers listed photo answers as the word "Photo"; now they carry the pictures."""
+    from apps.accounts.models import User
+    from apps.checkins.models import Question
+
+    f = _page(client_user)["weekly"]["form"]
+    q = Question.objects.get(id=_qid(f, "Progress photos this week?"))
+    answers = {_qid(f, "Body weight (kg)"): 68.2, _qid(f, "How was your week?"): 4,
+               _qid(f, "Did you follow the meal plan?"): "Yes, all week"}
+    r = client_user.post("/api/v1/me/submissions/", {"form": f["id"], "answers": answers,
+                                                     "photos": {str(q.id): {"front": PNG, "side": PNG, "back": PNG}}},
+                         format="json")
+    assert r.status_code == 201, r.content
+    riya = User.objects.get(email="riya@example.com")
+    d = admin.get(f"/api/v1/clients/{riya.id}/forms/sub:{r.json()['id']}/").json()
+    assert [p["label"] for p in d["photos"]] == ["Front", "Side", "Back"]
+    assert all("/media/answers/" in p["url"] for p in d["photos"])
+    assert sum(1 for x in d["sections"][0]["rows"] if x.get("photo")) == 3
+
+
+def test_sent_form_shows_its_photos_to_the_client(client_user, admin):
+    """Phase 2: the client's filled form said "Sent" for each photo; now it has the pictures."""
+    from apps.accounts.models import User
+    from apps.checkins.models import Form, FormRequest, Question
+
+    riya = User.objects.get(email="riya@example.com")
+    f = Form.objects.create(name="Photo form", type="survey", status="published")
+    q = Question.objects.create(form=f, order=1, text="Your photos", type="photo", options=["Front", "Side", "Back"])
+    req = FormRequest.objects.create(form=f, client=riya)
+    r = client_user.post("/api/v1/me/submissions/", {"request": str(req.id), "answers": {},
+                                                     "photos": {str(q.id): {"front": PNG, "side": PNG, "back": PNG}}},
+                         format="json")
+    assert r.status_code == 201, r.content
+    d = client_user.get(f"/api/v1/me/forms/{req.id}/").json()
+    assert [p["label"] for p in d["submission"]["photos"]] == ["Front", "Side", "Back"]
+    assert all("/media/answers/" in p["image"] for p in d["submission"]["photos"])

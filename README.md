@@ -189,6 +189,49 @@ It prints the FCM project (must be the same as `FB_PROJECT_ID`), each saved devi
    (FlutterFire adds the `com.google.gms.google-services` plugin there): `git checkout -- android` undoes it.
 The Firebase CLI login itself can stay; it is not needed.
 
+## Make `backend/.env` on your PC (once)
+`backend/.env` holds the settings and passwords for your PC. It is never committed. Make it from the example:
+
+1. In Git Bash, from the repo folder: `cp backend/.env.example backend/.env`
+2. Open `backend/.env` in VS Code and check each line:
+
+| Line | What to put | Why |
+|---|---|---|
+| `SECRET_KEY` | any long random text, e.g. the output of `python -c "import secrets; print(secrets.token_urlsafe(50))"` | signs logins |
+| `DEBUG` | `True` | shows errors on your PC (the server has `False`) |
+| `SERVE_MEDIA` | `True` | photos, videos and PDFs open at `/media/…`. Off = every uploaded picture is blank (404) |
+| `ALLOWED_HOSTS` | keep, and add your PC's wifi IP (e.g. `192.168.1.5`) to test on the phone | which addresses the API answers |
+| `DATABASE_URL` | `postgres://twv:twv@localhost:5432/twv` (the user and database from "Without Docker" step 1) | the database |
+| `REDIS_URL` | `redis://localhost:6379/0`, or empty to run without Redis | reminders and push need Redis + Celery |
+| `CORS_ALLOWED_ORIGINS` | the address the web app runs on, e.g. `http://localhost:5173` | lets the browser call the API |
+| `PUSH_PROVIDER`, `FCM_*` | see "Push notifications on your PC" below | phone and web push |
+| `EMAIL_*` | leave as is (emails print in the terminal), or Gmail as in `deploy/README.md` → Email | emails |
+
+3. Restart the API after every change to `.env` (stop it with Ctrl+C and start it again).
+
+The live server has its own `.env` (`~/twv/backend/.env`), made from `deploy/env.example`: see `deploy/README.md` → Step 6.
+
+## Commands on the live server (VPS)
+These run **on the server**, not on your PC. Every `docker compose -f docker-compose.prod.yml …` command works only
+inside the `~/twv` folder on the server.
+
+1. Open PowerShell on your PC and log in to the server: `ssh root@<VPS IP>`
+2. Go to the project folder: `cd ~/twv`
+3. Run the command you need:
+
+| When | Command |
+|---|---|
+| You changed `~/twv/backend/.env` | `docker compose -f docker-compose.prod.yml up -d` (recreates only what changed) |
+| The site shows 502 | `docker compose -f docker-compose.prod.yml restart web` |
+| See what the API is doing (Ctrl+C to stop) | `docker compose -f docker-compose.prod.yml logs -f api` (or `web`, `worker`, `beat`) |
+| Restart one part | `docker compose -f docker-compose.prod.yml restart api` |
+| Test push to someone | `docker compose -f docker-compose.prod.yml exec api python manage.py push_test <their email>` |
+| Built-in exercises, foods, forms (first deploy only) | `docker compose -f docker-compose.prod.yml exec api python manage.py seed_defaults` |
+| What is running | `docker compose -f docker-compose.prod.yml ps` |
+| Edit the server settings | `nano ~/twv/backend/.env` (save: Ctrl+O, Enter; exit: Ctrl+X), then the first command above |
+
+You do not need these after a normal deploy: pushing to `develop` copies the code, rebuilds and restarts by itself.
+
 ## Deploy (server)
 One domain, all in Docker, behind CloudPanel; push to `develop` deploys. Steps: [`deploy/README.md`](deploy/README.md).
 Site shows **502**? Run `docker compose -f docker-compose.prod.yml restart web` in `~/twv`; the full checklist is in

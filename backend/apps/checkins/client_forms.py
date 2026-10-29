@@ -235,8 +235,13 @@ def _by_label(channels):
 def send(client, form, actor, *, channels=None, answer_days=2, auto_remind=True, schedule=None):
     req = services.send_form(client, form, actor=actor, channels=channels,
                              due_at=timezone.now() + timedelta(days=answer_days) if answer_days else None)
-    FormRequest.objects.filter(id=req.id).update(auto_remind=auto_remind, schedule=schedule)
+    if req is not None:  # None: the onboarding questionnaire, sent to her setup steps
+        FormRequest.objects.filter(id=req.id).update(auto_remind=auto_remind, schedule=schedule)
     return req
+
+
+def _key(req):
+    return f"req:{req.id}" if req is not None else "onboarding"
 
 
 def run_schedules(now=None):
@@ -288,9 +293,17 @@ def _answer(a):
 
 
 def answers_of(sub):
-    rows = [{"q": a.question.text, "a": _answer(a)} for a in
+    rows = [{"q": a.question.text, "a": _answer(a), **({"photo": True} if a.photo else {})} for a in
             sorted(sub.answers.all(), key=lambda a: (a.question.order, a.question_id))]
     return [{"title": "Answers", "rows": rows}]
+
+
+def answer_photo_list(sub, request=None):
+    """The photos sent in a form's answers as [{pose, label, url}], like the onboarding's start photos, so the
+    answers card shows them as pictures instead of the word "Photo". Private ones stay hidden from staff."""
+    from .client_page import answer_photos
+
+    return [{"pose": p["pose"], "label": p["label"], "url": p["image"]} for p in answer_photos(sub, request)]
 
 
 def _status(req_or_sub, form):
@@ -325,7 +338,7 @@ def rows(client, request=None):
                     "status": "done" if done else "waiting", "status_label": "Done" if done else "Waiting",
                     "sub": (f"Filled {_d(filled)} · {steps} parts" if done else f"{steps} of {total} parts filled"),
                     "icon": "form", "filled_at": filled if done else None, "sections": answer_sections(client),
-                    "photos": _start_photos(client, request) if done else []})
+                    "photos": _start_photos(client, request)})
     one_off = Q(schedule__isnull=True) | Q(schedule__repeat=FormSchedule.Repeat.ONCE)
     reqs = list(FormRequest.objects.filter(one_off, client=client).select_related("form")
                 .prefetch_related("form__questions").order_by("-created_at")[:60])
@@ -434,7 +447,7 @@ def question_rows(form, first):
             for q in live_questions(form)]
 
 
-def detail(client, key):
+def detail(client, key, request=None):
     first = _first(client)
     kind, obj, form = _resolve(client, key)
     master = master_of(form)
@@ -452,7 +465,8 @@ def detail(client, key):
         verb = "Signed" if st == "signed" else "Filled"
         out.update({"status": st, "status_label": label,
                     "cap": f"{verb} by {first} on {_d(when, '%-d %b %Y, %-I:%M %p').replace('AM', 'am').replace('PM', 'pm')}",
-                    "sections": answers_of(sub) if sub else [], "submission_id": str(sub.id) if sub else None})
+                    "sections": answers_of(sub) if sub else [], "submission_id": str(sub.id) if sub else None,
+                    "photos": answer_photo_list(sub, request) if sub else []})
         return out
     out["questions"] = question_rows(form, first)
     if kind == "request":
@@ -551,7 +565,7 @@ def _start(client, form, actor, data):
     if how == "now":
         r = send(client, form, actor, channels=opts["channels"], answer_days=opts["answer_days"],
                  auto_remind=opts["auto_remind"])
-        return f"req:{r.id}"
+        return _key(r)
     if form.type == "weekly" and how == "repeat":  # her weekly check-in (due every Sunday): switch it on
         if form.status == Form.Status.CLIENT:  # a new copy for her becomes her weekly check-in
             Form.objects.filter(type="weekly", status=Form.Status.CLIENT, client=client).exclude(id=form.id) \
@@ -615,7 +629,7 @@ class ClientFormView(APIView):
     permission_classes = [IsStaff]
 
     def get(self, request, client_pk, key):
-        return Response(detail(_client(request.user, client_pk), key))
+        return Response(detail(_client(request.user, client_pk), key, request))
 
     def post(self, request, client_pk, key, act=None):
         client = _client(request.user, client_pk)
@@ -632,7 +646,7 @@ class ClientFormView(APIView):
                     raise serializers.ValidationError("There is no form to send.")
                 r = send(client, form, request.user,
                          channels=(obj.channels if kind == "schedule" and obj.channels else None))
-                return Response({"key": f"req:{r.id}", "message": f"{form.name} sent to {first}"})
+                return Response({"key": _key(r), "message": f"{form.name} sent to {first}"})
             elif act == "stop":
                 if kind == "weekly":
                     if form is None:
@@ -721,7 +735,7 @@ class ClientFormQuestionsView(APIView):
             save_questions(copy, request.data.get("questions") or [], master)
         activity_log(f"edited {copy.name} for {client.full_name}", "checkin", actor=request.user, target=client,
                      target_label=copy.name, client=client)
-        return Response(detail(client, key))
+        return Response(detail(client, key, request))
 
 
 class ClientFormDuplicateView(APIView):

@@ -579,13 +579,17 @@ class _ClientFormScreenState extends State<ClientFormScreen> {
   Widget _done(Map<String, dynamic> s) {
     final at = DateTime.tryParse('${s['sent_at']}')?.toLocal() ?? DateTime.now();
     final got = (s['answers'] as Map?)?.cast<String, dynamic>() ?? const {};
+    // The photos she sent, as pictures (not "Sent"); offline, before the server has them, the rows still say Sent.
+    final photos = [for (final p in (s['photos'] as List? ?? const [])) ('${(p as Map)['label']}', '${p['image']}')];
     return CkDone(
       title: 'Sent to $coach',
       sub: s['id'] == null ? 'Saved on this phone · it goes to $coach when you are online' : '${dayShort(at)}, ${clock(at)} · $coach reads every answer',
       rows: [
         for (final q in qs)
-          (q.text, q.type == 'photo' ? (_ans(q) ?? 'Sent') : (q.show(got['${q.id}'] ?? _v['${q.id}']) ?? 'Skipped')),
+          if (q.type != 'photo' || photos.isEmpty)
+            (q.text, q.type == 'photo' ? (_ans(q) ?? 'Sent') : (q.show(got['${q.id}'] ?? _v['${q.id}']) ?? 'Skipped')),
       ],
+      photos: photos,
       buttons: CaButton('Back to check-ins', onPressed: () => context.go('/checkins')),
     );
   }

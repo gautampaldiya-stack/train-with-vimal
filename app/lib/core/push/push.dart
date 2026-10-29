@@ -136,9 +136,10 @@ class Push {
     final t = _token;
     _token = null;
     if (t == null) return;
+    // Firebase's deleteToken can hang on web after a failed registration: it runs on its own, never awaited.
+    unawaited(FirebaseMessaging.instance.deleteToken().catchError((_) {}));
     try {
       await _api.delete('devices/', {'token': t});
-      await FirebaseMessaging.instance.deleteToken();
     } catch (_) {}
   }
 }

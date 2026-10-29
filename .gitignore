@@ -29,3 +29,4 @@ secrets/
 .DS_Store
 app/firebase.json
 app/web/firebase-config.js
+dump.rdb

@@ -176,12 +176,21 @@ class Session extends ChangeNotifier {
     }
   }
 
-  Future<void> signOut({bool remote = true}) async {
+  Future<void>? _signingOut;
+
+  /// Log out. One at a time: a second tap, or the API's "signed out" after a 401 while this runs, waits for this
+  /// one instead of clearing the session twice. The server calls are capped at a few seconds each, so a slow
+  /// network or a stuck web push never keeps the person on the page.
+  Future<void> signOut({bool remote = true}) => _signingOut ??= _signOut(remote).whenComplete(() => _signingOut = null);
+
+  Future<void> _signOut(bool remote) async {
     _pushFor = null;
     if (remote) {
-      await Services.push.stop();
       try {
-        await Services.api.post('auth/logout/', {'refresh': Services.tokens.refresh});
+        await Services.push.stop().timeout(const Duration(seconds: 3));
+      } catch (_) {}
+      try {
+        await Services.api.post('auth/logout/', {'refresh': Services.tokens.refresh}).timeout(const Duration(seconds: 5));
       } catch (_) {}
     }
     Services.realtime.disconnect();

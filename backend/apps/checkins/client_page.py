@@ -336,8 +336,8 @@ def form_cards(client):
     return [form_card(r, coach_first) for r in list(waiting) + list(done)]
 
 
-def form_request(client, req):
-    """One form to fill (or what was sent): the card, its questions and, once filled, the answers."""
+def form_request(client, req, request=None):
+    """One form to fill (or what was sent): the card, its questions and, once filled, the answers and photos."""
     coach = client.client_profile.trainer
     coach_first = coach.first_name if coach else ""
     out = form_card(req, coach_first)
@@ -345,5 +345,6 @@ def form_request(client, req):
     sub = Submission.objects.filter(request=req).order_by("-created_at").first() if req.filled_at else None
     out["submission"] = None if sub is None else {
         "id": str(sub.id), "sent_at": sub.created_at,
-        "answers": {str(a.question_id): a.value for a in sub.answers.all() if not a.photo}}
+        "answers": {str(a.question_id): a.value for a in sub.answers.all() if not a.photo},
+        "photos": answer_photos(sub, request)}
     return out

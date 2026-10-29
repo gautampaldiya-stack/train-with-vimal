@@ -304,11 +304,19 @@ class _CpFormsTabState extends State<CpFormsTab> {
     final d = detail;
     if (d == null || d['key'] != r['key']) return const AppCard(child: CpLoading());
     if (d['sections'] != null) {
-      final sections = [
-        for (final s in d['sections'] as List)
-          ('${s['title']}', [for (final x in (s['rows'] as List? ?? const [])) ('${x['q']}', '${x['a']}')]),
-      ];
-      return _answers('${d['name']}', '${d['cap']}', sections);
+      // Photo answers show as pictures (like the onboarding's start photos), not as the word "Photo".
+      final photos = [for (final p in (d['photos'] as List? ?? const [])) ('${(p as Map)['label']}', '${p['url']}')];
+      var photosIn = -1;
+      final sections = <(String, List<(String, String)>)>[];
+      for (final s in d['sections'] as List) {
+        final rows = (s['rows'] as List? ?? const []);
+        if (photos.isNotEmpty && rows.any((x) => x['photo'] == true)) photosIn = sections.length;
+        sections.add(('${s['title']}', [
+          for (final x in rows)
+            if (photos.isEmpty || x['photo'] != true) ('${x['q']}', '${x['a']}'),
+        ]));
+      }
+      return _answers('${d['name']}', '${d['cap']}', sections, photos: photos, photosIn: photosIn, photosLabel: 'Photos');
     }
     return _questions(context, d);
   }
@@ -317,7 +325,7 @@ class _CpFormsTabState extends State<CpFormsTab> {
   // (tablet / desktop) the card keeps to the window's height and its answers scroll inside it, so the page stays
   // put; on a phone the page scrolls. [photos] = the onboarding's start photos (label, url).
   Widget _answers(String title, String cap, List<(String, List<(String, String)>)> sections,
-      {List<(String, String)> photos = const [], int photosIn = -1}) {
+      {List<(String, String)> photos = const [], int photosIn = -1, String photosLabel = 'Start photos'}) {
     final pad = context.isPhone ? 16.0 : 20.0;
     final at = photos.isEmpty ? -1 : (photosIn < 0 ? sections.length - 1 : photosIn);
     final body = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -334,11 +342,11 @@ class _CpFormsTabState extends State<CpFormsTab> {
                 padding: const EdgeInsets.only(top: 9),
                 child: context.isPhone
                     ? Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 8, children: [
-                        Text('Start photos', style: AppText.s(13.5, W.w6, color: AppColors.muted)),
+                        Text(photosLabel, style: AppText.s(13.5, W.w6, color: AppColors.muted)),
                         photoThumbs(photos, size: 84),
                       ])
                     : Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 16, children: [
-                        Expanded(flex: 10, child: Text('Start photos', style: AppText.s(13.5, W.w6, color: AppColors.muted))),
+                        Expanded(flex: 10, child: Text(photosLabel, style: AppText.s(13.5, W.w6, color: AppColors.muted))),
                         Expanded(flex: 12, child: Align(alignment: Alignment.centerLeft, child: photoThumbs(photos, size: 84))),
                       ]),
               ),
@@ -379,9 +387,8 @@ class _CpFormsTabState extends State<CpFormsTab> {
   /// The onboarding questionnaire: her answers as the server reads them from her profile (D-36), so Edit profile
   /// changes show here, in the onboarding form's words; extra questions the admin added come last.
   Widget _onboarding(Map r) {
-    final photos = cpParse(r['filled_at']) == null
-        ? const <(String, String)>[]
-        : [for (final p in (r['photos'] as List? ?? const [])) ('${(p as Map)['label']}', '${p['url']}')];
+    // Start photos show as soon as she has sent them, also while other parts are still open.
+    final photos = [for (final p in (r['photos'] as List? ?? const [])) ('${(p as Map)['label']}', '${p['url']}')];
     var photosIn = -1;
     final sections = <(String, List<(String, String)>)>[];
     for (final s in (r['sections'] as List? ?? const [])) {

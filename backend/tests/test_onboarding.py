@@ -98,3 +98,34 @@ def test_heart_condition_needs_doctor_ok():
     assert r.status_code == 400 and "doctor_ok" in r.json()["error"]["fields"]
     r = c.post("/api/v1/me/onboarding/", {"step": "health", "data": {**body, "doctor_ok": True}}, format="json")
     assert r.status_code == 200
+
+
+def test_start_photos_show_to_the_coach_before_the_last_step(admin):
+    """Phase 2: the admin's onboarding answers said "Photo" with no picture until every part was done."""
+    u = new_client()
+    c = login("new.onb@example.com")
+    for step, data in steps_with_photos().items():
+        if step == "agree":
+            break
+        assert c.post("/api/v1/me/onboarding/", {"step": step, "data": data}, format="json").status_code == 200
+    rows = admin.get(f"/api/v1/clients/{u.id}/forms/").json()["sent"]
+    onb = next(r for r in rows if r["kind"] == "onboarding")
+    assert onb["status"] == "waiting"
+    assert [p["label"] for p in onb["photos"]] == ["Front", "Side", "Back"]
+    assert all("/media/progress/" in p["url"] for p in onb["photos"])
+
+
+def test_sending_the_questionnaire_opens_setup_not_a_second_form(admin):
+    """Tara had two: "Onboarding questionnaire" (setup, 0 of 9) and a sent "New client questionnaire" (Done)."""
+    from apps.checkins.models import FormRequest
+    from apps.checkins.services import send_form
+    from apps.clients.onboarding import questionnaire
+    from apps.notifications.models import Notification
+
+    u = new_client()
+    assert send_form(u, questionnaire()) is None
+    assert not FormRequest.objects.filter(client=u).exists()
+    n = Notification.objects.filter(recipient=u).order_by("-created_at").first()
+    assert n.data["route"] == "/setup"
+    rows = admin.get(f"/api/v1/clients/{u.id}/forms/").json()["sent"]
+    assert not [r for r in rows if r["kind"] == "request"]

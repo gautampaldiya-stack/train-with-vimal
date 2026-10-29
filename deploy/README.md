@@ -188,6 +188,7 @@ None of these files go into git (`.gitignore` blocks `firebase.json`, `google-se
 ---
 
 ## Handy commands (on the server, in `~/twv`)
+First `ssh root@<VPS IP>` from PowerShell on your PC, then `cd ~/twv`; these commands do not work anywhere else.
 - Logs: `docker compose -f docker-compose.prod.yml logs -f api` (or `web`, `worker`, `beat`)
 - Restart one part: `docker compose -f docker-compose.prod.yml restart api`
 - After changing `.env`: `docker compose -f docker-compose.prod.yml up -d` (502 afterwards? see below)

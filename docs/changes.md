@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-29 · Phase 2 — photos in form answers; logout; .env and server commands in README
+- **Pehle:** Admin → client → Forms: onboarding ke start photos tabhi dikhte jab saare 9 parts bhar chuke hon, warna photo ki jagah sirf "Photo" likha aata. Bheje hue forms ke photo answers bhi sirf "Photo" text the (server sirf ye shabd bhejta tha). Logout web par push band karne mein atak sakta tha, aur do baar chalne par session do baar saaf hota.
+- **Ab:** Start photos bhejte hi thumbnails dikhte hain (8 of 9 parts par bhi). Form answers ke photos `photos` list mein aate hain aur thumbnails bante hain, admin mein bhi aur client ke bhare hue form mein bhi (pehle "Sent" likha aata tha). Onboarding form (automation ya "Send a form") ab alag copy nahi banata: client ko "Finish your setup" notification jaata hai jo setup kholta hai, list mein ek hi "Onboarding questionnaire". Logout ek hi baar chalta hai, server calls 3–5 s mein ruk jaati hain, web push ka deleteToken intezaar nahi karwata. `SERVE_MEDIA=True` `backend/.env.example` mein. README: `.env` banana (har line ka matlab) aur live server ke commands kahan aur kaise chalane hain.
+- **Kyun:** Probid ka batch 1, Phase 2 (onboarding photos nahi dikh rahe the) aur logout error.
+- **Updated:** backend/apps/checkins/client_forms.py, services.py, client_page.py, views.py, app/lib/features/client/checkins/checkins_form.dart, app/lib/features/trainer/client_profile/cp_forms.dart, app/lib/app/services.dart, app/lib/core/push/push.dart, backend/.env.example, README.md, deploy/README.md, tests/test_onboarding.py, tests/test_client_checkins.py, docs/screenshots/batch1/phase2
+
 ### 2026-10-29 · Phase 1 — one calculation module for every number (D-82)
 - **Pehle:** Har khaana save karte waqt round hota tha (kcal poora number), phir total judta tha, isliye 10 chhoti cheezon me total 4-5 kcal kam aata. Admin food diary me day total kat jaata tha (1799.6 → 1799). Volume ke teen alag formule the. Records me sirf sabse bhaari set.
 - **Ab:** `backend/apps/common/calc.py` me saare formule (volume, duration, rest, records + Epley 1RM, nutrition total, 4/4/9 kcal check), har formula comment me. Food log bina round kiye save (3 decimal), sirf dikhate waqt round. Client app aur admin ka number same (Vikram: 1701 = 1701, 4778 kg = 4778 kg).

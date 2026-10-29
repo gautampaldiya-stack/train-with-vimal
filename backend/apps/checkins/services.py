@@ -339,8 +339,23 @@ def form_route(req):
     return "/checkins/weekly" if t == "weekly" else "/checkins/daily" if t == "daily" else f"/checkins/forms/{req.id}"
 
 
+def is_setup_form(form):
+    """The new client questionnaire (onboarding, not the PAR-Q) is the app's setup steps, not a form of its own."""
+    return form.type == "onboarding" and not form.is_parq
+
+
 def send_form(client, form, *, actor=None, automation_run=None, due_at=None, channels=None):
-    """Client profile → Send a form (or an automation step)."""
+    """Client profile → Send a form (or an automation step).
+
+    The onboarding questionnaire makes no second copy: the client is sent to the setup steps, which fill her profile
+    and start photos (the one "Onboarding questionnaire" in her forms list). Returns None then."""
+    if is_setup_form(form):
+        notify(client, "form_request", "Finish your setup",
+               "Your coach is waiting for your answers. It takes a few minutes.",
+               actor=actor, channels=channels, data={"route": "/setup"})
+        activity_log(f"sent {form.name}", "checkin", actor=actor, target=client, target_label=form.name,
+                     client=client)
+        return None
     req = FormRequest.objects.create(form=form, client=client, sent_by=actor, automation_run=automation_run,
                                      due_at=due_at)
     notify(client, "form_request", f"{form.name}", "Your coach sent you a form. It takes a few minutes.",
