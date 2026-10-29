@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -736,91 +737,13 @@ class _Info extends StatelessWidget {
 Future<List<Map>?> showExercisePicker(BuildContext context,
     {required String title, required String sub, required bool single, required int need, required Set<String> have}) {
   final picked = ValueNotifier<List<Map>>([]);
-  final mus = ValueNotifier('');
-  final q = ValueNotifier('');
-  final search = TextEditingController();
-  final all = Services.api.get<Map>('exercises/', query: {'page_size': 200}).then((r) => [for (final x in r['results'] as List) x as Map]);
-  const groups = [('', 'All'), ('chest', 'Chest'), ('back', 'Back'), ('legs', 'Legs'), ('shoulders', 'Shoulders'), ('arms', 'Arms'), ('core', 'Core'), ('cardio', 'Cardio')];
   return showAppDrawer<List<Map>>(
     context,
     title: title,
     sub: sub,
     icon: AppIcons.dumbbell,
     fixedBody: true,
-    builder: (ctx) => FutureBuilder<List<Map>>(
-      future: all,
-      builder: (ctx, snap) {
-        if (snap.hasError) return const EmptyState('Could not load the exercises');
-        if (!snap.hasData) return const CpLoading();
-        final list = snap.data!;
-        return ListenableBuilder(
-          listenable: Listenable.merge([picked, mus, q]),
-          builder: (ctx, _) {
-            final rows = list.where((x) => (mus.value.isEmpty || x['muscle_group'] == mus.value) && (q.value.isEmpty || '${x['name']}'.toLowerCase().contains(q.value))).toList();
-            Widget row(int i) {
-              final x = rows[i];
-              final on2 = have.contains('${x['id']}');
-              final on = picked.value.any((p) => p['id'] == x['id']);
-              return Hover(
-                onTap: on2 ? null : () => picked.value = single ? [x] : (on ? picked.value.where((p) => p['id'] != x['id']).toList() : [...picked.value, x]),
-                builder: (_, h, _) => Opacity(
-                  opacity: on2 ? .55 : 1,
-                  child: Padding(
-                    // `.pb-pkr`, tightened: 8px rows with a 1px line between them.
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Row(spacing: 12, children: [
-                      single ? AppRadio(selected: on) : AppCheckbox(value: on),
-                      // the exercise's picture (or the dumbbell tile), with ▶ and the length only when it has a video
-                      SizedBox(width: 52, height: 40, child: ExCover(x, radius: 8, iconSize: 16, inset: 3, mini: true)),
-                      Expanded(
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                          CutText('${x['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7, color: h && !on2 ? AppColors.accentText : AppColors.text)),
-                          CutText(['${x['primary_muscle'] ?? ''}'.ifEmpty('${x['muscle_group']}'), '${x['level'] ?? ''}'.capFirst].where((s) => s.isNotEmpty).join(' · '),
-                              maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.text2)),
-                        ]),
-                      ),
-                      Column(crossAxisAlignment: CrossAxisAlignment.end, mainAxisSize: MainAxisSize.min, spacing: 3, children: [
-                        if (on2) const AppBadge('On this day', tone: Tone.info, plain: true),
-                        Text('${exEquipLabel(x)} · ${x['default_sets'] ?? 3} × ${x['default_reps'] ?? '10'}', style: AppText.cap),
-                      ]),
-                    ]),
-                  ),
-                ),
-              );
-            }
-
-            // `.pb-pk`: search, muscle tabs and the hint stay put (`.pb-pkh`); only the list scrolls (`.pb-pklist`).
-            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              const SizedBox(height: 14),
-              AppSearchField(controller: search, placeholder: 'Search exercises', onChanged: (v) => q.value = v.trim().toLowerCase()),
-              const SizedBox(height: 8),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(spacing: 6, children: [
-                  for (final (k, l) in groups)
-                    FilterChipX(l, selected: mus.value == k, count: k.isEmpty ? list.length : list.where((x) => x['muscle_group'] == k).length, onTap: () => mus.value = k),
-                ]),
-              ),
-              if (single || need == 2) ...[
-                const SizedBox(height: 6),
-                Text(single ? 'Pick one exercise. Sets, reps and rest stay the same.' : 'Pick 2 exercises. They are done back to back.', style: AppText.cap),
-              ],
-              const SizedBox(height: 4),
-              Expanded(
-                child: rows.isEmpty
-                    ? const Align(alignment: Alignment.topCenter, child: EmptyState('No exercises match'))
-                    : ListView.separated(
-                        padding: const EdgeInsets.only(top: 2, bottom: 12),
-                        itemCount: rows.length,
-                        separatorBuilder: (_, _) => const Divider1(),
-                        itemBuilder: (_, i) => row(i),
-                      ),
-              ),
-            ]);
-          },
-        );
-      },
-    ),
+    builder: (ctx) => _ExercisePicker(picked: picked, single: single, need: need, have: have),
     footer: (ctx) => [
       ValueListenableBuilder(
         valueListenable: picked,
@@ -840,7 +763,191 @@ Future<List<Map>?> showExercisePicker(BuildContext context,
         ),
       ),
     ],
-  ).whenComplete(() => disposeLater([picked, mus, q, search]));
+  ).whenComplete(() => disposeLater([picked]));
+}
+
+
+/// The picker list: 50 exercises a page from the server, more while scrolling. Search asks the server once typing
+/// stops (400 ms), not on every letter; the muscle tabs filter on the server too, with counts for the search (D-81).
+class _ExercisePicker extends StatefulWidget {
+  const _ExercisePicker({required this.picked, required this.single, required this.need, required this.have});
+  final ValueNotifier<List<Map>> picked;
+  final bool single;
+  final int need;
+  final Set<String> have;
+
+  @override
+  State<_ExercisePicker> createState() => _ExercisePickerState();
+}
+
+class _ExercisePickerState extends State<_ExercisePicker> {
+  static const _pageSize = 50;
+  static const groups = [('', 'All'), ('chest', 'Chest'), ('back', 'Back'), ('legs', 'Legs'), ('shoulders', 'Shoulders'), ('arms', 'Arms'), ('core', 'Core'), ('cardio', 'Cardio')];
+
+  final search = TextEditingController();
+  final scroll = ScrollController();
+  Timer? _debounce;
+  int _req = 0;
+  String q = '', mus = '';
+  List<Map> list = [];
+  Map<String, int> counts = {};
+  int total = 0;
+  String? next;
+  bool loading = true, more = false, failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    scroll.addListener(() {
+      if (scroll.position.pixels > scroll.position.maxScrollExtent - 300) _more();
+    });
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    search.dispose();
+    scroll.dispose();
+    super.dispose();
+  }
+
+  Map<String, dynamic> get _query => {'search': q, 'page_size': _pageSize, if (mus.isNotEmpty) 'muscle': mus};
+
+  Future<void> _load() async {
+    final req = ++_req;
+    setState(() => loading = true);
+    try {
+      final r = await Future.wait([
+        Services.api.get<Map>('exercises/', query: _query),
+        Services.api.get<Map>('exercises/facets/', query: {'search': q}),
+      ]);
+      if (req != _req || !mounted) return;
+      setState(() {
+        list = [for (final x in r[0]['results'] as List) x as Map];
+        next = r[0]['next'] as String?;
+        counts = {for (final m in (r[1]['muscle'] as List? ?? const [])) '${m['value']}': (m['count'] as num?)?.toInt() ?? 0};
+        total = counts.values.fold(0, (a, b) => a + b);
+        loading = failed = false;
+      });
+      if (scroll.hasClients) scroll.jumpTo(0);
+    } on ApiError {
+      if (req != _req || !mounted) return;
+      setState(() {
+        loading = false;
+        failed = true;
+      });
+    }
+  }
+
+  Future<void> _more() async {
+    final n = next;
+    if (n == null || more || loading) return;
+    final req = _req;
+    setState(() => more = true);
+    try {
+      final r = await Services.api.get<Map>('exercises/', query: {..._query, 'page': Uri.parse(n).queryParameters['page']});
+      if (req != _req || !mounted) return;
+      setState(() {
+        list = [...list, for (final x in r['results'] as List) x as Map];
+        next = r['next'] as String?;
+      });
+    } on ApiError catch (e) {
+      if (mounted) showToast(context, 'Could not load more', sub: e.message, kind: ToastKind.err);
+    }
+    if (mounted) setState(() => more = false);
+  }
+
+  void _search(String v) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      final t = v.trim();
+      if (t == q) return;
+      q = t;
+      _load();
+    });
+  }
+
+  void _muscle(String k) {
+    if (k == mus) return;
+    mus = k;
+    _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final picked = widget.picked, single = widget.single, need = widget.need, have = widget.have;
+    return ValueListenableBuilder(
+      valueListenable: picked,
+      builder: (ctx, _, _) {
+        final rows = list;
+        Widget row(int i) {
+      final x = rows[i];
+      final on2 = have.contains('${x['id']}');
+      final on = picked.value.any((p) => p['id'] == x['id']);
+      return Hover(
+        onTap: on2 ? null : () => picked.value = single ? [x] : (on ? picked.value.where((p) => p['id'] != x['id']).toList() : [...picked.value, x]),
+        builder: (_, h, _) => Opacity(
+          opacity: on2 ? .55 : 1,
+          child: Padding(
+            // `.pb-pkr`, tightened: 8px rows with a 1px line between them.
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(spacing: 12, children: [
+              single ? AppRadio(selected: on) : AppCheckbox(value: on),
+              // the exercise's picture (or the dumbbell tile), with ▶ and the length only when it has a video
+              SizedBox(width: 52, height: 40, child: ExCover(x, radius: 8, iconSize: 16, inset: 3, mini: true)),
+              Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+              CutText('${x['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7, color: h && !on2 ? AppColors.accentText : AppColors.text)),
+              CutText(['${x['primary_muscle'] ?? ''}'.ifEmpty('${x['muscle_group']}'), '${x['level'] ?? ''}'.capFirst].where((s) => s.isNotEmpty).join(' · '),
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.text2)),
+            ]),
+              ),
+              Column(crossAxisAlignment: CrossAxisAlignment.end, mainAxisSize: MainAxisSize.min, spacing: 3, children: [
+            if (on2) const AppBadge('On this day', tone: Tone.info, plain: true),
+            Text('${exEquipLabel(x)} · ${x['default_sets'] ?? 3} × ${x['default_reps'] ?? '10'}', style: AppText.cap),
+              ]),
+            ]),
+          ),
+        ),
+      );
+    }
+
+        // `.pb-pk`: search, muscle tabs and the hint stay put (`.pb-pkh`); only the list scrolls (`.pb-pklist`).
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          const SizedBox(height: 14),
+          AppSearchField(controller: search, placeholder: 'Search exercises', onChanged: _search),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(spacing: 6, children: [
+              for (final (k, l) in groups) FilterChipX(l, selected: mus == k, count: k.isEmpty ? total : counts[k] ?? 0, onTap: () => _muscle(k)),
+            ]),
+          ),
+          if (single || need == 2) ...[
+            const SizedBox(height: 6),
+            Text(single ? 'Pick one exercise. Sets, reps and rest stay the same.' : 'Pick 2 exercises. They are done back to back.', style: AppText.cap),
+          ],
+          const SizedBox(height: 4),
+          Expanded(
+            child: failed
+                ? const Align(alignment: Alignment.topCenter, child: EmptyState('Could not load the exercises'))
+                : loading && rows.isEmpty
+                    ? const CpLoading()
+                    : rows.isEmpty
+                        ? const Align(alignment: Alignment.topCenter, child: EmptyState('No exercises match'))
+                        : ListView.separated(
+                            controller: scroll,
+                            padding: const EdgeInsets.only(top: 2, bottom: 12),
+                            itemCount: rows.length + (next != null ? 1 : 0),
+                            separatorBuilder: (_, _) => const Divider1(),
+                            itemBuilder: (_, i) => i < rows.length ? row(i) : const Padding(padding: EdgeInsets.all(12), child: Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)))),
+                          ),
+          ),
+        ]);
+      },
+    );
+  }
 }
 
 extension on String {

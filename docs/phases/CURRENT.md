@@ -2,9 +2,12 @@
 
 Updated with every push, so anyone (another Claude session, local Claude Code, a developer) can pick up from here.
 
-**Last updated:** 2026-10-28 · branch `working`
+**Last updated:** 2026-10-29 · branch `working`
 
 ## Done
+- 2026-10-29 (latest): D-81: client plan saves with a newly added exercise (null id); exercise picker 50 a page with
+  server search after typing stops. **Next:** Probid tests on his PC, then merge working → develop when he says, with
+  the real Firebase server key on the VPS (`~/twv/secrets/`).
 - 2026-10-28 (latest): Probid: `working` set back to `develop` (4ccacdd); everything after it (D-61 … D-79) is out of
   `working`, kept in `/mnt/project-files/backup-oct28/working-before-rollback-d059df1.bundle`. Probid will bring work
   back one task at a time. First task D-80: push reaches the phone (token moves to the logged-in account, dead

@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-29 · Plan save with a new exercise; exercise picker search (D-81)
+- **Pehle:** Client ke plan me naya exercise add karke Save karne par "Could not save the plan" aata tha (naye exercise ki id null jaati thi, server mana karta tha). Add exercise drawer ek baar me 200 exercises maangta tha (server 100 hi deta tha, baaki kabhi nahi dikhte) aur search sirf browser me hota tha.
+- **Ab:** Null id = naya exercise, plan save hota hai, purane rows ki id wahi rehti hai. Drawer 50-50 karke laata hai (scroll par aur), search server par typing rukne ke 400 ms baad, muscle tabs bhi server par.
+- **Kyun:** Probid (29 Oct) ka screenshot + "ek ek caracter pe search na ho".
+- **Updated:** backend/apps/training/serializers.py, tests/test_plan_save_d81.py, app/lib/features/trainer/client_profile/cp_plans_edit.dart · Decision D-81
+
 ### 2026-10-28 · Push icon = TWV logo; README daily commands (D-80)
 - **Pehle:** Notification me safed ghanti (ya grey square) dikhti thi. README me roz ke local commands ek jagah nahi the.
 - **Ab:** Status bar me TWV logo (safed), notification me logo blue. README me "Daily local commands": pull, API / Celery, app Chrome + phone, push_test, push se pehle checks.

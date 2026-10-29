@@ -159,7 +159,8 @@ class ExerciseMiniSerializer(serializers.ModelSerializer):
 
 # ---------------------------------------------------------------- program tree
 class ProgramExerciseSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(required=False)
+    # null = a row added in the builder that is not saved yet (D-81: `"id": null` answered 400 "Could not save the plan")
+    id = serializers.IntegerField(required=False, allow_null=True)
     exercise_detail = ExerciseMiniSerializer(source="exercise", read_only=True)
     edited = serializers.SerializerMethodField()
 
@@ -188,7 +189,7 @@ class ProgramExerciseSerializer(serializers.ModelSerializer):
 
 
 class ProgramDaySerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(required=False)
+    id = serializers.IntegerField(required=False, allow_null=True)
     exercises = ProgramExerciseSerializer(many=True, required=False)
 
     class Meta:
@@ -197,7 +198,7 @@ class ProgramDaySerializer(serializers.ModelSerializer):
 
 
 class ProgramWeekSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(required=False)
+    id = serializers.IntegerField(required=False, allow_null=True)
     days = ProgramDaySerializer(many=True, required=False)
 
     class Meta:
