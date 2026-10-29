@@ -86,7 +86,9 @@ def test_missed_workout_and_plan_end(db):
     reminders.coach_daily_notices(today=run_day)
     assert _aman_rows("client_missed_workout").filter(actor=riya).count() == 1 and _aman_rows("client_plan_ending").filter(
         title__startswith="Riya").count() == 1
-    assert not Notification.objects.filter(recipient__role="admin", event__startswith="client_missed").exists()
+    # Riya is Aman's client, so the admin hears nothing about her (the admin's own clients do reach the admin, D-57).
+    assert not Notification.objects.filter(recipient__role="admin", event__startswith="client_missed",
+                                           actor=riya).exists()
 
 
 def test_missed_workout_respects_the_switch(db):

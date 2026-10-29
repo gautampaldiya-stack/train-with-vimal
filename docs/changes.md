@@ -18,6 +18,11 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-29 · Tests — coach missed-workout test no longer fails on some days
+- **Pehle:** `test_missed_workout_and_plan_end` kehta tha "admin ko koi missed-workout notice nahi". Par admin khud kuch demo clients ka trainer hai (D-57), to jis din unka workout miss hota, admin ko sahi notice milta aur test fail ho jaata (Deploy develop ruk gaya).
+- **Ab:** test sirf Riya (Aman ki client) ke liye check karta hai ki admin ko notice nahi gaya. App ka code nahi badla.
+- **Updated:** backend/tests/test_coach_notices.py
+
 ### 2026-10-29 · Plan save with a new exercise; exercise picker search (D-81)
 - **Pehle:** Client ke plan me naya exercise add karke Save karne par "Could not save the plan" aata tha (naye exercise ki id null jaati thi, server mana karta tha). Add exercise drawer ek baar me 200 exercises maangta tha (server 100 hi deta tha, baaki kabhi nahi dikhte) aur search sirf browser me hota tha.
 - **Ab:** Null id = naya exercise, plan save hota hai, purane rows ki id wahi rehti hai. Drawer 50-50 karke laata hai (scroll par aur), search server par typing rukne ke 400 ms baad, muscle tabs bhi server par.
