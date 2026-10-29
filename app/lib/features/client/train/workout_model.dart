@@ -917,14 +917,20 @@ class WorkoutController extends ChangeNotifier {
     return mine.reduce(math.max) - (before.isEmpty ? 0 : before.reduce(math.max));
   }
 
+  /// kg × reps of one set, the same rule as the server (backend apps/common/calc.py `set_volume`, D-82):
+  /// 0 for a warm-up, a set not done or no reps; a bodyweight set counts body weight + added load.
+  double setVolume(WSet s) {
+    if (!s.done || s.wu || (s.reps ?? 0) == 0) return 0;
+    final w = s.bw ? (plan.bodyweight ?? 0) + (s.weight ?? 0) : (s.weight ?? 0);
+    return w * s.reps!;
+  }
+
   double get volume {
     var v = 0.0;
     for (final (i, xs) in sets.indexed) {
       if (ex[i].kind != ExKind.weight) continue;
       for (final s in xs) {
-        if (!s.done || s.wu) continue;
-        final w = s.bw ? (plan.bodyweight ?? 0) + (s.weight ?? 0) : (s.weight ?? 0);
-        v += w * (s.reps ?? 0);
+        v += setVolume(s);
       }
     }
     return v;

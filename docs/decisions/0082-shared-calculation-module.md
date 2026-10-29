@@ -34,6 +34,9 @@ correctness is top priority"; approved the plan: "done karo")
   unrounded values and rounded once.
 - Body weight for a bodyweight set: the weigh-in on the workout day, else the last one before it
   (`services.body_weights`).
+- Phone app: the Food page ring, macros and meal cards show the server's totals and add only what changed on the
+  phone since (eat / undo before the server answers), never the rounded rows again (`FoodDay.eaten`, `FMeal`).
+  Workout volume on the phone uses one rule, `WorkoutController.setVolume`, the same as `calc.set_volume`.
 - Rest per set and timed "added later" segments are not stored yet; the formulas are ready for Phases 7, 11 and 12.
 
 ## Checked

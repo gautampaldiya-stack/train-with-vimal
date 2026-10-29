@@ -314,10 +314,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     final each = e.reps.contains('each side') ? ' each side' : '';
     switch (e.kind) {
       case ExKind.weight:
-        var vol = 0.0;
-        for (final s in c.sets[c.cur]) {
-          if (s.done && !s.wu) vol += (s.bw ? (c.plan.bodyweight ?? 0) + (s.weight ?? 0) : (s.weight ?? 0)) * (s.reps ?? 0);
-        }
+        final vol = c.sets[c.cur].fold(0.0, (a, s) => a + c.setVolume(s));
         final bw = c.plan.bodyweight;
         return 'Volume so far ${NumberFormat.decimalPattern('en_IN').format(vol.round())} kg'
             '${bw == null ? '' : ' · BW = ${kg(bw)} kg (last weigh-in)'}. Tap BW on a set to log bodyweight; − / + adds load or assistance.';

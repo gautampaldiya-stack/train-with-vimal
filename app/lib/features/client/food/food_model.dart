@@ -193,6 +193,7 @@ class FoodDay {
     : meals = [for (final m in (j['meals'] as List? ?? [])) FMeal(m as Map<String, dynamic>)],
       log = [for (final e in (j['log'] as List? ?? [])) FEntry(e as Map<String, dynamic>)],
       week = [for (final w in (j['week'] as List? ?? [])) (w as Map).cast<String, dynamic>()] {
+    _log0 = _sumLog();
     for (final m in meals) {
       m.j['status'] ??= m.j['pill'] == 'logged' ? 'logged' : (m.j['pill'] == 'skipped' ? 'skipped' : '');
     }
@@ -212,11 +213,22 @@ class FoodDay {
   /// Target: kcal, protein, carbs, fat.
   List<double> get target => [_n(plan?['kcal']), _n(plan?['protein']), _n(plan?['carbs']), _n(plan?['fat'])];
 
-  /// Eaten so far: kcal, protein, carbs, fat (from the log).
+  /// Eaten so far: kcal, protein, carbs, fat. The server's day total (worked out from the unrounded entries,
+  /// Phase 1 / D-82) plus whatever changed in the log on the phone since then (eat / undo before the server answers).
+  /// Adding the rounded rows again would drift by a few kcal over a day.
   List<double> get eaten {
+    final now = _sumLog(), m = j['macros'] as Map?;
+    if (m == null) return now;
+    final base = [_n(m['kcal']), _n(m['protein']), _n(m['carbs']), _n(m['fat'])];
+    return [for (var i = 0; i < 4; i++) base[i] + (now[i] - _log0[i])];
+  }
+
+  late final List<double> _log0;
+
+  List<double> _sumLog() {
     final t = [0.0, 0.0, 0.0, 0.0];
     for (final e in log) {
-      t[0] += e.kcal;
+      t[0] += _n(e.j['kcal']);
       t[1] += e.protein;
       t[2] += e.carbs;
       t[3] += e.fat;
@@ -270,19 +282,40 @@ class FoodDay {
 }
 
 class FMeal {
-  FMeal(this.j) : items = [for (final i in (j['items'] as List? ?? [])) FItem(i as Map<String, dynamic>)];
+  FMeal(this.j) : items = [for (final i in (j['items'] as List? ?? [])) FItem(i as Map<String, dynamic>)] {
+    _items0 = _sumItems();
+  }
   final Map<String, dynamic> j;
   final List<FItem> items;
+  late final List<double> _items0;
   int get id => (j['id'] as num).toInt();
   String get name => '${j['name']}';
   String get timeRaw => '${j['time']}';
   bool get logged => j['status'] == 'logged';
   bool get skipped => j['status'] == 'skipped';
   bool get open => !logged && !skipped;
-  int get kcal => items.fold(0, (a, i) => a + i.kcal);
-  double get protein => items.fold(0.0, (a, i) => a + i.protein);
-  double get carbs => items.fold(0.0, (a, i) => a + i.carbs);
-  double get fat => items.fold(0.0, (a, i) => a + i.fat);
+  /// Meal total: the server's (from the unrounded item values, D-82) plus any change made on the phone since.
+  List<double> get _total {
+    final now = _sumItems();
+    final base = [j['kcal'], j['protein'], j['carbs'], j['fat']];
+    return [for (var i = 0; i < 4; i++) base[i] == null ? now[i] : _n(base[i]) + (now[i] - _items0[i])];
+  }
+
+  List<double> _sumItems() {
+    final t = [0.0, 0.0, 0.0, 0.0];
+    for (final i in items) {
+      t[0] += _n(i.j['kcal']);
+      t[1] += i.protein;
+      t[2] += i.carbs;
+      t[3] += i.fat;
+    }
+    return t;
+  }
+
+  int get kcal => _total[0].round();
+  double get protein => _total[1];
+  double get carbs => _total[2];
+  double get fat => _total[3];
   DateTime? get loggedAt => DateTime.tryParse('${j['logged_at']}')?.toLocal();
   String? get photo => (j['photo'] as String?)?.isEmpty ?? true ? null : j['photo'] as String;
   bool get canSwap => items.any((i) => i.swaps > 0);

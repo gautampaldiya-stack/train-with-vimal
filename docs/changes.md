@@ -23,6 +23,7 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Ab:** `backend/apps/common/calc.py` me saare formule (volume, duration, rest, records + Epley 1RM, nutrition total, 4/4/9 kcal check), har formula comment me. Food log bina round kiye save (3 decimal), sirf dikhate waqt round. Client app aur admin ka number same (Vikram: 1701 = 1701, 4778 kg = 4778 kg).
 - **Kyun:** Probid ka batch 1, Phase 1: "numbers accurate chahiye".
 - **Updated:** backend/apps/common/calc.py, nutrition/models.py + migration 0008, nutrition/services.py, serializers.py, views.py, training/services.py, models.py, serializers.py, views.py, clients/logs.py, account.py, checkins/progress.py, tests/test_calc.py, docs/architecture/data-model.md, docs/screenshots/batch1/phase1 · Decision D-82
+- **Phone app (part 2):** Food page ring, macros aur meal card ab server ka total dikhate hain (unrounded se bana), phone par khaana log/undo karne par sirf badla hua hissa upar se jodta hai. Pehle phone khud rounded rows jodta tha (3 × 41 = 123, server 122). Workout volume ka ek hi rule (`setVolume`, server ke `calc.set_volume` jaisa). Tests: app/test/food_totals_test.dart (4 pass).
 
 ### 2026-10-29 · Tests — coach missed-workout test no longer fails on some days
 - **Pehle:** `test_missed_workout_and_plan_end` kehta tha "admin ko koi missed-workout notice nahi". Par admin khud kuch demo clients ka trainer hai (D-57), to jis din unka workout miss hota, admin ko sahi notice milta aur test fail ho jaata (Deploy develop ruk gaya).
