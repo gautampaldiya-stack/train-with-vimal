@@ -227,9 +227,12 @@ class SetLog(models.Model):
 
     @property
     def volume(self):
-        if self.is_warmup or not self.done or self.weight_kg is None or not self.reps:
-            return 0
-        return float(self.weight_kg) * self.reps
+        # Without the day's body weight a bodyweight set counts its added load only (see services.set_volume)
+        from apps.common import calc
+
+        return calc.set_volume(None if self.is_bodyweight else self.weight_kg, self.reps, done=self.done,
+                               warmup=self.is_warmup, bodyweight=self.is_bodyweight,
+                               added_kg=self.weight_kg if self.is_bodyweight else 0)
 
 
 class FormVideo(models.Model):

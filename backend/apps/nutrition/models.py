@@ -63,12 +63,13 @@ class Food(SoftDeleteModel):
         return self.name
 
     def per_grams(self, grams):
+        """Values for this amount, unrounded (Phase 1, D-82): the stored entry keeps them, the screen rounds."""
         f = Decimal(grams) / Decimal(100)
         return {
-            "kcal": round(float(self.kcal * f)),
-            "protein": round(float(self.protein * f), 1),
-            "carbs": round(float(self.carbs * f), 1),
-            "fat": round(float(self.fat * f), 1),
+            "kcal": float(self.kcal * f),
+            "protein": float(self.protein * f),
+            "carbs": float(self.carbs * f),
+            "fat": float(self.fat * f),
         }
 
     @property
@@ -256,10 +257,12 @@ class FoodLogEntry(TimeStampedModel):
     quantity = models.DecimalField(max_digits=7, decimal_places=2, default=Decimal("1"))
     unit_name = models.CharField(max_length=40, default="g")
     grams = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
-    kcal = models.PositiveIntegerField(validators=[MaxValueValidator(10000)])
-    protein = models.DecimalField(max_digits=6, decimal_places=1, default=Decimal("0"))
-    carbs = models.DecimalField(max_digits=6, decimal_places=1, default=Decimal("0"))
-    fat = models.DecimalField(max_digits=6, decimal_places=1, default=Decimal("0"))
+    # Unrounded (D-82): totals add the stored values; the screen rounds. Old rows keep their values.
+    kcal = models.DecimalField(max_digits=10, decimal_places=4, default=Decimal("0"),
+                               validators=[MinValueValidator(0)])
+    protein = models.DecimalField(max_digits=10, decimal_places=4, default=Decimal("0"))
+    carbs = models.DecimalField(max_digits=10, decimal_places=4, default=Decimal("0"))
+    fat = models.DecimalField(max_digits=10, decimal_places=4, default=Decimal("0"))
     source = models.CharField(max_length=10, choices=Source.choices, default=Source.PLAN)
     swapped_from = models.CharField(max_length=120, blank=True, default="")
     reason = models.CharField(max_length=20, blank=True, default="")  # off-plan: "Ate out", "Party", "Travelling"

@@ -344,6 +344,14 @@ class FoodLogSerializer(serializers.ModelSerializer):
         read_only_fields = ["date", "logged_at", "name", "kcal", "protein", "carbs", "fat", "grams", "source",
                             "swapped_from", "other_time"]
 
+    def to_representation(self, obj):
+        # Stored unrounded; shown as before: kcal whole, grams to 1 decimal (D-82)
+        d = super().to_representation(obj)
+        d["kcal"] = round(float(obj.kcal))
+        for k in ("protein", "carbs", "fat"):
+            d[k] = round(float(getattr(obj, k)), 1)
+        return d
+
 
 class LogFoodSerializer(serializers.Serializer):
     """Log food screen: + on a food, or Quick add."""

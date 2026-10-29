@@ -7,6 +7,7 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from apps.activity.services import log as activity_log
+from apps.common import calc
 from apps.notifications.services import notify
 
 from .models import (
@@ -583,14 +584,11 @@ def body_weights(client_id):
 
 
 def set_volume(s, body_kg=None):
-    """kg × reps of one working set. A bodyweight set lifts the body weight that day plus any added load."""
-    if s.is_warmup or not s.done or not s.reps:
-        return 0
-    if s.is_bodyweight:
-        kg = (body_kg or 0) + float(s.weight_kg or 0)
-    else:
-        kg = float(s.weight_kg) if s.weight_kg is not None else 0
-    return kg * s.reps
+    """kg × reps of one set; the rule lives in apps.common.calc (Phase 1)."""
+    # On a bodyweight set the weight field is the added load (e.g. a vest), not the lifted weight
+    return calc.set_volume(None if s.is_bodyweight else s.weight_kg, s.reps, done=s.done, warmup=s.is_warmup,
+                           bodyweight=s.is_bodyweight, body_kg=body_kg,
+                           added_kg=s.weight_kg if s.is_bodyweight else 0)
 
 
 def workout_volume(w, body_kg=None):
