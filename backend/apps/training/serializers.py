@@ -364,8 +364,10 @@ class SetLogSerializer(serializers.ModelSerializer):
         read_only_fields = ["is_pr", "done_at"]
 
     def get_volume(self, obj):
-        """Bodyweight sets count the client's weight that day (+ added load); see `services.set_volume`."""
-        from .services import body_weights, set_volume
+        """Bodyweight sets count the client's weight that day (+ added load); see `apps.common.calc.set_volume`."""
+        from apps.common.calc import set_volume
+
+        from .services import body_weights
 
         body = None
         if obj.is_bodyweight and obj.done and obj.reps and not obj.is_warmup and obj.workout_id:

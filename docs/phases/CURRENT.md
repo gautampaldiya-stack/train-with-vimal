@@ -5,7 +5,9 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
 **Last updated:** 2026-10-29 · branch `working`
 
 ## Done
-- 2026-10-29 (latest): D-81: client plan saves with a newly added exercise (null id); exercise picker 50 a page with
+- 2026-10-29 (latest): D-82 Phase 1 of batch 1: shared calculation module (`apps/common/calc.py`), food log
+  unrounded, 21 tests in tests/test_calc.py. **Next:** Probid reviews Phase 1; Phase 2 (media upload) only when he says.
+- 2026-10-29: D-81: client plan saves with a newly added exercise (null id); exercise picker 50 a page with
   server search after typing stops. **Next:** Probid tests on his PC, then merge working → develop when he says, with
   the real Firebase server key on the VPS (`~/twv/secrets/`).
 - 2026-10-28 (latest): Probid: `working` set back to `develop` (4ccacdd); everything after it (D-61 … D-79) is out of

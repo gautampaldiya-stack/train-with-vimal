@@ -113,7 +113,8 @@ def test_bodyweight_sets_count_towards_volume(trainer):
 
     from apps.checkins.models import WeightLog
     from apps.training.models import Exercise, SetLog, WorkoutLog
-    from apps.training.services import body_weights, set_volume
+    from apps.common.calc import set_volume
+    from apps.training.services import body_weights
 
     riya = _riya()
     day = timezone.localdate() - timedelta(days=2)

@@ -345,11 +345,13 @@ class FoodLogSerializer(serializers.ModelSerializer):
                             "swapped_from", "other_time"]
 
     def to_representation(self, obj):
-        # Stored unrounded; shown as before: kcal whole, grams to 1 decimal (D-82)
+        """Stored unrounded; shown as whole kcal and 1-decimal grams (calc.show_kcal / show_g)."""
+        from apps.common.calc import show_g, show_kcal
+
         d = super().to_representation(obj)
-        d["kcal"] = round(float(obj.kcal))
+        d["kcal"] = show_kcal(obj.kcal)
         for k in ("protein", "carbs", "fat"):
-            d[k] = round(float(getattr(obj, k)), 1)
+            d[k] = show_g(getattr(obj, k))
         return d
 
 

@@ -6,6 +6,7 @@ from django.db.models import Count, Sum
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
+from apps.common.calc import food_macros, nutrition_totals, show_g, show_kcal
 from apps.activity.services import log as activity_log
 from apps.notifications.services import notify
 
@@ -233,7 +234,7 @@ def _entry_for_item(client, day, meal, item, state, now):
             food = alt
             grams = Decimal(str(swap.get("grams") or grams))
             quantity, unit_name = grams, "g"
-    m = food.per_grams(grams)
+    m = food_macros(food, grams)
     return FoodLogEntry(client=client, date=day, logged_at=now, meal_name=meal.name, meal=meal, food=food,
                         name=food.name, quantity=quantity, unit_name=unit_name, grams=grams, kcal=m["kcal"],
                         protein=m["protein"], carbs=m["carbs"], fat=m["fat"], source=FoodLogEntry.Source.PLAN,
@@ -300,7 +301,7 @@ def log_food(client, *, meal_name, food=None, quantity=1, unit=None, name="", kc
     mp = _active_plan(client, day)
     if food is not None:
         grams = Decimal(str(quantity)) * (unit.grams if unit else Decimal(1))
-        m = food.per_grams(grams)
+        m = food_macros(food, grams)
         # the plan the client follows: their own copy, else the master
         planned_ids = set(MealItem.objects.filter(option__meal__plan=mp.followed).values_list("food_id", flat=True)) \
             if mp else set()
@@ -381,10 +382,16 @@ def _active_plan(client, day):
             .select_related("plan", "custom_plan").order_by("-start_date").first())
 
 
+def _shown(t, whole=False):
+    """Totals as shown: kcal whole (a float like before unless [whole]), grams 1 decimal."""
+    k = show_kcal(t["kcal"])
+    return {"kcal": k if whole else float(k), "protein": show_g(t["protein"]), "carbs": show_g(t["carbs"]),
+            "fat": show_g(t["fat"])}
+
+
 def totals(client, day):
-    agg = FoodLogEntry.objects.filter(client=client, date=day).aggregate(
-        kcal=Sum("kcal"), protein=Sum("protein"), carbs=Sum("carbs"), fat=Sum("fat"))
-    return {k: float(v or 0) for k, v in agg.items()}
+    """What the client ate that day, unrounded (calc.nutrition_totals); round with show_kcal / show_g to show."""
+    return nutrition_totals(FoodLogEntry.objects.filter(client=client, date=day))
 
 
 def add_water(client, ml, day=None):
@@ -449,29 +456,31 @@ def day_view(client, day, request=None):
                 if next_marked:
                     pill = "planned"
                 next_marked = True
-            items = []
+            items, exact = [], []
             apply_today = day == today  # swaps/portions only apply to today
             for it in (opt.items.all() if opt else []):
                 e = _entry_for_item(client, day, meal, it, st if apply_today else None, now)
+                exact.append(e)
                 items.append({"item": it.id, "food": e.food_id, "name": e.name, "quantity": float(e.quantity),
-                              "unit": e.unit_name, "grams": float(e.grams), "kcal": e.kcal,
-                              "protein": float(e.protein), "carbs": float(e.carbs), "fat": float(e.fat),
+                              "unit": e.unit_name, "grams": float(e.grams), "kcal": show_kcal(e.kcal),
+                              "protein": show_g(e.protein), "carbs": show_g(e.carbs), "fat": show_g(e.fat),
                               "swapped_from": e.swapped_from, "swaps": len(swaps.item_swaps(it)),
                               "planned_quantity": float(it.quantity)})
             meals.append({
                 "id": meal.id, "name": meal.name, "time": meal.time, "kcal_target": meal.kcal_target, "pill": pill,
                 "option": opt.id if opt else None,
                 "options": [{"id": o.id, "name": o.name, "is_default": o.is_default} for o in meal.options.all()],
-                "items": items, "kcal": sum(i["kcal"] for i in items),
-                "protein": round(sum(i["protein"] for i in items), 1), "carbs": round(sum(i["carbs"] for i in items), 1),
-                "fat": round(sum(i["fat"] for i in items), 1),
+                # meal total from the unrounded values, rounded once (calc.nutrition_totals)
+                "items": items, **_shown(nutrition_totals(exact), whole=True), "_kcal": nutrition_totals(exact)["kcal"],
                 "logged_at": st.logged_at if st else None, "photo": url(st.photo) if st else None,
             })
     entries = list(FoodLogEntry.objects.filter(client=client, date=day).order_by("logged_at"))
-    eaten = totals(client, day)
+    shown = _shown(totals(client, day))
     target = plan.kcal_target if plan else None
-    planned_total = sum(m["kcal"] for m in meals)
-    still_ahead = sum(m["kcal"] for m in meals if m["pill"] in ("next", "planned", "to_log"))
+    planned_total = show_kcal(sum(m["_kcal"] for m in meals))
+    still_ahead = show_kcal(sum(m["_kcal"] for m in meals if m["pill"] in ("next", "planned", "to_log")))
+    for m in meals:
+        del m["_kcal"]
     water = WaterLog.objects.filter(client=client, date=today).first()
     monday = day - timedelta(days=day.weekday())
     week = []
@@ -484,7 +493,7 @@ def day_view(client, day, request=None):
     for i in range(7):
         d = monday + timedelta(days=i)
         n_meals = per_day[i]
-        week.append({"date": d, **totals(client, d), "meals_logged": logged.get(d, 0), "meals": n_meals,
+        week.append({"date": d, **_shown(totals(client, d)), "meals_logged": logged.get(d, 0), "meals": n_meals,
                      "done": n_meals > 0 and logged.get(d, 0) >= n_meals})
     photos = {m["id"]: m["photo"] for m in meals if m.get("photo")}
     coach = getattr(getattr(client, "client_profile", None), "trainer", None)
@@ -496,13 +505,13 @@ def day_view(client, day, request=None):
                  "version_note": mp.version_note, "allow_swaps": plan.allow_swaps,
                  "allow_search_any": plan.allow_search_any, "allow_switch_options": plan.allow_switch_options,
                  "allow_off_plan": plan.allow_off_plan} if plan else None,
-        "ring": {"target": target, "eaten": eaten["kcal"], "left": max((target or 0) - eaten["kcal"], 0),
+        "ring": {"target": target, "eaten": shown["kcal"], "left": max((target or 0) - shown["kcal"], 0),
                  "planned": planned_total, "still_ahead": still_ahead},
-        "macros": eaten,
+        "macros": shown,
         "meals": meals,
         "log": [{"id": e.id, "time": e.logged_at, "meal_name": e.meal_name, "meal": e.meal_id, "name": e.name,
-                 "quantity": float(e.quantity), "unit": e.unit_name, "kcal": e.kcal, "protein": float(e.protein),
-                 "carbs": float(e.carbs), "fat": float(e.fat), "source": e.source, "food": e.food_id,
+                 "quantity": float(e.quantity), "unit": e.unit_name, "kcal": show_kcal(e.kcal), "protein": show_g(e.protein),
+                 "carbs": show_g(e.carbs), "fat": show_g(e.fat), "source": e.source, "food": e.food_id,
                  "grams": float(e.grams) if e.grams is not None else None, "reason": e.reason,
                  "photo": photos.get(e.meal_id) if e.source == "plan" else None,
                  "swapped_from": e.swapped_from, "other_time": e.other_time} for e in entries],
@@ -749,7 +758,7 @@ def staff_food_log(client, params):
             n_meals[(plan.id, d.weekday())] = meals_on(plan, d.weekday()).count()
         meals = n_meals.get((plan.id, d.weekday()), 0) if plan else 0
         t = sums.get(d) or {}
-        kcal = int(t.get("kcal") or 0)
+        kcal = show_kcal(t.get("kcal"))  # was int(): cut 1799.6 down to 1799
         n = logged.get(d, 0)
         if not plan and not t:
             continue
@@ -762,8 +771,8 @@ def staff_food_log(client, params):
             st = "today" if d == today else ("partly" if meals else "logged")
         else:
             st = "today" if d == today else "missed"
-        rows.append({"date": d, "kcal": kcal, "protein": float(t.get("protein") or 0), "carbs": float(t.get("carbs") or 0),
-                     "fat": float(t.get("fat") or 0), "meals_logged": n, "meals": meals, "kcal_target": target,
+        rows.append({"date": d, "kcal": kcal, "protein": show_g(t.get("protein")), "carbs": show_g(t.get("carbs")),
+                     "fat": show_g(t.get("fat")), "meals_logged": n, "meals": meals, "kcal_target": target,
                      "status": st})
     cur = plan_on(min(end, today)) or (mps[0].followed if mps else None)
     out = page_of(rows, params)

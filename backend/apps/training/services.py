@@ -7,7 +7,6 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from apps.activity.services import log as activity_log
-from apps.common import calc
 from apps.notifications.services import notify
 
 from .models import (
@@ -504,8 +503,11 @@ def finish_workout(wl, *, effort=None, note="", duration_seconds=None, time_brea
     if auto:
         last = wl.sets.filter(done=True).order_by("-done_at").first()
         wl.finished_at = last.done_at if last else wl.started_at
-    wl.duration_seconds = duration_seconds if duration_seconds is not None else int(
-        (wl.finished_at - wl.started_at).total_seconds())
+    if duration_seconds is None:
+        from apps.common.calc import duration_seconds as calc_duration
+
+        duration_seconds = calc_duration(wl.started_at, wl.finished_at)
+    wl.duration_seconds = duration_seconds
     wl.time_breakdown = time_breakdown or wl.time_breakdown
     # finishing again after "Log more sets" keeps the effort and note already sent
     wl.effort = effort if effort is not None else wl.effort
@@ -581,18 +583,6 @@ def body_weights(client_id):
         return float(fallback) if fallback else None
 
     return on
-
-
-def set_volume(s, body_kg=None):
-    """kg × reps of one set; the rule lives in apps.common.calc (Phase 1)."""
-    # On a bodyweight set the weight field is the added load (e.g. a vest), not the lifted weight
-    return calc.set_volume(None if s.is_bodyweight else s.weight_kg, s.reps, done=s.done, warmup=s.is_warmup,
-                           bodyweight=s.is_bodyweight, body_kg=body_kg,
-                           added_kg=s.weight_kg if s.is_bodyweight else 0)
-
-
-def workout_volume(w, body_kg=None):
-    return sum(set_volume(s, body_kg) for s in w.sets.all())
 
 
 def can_edit_program(user, program):

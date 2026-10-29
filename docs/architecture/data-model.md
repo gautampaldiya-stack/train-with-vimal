@@ -1113,10 +1113,10 @@ Everything eaten, one row per food. Big table: always read by (client, date).
 | `quantity` | DecimalField |  |
 | `unit_name` | CharField |  |
 | `grams` | DecimalField | optional |
-| `kcal` | PositiveIntegerField |  |
-| `protein` | DecimalField |  |
-| `carbs` | DecimalField |  |
-| `fat` | DecimalField |  |
+| `kcal` | DecimalField | 3 decimals, unrounded (D-82); shown whole |
+| `protein` | DecimalField | 3 decimals, unrounded (D-82); shown 1 decimal |
+| `carbs` | DecimalField | 3 decimals, unrounded (D-82) |
+| `fat` | DecimalField | 3 decimals, unrounded (D-82) |
 | `source` | CharField | choices: plan, off_plan, quick_add |
 | `swapped_from` | CharField |  |
 | `reason` | CharField |  |

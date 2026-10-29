@@ -225,15 +225,6 @@ class SetLog(models.Model):
         ordering = ["exercise_id", "set_number"]
         indexes = [models.Index(fields=["exercise", "done"])]
 
-    @property
-    def volume(self):
-        # Without the day's body weight a bodyweight set counts its added load only (see services.set_volume)
-        from apps.common import calc
-
-        return calc.set_volume(None if self.is_bodyweight else self.weight_kg, self.reps, done=self.done,
-                               warmup=self.is_warmup, bodyweight=self.is_bodyweight,
-                               added_kg=self.weight_kg if self.is_bodyweight else 0)
-
 
 class FormVideo(models.Model):
     """A short clip the client films of one set so the coach can check the form (workout log → "Form check video")."""

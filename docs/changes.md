@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-29 · Phase 1 — one calculation module for every number (D-82)
+- **Pehle:** Har khaana save karte waqt round hota tha (kcal poora number), phir total judta tha, isliye 10 chhoti cheezon me total 4-5 kcal kam aata. Admin food diary me day total kat jaata tha (1799.6 → 1799). Volume ke teen alag formule the. Records me sirf sabse bhaari set.
+- **Ab:** `backend/apps/common/calc.py` me saare formule (volume, duration, rest, records + Epley 1RM, nutrition total, 4/4/9 kcal check), har formula comment me. Food log bina round kiye save (3 decimal), sirf dikhate waqt round. Client app aur admin ka number same (Vikram: 1701 = 1701, 4778 kg = 4778 kg).
+- **Kyun:** Probid ka batch 1, Phase 1: "numbers accurate chahiye".
+- **Updated:** backend/apps/common/calc.py, nutrition/models.py + migration 0008, nutrition/services.py, serializers.py, views.py, training/services.py, models.py, serializers.py, views.py, clients/logs.py, account.py, checkins/progress.py, tests/test_calc.py, docs/architecture/data-model.md, docs/screenshots/batch1/phase1 · Decision D-82
+
 ### 2026-10-29 · Tests — coach missed-workout test no longer fails on some days
 - **Pehle:** `test_missed_workout_and_plan_end` kehta tha "admin ko koi missed-workout notice nahi". Par admin khud kuch demo clients ka trainer hai (D-57), to jis din unka workout miss hota, admin ko sahi notice milta aur test fail ho jaata (Deploy develop ruk gaya).
 - **Ab:** test sirf Riya (Aman ki client) ke liye check karta hai ki admin ko notice nahi gaya. App ka code nahi badla.

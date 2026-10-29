@@ -181,6 +181,7 @@ def _chg(v):
 
 def history(client, *, rng="week", kind=None, offset=0, limit=7):
     from apps.clients.metrics import active_meal_plan, active_program, adherence, program_day_for
+    from apps.common.calc import nutrition_totals, show_kcal
     from apps.nutrition.models import FoodLogEntry, Meal, MealDayState
     from apps.training.models import ProgramExercise, WorkoutLog
 
@@ -252,8 +253,8 @@ def history(client, *, rng="week", kind=None, offset=0, limit=7):
         logged = states.get(d, {})
         rows = food.get(d, [])
         if meals and (d >= mp.start_date) or rows:
-            kc = sum(e.kcal for e in rows)
-            pr = round(sum(float(e.protein) for e in rows))
+            tot = nutrition_totals(rows)
+            kc, pr = show_kcal(tot["kcal"]), round(tot["protein"])
             det = []
             for m in meals:
                 if m.id in logged:

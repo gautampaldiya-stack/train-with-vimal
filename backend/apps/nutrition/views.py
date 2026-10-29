@@ -19,6 +19,7 @@ from rest_framework.views import APIView
 from apps.activity.services import log as activity_log
 from apps.clients.services import get_visible_client, visible_clients
 from apps.common.mixins import SoftDeleteViewMixin
+from apps.common.calc import show_kcal
 from apps.common.permissions import HasTrainerPermission, IsClient, IsStaff
 from apps.common.utils import data_url_file, sync_day, sync_time
 
@@ -740,7 +741,7 @@ def _log_meal(client, meal, day, verb):
     """Client profile → Activity: "Riya logged lunch · Paneer bowl, 480 kcal"."""
     rows = list(FoodLogEntry.objects.filter(client=client, date=day, meal=meal).values_list("name", "kcal"))
     note = ", ".join(n for n, _ in rows[:3]) + (f" +{len(rows) - 3}" if len(rows) > 3 else "")
-    kcal = sum(k for _, k in rows)
+    kcal = show_kcal(sum(float(k) for _, k in rows))
     activity_log(verb, "meal", actor=client, client=client, target_label=meal.name,
                  meta={"note": ", ".join(x for x in (note, f"{kcal} kcal" if rows else "") if x)})
 
@@ -788,7 +789,7 @@ class MyFoodLogViewSet(mixins.CreateModelMixin, mixins.DestroyModelMixin, viewse
             e.save(update_fields=["logged_at"])
         activity_log(f"logged a food at {e.meal_name.lower()}" if e.meal_name else "logged a food", "meal",
                      actor=request.user, client=request.user, target_label=e.name,
-                     meta={"note": f"{e.name}, {e.kcal} kcal" + (" · off plan" if e.source == "off_plan" else "")})
+                     meta={"note": f"{e.name}, {show_kcal(e.kcal)} kcal" + (" · off plan" if e.source == "off_plan" else "")})
         return Response(FoodLogSerializer(e).data, status=201)
 
     def destroy(self, request, pk=None):

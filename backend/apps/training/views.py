@@ -677,7 +677,9 @@ class ClientWorkoutLogViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, 
         from apps.clients.logs import page_of
         from apps.clients.metrics import planned_workout_days, program_day_for, resolve_range
 
-        from .services import body_weights, set_volume
+        from apps.common.calc import set_volume
+
+        from .services import body_weights
 
         qs = self.get_queryset()  # 404 for a client this person may not see
         client = get_visible_client(request.user, self.kwargs["client_pk"])

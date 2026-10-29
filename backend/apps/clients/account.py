@@ -186,6 +186,7 @@ def my_activity(client, kind="All"):
     from apps.activity.models import ActivityEvent
     from apps.checkins.models import MEASURE_KEYS, MEASURES, Measurement, Submission, WeightLog
     from apps.habits.models import HabitLog, SupplementLog
+    from apps.common.calc import show_g, show_kcal
     from apps.nutrition.models import FoodLogEntry, MealDayState
     from apps.training.models import ProgramExercise, WorkoutLog
 
@@ -239,7 +240,7 @@ def my_activity(client, kind="All"):
         for s in states:
             if s.status == "logged" and s.logged_at:
                 names = [e.name for e in food if e.date == s.date and e.meal_id == s.meal_id and e.source == "plan"]
-                kc = sum(e.kcal for e in food if e.date == s.date and e.meal_id == s.meal_id)
+                kc = show_kcal(sum(float(e.kcal) for e in food if e.date == s.date and e.meal_id == s.meal_id))
                 add("Food", s.logged_at, "food", "green", f"Logged {s.meal.name.lower()}", _names(names) or "As planned",
                     [[s.meal.name, _names(names, 4) or "As planned"], ["Calories", f"About {kc:,} kcal"]],
                     "/food", "Open meal plan", day=s.date)
@@ -249,9 +250,9 @@ def my_activity(client, kind="All"):
                     "/food", "Open meal plan", day=s.date)
         for e in food:
             if e.source != "plan" or not e.meal_id:
-                add("Food", e.logged_at, "food", "green", f"Logged {e.name}", f"{e.meal_name} · {e.kcal:,} kcal",
-                    [["Food", e.name], ["Amount", f"{float(e.quantity):g} {e.unit_name}"], ["Calories", f"{e.kcal:,} kcal"],
-                     ["Protein", f"{float(e.protein):g} g"]], "/food", "Open meal plan", day=e.date)
+                add("Food", e.logged_at, "food", "green", f"Logged {e.name}", f"{e.meal_name} · {show_kcal(e.kcal):,} kcal",
+                    [["Food", e.name], ["Amount", f"{float(e.quantity):g} {e.unit_name}"], ["Calories", f"{show_kcal(e.kcal):,} kcal"],
+                     ["Protein", f"{show_g(e.protein):g} g"]], "/food", "Open meal plan", day=e.date)
 
     if kind in ("All", "Check-ins"):
         weights = list(WeightLog.objects.filter(client=client, date__lte=today).order_by("date"))

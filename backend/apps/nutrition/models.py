@@ -63,24 +63,25 @@ class Food(SoftDeleteModel):
         return self.name
 
     def per_grams(self, grams):
-        """Values for this amount, unrounded (Phase 1, D-82): the stored entry keeps them, the screen rounds."""
-        f = Decimal(grams) / Decimal(100)
-        return {
-            "kcal": float(self.kcal * f),
-            "protein": float(self.protein * f),
-            "carbs": float(self.carbs * f),
-            "fat": float(self.fat * f),
-        }
+        """Rounded for showing (kcal whole, grams 1 decimal). Stored log entries use `calc.food_macros` (unrounded)."""
+        from apps.common.calc import food_macros, show_g, show_kcal
+
+        m = food_macros(self, grams)
+        return {"kcal": show_kcal(m["kcal"]), "protein": show_g(m["protein"]), "carbs": show_g(m["carbs"]),
+                "fat": show_g(m["fat"])}
 
     @property
     def calories_from_macros(self):
-        return float(4 * self.protein + 4 * self.carbs + 9 * self.fat)
+        from apps.common.calc import kcal_from_macros
+
+        return kcal_from_macros(self.protein, self.carbs, self.fat)
 
     @property
     def calories_match(self):
         """Design: badge "Calories match" when typed kcal ≈ 4P + 4C + 9F."""
-        calc = self.calories_from_macros
-        return abs(calc - float(self.kcal)) <= max(15, 0.1 * float(self.kcal))
+        from apps.common.calc import macros_match
+
+        return macros_match(self.kcal, self.protein, self.carbs, self.fat)
 
 
 class FoodUnit(models.Model):
@@ -257,12 +258,12 @@ class FoodLogEntry(TimeStampedModel):
     quantity = models.DecimalField(max_digits=7, decimal_places=2, default=Decimal("1"))
     unit_name = models.CharField(max_length=40, default="g")
     grams = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
-    # Unrounded (D-82): totals add the stored values; the screen rounds. Old rows keep their values.
-    kcal = models.DecimalField(max_digits=10, decimal_places=4, default=Decimal("0"),
-                               validators=[MinValueValidator(0)])
-    protein = models.DecimalField(max_digits=10, decimal_places=4, default=Decimal("0"))
-    carbs = models.DecimalField(max_digits=10, decimal_places=4, default=Decimal("0"))
-    fat = models.DecimalField(max_digits=10, decimal_places=4, default=Decimal("0"))
+    # Unrounded (Phase 1): day totals add these up and round only when shown, so 10 foods never drift.
+    kcal = models.DecimalField(max_digits=9, decimal_places=3,
+                               validators=[MinValueValidator(0), MaxValueValidator(10000)])
+    protein = models.DecimalField(max_digits=8, decimal_places=3, default=Decimal("0"))
+    carbs = models.DecimalField(max_digits=8, decimal_places=3, default=Decimal("0"))
+    fat = models.DecimalField(max_digits=8, decimal_places=3, default=Decimal("0"))
     source = models.CharField(max_length=10, choices=Source.choices, default=Source.PLAN)
     swapped_from = models.CharField(max_length=120, blank=True, default="")
     reason = models.CharField(max_length=20, blank=True, default="")  # off-plan: "Ate out", "Party", "Travelling"

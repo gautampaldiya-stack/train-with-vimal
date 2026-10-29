@@ -94,7 +94,8 @@ def _workouts(client, start, end, pa=None):
     """[pa] = the plan picked for this side; for a date range every plan that ran in it counts."""
     from apps.clients.metrics import planned_workout_days
     from apps.training.models import SetLog, WorkoutLog
-    from apps.training.services import body_weights, workout_volume
+    from apps.common.calc import workout_volume
+    from apps.training.services import body_weights
 
     weeks = _weeks(start, end)
     pas = [pa] if pa else _assignments(client, start, end)
