@@ -1190,7 +1190,7 @@ Har meal card (`Breakfast 8:00 am`, `Snack 11:00 am`, `Lunch 1:30 pm`, …) pe:
 | `Edit portions` | Sheet — har food ka quantity stepper + unit select (`g` / `1 tbsp` / `1 cup`). Cap *"Calories and macros follow your portions. This changes today only."* Buttons `Cancel` + `Save portions` → toast *"Breakfast portions saved — Now 520 kcal · 38 g protein"* |
 | `Ate something else` | Food log screen (§4.5) |
 | Skip | Toast *"Lunch skipped — Try to get your protein in the next meal"* (`warn`) |
-| `Eaten after all` | Skip undo |
+| `I ate it` | "Did you eat this?" confirm, then logs the meal (was `Eaten after all`, D-83) |
 
 Footer cap: *"Want something changed? Tell Aman in your weekly check-in."*
 
@@ -1399,7 +1399,7 @@ Probid ka try (2026-10-14): §4.4 (meal plan) aur §4.6 (nutrition log) do alag 
 | `Mark as eaten` | Toast *"Dinner logged — 436 kcal · 176 kcal left"*, card `Logged · Undo` ho jata hai |
 | `Logged · Undo` | Toast *"Dinner un-logged"* (`del`) |
 | ⋯ (3-line) button | Sheet, §4.4 ke wahi chaar item: `Swap a food` · `Edit portions` · `Log something different` · `Skip meal` |
-| `Skip meal` | Card `Skipped · not counted today`, toast (`warn`), button `Eaten after all` |
+| `Skip meal` | Card `Skipped · not counted today`, toast (`warn`), button `I ate it` |
 | `Ate something else` (sabse niche) | Log food screen (§4.5) |
 
 **`Food log` tab** — us din ki har entry time ke hisaab se (`8:10 am Breakfast · Oats, Whey protein, Banana · 450 kcal`). Row pe chevron hai, tap pe **details sheet**:

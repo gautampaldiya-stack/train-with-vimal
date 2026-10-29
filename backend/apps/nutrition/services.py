@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -23,6 +24,9 @@ from .models import (
     WaterLog,
     meals_on,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------- plan tree
@@ -235,7 +239,7 @@ def _entry_for_item(client, day, meal, item, state, now):
             grams = Decimal(str(swap.get("grams") or grams))
             quantity, unit_name = grams, "g"
     m = food_macros(food, grams)
-    return FoodLogEntry(client=client, date=day, logged_at=now, meal_name=meal.name, meal=meal, food=food,
+    return FoodLogEntry(client=client, date=day, logged_at=now, meal_name=meal.name, meal=meal, meal_item=item, food=food,
                         name=food.name, quantity=quantity, unit_name=unit_name, grams=grams, kcal=m["kcal"],
                         protein=m["protein"], carbs=m["carbs"], fat=m["fat"], source=FoodLogEntry.Source.PLAN,
                         swapped_from=swapped_from)
@@ -247,49 +251,160 @@ def _option_for(meal, state):
     return next((o for o in meal.options.all() if o.is_default), None) or meal.options.first()
 
 
-@transaction.atomic
-def mark_eaten(client, meal, day, photo=None):
-    """Logs a planned meal. [photo] (optional) is a picture of what was eaten."""
-    state, _ = MealDayState.objects.get_or_create(client=client, date=day, meal=meal)
-    if photo is not None:
-        if state.photo:
-            state.photo.delete(save=False)
+def _plan_entries(client, day, meal):
+    return FoodLogEntry.objects.filter(client=client, date=day, meal=meal, source=FoodLogEntry.Source.PLAN)
+
+
+def _settle(state, items):
+    """Meal status from its foods: every food decided → logged (something eaten) or skipped (nothing eaten)."""
+    ids = [str(it.id) for it in items]
+    got = [state.items.get(i) for i in ids]
+    if ids and all(got):
+        state.status = MealDayState.Status.LOGGED if "eaten" in got else MealDayState.Status.SKIPPED
+        state.logged_at = state.logged_at or timezone.now() if "eaten" in got else None
+    else:
+        state.status = ""
+        if "eaten" not in got:
+            state.logged_at = None
+
+
+def _write_entries(client, day, meal, state, items, now=None):
+    """One plan entry for every food marked eaten (with today's portion and swap); none for the others."""
+    now = now or timezone.now()
+    _plan_entries(client, day, meal).delete()
+    FoodLogEntry.objects.bulk_create([_entry_for_item(client, day, meal, it, state, now) for it in items
+                                      if state.items.get(str(it.id)) == "eaten"])
+
+
+def _items(meal, state):
+    opt = _option_for(meal, state)
+    items = list(opt.items.select_related("food", "unit")) if opt else []
+    if state is not None and not state.items and state.status:  # logged / skipped before foods had their own state
+        state.items = {str(it.id): "eaten" if state.status == MealDayState.Status.LOGGED else "skipped" for it in items}
+    return opt, items
+
+
+def add_meal_photo(state, photo):
+    """The first picture goes in `photo`, the next ones in MealPhoto, up to MAX_PHOTOS in all."""
+    from .models import MealPhoto
+
+    if not state.photo:
         state.photo = photo
         state.save(update_fields=["photo", "updated_at"])
+        return
+    if 1 + state.more_photos.count() >= MealDayState.MAX_PHOTOS:
+        raise ValidationError({"photo": [f"A meal can have up to {MealDayState.MAX_PHOTOS} photos."]})
+    MealPhoto.objects.create(state=state, image=photo)
+
+
+def remove_meal_photos(state):
+    for p in state.more_photos.all():
+        p.image.delete(save=False)
+        p.delete()
+    if state.photo:
+        state.photo.delete(save=False)
+    state.photo = None
+
+
+@transaction.atomic
+def mark_eaten(client, meal, day, photo=None):
+    """Logs a planned meal: every food not skipped on its own is eaten. [photo] (optional): a picture of it."""
+    state, _ = MealDayState.objects.get_or_create(client=client, date=day, meal=meal)
+    if photo is not None:
+        add_meal_photo(state, photo)
     if state.status == MealDayState.Status.LOGGED:
         return state
-    opt = _option_for(meal, state)
-    now = timezone.now()
-    FoodLogEntry.objects.filter(client=client, date=day, meal=meal, source=FoodLogEntry.Source.PLAN).delete()
-    FoodLogEntry.objects.bulk_create([_entry_for_item(client, day, meal, it, state, now)
-                                      for it in opt.items.select_related("food", "unit")] if opt else [])
+    opt, items = _items(meal, state)
+    for it in items:
+        if state.items.get(str(it.id)) != "skipped":
+            state.items[str(it.id)] = "eaten"
+    if items and all(state.items.get(str(it.id)) == "skipped" for it in items):  # all skipped one by one: eat all
+        state.items = {str(it.id): "eaten" for it in items}
+    _write_entries(client, day, meal, state, items)
     state.status = MealDayState.Status.LOGGED
     state.option = opt
-    state.logged_at = now
+    state.logged_at = timezone.now()
     state.save()
     return state
 
 
 @transaction.atomic
 def unmark(client, meal, day):
+    """Undo: the meal and every food in it go back to "not logged yet"."""
     state = MealDayState.objects.filter(client=client, date=day, meal=meal).first()
     if state:
-        FoodLogEntry.objects.filter(client=client, date=day, meal=meal, source=FoodLogEntry.Source.PLAN).delete()
+        _plan_entries(client, day, meal).delete()
         state.status = ""
+        state.items = {}
         state.logged_at = None
-        if state.photo:
-            state.photo.delete(save=False)
-        state.photo = None
-        state.save(update_fields=["status", "logged_at", "photo", "updated_at"])
+        remove_meal_photos(state)
+        state.save(update_fields=["status", "items", "logged_at", "photo", "updated_at"])
     return state
 
 
+@transaction.atomic
 def skip(client, meal, day):
+    """Skip the whole meal: every food skipped, nothing counts. It stays skipped until she logs it herself."""
     state, _ = MealDayState.objects.get_or_create(client=client, date=day, meal=meal)
-    FoodLogEntry.objects.filter(client=client, date=day, meal=meal, source=FoodLogEntry.Source.PLAN).delete()
+    _, items = _items(meal, state)
+    _plan_entries(client, day, meal).delete()
+    state.items = {str(it.id): "skipped" for it in items}
     state.status = MealDayState.Status.SKIPPED
-    state.save(update_fields=["status", "updated_at"])
+    state.logged_at = None
+    state.save(update_fields=["status", "items", "logged_at", "updated_at"])
     return state
+
+
+@transaction.atomic
+def item_action(client, meal, day, item, action):
+    """One planned food: eat | skip | reset (back to "not logged yet"). The meal's status follows its foods."""
+    state, _ = MealDayState.objects.get_or_create(client=client, date=day, meal=meal)
+    opt, items = _items(meal, state)
+    if item.id not in {it.id for it in items}:
+        raise ValidationError({"item": ["This food is not in today's meal."]})
+    key = str(item.id)
+    if action == "eat":
+        state.items[key] = "eaten"
+    elif action == "skip":
+        state.items[key] = "skipped"
+    elif action == "reset":
+        state.items.pop(key, None)
+    else:
+        raise ValidationError({"action": ["Use eat, skip or reset."]})
+    state.option = state.option or opt
+    _write_entries(client, day, meal, state, items)
+    _settle(state, items)
+    state.save()
+    return state
+
+
+@transaction.atomic
+def forget_item(client, entry):
+    """A logged planned food deleted from the log: its entry goes and the food is "not logged yet" again."""
+    state = MealDayState.objects.filter(client=client, date=entry.date, meal_id=entry.meal_id).first()
+    entry.delete()
+    if state is None:
+        return
+    _, items = _items(entry.meal, state)
+    state.items.pop(str(entry.meal_item_id), None)
+    _settle(state, items)
+    state.save()
+
+
+@transaction.atomic
+def rewrite_eaten(client, meal, day, state):
+    """After a portion or swap change: the eaten foods' entries follow the new amounts, the states stay."""
+    _, items = _items(meal, state)
+    _write_entries(client, day, meal, state, items)
+
+
+def _check_macros(name, kcal, protein, carbs, fat):
+    """Phase 3.2: kcal should match 4 × protein + 4 × carbs + 9 × fat. A mismatch is logged, never refused."""
+    from apps.common.calc import kcal_from_macros, macros_match
+
+    if kcal is not None and (protein or carbs or fat) and not macros_match(kcal, protein, carbs, fat):
+        logger.warning("Food kcal does not match its macros: %s · %s kcal stated, %.0f kcal from 4P+4C+9F",
+                       name, kcal, kcal_from_macros(protein, carbs, fat))
 
 
 def log_food(client, *, meal_name, food=None, quantity=1, unit=None, name="", kcal=None, protein=0, carbs=0,
@@ -307,12 +422,14 @@ def log_food(client, *, meal_name, food=None, quantity=1, unit=None, name="", kc
             if mp else set()
         if mp and not mp.followed.allow_off_plan and food.id not in planned_ids:
             raise ValidationError("Your plan does not allow food outside it. Tell your coach in your check-in.")
+        _check_macros(food.name, food.kcal, food.protein, food.carbs, food.fat)
         return FoodLogEntry.objects.create(
             client=client, date=day, meal_name=meal_name, food=food, name=food.name, quantity=quantity,
             unit_name=unit.name if unit else "g", grams=grams, kcal=m["kcal"], protein=m["protein"],
             carbs=m["carbs"], fat=m["fat"], reason=reason if off_plan else "", other_time=other_time,
             source=FoodLogEntry.Source.PLAN if food.id in planned_ids and not off_plan
             else FoodLogEntry.Source.OFF_PLAN)
+    _check_macros(name or "Quick add", kcal, protein, carbs, fat)
     return FoodLogEntry.objects.create(client=client, date=day, meal_name=meal_name, name=name or "Quick add",
                                        quantity=1, unit_name="serving", kcal=kcal, protein=protein or 0,
                                        carbs=carbs or 0, fat=fat or 0, reason=reason if off_plan else "",
@@ -443,7 +560,9 @@ def day_view(client, day, request=None):
     now = timezone.localtime()
     mp = _active_plan(client, day)
     plan = mp.followed if mp else None
-    states = {s.meal_id: s for s in MealDayState.objects.filter(client=client, date=day).select_related("option")}
+    states = {s.meal_id: s for s in MealDayState.objects.filter(client=client, date=day).select_related("option")
+              .prefetch_related("more_photos")}
+    entries = list(FoodLogEntry.objects.filter(client=client, date=day).order_by("logged_at"))
     meals = []
     next_marked = False
     if plan:
@@ -458,23 +577,34 @@ def day_view(client, day, request=None):
                 next_marked = True
             items, exact = [], []
             apply_today = day == today  # swaps/portions only apply to today
-            for it in (opt.items.all() if opt else []):
+            its = list(opt.items.all()) if opt else []
+            if st is not None and not st.items and st.status:  # logged / skipped before foods had their own state
+                st.items = {str(it.id): "eaten" if st.status == "logged" else "skipped" for it in its}
+            for it in its:
                 e = _entry_for_item(client, day, meal, it, st if apply_today else None, now)
                 exact.append(e)
                 items.append({"item": it.id, "food": e.food_id, "name": e.name, "quantity": float(e.quantity),
                               "unit": e.unit_name, "grams": float(e.grams), "kcal": show_kcal(e.kcal),
                               "protein": show_g(e.protein), "carbs": show_g(e.carbs), "fat": show_g(e.fat),
                               "swapped_from": e.swapped_from, "swaps": len(swaps.item_swaps(it)),
-                              "planned_quantity": float(it.quantity)})
+                              "planned_quantity": float(it.quantity),
+                              # eaten | skipped | "" (not logged yet); edited: today's portion is not the planned one
+                              "state": (st.items.get(str(it.id)) if st else None) or "",
+                              "edited": bool(apply_today and st and str(it.id) in st.portions
+                                             and float(st.portions[str(it.id)]) != float(it.quantity))})
             meals.append({
                 "id": meal.id, "name": meal.name, "time": meal.time, "kcal_target": meal.kcal_target, "pill": pill,
                 "option": opt.id if opt else None,
                 "options": [{"id": o.id, "name": o.name, "is_default": o.is_default} for o in meal.options.all()],
                 # meal total from the unrounded values, rounded once (calc.nutrition_totals)
                 "items": items, **_shown(nutrition_totals(exact), whole=True), "_kcal": nutrition_totals(exact)["kcal"],
+                # what she ate of it (the logged entries), next to the planned total above
+                "eaten": _shown(nutrition_totals([e for e in entries if e.meal_id == meal.id
+                                                  and e.source == FoodLogEntry.Source.PLAN]), whole=True),
                 "logged_at": st.logged_at if st else None, "photo": url(st.photo) if st else None,
+                "photos": ([url(st.photo)] if st and st.photo else [])
+                          + ([url(p.image) for p in st.more_photos.all()] if st else []),
             })
-    entries = list(FoodLogEntry.objects.filter(client=client, date=day).order_by("logged_at"))
     shown = _shown(totals(client, day))
     target = plan.kcal_target if plan else None
     planned_total = show_kcal(sum(m["_kcal"] for m in meals))

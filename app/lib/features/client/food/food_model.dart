@@ -82,23 +82,42 @@ class FoodController extends ChangeNotifier {
 
   // ─────────────────────────────── Writes
 
-  /// A meal action (`eat`, `unlog`, `skip`, `unskip`, `portions`, `swap`). The server answers with the whole day.
+  /// A meal action (`eat`, `unlog`, `skip`, `unskip`, `item`, `portions`, `swap`, `photo`, `photo_add`). The server answers with the whole day.
   Future<void> meal(FMeal m, String op, [Map<String, dynamic> body = const {}]) async {
     final d = data!;
     // Show it at once; the server's answer replaces it.
     if (op == 'eat') {
       m.j['status'] = 'logged';
-      m.j['logged_at'] = DateTime.now().toUtc().toIso8601String();
-      if (body['photo'] != null) m.j['photo'] = body['photo'];
+      m.j['logged_at'] ??= DateTime.now().toUtc().toIso8601String();
+      if (body['photo'] != null) m.j['photos'] = [body['photo']];
+      final all = m.items.every((i) => i.state == 'skipped');
+      for (final i in m.items) {
+        if (all || i.state != 'skipped') i.j['state'] = 'eaten';
+      }
     } else if (op == 'unlog' || op == 'unskip') {
       m.j['status'] = '';
-      m.j['photo'] = null;
+      m.j['logged_at'] = null;
+      m.j['photos'] = <String>[];
+      for (final i in m.items) {
+        i.j['state'] = '';
+      }
     } else if (op == 'skip') {
       m.j['status'] = 'skipped';
+      for (final i in m.items) {
+        i.j['state'] = 'skipped';
+      }
+    } else if (op == 'item') {
+      final it = m.items.where((i) => i.item == body['item']).firstOrNull;
+      if (it != null) it.j['state'] = switch (body['action']) { 'eat' => 'eaten', 'skip' => 'skipped', _ => '' };
+      final st = m.items.map((i) => i.state).toList();
+      m.j['status'] = st.any((s) => s.isEmpty) ? '' : (st.contains('eaten') ? 'logged' : 'skipped');
+      if (st.contains('eaten')) m.j['logged_at'] ??= DateTime.now().toUtc().toIso8601String();
     } else if (op == 'photo') {
-      m.j['photo'] = body['photo'];
+      m.j['photos'] = body['photo'] == null ? <String>[] : [body['photo']];
+    } else if (op == 'photo_add') {
+      m.j['photos'] = [...m.photos, body['photo']];
     }
-    d.relog();
+    d.relog(m);
     notifyListeners();
     try {
       final r = await Services.outbox.enqueue('POST', 'me/food/meals/${m.id}/$op/', {...body, 'date': ymd(d.date)}, tag: 'food:day:$op');
@@ -251,31 +270,33 @@ class FoodDay {
   int get waterMl => _n((j['water'] as Map?)?['ml']).round();
   int get waterGoal => _n((j['water'] as Map?)?['goal_ml']).round().clamp(250, 10000);
 
-  /// Recomputes the log rows of plan meals after a local change (eat / undo / skip before the server answers).
-  void relog() {
+  /// Recomputes the log rows of plan meals after a local change (eat / undo / skip before the server answers):
+  /// [changed] gets one row for every food marked eaten; other meals only get rows when logged without any.
+  void relog([FMeal? changed]) {
     for (final m in meals) {
       final has = log.any((e) => e.meal == m.id && e.fromPlan);
-      if (m.logged && !has) {
-        for (final it in m.items) {
-          log.add(FEntry({
-            'id': 'local-${m.id}-${it.item}',
-            'time': m.j['logged_at'],
-            'meal_name': m.name,
-            'meal': m.id,
-            'name': it.name,
-            'quantity': it.quantity,
-            'unit': it.unit,
-            'kcal': it.kcal,
-            'protein': it.protein,
-            'carbs': it.carbs,
-            'fat': it.fat,
-            'source': 'plan',
-            'photo': m.photo,
-            'swapped_from': it.swappedFrom,
-          }));
-        }
-      } else if (!m.logged && has) {
+      if (m == changed) {
         log.removeWhere((e) => e.meal == m.id && e.fromPlan);
+      } else if (has || !m.logged) {
+        continue;
+      }
+      for (final it in m.eatenItems) {
+        log.add(FEntry({
+          'id': 'local-${m.id}-${it.item}',
+          'time': m.j['logged_at'],
+          'meal_name': m.name,
+          'meal': m.id,
+          'name': it.name,
+          'quantity': it.quantity,
+          'unit': it.unit,
+          'kcal': it.j['kcal'],
+          'protein': it.protein,
+          'carbs': it.carbs,
+          'fat': it.fat,
+          'source': 'plan',
+          'photo': m.photo,
+          'swapped_from': it.swappedFrom,
+        }));
       }
     }
   }
@@ -284,6 +305,7 @@ class FoodDay {
 class FMeal {
   FMeal(this.j) : items = [for (final i in (j['items'] as List? ?? [])) FItem(i as Map<String, dynamic>)] {
     _items0 = _sumItems();
+    _eaten0;
   }
   final Map<String, dynamic> j;
   final List<FItem> items;
@@ -317,7 +339,39 @@ class FMeal {
   double get carbs => _total[2];
   double get fat => _total[3];
   DateTime? get loggedAt => DateTime.tryParse('${j['logged_at']}')?.toLocal();
-  String? get photo => (j['photo'] as String?)?.isEmpty ?? true ? null : j['photo'] as String;
+  /// Up to 4 pictures of the meal (Phase 3); the first one is [photo].
+  List<String> get photos => [
+    for (final p in (j['photos'] as List? ?? [if (j['photo'] != null) j['photo']]))
+      if ('${p ?? ''}'.isNotEmpty) '$p',
+  ];
+  String? get photo => photos.firstOrNull;
+
+  /// The foods she ate: those marked eaten (a logged meal from before foods had their own state: all but skipped ones).
+  List<FItem> get eatenItems => [
+    for (final i in items)
+      if (i.state == 'eaten' || (logged && i.state.isEmpty)) i,
+  ];
+  bool get anyEaten => eatenItems.isNotEmpty;
+  bool get partly => open && items.any((i) => i.state.isNotEmpty);
+
+  /// What she ate of this meal: the server's `eaten` (from the unrounded entries) when nothing changed since,
+  /// else the eaten foods added up on the phone.
+  List<double> get eaten {
+    final t = [0.0, 0.0, 0.0, 0.0];
+    for (final i in eatenItems) {
+      t[0] += _n(i.j['kcal']);
+      t[1] += i.protein;
+      t[2] += i.carbs;
+      t[3] += i.fat;
+    }
+    final e = j['eaten'] as Map?;
+    if (e == null || !_sameEaten) return t;
+    return [_n(e['kcal']), _n(e['protein']), _n(e['carbs']), _n(e['fat'])];
+  }
+
+  late final String _eaten0 = _eatenKey();
+  String _eatenKey() => [for (final i in eatenItems) '${i.item}:${i.j['kcal']}'].join(',');
+  bool get _sameEaten => _eatenKey() == _eaten0;
   bool get canSwap => items.any((i) => i.swaps > 0);
   String get foods => items.map((i) => i.name).join(', ');
   String get line => mline(kcal, protein, carbs, fat);
@@ -340,6 +394,12 @@ class FItem {
   String get swappedFrom => '${j['swapped_from'] ?? ''}';
   int get swaps => (j['swaps'] as num?)?.toInt() ?? 0;
   String get amount => amtOf(unit, quantity);
+
+  /// This food today: `eaten`, `skipped` or "" (not logged yet).
+  String get state => '${j['state'] ?? ''}';
+
+  /// Today's portion is not the planned one (Edit portions); Set to default puts it back.
+  bool get edited => j['edited'] == true;
 
   /// kcal, protein, carbs, fat for [q] of this food's unit.
   List<double> at(double q) {

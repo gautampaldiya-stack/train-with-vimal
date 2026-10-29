@@ -18,6 +18,31 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-29 · Phase 3 — har food ka apna state, khaya vs plan, 4 photos tak (D-83)
+- **Pehle:**
+  - Poora meal hi Logged ya Skipped hota tha. Ek food khaya, ek chhoda, ye nahi bata sakte the.
+  - Meal line par sirf plan ke kcal dikhte the, khaya kitna ye nahi.
+  - Ek meal me ek hi photo lagti thi.
+  - "Eaten after all" aur Home ka "Ate it" bina puche log kar dete the.
+  - Delete entry turant ho jaata tha.
+  - Trainer ke meal plan editor me "Daily target" chips the.
+- **Ab:**
+  - Food par tap karne se ye options aate hain: Ate this / Skip this food / Not logged yet / Set to default (jab portion badla ho) / Had something else.
+  - Har food par Eaten / Skipped chip dikhta hai, aur portion badla ho to "Edited" tag.
+  - Meal line ab "Logged 12:08 pm · ate 847 of 847 kcal · 52 g P" jaisi dikhti hai. Aadha khaya meal "Partly eaten · Ate 238 of 620 kcal so far" dikhata hai.
+  - Skipped meal sirf client ke tap se badalta hai: button ab "I ate it" hai (pehle "Eaten after all"), aur "Did you eat this?" confirm aata hai. Home "Ate it" par bhi yahi confirm hai.
+  - Delete entry par "Delete this entry?" confirm aata hai, aur wo food wapas "not logged yet" ho jaata hai.
+  - Ek meal me 4 photos tak lag sakti hain: pehli photo ke saath "+N", "Add another photo" aur "Remove photos".
+  - kcal aur macros match na karein to server log me warning jaati hai.
+  - Trainer meal log par "Partly eaten · X of Y kcal" aur "+N" photos dikhte hain. Meal plan editor se daily target hata diya gaya.
+- **Kyun:** Probid ka batch 1, Phase 3 (3.3 b, 3.4 haan, 3.6 haan "3-4 minimum"). Client ko accurate dikhna chahiye ki usne kitna khaya aur kitna assign hua tha.
+- **Updated:**
+  - Backend: backend/apps/nutrition/models.py, services.py, views.py, migrations/0009, tests/test_food_phase3.py
+  - Client app: app/lib/features/client/food/food_model.dart, food_screen.dart, food_sheets.dart, home/home_screen.dart
+  - Trainer app: app/lib/features/trainer/client_profile/cp_logs_detail.dart, cp_plans_meal_edit.dart
+  - Docs: docs/architecture/data-model.md, api-endpoints.md, docs/screenshots/batch1/phase3
+  - Decision D-83
+
 ### 2026-10-29 · Phase 2 — photos in form answers; logout; .env and server commands in README
 - **Pehle:** Admin → client → Forms: onboarding ke start photos tabhi dikhte jab saare 9 parts bhar chuke hon, warna photo ki jagah sirf "Photo" likha aata. Bheje hue forms ke photo answers bhi sirf "Photo" text the (server sirf ye shabd bhejta tha). Logout web par push band karne mein atak sakta tha, aur do baar chalne par session do baar saaf hota.
 - **Ab:** Start photos bhejte hi thumbnails dikhte hain (8 of 9 parts par bhi). Form answers ke photos `photos` list mein aate hain aur thumbnails bante hain, admin mein bhi aur client ke bhare hue form mein bhi (pehle "Sent" likha aata tha). Onboarding form (automation ya "Send a form") ab alag copy nahi banata: client ko "Finish your setup" notification jaata hai jo setup kholta hai, list mein ek hi "Onboarding questionnaire". Logout ek hi baar chalta hai, server calls 3–5 s mein ruk jaati hain, web push ka deleteToken intezaar nahi karwata. `SERVE_MEDIA=True` `backend/.env.example` mein. README: `.env` banana (har line ka matlab) aur live server ke commands kahan aur kaise chalane hain.

@@ -24,7 +24,7 @@ import 'cp_plans_parts.dart';
 
 /// Meal plan editor for one client (`pe.meal`, board `TrainerClientProfile`): `Edit X for Y` edits Y's own copy
 /// in place (the master is not changed). Day strip Mon–Sun: each day shows that day's meals; a change applies to
-/// the picked day only, or to every day with `Apply to every day`. Daily target and what the day adds up to, the
+/// the picked day only, or to every day with `Apply to every day`. What the day adds up to (no daily target), the
 /// meal cards (rename, time, remove, foods with swaps badge, P / C / F / kcal, `Add food`), `Add meal`, and the
 /// `Portion and swaps` panel for the picked food (amount, unit, grams, the swaps Y may use, remove).
 /// Each food's swaps belong to Y's copy only (`swaps` on the item). Saves through `clients/<id>/meal-plans/<a>/meals/`.
@@ -556,24 +556,11 @@ class _MealEditorState extends State<MealEditor> {
     });
   }
 
-  /// `.cp-mtgt`: day strip, Apply to every day, daily target and what the day adds up to.
+  /// `.cp-mtgt`: day strip, Apply to every day and what the day adds up to. No daily target here (Probid
+  /// 2026-10-29, Phase 3.3): the client's numbers come from what the plan assigns and what she logs.
   Widget _targetCard() {
-    final k = dayTot('kcal'), target = _d(data['kcal_target']);
-    final diff = k - target;
-    final (String bl, Tone bt) = target == 0
-        ? ('', Tone.neutral)
-        : diff.abs() <= target * .05
-            ? ('On target', Tone.ok)
-            : diff > 0
-                ? ('${_f.format(diff.round())} kcal over', Tone.warn)
-                : ('${_f.format(-diff.round())} kcal under', Tone.info);
+    final k = dayTot('kcal');
     double kcalOn(int i) => i == sel ? k : mealsOnDay(data, i).fold<double>(0, (a, x) => a + tot(items(x), 'kcal'));
-    Widget chip(String t) => Container(
-          height: 32,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(color: AppColors.sub, borderRadius: AppRadius.all(AppRadius.input), border: Border.all(color: AppColors.line2)),
-          child: Center(widthFactor: 1, child: Text(t, style: AppText.s(13, W.w6, color: AppColors.text2, tabular: true))),
-        );
     return AppCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         DayStrip(
@@ -602,13 +589,6 @@ class _MealEditorState extends State<MealEditor> {
                 ),
               ]),
             ),
-            Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
-              Text('Daily target', style: AppText.s(12.5, W.w7)),
-              chip('${_f.format(_d(data['kcal_target']).round())} kcal'),
-              chip('${data['protein_g']} g protein'),
-              chip('${data['carbs_g']} g carbs'),
-              chip('${data['fat_g']} g fat'),
-            ]),
             Wrap(spacing: 10, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
               Text.rich(
                 TextSpan(text: '${weekdayFull[sel]} adds up to ', children: [
@@ -617,7 +597,6 @@ class _MealEditorState extends State<MealEditor> {
                 ]),
                 style: AppText.s(13, W.w5, color: AppColors.text2),
               ),
-              if (bl.isNotEmpty) AppBadge(bl, tone: bt, plain: true),
             ]),
           ]),
         ),

@@ -53,19 +53,22 @@ Future<String?> pickMealPhoto(BuildContext context, String meal) async {
   }
 }
 
-/// A square meal photo that opens full size.
+/// A square meal photo that opens full size. With [all] (a meal's photos, up to 4) it shows "+N" for the others
+/// and the viewer pages through every one.
 class FdPhoto extends StatelessWidget {
-  const FdPhoto(this.src, {super.key, required this.name, this.size = 34});
+  const FdPhoto(this.src, {super.key, required this.name, this.size = 34, this.all = const []});
   final String src, name;
   final double size;
+  final List<String> all;
   @override
   Widget build(BuildContext context) {
     final img = photoImage(src);
+    final more = all.length - 1;
     return Semantics(
       button: true,
-      label: 'Open $name photo',
+      label: more > 0 ? 'Open $name photos, ${all.length}' : 'Open $name photo',
       child: Hover(
-        onTap: () => showPhotoViewer(context, [(name, src)], 0),
+        onTap: () => showPhotoViewer(context, [for (final p in all.isEmpty ? [src] : all) (name, p)], 0),
         builder: (_, h, _) => Container(
           width: size,
           height: size,
@@ -85,9 +88,34 @@ class FdPhoto extends StatelessWidget {
                 ),
         ),
       ),
-    );
+    ).withMore(more);
   }
 }
+
+extension on Widget {
+  /// The "+N" badge on the first photo when a meal has more.
+  Widget withMore(int n) => n <= 0
+      ? this
+      : Stack(clipBehavior: Clip.none, children: [
+          this,
+          Positioned(
+            right: -5,
+            bottom: -5,
+            child: IgnorePointer(
+              child: Container(
+                height: 17,
+                padding: const EdgeInsets.symmetric(horizontal: 5),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: AppColors.text, borderRadius: BorderRadius.circular(99), border: Border.all(color: AppColors.white, width: 1.5)),
+                child: Text('+$n', style: AppText.s(10, W.w8, color: AppColors.white, h: 1)),
+              ),
+            ),
+          ),
+        ]);
+}
+
+/// Pictures one meal can hold (Probid 2026-10-29: "3-4 minimum").
+const fdMaxPhotos = 4;
 
 // ─────────────────────────────── Calories
 
@@ -103,7 +131,7 @@ Future<void> showCaloriesSheet(BuildContext context, FoodController c) {
   final t = d.target, e = d.eaten, p = d.planned;
   final future = d.date.isAfter(c.today);
   final left = t[0] - e[0], over = left < 0;
-  final ahead = d.meals.where((m) => m.open).fold(0, (a, m) => a + m.kcal);
+  final ahead = d.meals.where((m) => m.open).fold(0, (a, m) => a + m.items.where((i) => i.state.isEmpty).fold(0, (b, i) => b + i.kcal));
   String g(double v, double tg) => '${v.round()} / ${tg.round()} g';
   final rows = future
       ? [('Planned', '${inNum(p[0])} kcal'), ('Protein', g(p[1], t[1])), ('Carbs', g(p[2], t[2])), ('Fat', g(p[3], t[3]))]
@@ -156,14 +184,15 @@ Future<void> showMealMenu(
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         if (swap) FdMenuItem(first: true, icon: AppIcons.swap, title: 'Swap a food', sub: 'Similar macros, different dish', onTap: () => go(onSwap)),
         FdMenuItem(first: !swap, icon: AppIcons.edit, title: 'Edit portions', sub: 'Change grams, pieces or katori', onTap: () => go(onEdit)),
-        if (m.logged)
+        if (m.logged && m.photos.length < fdMaxPhotos)
           FdMenuItem(
             icon: AppIcons.camera,
-            title: m.photo == null ? 'Add a photo' : 'Change photo',
-            sub: m.photo == null ? 'A picture of what you ate' : 'Take or pick another picture',
+            title: m.photo == null ? 'Add a photo' : 'Add another photo',
+            sub: m.photo == null ? 'A picture of what you ate' : '${m.photos.length} of $fdMaxPhotos photos added',
             onTap: () => go(onPhoto),
           ),
-        if (m.logged && m.photo != null) FdMenuItem(icon: AppIcons.trash, title: 'Remove photo', sub: 'The meal stays logged', danger: true, onTap: () => go(onRemovePhoto)),
+        if (m.logged && m.photo != null)
+          FdMenuItem(icon: AppIcons.trash, title: m.photos.length > 1 ? 'Remove photos' : 'Remove photo', sub: 'The meal stays logged', danger: true, onTap: () => go(onRemovePhoto)),
         FdMenuItem(icon: AppIcons.search, title: 'Log something different', sub: 'Ate outside the plan? No stress', onTap: () => go(() => context.go('/food/log?meal=${Uri.encodeComponent(m.name)}'))),
         if (!m.skipped) FdMenuItem(icon: AppIcons.close, title: 'Skip meal', sub: 'It will not count towards today', danger: true, onTap: () => go(onSkip)),
       ]);
@@ -463,8 +492,8 @@ class FdLogRow {
     : entry = null,
       time = meal.loggedAt ?? (rows.isEmpty ? DateTime.now() : rows.first.time),
       title = meal.name,
-      sub = meal.foods,
-      kcal = rows.isEmpty ? meal.kcal : rows.fold(0, (a, e) => a + e.kcal),
+      sub = meal.eatenItems.map((i) => i.name).join(', '),
+      kcal = meal.eaten[0].round(),
       photo = meal.photo;
   FdLogRow.entry(FEntry this.entry)
     : meal = null,
@@ -485,7 +514,7 @@ class FdLogRow {
 List<FdLogRow> logRows(FoodDay d) {
   final rows = <FdLogRow>[];
   for (final m in d.meals) {
-    if (m.logged) rows.add(FdLogRow.meal(m, d.log.where((e) => e.meal == m.id && e.fromPlan).toList()));
+    if (m.anyEaten) rows.add(FdLogRow.meal(m, d.log.where((e) => e.meal == m.id && e.fromPlan).toList()));
   }
   for (final e in d.log) {
     if (e.fromPlan && e.meal != null && d.meals.any((m) => m.id == e.meal)) continue;
@@ -499,7 +528,7 @@ Future<void> showEntrySheet(BuildContext context, FoodController c, FdLogRow r, 
   final d = c.data!;
   final today = d.isToday;
   final m = r.meal, e = r.entry;
-  final mac = m != null ? [m.kcal.toDouble(), m.protein, m.carbs, m.fat] : [e!.kcal.toDouble(), e.protein, e.carbs, e.fat];
+  final mac = m != null ? m.eaten : [e!.kcal.toDouble(), e.protein, e.carbs, e.fat];
   final tg = d.target[0];
   final where = e?.otherTime ?? false ? 'other time, outside the plan' : switch (e?.source) { 'off_plan' => 'outside the plan', 'quick_add' => 'quick add', _ => 'extra food' };
   final sub = m != null
@@ -549,6 +578,9 @@ Future<void> showEntrySheet(BuildContext context, FoodController c, FdLogRow r, 
             sub: 'You can undo this',
             danger: true,
             onTap: () => go(() async {
+              final ok = await confirmAction(context,
+                  title: 'Delete this entry?', body: '${e.name} · ${inNum(e.kcal)} kcal comes off today’s totals.', confirm: 'Delete', danger: true, icon: AppIcons.trash);
+              if (!ok) return;
               await c.deleteEntry(e);
               if (!context.mounted) return;
               showToast(context, 'Entry deleted', sub: '${e.name} · ${inNum(e.kcal)} kcal', kind: ToastKind.del, action: 'Undo', onAction: () => c.restore(e).catchError((_) {}));
@@ -558,7 +590,7 @@ Future<void> showEntrySheet(BuildContext context, FoodController c, FdLogRow r, 
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
         Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           if (m != null)
-            for (final (i, it) in m.items.indexed) food(it.name, it.amount + (it.swappedFrom.isEmpty ? '' : ' · swapped from ${it.swappedFrom}'), it.kcal, i == 0)
+            for (final (i, it) in m.eatenItems.indexed) food(it.name, it.amount + (it.swappedFrom.isEmpty ? '' : ' · swapped from ${it.swappedFrom}'), it.kcal, i == 0)
           else
             food(e!.name, e.amount, e.kcal, true),
         ]),

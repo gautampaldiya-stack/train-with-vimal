@@ -266,7 +266,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `me/food-log/water/` | POST | MyFoodLogViewSet |  |
 | `me/food/` | GET | MyFoodView | Food tab (combined meal plan + nutrition): GET ?date=YYYY-MM-DD. |
 | `me/food/items/<int:item_id>/swaps/` | GET | MySwapOptionsView | Swap sheet for one planned food: approved swaps with match % and matched grams. |
-| `me/food/meals/<int:meal_id>/<str:op>/` | POST | MyMealActionView | POST /me/food/meals/<meal_id>/<op>/  op = eat / unlog / skip / unskip / portions / swap / option |
+| `me/food/meals/<int:meal_id>/<str:op>/` | POST | MyMealActionView | POST /me/food/meals/<meal_id>/<op>/  op = eat / unlog / skip / unskip / item (`item`, `action` eat·skip·reset) / portions / swap / option / photo (replace or null) / photo_add (one more, max 4). Each meal carries `eaten` totals and `photos`; each food `state` and `edited` (D-83) |
 | `me/foods/` | GET, POST | MyFoodSearchViewSet | Log food: search team foods + 'My foods'; create a custom food (saved to My foods). |
 | `me/foods/recent/` | GET | MyFoodSearchViewSet | Log food: search team foods + 'My foods'; create a custom food (saved to My foods). |
 | `meal-plans/` | GET, POST | MealPlanViewSet | Nutrition → Meal plans cards (`diet`, `search`, paginated): `can_edit`, `owner`, `meal_names`, `client_count` / `custom_count` (trainer: own clients only), `status`, `has_unpublished_changes`. |

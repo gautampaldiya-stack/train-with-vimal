@@ -347,7 +347,13 @@ Widget _meals(BuildContext context, CpController c, Map r, Map d) {
     final (label, tone) = switch (pill) {
       'logged' => offPlan ? ('Off plan', Tone.bad) : (swapped.isNotEmpty ? ('Swapped', Tone.warn) : ('On plan', Tone.ok)),
       'missed' => ('Missed', Tone.bad),
-      'skipped' => ('Skipped', Tone.neutral),
+      // A skipped meal counts as missed for the coach (no penalty for the client).
+      'skipped' => ('Missed · skipped', Tone.warn),
+      // Some foods eaten, the rest not logged yet (Phase 3): eaten next to planned.
+      _ when mine.isNotEmpty => (
+          'Partly eaten${m['eaten'] is Map && m['kcal'] != null ? ' · ${(m['eaten'] as Map)['kcal']} of ${m['kcal']} kcal' : ''}',
+          Tone.info
+        ),
       _ => ('Not logged yet', Tone.neutral),
     };
     if (isLogged && (offPlan || swapped.isNotEmpty)) off++;
@@ -358,11 +364,12 @@ Widget _meals(BuildContext context, CpController c, Map r, Map d) {
       time: when,
       badge: AppBadge(label, tone: tone, plain: true),
       photo: isLogged ? photo : null,
+      photos: isLogged ? [for (final p in (m['photos'] as List? ?? const [])) '$p'] : const [],
       showPhotoSlot: true,
-      items: isLogged ? mine : const [],
+      items: isLogged || mine.isNotEmpty ? mine : const [],
       emptyLine: switch (pill) {
         'missed' => 'Not logged.',
-        'skipped' => 'Skipped by ${c.first}.',
+        'skipped' => 'Skipped by ${c.first}: nothing eaten from this meal.',
         _ => isLogged ? 'Logged.' : 'Not logged yet.',
       },
       was: swapped.isEmpty ? null : swapped.map((e) => '${e['swapped_from']} (now ${e['name']})').join(', '),
@@ -435,6 +442,7 @@ Widget _mealBlock(
   required String time,
   required Widget badge,
   required String? photo,
+  List<String> photos = const [],
   required bool showPhotoSlot,
   required List<Map> items,
   required String emptyLine,
@@ -450,7 +458,26 @@ Widget _mealBlock(
   final thumb = !showPhotoSlot
       ? null
       : photo != null
-          ? SizedBox(width: 48, height: 48, child: CpPhoto(photo, height: 48, onTap: () => showImageViewer(context, [photo], title: name)))
+          // Up to 4 photos a meal (Phase 3): the first as the thumbnail, "+N" for the rest, all in the viewer.
+          ? SizedBox(
+              width: 48,
+              height: 48,
+              child: Stack(children: [
+                Positioned.fill(child: CpPhoto(photo, height: 48, onTap: () => showImageViewer(context, photos.isEmpty ? [photo] : photos, title: name))),
+                if (photos.length > 1)
+                  Positioned(
+                    right: 3,
+                    bottom: 3,
+                    child: IgnorePointer(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(color: AppColors.text.withValues(alpha: .75), borderRadius: AppRadius.all(6)),
+                        child: Text('+${photos.length - 1}', style: AppText.s(10.5, W.w7, color: AppColors.white)),
+                      ),
+                    ),
+                  ),
+              ]),
+            )
           : Container(
               width: 48,
               height: 48,

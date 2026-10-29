@@ -1091,9 +1091,20 @@ A client's day for one planned meal: logged / skipped, today's portions and swap
 | `portions` | JSONField |  |
 | `swaps` | JSONField |  |
 | `logged_at` | DateTimeField | optional |
-| `photo` | FileField | optional |
+| `photo` | FileField | optional; the first photo of the meal |
+| `items` | JSONField | each planned food's state today: `{"<meal_item_id>": "eaten" \| "skipped"}`; missing = not logged yet (D-83) |
 
 Constraints: uniq_meal_day
+
+### MealPhoto
+More photos of one logged meal (D-83). `MealDayState.photo` holds the first; these hold the rest, up to 4 in all.
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | BigAutoField |  |
+| `state` | ForeignKey | → MealDayState (`more_photos`); indexed |
+| `image` | FileField | `meals/extra/%Y/%m/` |
+| `created_at` | DateTimeField |  |
 
 ### FoodLogEntry
 Everything eaten, one row per food. Big table: always read by (client, date).
@@ -1108,6 +1119,7 @@ Everything eaten, one row per food. Big table: always read by (client, date).
 | `logged_at` | DateTimeField |  |
 | `meal_name` | CharField |  |
 | `meal` | ForeignKey | → Meal; optional; indexed |
+| `meal_item` | ForeignKey | → MealItem; optional; the planned food a plan entry came from (D-83) |
 | `food` | ForeignKey | → Food; optional; indexed |
 | `name` | CharField |  |
 | `quantity` | DecimalField |  |

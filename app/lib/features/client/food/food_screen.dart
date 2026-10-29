@@ -497,6 +497,7 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
   String _pill(FoodDay d, FMeal m, bool next) {
     if (m.logged) return 'Logged';
     if (m.skipped) return 'Skipped';
+    if (m.partly) return 'Partly eaten';
     if (_future(d)) return 'Planned';
     if (_past(d)) return 'Missed';
     return next ? 'Next' : 'To log';
@@ -506,7 +507,16 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
     final today = d.isToday;
     final pill = _pill(d, m, next);
     final dim = m.skipped || (_past(d) && !m.logged);
-    final line = m.skipped ? 'Skipped · not counted today' : (m.logged && m.loggedAt != null ? 'Logged ${fdClock(m.loggedAt!)} · ${m.line}' : m.line);
+    // Eaten next to planned (Phase 3): "Logged 8:10 am · ate 420 of 520 kcal · 30 g P".
+    final ate = m.eaten;
+    final ateLine = 'ate ${inNum(ate[0].round())} of ${inNum(m.kcal)} kcal · ${ate[1].round()} g P';
+    final line = m.skipped
+        ? 'Skipped · not counted today'
+        : m.logged
+        ? '${m.loggedAt != null ? 'Logged ${fdClock(m.loggedAt!)} · ' : ''}$ateLine'
+        : m.partly
+        ? '${ateLine[0].toUpperCase()}${ateLine.substring(1)} so far'
+        : m.line;
     final swaps = today && m.open && d.allowSwaps;
     final card = Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -531,30 +541,13 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
               Text(line, style: AppText.s(12, W.w6, color: AppColors.muted)),
             ]),
           ),
-          if (m.logged && m.photo != null) FdPhoto(m.photo!, name: m.name),
+          if (m.logged && m.photo != null) FdPhoto(m.photo!, name: m.name, all: m.photos),
           if (today && m.open && _photos[m.id] != null) FdPhoto(_photos[m.id]!, name: m.name),
           fdPill(pill),
           if (today) CaIconBtn(AppIcons.menu, tooltip: 'Meal options', onTap: () => _menu(m)),
         ]),
         Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          for (final it in m.items)
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 7),
-              decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
-              child: Row(spacing: 8, children: [
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(it.name, style: AppText.s(13.5, W.w7)),
-                    Text.rich(TextSpan(children: [
-                      TextSpan(text: it.amount),
-                      if (it.swappedFrom.isNotEmpty) TextSpan(text: ' · swapped from ${it.swappedFrom}', style: AppText.s(12, W.w6, color: AppColors.accentText)),
-                    ]), style: AppText.s(12, W.w4, color: AppColors.muted)),
-                  ]),
-                ),
-                Text('${inNum(it.kcal)} kcal', style: AppText.s(12, W.w7, color: AppColors.text2)),
-                if (swaps && it.swaps > 0) _swapBtn(() => showSwapSheet(context, c, m, it)),
-              ]),
-            ),
+          for (final it in m.items) _itemRow(d, m, it, swaps: swaps),
         ]),
         ..._extras(d, m),
         if (today && m.open && _photos[m.id] != null) _photoBar(m),
@@ -573,10 +566,104 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
         else if (today && m.logged)
           _doneBtn(m)
         else if (today && m.skipped)
-          fdBtn('Eaten after all', () => _eat(m), icon: AppIcons.check),
+          fdBtn('I ate it', () => _eatAfterAll(m), icon: AppIcons.check),
       ]),
     );
     return dim ? Opacity(opacity: .75, child: card) : card;
+  }
+
+  /// One planned food: its amount, an Edited tag when today's portion is not the planned one, and its own state
+  /// (Eaten / Skipped). On today a tap opens what she can do with just this food.
+  Widget _itemRow(FoodDay d, FMeal m, FItem it, {required bool swaps}) {
+    final row = Container(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
+      child: Row(spacing: 8, children: [
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(it.name, style: AppText.s(13.5, W.w7, color: it.state == 'skipped' ? AppColors.muted : AppColors.text)),
+            Row(children: [
+              Flexible(
+                child: Text.rich(TextSpan(children: [
+                  TextSpan(text: it.amount),
+                  if (it.swappedFrom.isNotEmpty) TextSpan(text: ' · swapped from ${it.swappedFrom}', style: AppText.s(12, W.w6, color: AppColors.accentText)),
+                ]), style: AppText.s(12, W.w4, color: AppColors.muted)),
+              ),
+              if (it.edited) fdTag('Edited'),
+            ]),
+          ]),
+        ),
+        if (it.state == 'eaten' && !m.logged) fdPill('Eaten'),
+        if (it.state == 'skipped' && !m.skipped) fdPill('Skipped'),
+        Text('${inNum(it.kcal)} kcal',
+            style: AppText.s(12, W.w7, color: AppColors.text2).copyWith(decoration: it.state == 'skipped' ? TextDecoration.lineThrough : null)),
+        if (swaps && it.swaps > 0 && it.state.isEmpty) _swapBtn(() => showSwapSheet(context, c, m, it)),
+      ]),
+    );
+    if (!d.isToday) return row;
+    return Semantics(
+      button: true,
+      label: '${it.name}. ${switch (it.state) { 'eaten' => 'Eaten', 'skipped' => 'Skipped', _ => 'Not logged yet' }}',
+      child: Hover(onTap: () => _itemMenu(m, it), builder: (_, h, _) => Opacity(opacity: h ? .8 : 1, child: row)),
+    );
+  }
+
+  /// One food's own actions: Ate this · Skip this food · Not logged yet · Set to default.
+  void _itemMenu(FMeal m, FItem it) => showAppSheet(
+    context,
+    title: it.name,
+    sub: '${it.amount} · ${inNum(it.kcal)} kcal · ${m.name}',
+    webWidth: 440,
+    builder: (ctx) {
+      void go(Future<void> Function() f) {
+        Navigator.of(ctx).pop();
+        f().catchError((Object e) {
+          if (mounted && e is ApiError) fdError(context, e);
+        });
+      }
+
+      final rows = <(AppIconData, String, String, bool, Future<void> Function())>[
+        if (it.state != 'eaten') (AppIcons.check, 'Ate this', 'Counts ${inNum(it.kcal)} kcal today', false, () => _item(m, it, 'eat')),
+        if (it.state != 'skipped') (AppIcons.close, 'Skip this food', 'It will not count today', true, () => _item(m, it, 'skip')),
+        if (it.state.isNotEmpty) (AppIcons.undo, 'Not logged yet', 'Take it off today’s log', false, () => _item(m, it, 'reset')),
+        if (it.edited) (AppIcons.edit, 'Set to default', 'Back to the planned ${amtOf(it.unit, it.plannedQuantity)}', false, () => _setDefault(m, it)),
+      ];
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        for (final (i, r) in rows.indexed) FdMenuItem(first: i == 0, icon: r.$1, title: r.$2, sub: r.$3, danger: r.$4, onTap: () => go(r.$5)),
+        FdMenuItem(icon: AppIcons.search, title: 'Had something else', sub: 'Log what you ate instead', onTap: () {
+          Navigator.of(ctx).pop();
+          if (it.state != 'skipped') _item(m, it, 'skip').catchError((_) {});
+          context.go('/food/log?meal=${Uri.encodeComponent(m.name)}');
+        }),
+      ]);
+    },
+  );
+
+  Future<void> _item(FMeal m, FItem it, String action) async {
+    final f = c.meal(m, 'item', {'item': it.item, 'action': action});
+    showToast(
+      context,
+      switch (action) { 'eat' => '${it.name} logged', 'skip' => '${it.name} skipped', _ => '${it.name} not logged yet' },
+      sub: switch (action) { 'eat' => '${inNum(it.kcal)} kcal added to today', 'skip' => 'It will not count today', _ => 'Taken off today’s log' },
+      kind: action == 'eat' ? ToastKind.ok : (action == 'skip' ? ToastKind.warn : ToastKind.del),
+    );
+    await f;
+  }
+
+  /// Set to default: today's portions without this food's change.
+  Future<void> _setDefault(FMeal m, FItem it) async {
+    final f = c.meal(m, 'portions', {
+      'portions': {for (final i in m.items) if (i.edited && i != it) '${i.item}': i.quantity},
+    });
+    showToast(context, 'Back to the planned portion', sub: '${it.name} · ${amtOf(it.unit, it.plannedQuantity)}', kind: ToastKind.ok);
+    await f;
+  }
+
+  /// Skipped meal → "I ate it" (was "Eaten after all", Probid 2026-10-29): logs the whole meal after a "Did you eat this?" check.
+  Future<void> _eatAfterAll(FMeal m) async {
+    final ok = await confirmAction(context,
+        title: 'Did you eat this?', body: '${m.name} · ${inNum(m.kcal)} kcal will count today.', confirm: 'Yes, log it', icon: AppIcons.check);
+    if (ok && mounted) await _eat(m);
   }
 
   Widget _swapBtn(VoidCallback onTap) => Semantics(
@@ -751,14 +838,15 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
     },
   );
 
-  /// Logged meal: add or change its photo (☰ menu).
+  /// Logged meal: add a photo, or one more up to 4 (☰ menu).
   Future<void> _changePhoto(FMeal m) async {
-    final had = m.photo != null;
+    final had = m.photos.length;
+    if (had >= fdMaxPhotos) return;
     final photo = await pickMealPhoto(context, m.name);
     if (photo == null || !mounted) return;
     try {
-      final f = c.meal(m, 'photo', {'photo': photo});
-      showToast(context, had ? 'Photo changed' : 'Photo added', sub: m.name, kind: ToastKind.ok);
+      final f = c.meal(m, had == 0 ? 'photo' : 'photo_add', {'photo': photo});
+      showToast(context, had == 0 ? 'Photo added' : 'Photo ${had + 1} of $fdMaxPhotos added', sub: m.name, kind: ToastKind.ok);
       await f;
     } on ApiError catch (e) {
       if (mounted) fdError(context, e);
@@ -766,10 +854,15 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
   }
 
   Future<void> _removePhoto(FMeal m) async {
+    final n = m.photos.length;
+    final ok = n < 2 ||
+        await confirmAction(context, title: 'Remove all $n photos?', body: '${m.name} stays logged.', confirm: 'Remove', danger: true, icon: AppIcons.trash);
+    if (!ok || !mounted) return;
     final old = m.photo;
     try {
       final f = c.meal(m, 'photo', {'photo': null});
-      showToast(context, 'Photo removed', sub: m.name, kind: ToastKind.del, action: old != null && old.startsWith('data:') ? 'Undo' : null, onAction: () {
+      showToast(context, n > 1 ? 'Photos removed' : 'Photo removed', sub: m.name, kind: ToastKind.del,
+          action: n == 1 && old != null && old.startsWith('data:') ? 'Undo' : null, onAction: () {
         final again = c.data?.meals.where((x) => x.id == m.id).firstOrNull;
         if (again != null && old != null) c.meal(again, 'photo', {'photo': old}).catchError((_) {});
       });

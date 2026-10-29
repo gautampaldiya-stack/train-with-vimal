@@ -665,17 +665,28 @@ class MyMealActionView(APIView):
             _log_meal(request.user, meal, day, f"logged {meal.name.lower()}")
         elif op in ("unlog", "unskip"):
             services.unmark(request.user, meal, day)
-        elif op == "photo":
-            # Change or remove the photo of a meal already logged (data URL, or null to remove).
+        elif op in ("photo", "photo_add"):
+            # photo: change the meal's picture (all of them) or null to remove them; photo_add: one more (up to 4).
             st = MealDayState.objects.filter(client=request.user, date=day, meal=meal,
                                              status=MealDayState.Status.LOGGED).first()
             if st is None:
                 raise serializers.ValidationError("Mark the meal as eaten first.")
             photo = request.data.get("photo")
-            if st.photo:
-                st.photo.delete(save=False)
-            st.photo = data_url_file(photo, f"meal-{meal.id}") if photo else None
-            st.save(update_fields=["photo", "updated_at"])
+            if op == "photo":
+                services.remove_meal_photos(st)
+                st.save(update_fields=["photo", "updated_at"])
+            if photo:
+                services.add_meal_photo(st, data_url_file(photo, f"meal-{meal.id}"))
+            elif op == "photo_add":
+                raise serializers.ValidationError({"photo": ["Add a photo."]})
+        elif op == "item":
+            # One planned food: {"item": id, "action": "eat" | "skip" | "reset"}.
+            item = get_object_or_404(MealItem, id=request.data.get("item"), option__meal=meal)
+            before = MealDayState.objects.filter(client=request.user, date=day, meal=meal).values_list(
+                "status", flat=True).first()
+            st = services.item_action(request.user, meal, day, item, request.data.get("action"))
+            if st.status == "logged" and before != "logged":
+                _log_meal(request.user, meal, day, f"logged {meal.name.lower()}")
         elif op == "skip":
             services.skip(request.user, meal, day)
             activity_log(f"skipped {meal.name.lower()}", "meal", actor=request.user, client=request.user,
@@ -693,9 +704,7 @@ class MyMealActionView(APIView):
                     continue
             st.portions = clean
             st.save(update_fields=["portions", "updated_at"])
-            if st.status == "logged":
-                services.unmark(request.user, meal, day)
-                services.mark_eaten(request.user, meal, day)
+            services.rewrite_eaten(request.user, meal, day, st)  # eaten foods follow the new portions
         elif op == "swap":
             if not plan.allow_swaps:
                 raise PermissionDenied("Your plan does not allow swaps. Tell your coach in your check-in.")
@@ -721,9 +730,7 @@ class MyMealActionView(APIView):
                              client=request.user, target_label=meal.name,
                              change=(item.food.name, f"{alt.name} {grams:g} g" if grams else alt.name))
             st.save(update_fields=["swaps", "updated_at"])
-            if st.status == "logged":
-                services.unmark(request.user, meal, day)
-                services.mark_eaten(request.user, meal, day)
+            services.rewrite_eaten(request.user, meal, day, st)
         elif op == "option":
             if not plan.allow_switch_options:
                 raise PermissionDenied("Your plan does not allow switching options.")
@@ -797,7 +804,10 @@ class MyFoodLogViewSet(mixins.CreateModelMixin, mixins.DestroyModelMixin, viewse
         if e.date < timezone.localdate() - timedelta(days=1):
             raise serializers.ValidationError("You can only change today's log.")
         data = FoodLogSerializer(e).data
-        e.delete()
+        if e.meal_item_id and e.meal_id and e.source == FoodLogEntry.Source.PLAN:
+            services.forget_item(request.user, e)  # that planned food is "not logged yet" again
+        else:
+            e.delete()
         return Response(data)
 
     @action(detail=False, methods=["post"], url_path="copy-yesterday")

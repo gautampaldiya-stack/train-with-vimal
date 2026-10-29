@@ -235,9 +235,24 @@ class MealDayState(TimeStampedModel):
     swaps = models.JSONField(default=dict, blank=True)  # {meal_item_id: {"food": id, "quantity": q}}
     logged_at = models.DateTimeField(null=True, blank=True)
     photo = models.ImageField(upload_to=meal_photo_path, null=True, blank=True)  # optional, sent with "Mark as eaten"
+    # Each planned food on its own (Phase 3): {meal_item_id: "eaten" | "skipped"}; a food not in it is "not logged yet".
+    items = models.JSONField(default=dict, blank=True)
+
+    MAX_PHOTOS = 4  # `photo` + up to 3 MealPhoto rows
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["client", "date", "meal"], name="uniq_meal_day")]
+
+
+class MealPhoto(models.Model):
+    """More pictures of one logged meal (Phase 3): the first one stays in `MealDayState.photo`."""
+
+    state = models.ForeignKey(MealDayState, on_delete=models.CASCADE, related_name="more_photos")
+    image = models.ImageField(upload_to="meals/extra/%Y/%m/")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
 
 
 class FoodLogEntry(TimeStampedModel):
@@ -253,6 +268,8 @@ class FoodLogEntry(TimeStampedModel):
     logged_at = models.DateTimeField(default=timezone.now)
     meal_name = models.CharField(max_length=60)  # "Breakfast"
     meal = models.ForeignKey(Meal, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    meal_item = models.ForeignKey("MealItem", null=True, blank=True, on_delete=models.SET_NULL,
+                                  related_name="+")  # the planned food this entry logs (Phase 3)
     food = models.ForeignKey(Food, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     name = models.CharField(max_length=120)  # snapshot, survives food edits
     quantity = models.DecimalField(max_digits=7, decimal_places=2, default=Decimal("1"))

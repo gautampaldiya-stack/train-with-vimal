@@ -580,7 +580,11 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
 
   // ─────────────────────────────── Food
 
-  void _eat(HomeMeal m) {
+  /// "Ate it" asks first (Phase 3): a meal is logged only on her Yes.
+  Future<void> _eat(HomeMeal m) async {
+    final ok = await confirmAction(context,
+        title: 'Did you eat this?', body: '${m.name} · ${m.foods} · ${inNum(m.kcal)} kcal', confirm: 'Yes, log it', icon: AppIcons.check);
+    if (!ok || !mounted) return;
     c.setMeal(m, true);
     showToast(context, '${m.name} logged', sub: '${m.foods} · ${inNum(m.kcal)} kcal', kind: ToastKind.ok, action: 'Undo', onAction: () => c.setMeal(m, false));
   }
