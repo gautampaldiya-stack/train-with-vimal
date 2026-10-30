@@ -30,3 +30,6 @@ secrets/
 app/firebase.json
 app/web/firebase-config.js
 dump.rdb
+
+# phone test screenshots taken on the PC (not committed)
+phone-test-*/

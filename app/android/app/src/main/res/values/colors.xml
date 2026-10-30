@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#FFFFFF</color>
+    <color name="ic_launcher_background">#4FB8EF</color>
     <!-- Push icon tint (D-80): the logo blue -->
     <color name="notify_accent">#4FB8EF</color>
 </resources>

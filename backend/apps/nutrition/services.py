@@ -414,6 +414,10 @@ def log_food(client, *, meal_name, food=None, quantity=1, unit=None, name="", kc
     day = day or timezone.localdate()
     off_plan = off_plan or other_time
     mp = _active_plan(client, day)
+    if mp and not other_time:  # adding to a planned meal waits until it opens, like logging it (Probid 2026-10-30)
+        meal = next((m for m in meals_on(mp.followed, day.weekday()) if m.name == meal_name), None)
+        if meal is not None:
+            check_meal_open(meal, day)
     if food is not None:
         grams = Decimal(str(quantity)) * (unit.grams if unit else Decimal(1))
         m = food_macros(food, grams)
@@ -506,6 +510,32 @@ def _shown(t, whole=False):
             "fat": show_g(t["fat"])}
 
 
+def day_goal(client, plan, day, cache=None):
+    """What the plan gives the client to eat on [day]: its meals' foods (default option, planned portions) added up,
+    rounded as shown; None on a day without meals. Used as the day's target (Probid 2026-10-30).
+    [cache] keeps one answer per (plan, weekday) across a range."""
+    key = (plan.id, day.weekday())
+    if cache is not None and key in cache:
+        return cache[key]
+    now = timezone.now()
+    rows = []
+    for meal in meals_on(plan, day.weekday()).prefetch_related("options__items__food__units", "options__items__unit"):
+        opt = _option_for(meal, None)
+        rows += [_entry_for_item(client, day, meal, it, None, now) for it in (opt.items.all() if opt else [])]
+    out = _shown(nutrition_totals(rows), whole=True) if rows else None
+    if cache is not None:
+        cache[key] = out
+    return out
+
+
+def meal_kcal(client, meal, day):
+    """One meal's planned kcal as shown (its default option's foods, planned portions)."""
+    opt = _option_for(meal, None)
+    now = timezone.now()
+    rows = [_entry_for_item(client, day, meal, it, None, now) for it in (opt.items.all() if opt else [])]
+    return show_kcal(nutrition_totals(rows)["kcal"]) if rows else 0
+
+
 def totals(client, day):
     """What the client ate that day, unrounded (calc.nutrition_totals); round with show_kcal / show_g to show."""
     return nutrition_totals(FoodLogEntry.objects.filter(client=client, date=day))
@@ -532,6 +562,31 @@ def sync_water_habit(client, day, ml):
         value = ml if h.unit.strip().lower() == "ml" else ml // 250
         HabitLog.objects.update_or_create(habit=h, client=client, date=day,
                                           defaults={"value": value, "done": bool(h.target) and value >= h.target})
+
+
+def meal_opens_at(meal, day):
+    """When a planned meal can be logged, skipped or changed: its time minus settings.MEAL_OPEN_BEFORE_MINUTES
+    (Probid 2026-10-30: nothing before the meal's time)."""
+    from django.conf import settings
+
+    before = timedelta(minutes=getattr(settings, "MEAL_OPEN_BEFORE_MINUTES", 30))
+    return timezone.make_aware(datetime.combine(day, meal.time)) - before
+
+
+def check_meal_open(meal, day, now=None):
+    """Refuses a change to a meal of today (or later) before it opens; earlier days are only synced late writes."""
+    from rest_framework.exceptions import ValidationError
+
+    today = timezone.localdate()
+    if day < today:
+        return
+    at = meal_opens_at(meal, day)
+    if day > today or (now or timezone.now()) < at:
+        when = timezone.localtime(at)
+        from apps.common.utils import dfmt
+
+        raise ValidationError({"meal": [f"{meal.name} opens at {dfmt(when, '%-I:%M %p').lower()}"
+                                        + ("" if day == today else f" on {dfmt(when, '%a %-d %b')}") + "."]})
 
 
 def pill_for(meal, state, day, now):
@@ -564,6 +619,7 @@ def day_view(client, day, request=None):
               .prefetch_related("more_photos")}
     entries = list(FoodLogEntry.objects.filter(client=client, date=day).order_by("logged_at"))
     meals = []
+    planned_rows = []  # every planned food of the day at its planned portion (no swap): the day's target
     next_marked = False
     if plan:
         for meal in meals_on(plan, day.weekday()).prefetch_related("options__items__food__units",
@@ -575,7 +631,7 @@ def day_view(client, day, request=None):
                 if next_marked:
                     pill = "planned"
                 next_marked = True
-            items, exact = [], []
+            items, exact, assigned = [], [], []
             apply_today = day == today  # swaps/portions only apply to today
             its = list(opt.items.all()) if opt else []
             if st is not None and not st.items and st.status:  # logged / skipped before foods had their own state
@@ -583,6 +639,11 @@ def day_view(client, day, request=None):
             for it in its:
                 e = _entry_for_item(client, day, meal, it, st if apply_today else None, now)
                 exact.append(e)
+                # what the coach assigned: the planned portion, no swap (the "of" in "ate 446 of 259 kcal")
+                a = e if not (apply_today and st and (st.portions or st.swaps)) else \
+                    _entry_for_item(client, day, meal, it, None, now)
+                assigned.append(a)
+                planned_rows.append(a)
                 items.append({"item": it.id, "food": e.food_id, "name": e.name, "quantity": float(e.quantity),
                               "unit": e.unit_name, "grams": float(e.grams), "kcal": show_kcal(e.kcal),
                               "protein": show_g(e.protein), "carbs": show_g(e.carbs), "fat": show_g(e.fat),
@@ -599,6 +660,9 @@ def day_view(client, day, request=None):
                 # meal total from the unrounded values, rounded once (calc.nutrition_totals)
                 "items": items, **_shown(nutrition_totals(exact), whole=True), "_kcal": nutrition_totals(exact)["kcal"],
                 # what she ate of it (the logged entries), next to the planned total above
+                "assigned": _shown(nutrition_totals(assigned), whole=True),
+                # before this a meal of today cannot be logged, skipped or changed (Probid 2026-10-30)
+                "opens_at": meal_opens_at(meal, day),
                 "eaten": _shown(nutrition_totals([e for e in entries if e.meal_id == meal.id
                                                   and e.source == FoodLogEntry.Source.PLAN]), whole=True),
                 "logged_at": st.logged_at if st else None, "photo": url(st.photo) if st else None,
@@ -606,7 +670,11 @@ def day_view(client, day, request=None):
                           + ([url(p.image) for p in st.more_photos.all()] if st else []),
             })
     shown = _shown(totals(client, day))
-    target = plan.kcal_target if plan else None
+    # The day's target is what the plan assigns her that day (the foods' total at the planned portions), not a
+    # separate number (Probid 2026-10-30): eat every planned food and nothing is left. A day without meals keeps
+    # the plan's figure.
+    goal = _shown(nutrition_totals(planned_rows), whole=True) if planned_rows else None
+    target = goal["kcal"] if goal else (plan.kcal_target if plan else None)
     planned_total = show_kcal(sum(m["_kcal"] for m in meals))
     still_ahead = show_kcal(sum(m["_kcal"] for m in meals if m["pill"] in ("next", "planned", "to_log")))
     for m in meals:
@@ -630,8 +698,9 @@ def day_view(client, day, request=None):
     return {
         "date": day, "today": day == today, "can_log": day == today,
         "coach": coach.first_name if coach else "",
-        "plan": {"id": plan.id, "name": plan.name, "kcal": plan.kcal_target, "protein": plan.protein_g,
-                 "carbs": plan.carbs_g, "fat": plan.fat_g, "fibre": plan.fibre_g, "water_ml": plan.water_ml,
+        "plan": {"id": plan.id, "name": plan.name, "kcal": target,
+                 "protein": goal["protein"] if goal else plan.protein_g, "carbs": goal["carbs"] if goal else plan.carbs_g,
+                 "fat": goal["fat"] if goal else plan.fat_g, "fibre": plan.fibre_g, "water_ml": plan.water_ml,
                  "version_note": mp.version_note, "allow_swaps": plan.allow_swaps,
                  "allow_search_any": plan.allow_search_any, "allow_switch_options": plan.allow_switch_options,
                  "allow_off_plan": plan.allow_off_plan} if plan else None,
@@ -881,6 +950,7 @@ def staff_food_log(client, params):
     sums = {r["date"]: r for r in FoodLogEntry.objects.filter(client=client, date__range=(start, end))
             .values("date").annotate(kcal=Sum("kcal"), protein=Sum("protein"), carbs=Sum("carbs"), fat=Sum("fat"))}
     n_meals = {}
+    goals = {}
     rows = []
     for d in days:
         plan = plan_on(d)
@@ -892,7 +962,8 @@ def staff_food_log(client, params):
         n = logged.get(d, 0)
         if not plan and not t:
             continue
-        target = plan.kcal_target if plan else None
+        g = day_goal(client, plan, d, goals) if plan else None
+        target = g["kcal"] if g else (plan.kcal_target if plan else None)
         if target and kcal > target * 1.05:
             st = "over"
         elif meals and n >= meals:
@@ -906,6 +977,8 @@ def staff_food_log(client, params):
                      "status": st})
     cur = plan_on(min(end, today)) or (mps[0].followed if mps else None)
     out = page_of(rows, params)
-    out["target"] = {"kcal": cur.kcal_target, "protein": cur.protein_g, "carbs": cur.carbs_g, "fat": cur.fat_g} \
+    g = day_goal(client, cur, min(end, today), goals) if cur else None
+    out["target"] = ({"kcal": g["kcal"], "protein": g["protein"], "carbs": g["carbs"], "fat": g["fat"]} if g else
+                     {"kcal": cur.kcal_target, "protein": cur.protein_g, "carbs": cur.carbs_g, "fat": cur.fat_g}) \
         if cur else None
     return out

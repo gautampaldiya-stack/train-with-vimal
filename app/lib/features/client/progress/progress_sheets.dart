@@ -264,6 +264,32 @@ Future<void> showPhotoSheet(BuildContext context, ProgressController c, PxSet se
             ),
           ),
         ),
+        // Her own set can change on the day it was added, never after (Probid 2026-10-30).
+        if (set.editableOn(c.today))
+          Row(spacing: 8, children: [
+            Expanded(
+              child: CaButton(photo == null ? 'Add ${p.value.toLowerCase()} photo' : 'Change photo', kind: CaBtnKind.out, small: true, icon: AppIcons.camera, onPressed: () {
+                Navigator.of(ctx).pop();
+                showAddPhotos(context, c, pose: p.value);
+              }),
+            ),
+            if (photo != null && photo.id > 0)
+              Expanded(
+                child: CaButton('Delete photo', kind: CaBtnKind.out, small: true, icon: AppIcons.trash, onPressed: () async {
+                  final ok = await confirmAction(ctx, title: 'Delete this photo?', body: '${p.value} photo · ${pxDm(set.date)}. You can add a new one today.', confirm: 'Delete', danger: true);
+                  if (!ok || !ctx.mounted) return;
+                  Navigator.of(ctx).pop();
+                  try {
+                    await c.deletePhoto(photo.id);
+                    if (context.mounted) showToast(context, '${p.value} photo deleted', sub: 'You can add a new one today', kind: ToastKind.del);
+                  } catch (e) {
+                    if (context.mounted) _failed(context, e);
+                  }
+                }),
+              ),
+          ])
+        else if (!set.fromCheckin)
+          fdCap('Photos can be changed only on the day they were added.', align: TextAlign.center),
       ]);
     },
     footer: pxFooter((ctx) => [
@@ -283,10 +309,15 @@ Future<void> showPhotoSheet(BuildContext context, ProgressController c, PxSet se
 
 // ─────────────────────────────── Add photos
 
+/// A photo picked in the Add photos sheet, not saved yet.
+typedef _Pick = ({String src, String image, String? file});
+
 class _Ap extends ChangeNotifier {
   _Ap(this.pose);
   String pose;
-  String? src, image, file;
+
+  /// One picked photo per pose: each tab keeps its own (Probid 2026-10-30).
+  final picks = <String, _Pick>{};
   void set(void Function() f) {
     f();
     notifyListeners();
@@ -299,17 +330,17 @@ const _poseHow = {
   'Back': 'Back to the camera, feet hip-width apart',
 };
 
-/// Add photos sheet: one pose at a time into today's set. A second photo of the same pose replaces it.
+/// Add photos sheet: Front / Side / Back tabs, each with its own photo, all saved into today's set with one tap
+/// (Probid 2026-10-30: no adding them one by one). A pose already in today's set is replaced.
 Future<void> showAddPhotos(BuildContext context, ProgressController c, {String? pose}) {
   final d = c.data;
   final today = c.today;
   final todaySet = d?.sets.where((s) => DateUtils0.same(s.date, today)).firstOrNull;
-  final s = _Ap(pose ?? 'Front');
+  final s = _Ap(pose ?? pxPoses.firstWhere((p) => !(todaySet?.has(p) ?? false), orElse: () => 'Front'));
   final coach = d?.coach ?? 'your coach';
-  final kg = d?.last?.kg;
-
   Future<void> pick(BuildContext ctx, String name) async {
     final camera = name == 'Take photo' && ctx.isPhone;
+    final p = s.pose;
     try {
       final x = await ImagePicker().pickImage(source: camera ? ImageSource.camera : ImageSource.gallery, maxWidth: 1600, maxHeight: 1600, imageQuality: 80);
       if (x == null) return;
@@ -319,151 +350,128 @@ Future<void> showAddPhotos(BuildContext context, ProgressController c, {String? 
         return;
       }
       final mime = (x.mimeType ?? '').startsWith('image/') ? x.mimeType! : (x.name.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg');
-      s.set(() {
-        s.src = name;
-        s.image = 'data:$mime;base64,${base64Encode(b)}';
-        s.file = camera || x.name.isEmpty ? null : x.name.replaceFirst(RegExp('^scaled_'), '');
-      });
+      // The photo goes into the tab that was open when she picked it.
+      s.set(() => s.picks[p] = (
+        src: name,
+        image: 'data:$mime;base64,${base64Encode(b)}',
+        file: camera || x.name.isEmpty ? null : x.name.replaceFirst(RegExp('^scaled_'), ''),
+      ));
     } catch (_) {
       if (ctx.mounted) showToast(ctx, 'Could not open the photos', sub: 'Allow photo access for the app in your phone settings', kind: ToastKind.warn);
     }
   }
 
   Future<void> save(BuildContext ctx) async {
-    final img = s.image;
-    if (img == null) {
+    if (s.picks.isEmpty) {
       showToast(ctx, 'Take or choose a photo first', sub: 'Then save it to today’s set', kind: ToastKind.warn);
       return;
     }
-    final p = s.pose;
-    final replaced = todaySet?.has(p) ?? false;
+    final poses = [for (final p in pxPoses) if (s.picks.containsKey(p)) p];
+    final replaced = [for (final p in poses) if (todaySet?.has(p) ?? false) p];
     Navigator.of(ctx).pop();
-    final Map<String, dynamic>? r;
-    try {
-      r = await c.addPhoto(p, img);
-    } catch (e) {
-      c.load();
-      if (context.mounted) _failed(context, e);
-      return;
+    final added = <int>[];
+    for (final p in poses) {
+      try {
+        final r = await c.addPhoto(p, s.picks[p]!.image);
+        final id = (r?['id'] as num?)?.toInt();
+        if (id != null && !replaced.contains(p)) added.add(id);
+      } catch (e) {
+        c.load();
+        if (context.mounted) _failed(context, e);
+        return;
+      }
     }
     if (!context.mounted) return;
-    final id = (r?['id'] as num?)?.toInt();
+    final title = poses.length == 1
+        ? '${poses.first} photo ${replaced.isEmpty ? 'added' : 'replaced'}'
+        : '${poses.length} photos ${replaced.isEmpty ? 'added' : 'saved'}';
     showToast(
       context,
-      '$p photo ${replaced ? 'replaced' : 'added'}',
-      sub: '${pxWdm(today)} · only you and $coach can see it',
+      title,
+      sub: '${pxWdm(today)} · only you and $coach can see ${poses.length == 1 ? 'it' : 'them'}',
       kind: ToastKind.ok,
-      // Undo takes the new photo off again. A replaced photo is gone from the server, so it has no Undo.
-      action: !replaced && id != null ? 'Undo' : null,
-      onAction: !replaced && id != null ? () => c.deletePhoto(id) : null,
+      // Undo takes the new photos off again. A replaced photo is gone from the server, so it has no Undo.
+      action: replaced.isEmpty && added.isNotEmpty ? 'Undo' : null,
+      onAction: replaced.isEmpty && added.isNotEmpty ? () => c.deletePhotos(added) : null,
     );
   }
 
   return showAppSheet(
     context,
     title: 'Add photos',
-    sub: 'Adds to today’s set · ${pxWdm(today)}${kg == null ? '' : ' · ${pxAmt(kg, 'kg')}'}',
+    sub: 'Adds to today’s set · ${pxWdm(today)}',
     webWidth: 480,
     listen: s,
     footerStretch: true,
-    builder: (ctx) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
-      pxLbl('Pose'),
-      Column(spacing: 8, children: [
-        for (final n in pxPoses)
-          _PoseOpt(name: n, how: _poseHow[n]!, on: s.pose == n, added: todaySet?.has(n) ?? false, onTap: () => s.set(() => s.pose = n)),
-      ]),
-      pxLbl('Photo'),
-      Row(crossAxisAlignment: CrossAxisAlignment.center, spacing: 12, children: [
-        SizedBox(
-          width: 84,
-          child: PxTile(
-            set: s.image == null ? null : PxSet.local(id: 'new', label: '', date: today, kg: null, photos: [PxPhoto.local(s.pose, s.image!)]),
-            pose: s.pose,
-            aspect: 3 / 4,
-            noPhoto: '',
-          ),
+    builder: (ctx) {
+      final p = s.pose;
+      final mine = s.picks[p];
+      final had = todaySet?.of(p);
+      final shown = mine != null
+          ? PxSet.local(id: 'new', label: '', date: today, kg: null, photos: [PxPhoto.local(p, mine.image)])
+          : (had != null ? todaySet : null);
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
+        PxTabs(
+          fit: false,
+          labels: [for (final n in pxPoses) s.picks.containsKey(n) ? '$n ✓' : n],
+          index: pxPoses.indexOf(p),
+          onPick: (i) => s.set(() => s.pose = pxPoses[i]),
         ),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
-            for (final n in const ['Take photo', 'Choose from gallery'])
-              Semantics(
-                button: true,
-                selected: s.src == n,
-                child: Hover(
-                  onTap: () => pick(ctx, n),
-                  builder: (_, h, _) => Container(
-                    height: 38,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: s.src == n ? AppColors.text : (h ? AppColors.outlineHover : AppColors.white),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: s.src == n ? AppColors.text : AppColors.line),
+        Text(_poseHow[p]!, style: AppText.s(12.5, W.w4, color: AppColors.text2)),
+        Row(crossAxisAlignment: CrossAxisAlignment.center, spacing: 12, children: [
+          SizedBox(width: 96, child: PxTile(set: shown, pose: p, aspect: 3 / 4, noPhoto: '')),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
+              for (final n in const ['Take photo', 'Choose from gallery'])
+                Semantics(
+                  button: true,
+                  selected: mine?.src == n,
+                  child: Hover(
+                    onTap: () => pick(ctx, n),
+                    builder: (_, h, _) => Container(
+                      height: 38,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: mine?.src == n ? AppColors.text : (h ? AppColors.outlineHover : AppColors.white),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: mine?.src == n ? AppColors.text : AppColors.line),
+                      ),
+                      child: Text(n, style: AppText.s(13, W.w7, color: mine?.src == n ? AppColors.white : AppColors.text)),
                     ),
-                    child: Text(n, style: AppText.s(13, W.w7, color: s.src == n ? AppColors.white : AppColors.text)),
                   ),
                 ),
-              ),
-            CutText(
-              s.image == null ? 'No photo yet' : '${s.pose} photo ready · ${s.file ?? 'taken just now'}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppText.s(12, W.w6, color: AppColors.muted),
-            ),
-          ]),
-        ),
-      ]),
-      fdCap('Same spot, same light, in the morning before eating. Only you and $coach can see it.'),
-    ]),
-    footer: pxFooter((ctx) => [
-      CaButton('Cancel', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop()),
-      Opacity(opacity: s.image == null ? .45 : 1, child: CaButton('Save photo', icon: AppIcons.check, onPressed: () => save(ctx))),
-    ]),
-  );
-}
-
-/// `dr-opt sm` with an "Added today" tag.
-class _PoseOpt extends StatelessWidget {
-  const _PoseOpt({required this.name, required this.how, required this.on, required this.added, required this.onTap});
-  final String name, how;
-  final bool on, added;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => Semantics(
-    button: true,
-    selected: on,
-    child: Hover(
-      onTap: onTap,
-      builder: (_, h, _) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: on ? AppColors.pickBg : AppColors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: on ? AppColors.accent : (h ? AppColors.lineHover : AppColors.line2)),
-          boxShadow: on ? const [BoxShadow(color: AppColors.accentSoft, spreadRadius: 3)] : null,
-        ),
-        child: Row(spacing: 12, children: [
-          Container(
-            width: 18,
-            height: 18,
-            decoration: BoxDecoration(color: AppColors.white, shape: BoxShape.circle, border: Border.all(color: on ? AppColors.accent : AppColors.line2, width: on ? 5 : 1.5)),
-          ),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-              Row(spacing: 8, children: [
-                Text(name, style: AppText.s(13.5, W.w7)),
-                if (added)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                    decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(5)),
-                    child: Text('Added today', style: AppText.s(10.5, W.w7, color: AppColors.text2)),
+              Row(children: [
+                Expanded(
+                  child: CutText(
+                    mine != null
+                        ? '$p photo ready · ${mine.file ?? 'taken just now'}'
+                        : had != null
+                        ? 'Added today · a new one replaces it'
+                        : 'No photo yet',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.s(12, W.w6, color: AppColors.muted),
+                  ),
+                ),
+                if (mine != null)
+                  Hover(
+                    onTap: () => s.set(() => s.picks.remove(p)),
+                    builder: (_, h, _) => Text('Remove', style: AppText.s(12, W.w7, color: h ? AppColors.redHover : AppColors.red)),
                   ),
               ]),
-              Text(how, style: AppText.s(12.5, W.w4, color: AppColors.text2)),
             ]),
           ),
         ]),
+        fdCap('Same spot, same light, in the morning before eating. Only you and $coach can see it.'),
+      ]);
+    },
+    footer: pxFooter((ctx) => [
+      CaButton('Cancel', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop()),
+      Opacity(
+        opacity: s.picks.isEmpty ? .45 : 1,
+        child: CaButton(s.picks.length > 1 ? 'Save ${s.picks.length} photos' : 'Save photo', icon: AppIcons.check, onPressed: () => save(ctx)),
       ),
-    ),
+    ]),
   );
 }
 

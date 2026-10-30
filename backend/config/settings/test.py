@@ -14,3 +14,6 @@ STORAGES = {
 }
 REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {  # noqa: F405
     **REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"], "auth": "1000/min", "otp": "1000/min"}  # noqa: F405
+
+# Tests run at any hour: every meal of today is open (the lock has its own test, which sets this back).
+MEAL_OPEN_BEFORE_MINUTES = 24 * 60

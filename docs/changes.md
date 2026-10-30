@@ -18,6 +18,24 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-30 · Food, progress photos, app icon — phone test fixes (D-86)
+- **Pehle:**
+  - Sab food log karne ke baad bhi "404 kcal left" aata tha, kyunki target plan ke stored number se aata tha.
+  - Meal ka target editor me tha. Koi bhi meal time se pehle log ho sakta tha.
+  - Logged par ek tap se meal un-log ho jaata tha.
+  - Add photos me ek baar me ek hi photo, aur kisi bhi din ki photo server se delete ho sakti thi.
+  - Launcher icon chhota dikhta tha.
+- **Ab:**
+  - Target = coach ke assign kiye foods ka total. Meal target hataya.
+  - Meal apne time se 30 min pehle khulta hai. Usse pehle "Opens at 1:00 pm" dikhta hai, aur server bhi mana karta hai.
+  - Did you eat this? (photo ke saath), logged food badalne par confirm, Un-log confirm.
+  - Edit portions me Planned + Edited + Set to default. Eaten/skipped naam halke.
+  - Phone portrait only. Toast bottom bar ke theek upar.
+  - Add photos me Front/Side/Back tabs, ek Save. Apni photo sirf usi din change/delete.
+  - Icon blue background par bada TWV.
+- **Kyun:** Probid ka phone test (30 Oct).
+- **Updated:** backend nutrition services/views, checkins views, activity dashboard, settings, reminders, tests · app food, home, progress, main, app_shell, trainer meal editor, meal builder, Android icons · Decision D-86
+
 ### 2026-10-29 · Phase 5 — 3-dot menus, status bar, animations (D-85)
 - **Pehle:**
   - Meal aur Workout options ☰ icon se khulte the.

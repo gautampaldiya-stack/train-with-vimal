@@ -844,10 +844,7 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
     final opt = os.isEmpty ? null : os[oi];
     final items = opt == null ? <Map>[] : m.itemsOf(opt);
     final t = m.sum(items);
-    final tgt = _d(meal['kcal_target']);
-    final diff = t['kcal']! - tgt;
-    final ok = tgt == 0 || diff.abs() / tgt <= .05;
-    final badge = ok ? 'On target' : (diff > 0 ? '${kfmt(diff)} kcal over' : '${kfmt(-diff)} kcal under');
+    // No meal target or On target badge: a meal is what its foods add up to (Probid 2026-10-30).
     final head = Padding(
       padding: phone ? const EdgeInsets.fromLTRB(12, 12, 12, 8) : const EdgeInsets.fromLTRB(16, 14, 16, 10),
       child: Row(spacing: phone ? 10 : 12, children: [
@@ -855,10 +852,9 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
             CutText('${meal['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(15.5, W.w8)),
-            CutText('${mealTimeLabel(meal['time'])} · target ${kfmt(tgt)} kcal', maxLines: phone ? 2 : 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted)),
+            CutText('${mealTimeLabel(meal['time'])} · ${kfmt(t['kcal']!)} kcal', maxLines: phone ? 2 : 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted)),
           ]),
         ),
-        AppBadge(badge, tone: ok ? Tone.ok : Tone.warn, plain: true),
         if (_edit) Builder(builder: (b) => AppIconButton(AppIcons.dots, tooltip: 'Meal options', small: true, ghost: true, onPressed: () => _mealMenu(b, meal))),
       ]),
     );
@@ -898,7 +894,7 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
     final totk = Text.rich(
       TextSpan(children: [
         TextSpan(text: kfmt(t['kcal']!)),
-        TextSpan(text: ' / ${kfmt(tgt)} kcal', style: AppText.s(12, W.w6, color: AppColors.muted)),
+        TextSpan(text: ' kcal', style: AppText.s(12, W.w6, color: AppColors.muted)),
       ]),
       style: AppText.s(14, W.w8, tabular: true),
     );

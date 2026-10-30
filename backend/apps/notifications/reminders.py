@@ -91,6 +91,7 @@ def workout_reminders():
 @shared_task
 def meal_reminders():
     from apps.nutrition.models import MealDayState, MealPlanAssignment, meals_on
+    from apps.nutrition.services import meal_kcal
 
     local = _local_now()
     today = local.date()
@@ -109,7 +110,9 @@ def meal_reminders():
                     .exists():
                 continue
             if once(a.client, "meal", m.id, today):
-                notify(a.client, "meal_reminder", f"{m.name} time", f"{m.kcal_target} kcal planned. Tap to log it.",
+                # what the meal's foods add up to, not a separate meal target (Probid 2026-10-30)
+                kcal = meal_kcal(a.client, m, today)
+                notify(a.client, "meal_reminder", f"{m.name} time", f"{kcal:,} kcal planned. Tap to log it.",
                        data={"route": "/food"})
                 sent += 1
     return sent

@@ -119,6 +119,9 @@ MEDIA_URL = "media/"
 MEDIA_ROOT = Path(env("MEDIA_ROOT", default=str(BASE_DIR / "media")))
 # A single VPS without S3 serves uploads itself (deploy/README.md); with S3 leave it off.
 SERVE_MEDIA = env.bool("SERVE_MEDIA", default=False)
+
+# A planned meal of today can be logged, skipped or changed from this many minutes before its time (Probid 2026-10-30).
+MEAL_OPEN_BEFORE_MINUTES = env.int("MEAL_OPEN_BEFORE_MINUTES", default=30)
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},

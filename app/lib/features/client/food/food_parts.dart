@@ -6,6 +6,7 @@ import '../../../core/util/input_rules.dart';
 import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/tooltip.dart';
+import '../home/home_model.dart' show inNum;
 
 /// Pieces of the Food and Log food boards (`fd-*`, `nv-*`, `fl-*`).
 
@@ -160,7 +161,8 @@ class _NumStepperState extends State<NumStepper> {
 }
 
 /// `fd-pill`: Logged (green) / Next (blue) / Skipped, Missed (amber) / To log, Planned (grey).
-Widget fdPill(String t) {
+/// [small]: the per-food Eaten / Skipped tag on a meal's rows (Probid 2026-10-30: smaller than the meal's pill).
+Widget fdPill(String t, {bool small = false}) {
   final (bg, fg) = switch (t) {
     'Logged' => (AppColors.okBg, AppColors.okText),
     'Next' => (AppColors.infoBg, AppColors.infoText),
@@ -168,11 +170,11 @@ Widget fdPill(String t) {
     _ => (AppColors.sub, AppColors.text2),
   };
   return Container(
-    height: 22,
-    padding: const EdgeInsets.symmetric(horizontal: 8),
+    height: small ? 18 : 22,
+    padding: EdgeInsets.symmetric(horizontal: small ? 6 : 8),
     alignment: Alignment.center,
     decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(99)),
-    child: Text(t, style: AppText.s(11.5, W.w7, color: fg)),
+    child: Text(t, style: AppText.s(small ? 10 : 11.5, W.w7, color: fg)),
   );
 }
 
@@ -339,18 +341,40 @@ class FdChip extends StatelessWidget {
 }
 
 /// `fd-ptot`: a total line in a soft box.
+/// kcal · Protein · Carbs · Fat as four plain columns between two lines (Log food's food sheet, a meal's food
+/// sheet). Probid 2026-10-30: plain, no boxes.
+Widget fdMacroBoxes(List<double> m) => Container(
+  padding: const EdgeInsets.symmetric(vertical: 10),
+  decoration: const BoxDecoration(border: Border.symmetric(horizontal: BorderSide(color: AppColors.line))),
+  child: Row(children: [
+    for (final (i, (l, v)) in [('kcal', inNum(m[0])), ('Protein', '${m[1].round()} g'), ('Carbs', '${m[2].round()} g'), ('Fat', '${m[3].round()} g')].indexed)
+      Expanded(
+        child: Container(
+          decoration: BoxDecoration(border: i == 0 ? null : const Border(left: BorderSide(color: AppColors.line))),
+          child: Column(children: [
+            Text(v, style: AppText.s(15, W.w7)),
+            Text(l, style: AppText.s(11.5, W.w5, color: AppColors.muted)),
+          ]),
+        ),
+      ),
+  ]),
+);
+
+/// The total under Edit portions: a plain line, "Total" over the numbers, the change on the right (Probid 2026-10-30:
+/// simple, no coloured box).
 Widget fdTotal(String left, String right) => Container(
-  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-  decoration: BoxDecoration(
-    color: AppColors.caWebBg,
-    borderRadius: BorderRadius.circular(10),
-    border: Border.all(color: AppColors.line),
-  ),
+  padding: const EdgeInsets.only(top: 10),
+  decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
   child: Row(
     spacing: 8,
     children: [
-      Expanded(child: Text(left, style: AppText.s(12.5, W.w7))),
-      Text(right, style: AppText.s(12.5, W.w7, color: AppColors.accentText)),
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+          Text('Total', style: AppText.s(12, W.w6, color: AppColors.muted)),
+          Text(left, style: AppText.s(13.5, W.w7)),
+        ]),
+      ),
+      Text(right, style: AppText.s(12.5, W.w6, color: AppColors.text2)),
     ],
   ),
 );

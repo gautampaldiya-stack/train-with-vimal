@@ -603,5 +603,13 @@ class MyPhotoView(APIView):
 
     def delete(self, request):
         pid = request.query_params.get("id")
-        get_object_or_404(ProgressPhoto, id=pid, photo_set__client=request.user).delete()
+        p = get_object_or_404(ProgressPhoto.objects.select_related("photo_set"), id=pid, photo_set__client=request.user)
+        # Her own photos change on the day they were added only; check-in photos only through the check-in
+        # (Probid 2026-10-30).
+        if p.photo_set.submission_id or p.photo_set.date != timezone.localdate():
+            raise serializers.ValidationError({"id": ["Photos can be changed only on the day they were added."]})
+        set_ = p.photo_set
+        p.delete()
+        if not set_.photos.exists():
+            set_.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

@@ -372,6 +372,7 @@ class ClientHomeView(APIView):
         reply = (Submission.objects.filter(client=u).exclude(reply="").filter(reviewed_at__isnull=False)
                  .select_related("reviewed_by").order_by("-reviewed_at").first())
         meals = [{"id": m["id"], "name": m["name"], "time": m["time"], "pill": m["pill"],
+                  "opens_at": m.get("opens_at"),
                   "foods": ", ".join(x["name"] for x in m.get("items", [])), "kcal": m.get("kcal", 0),
                   **{k: round(sum(x[k] for x in m.get("items", [])), 1) for k in ("protein", "carbs", "fat")}}
                  for m in day["meals"]]

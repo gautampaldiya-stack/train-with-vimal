@@ -657,6 +657,8 @@ class MyMealActionView(APIView):
         today = timezone.localdate()
         if op in ("portions", "swap", "option") and day < today - timedelta(days=1):
             raise serializers.ValidationError("Swaps and portions only apply to today.")
+        if op not in ("unlog", "unskip", "photo"):  # undo and photos only touch what was already logged
+            services.check_meal_open(meal, day)
         plan = mp.followed
         if op == "eat":
             photo = request.data.get("photo")  # optional: a picture of the meal, as a data URL (works offline)

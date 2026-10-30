@@ -92,7 +92,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `me/history/` | GET | MyHistoryView | Progress → History: every day's logs, newest first. ?range=week/month/3months &type=workout/meal/checkin/ |
 | `me/measurements/` | GET, POST | MyMeasurementViewSet |  |
 | `me/measurements/<pk>/` | DELETE | MyMeasurementViewSet |  |
-| `me/photos/` | POST, DELETE | MyPhotoView | Add photos sheet: one pose into today's set (a file, or a data URL so it can wait in the offline outbox). |
+| `me/photos/` | POST, DELETE | MyPhotoView | Add photos sheet: one pose into today's set (a file, or a data URL so it can wait in the offline outbox). DELETE `?id=` only for her own set on the day it was added (D-86); the empty set goes too. |
 | `me/progress/` | GET | MyProgressView | Progress tab: goal, every weigh-in (the app filters 4 wk / 12 wk / 6 mo / All), measurements, lifts, |
 | `me/submissions/` | POST | MySubmissionViewSet | Send a check-in or a requested form (`request` = the form request id; a filled request is refused). Edit answers; View what you sent. Delete (Undo) puts a requested form back to To fill. |
 | `me/submissions/<pk>/` | GET, PATCH, DELETE | MySubmissionViewSet | Send a check-in or a requested form; Edit answers; View what you sent. |
@@ -266,7 +266,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `me/food-log/water/` | POST | MyFoodLogViewSet |  |
 | `me/food/` | GET | MyFoodView | Food tab (combined meal plan + nutrition): GET ?date=YYYY-MM-DD. |
 | `me/food/items/<int:item_id>/swaps/` | GET | MySwapOptionsView | Swap sheet for one planned food: approved swaps with match % and matched grams. |
-| `me/food/meals/<int:meal_id>/<str:op>/` | POST | MyMealActionView | POST /me/food/meals/<meal_id>/<op>/  op = eat / unlog / skip / unskip / item (`item`, `action` eat·skip·reset) / portions / swap / option / photo (replace or null) / photo_add (one more, max 4). Each meal carries `eaten` totals and `photos`; each food `state` and `edited` (D-83) |
+| `me/food/meals/<int:meal_id>/<str:op>/` | POST | MyMealActionView | POST /me/food/meals/<meal_id>/<op>/  op = eat / unlog / skip / unskip / item (`item`, `action` eat·skip·reset) / portions / swap / option / photo (replace or null) / photo_add (one more, max 4). Each meal carries `eaten` totals and `photos`; each food `state` and `edited` (D-83). Each meal also has `assigned` (planned totals) and `opens_at`; before `opens_at` (time − `MEAL_OPEN_BEFORE_MINUTES`, default 30) every op but unlog / unskip / photo is refused; the day target is the assigned foods' total (D-86) |
 | `me/foods/` | GET, POST | MyFoodSearchViewSet | Log food: search team foods + 'My foods'; create a custom food (saved to My foods). |
 | `me/foods/recent/` | GET | MyFoodSearchViewSet | Log food: search team foods + 'My foods'; create a custom food (saved to My foods). |
 | `meal-plans/` | GET, POST | MealPlanViewSet | Nutrition → Meal plans cards (`diet`, `search`, paginated): `can_edit`, `owner`, `meal_names`, `client_count` / `custom_count` (trainer: own clients only), `status`, `has_unpublished_changes`. |

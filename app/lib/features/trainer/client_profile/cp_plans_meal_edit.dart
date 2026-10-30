@@ -604,12 +604,11 @@ class _MealEditorState extends State<MealEditor> {
     );
   }
 
-  /// `.mb-meal`: icon, name, "8:00 am · target 450 kcal", ⋯; the foods; `Add food` and the meal's totals.
+  /// `.mb-meal`: icon, name, "8:00 am" (no meal target, Probid 2026-10-30), ⋯; the foods; `Add food` and the meal's totals.
   Widget _mealCard(int mi, bool side, bool macros, bool wrap) {
     final x = draft[mi];
     final its = items(x);
     final k = tot(its, 'kcal');
-    final tgt = _d(x['kcal_target']);
     final more = Builder(
       builder: (b) => AppIconButton(AppIcons.dots, tooltip: 'More actions', ghost: true, small: true, onPressed: () => showAppMenu(b, [
             MenuEntry('Rename meal', icon: AppIcons.edit, onTap: () => _rename(mi)),
@@ -635,7 +634,7 @@ class _MealEditorState extends State<MealEditor> {
                   onTap: () => _rename(mi),
                   builder: (_, h, _) => CutText('${x['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(15.5, W.w8, color: h ? AppColors.accentText : AppColors.text)),
                 ),
-                Text([mealTime(x['time']), if (tgt > 0) 'target ${_f.format(tgt.round())} kcal'].join(' · '), style: AppText.s(12.5, W.w6, color: AppColors.muted)),
+                Text(mealTime(x['time']), style: AppText.s(12.5, W.w6, color: AppColors.muted)),
               ]),
             ),
             more,
@@ -660,7 +659,7 @@ class _MealEditorState extends State<MealEditor> {
             Row(mainAxisSize: MainAxisSize.min, spacing: 12, children: [
               Text('P ${tot(its, 'protein').round()} g · C ${tot(its, 'carbs').round()} g · F ${tot(its, 'fat').round()} g', style: AppText.s(12, W.w6, color: AppColors.muted, tabular: true)),
               Text.rich(
-                TextSpan(text: _f.format(k.round()), children: [if (tgt > 0) TextSpan(text: ' / ${_f.format(tgt.round())} kcal', style: AppText.s(12, W.w6, color: AppColors.muted)) else const TextSpan(text: ' kcal')]),
+                TextSpan(text: _f.format(k.round()), children: const [TextSpan(text: ' kcal')]),
                 style: AppText.s(13.5, W.w8, tabular: true),
               ),
             ]),

@@ -43,6 +43,7 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   bool _mini = false;
+  double _barH = 0; // the phone bottom bar's height, for the toast
   // Pointer on the sidebar / on the edge button: the edge button only shows while either is true.
   bool _sideHover = false, _edgeHover = false;
 
@@ -117,13 +118,18 @@ class _AppShellState extends State<AppShell> {
     if (context.isPhone) {
       // Client: the bottom bar only on the main tabs; sub-pages and the workout logger have their own back button.
       final bar = !isClient || AppBack.isTab(widget.location, me.role);
+      // Toasts sit 10 above the bar, measured (it grows with the phone's bottom inset); the host adds that inset
+      // itself, so it is taken off here. Before, a fixed 75 left a gap that changed from phone to phone.
+      final inset = MediaQuery.paddingOf(context).bottom;
       return ToastOffset(
-        offset: bar ? 75 : 20,
+        offset: bar ? (_barH > 0 ? _barH - inset + 10 : 75) : 20,
         child: Scaffold(
           backgroundColor: isClient ? AppColors.caBg : AppColors.panel,
           // Client Home and the trainer dashboard have a blue hero that runs under the status bar, so they keep the top inset themselves.
           body: SafeArea(bottom: !bar, top: !(isClient ? widget.location == '/home' : me.role == Role.trainer && widget.location == '/dashboard'), child: widget.child),
-          bottomNavigationBar: bar ? _BottomBar(items: bottomFor(me.role), location: widget.location) : null,
+          bottomNavigationBar: bar
+              ? _Measure(onHeight: (h) => h != _barH ? setState(() => _barH = h) : null, child: _BottomBar(items: bottomFor(me.role), location: widget.location))
+              : null,
         ),
       );
     }
@@ -346,4 +352,20 @@ class _BottomBar extends StatelessWidget {
           ]),
         ),
       );
+}
+
+/// Reports its child's height after each layout.
+class _Measure extends StatelessWidget {
+  const _Measure({required this.onHeight, required this.child});
+  final void Function(double) onHeight;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final h = context.size?.height;
+      if (h != null && context.mounted) onHeight(h);
+    });
+    return child;
+  }
 }

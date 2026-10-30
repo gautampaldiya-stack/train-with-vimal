@@ -425,7 +425,9 @@ Future<void> showPortionsSheet(BuildContext context, FoodController c, FMeal m) 
     footerStretch: true,
     builder: (_) {
       final n = now();
-      final diff = (n[0] - m.kcal).round();
+      // Against what the coach assigned, not today's amounts.
+      final plan = m.items.fold(0.0, (a, i) => a + (i.plannedQuantity > 0 ? i.at(i.plannedQuantity)[0] : i.at(i.quantity)[0]));
+      final diff = (n[0] - plan).round();
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
         Column(children: [
           for (final (k, it) in m.items.indexed)
@@ -434,13 +436,27 @@ Future<void> showPortionsSheet(BuildContext context, FoodController c, FMeal m) 
               decoration: BoxDecoration(border: k == 0 ? null : const Border(top: BorderSide(color: AppColors.line))),
               child: Row(spacing: 10, children: [
                 Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(it.name, style: AppText.s(14, W.w7)),
-                    Builder(builder: (_) {
-                      final x = it.at(q.value[it.item]!);
-                      return Text('${inNum(x[0])} kcal · ${x[1].round()} g P', style: AppText.s(12, W.w4, color: AppColors.muted));
-                    }),
-                  ]),
+                  // Name with Edited beside it, kcal, then what the coach assigned and Set to default (Probid 2026-10-30).
+                  child: Builder(builder: (_) {
+                    final x = it.at(q.value[it.item]!);
+                    final edited = it.plannedQuantity > 0 && q.value[it.item]! != it.plannedQuantity;
+                    return Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+                      Row(children: [
+                        Flexible(child: CutText(it.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w7))),
+                        if (edited) fdTag('Edited'),
+                      ]),
+                      Text('${inNum(x[0])} kcal · ${x[1].round()} g P', style: AppText.s(12, W.w4, color: AppColors.muted)),
+                      Row(spacing: 10, children: [
+                        Flexible(child: CutText('Planned ${amtOf(it.unit, it.plannedQuantity)}', maxLines: 1, style: AppText.s(12, W.w6, color: AppColors.text2))),
+                        if (edited)
+                          Hover(
+                            onTap: () => q.value = {...q.value, it.item: it.plannedQuantity},
+                            builder: (_, h, _) => Text('Set to default',
+                                style: AppText.s(12, W.w7, color: AppColors.accentText).copyWith(decoration: h ? TextDecoration.underline : null)),
+                          ),
+                      ]),
+                    ]);
+                  }),
                 ),
                 NumStepper(
                   value: q.value[it.item]!,
@@ -455,7 +471,7 @@ Future<void> showPortionsSheet(BuildContext context, FoodController c, FMeal m) 
               ]),
             ),
         ]),
-        fdTotal(mline(n[0], n[1], n[2], n[3]), diff == 0 ? 'Same as now' : '${diff > 0 ? '+' : '−'}${diff.abs()} kcal'),
+        fdTotal(mline(n[0], n[1], n[2], n[3]), diff == 0 ? 'Same as plan' : '${diff > 0 ? '+' : '−'}${diff.abs()} kcal vs plan'),
         fdCap('Calories and macros follow your portions. This changes today only.'),
       ]);
     },

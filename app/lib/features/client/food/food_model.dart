@@ -200,7 +200,7 @@ String amtOf(String unit, double q) {
   if (unit == 'g' || unit.isEmpty) return '${q.round()} g';
   if (unit == 'serving') return q == 1 ? '1 entry' : '$qs entries';
   final w = unit.replaceFirst(RegExp(r'^1 '), '');
-  const pl = {'piece': 'pieces', 'scoop': 'scoops', 'plate': 'plates', 'bowl': 'bowls', 'slice': 'slices', 'glass': 'glasses', 'egg white': 'egg whites', 'cube': 'cubes', 'cup': 'cups', 'katori': 'katoris'};
+  const pl = {'piece': 'pieces', 'scoop': 'scoops', 'plate': 'plates', 'bowl': 'bowls', 'slice': 'slices', 'glass': 'glasses', 'egg white': 'egg whites', 'cube': 'cubes', 'cup': 'cups', 'katori': 'katoris', 'handful': 'handfuls', 'tbsp': 'tbsp', 'tsp': 'tsp', 'roti': 'rotis', 'chapati': 'chapatis', 'idli': 'idlis', 'dosa': 'dosas', 'biscuit': 'biscuits', 'spoon': 'spoons', 'tablespoon': 'tablespoons', 'teaspoon': 'teaspoons', 'small bowl': 'small bowls', 'medium bowl': 'medium bowls', 'large bowl': 'large bowls'};
   return '$qs ${q == 1 ? w : pl[w] ?? w}';
 }
 
@@ -316,6 +316,13 @@ class FMeal {
   bool get logged => j['status'] == 'logged';
   bool get skipped => j['status'] == 'skipped';
   bool get open => !logged && !skipped;
+
+  /// When the meal can be logged, skipped or changed: its time minus 30 min (Probid 2026-10-30). The server says
+  /// it; before then every action is off and the card reads "Opens at 7:30 am".
+  DateTime? get opensAt => DateTime.tryParse('${j['opens_at']}')?.toLocal();
+  bool get locked => opensAt != null && DateTime.now().isBefore(opensAt!);
+  String get opensLine => 'Opens at ${fdClock(opensAt!)}';
+
   /// Meal total: the server's (from the unrounded item values, D-82) plus any change made on the phone since.
   List<double> get _total {
     final now = _sumItems();
@@ -368,6 +375,9 @@ class FMeal {
     if (e == null || !_sameEaten) return t;
     return [_n(e['kcal']), _n(e['protein']), _n(e['carbs']), _n(e['fat'])];
   }
+
+  /// What the coach assigned for this meal (planned portions, no swap): the "of" in "ate 446 of 259 kcal".
+  int get assignedKcal => (j['assigned'] as Map?)?['kcal'] is num ? ((j['assigned'] as Map)['kcal'] as num).round() : kcal;
 
   late final String _eaten0 = _eatenKey();
   String _eatenKey() => [for (final i in eatenItems) '${i.item}:${i.j['kcal']}'].join(',');

@@ -629,7 +629,10 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                 Text('${inNum(next.kcal)} kcal', style: AppText.s(12, W.w4, color: AppColors.muted)),
               ]),
             ),
-            chSm('Ate it', () => _eat(next), icon: AppIcons.check),
+            if (next.locked)
+              Text('Opens ${clock(next.opensAt!)}', style: AppText.s(12.5, W.w6, color: AppColors.muted))
+            else
+              chSm('Ate it', () => _eat(next), icon: AppIcons.check),
           ]),
         )
       else if (d.meals.isNotEmpty)

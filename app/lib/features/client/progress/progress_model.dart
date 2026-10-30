@@ -181,9 +181,16 @@ class PxSet {
       label = '${j['label'] ?? 'Progress photos'}',
       date = _d(j['date']),
       kg = _nn(j['weight_kg']),
+      fromCheckin = j['submission'] != null,
       photos = [for (final p in (j['photos'] as List? ?? const [])) PxPhoto((p as Map).cast<String, dynamic>())];
-  PxSet.local({required this.id, required this.label, required this.date, required this.kg, required this.photos});
+  PxSet.local({required this.id, required this.label, required this.date, required this.kg, required this.photos}) : fromCheckin = false;
   final String id, label;
+
+  /// Sent with a weekly check-in (those change only through the check-in).
+  final bool fromCheckin;
+
+  /// Photos she added herself can be changed or deleted on the day only, never after (Probid 2026-10-30).
+  bool editableOn(DateTime today) => !fromCheckin && DateUtils0.same(date, today);
   final DateTime date;
   final double? kg;
   final List<PxPhoto> photos;
@@ -350,8 +357,13 @@ class ProgressController extends ChangeNotifier {
     return r is Map ? r.cast<String, dynamic>() : null;
   }
 
-  Future<void> deletePhoto(int id) async {
-    await Services.outbox.enqueue('DELETE', 'me/photos/?id=$id', {}, tag: 'progress:photo');
+  Future<void> deletePhoto(int id) => deletePhotos([id]);
+
+  /// Takes photos off today's set (Undo, or Delete photo on today's own set; past sets cannot change).
+  Future<void> deletePhotos(List<int> ids) async {
+    for (final id in ids) {
+      await Services.outbox.enqueue('DELETE', 'me/photos/?id=$id', {}, tag: 'progress:photo');
+    }
     await load();
   }
 }

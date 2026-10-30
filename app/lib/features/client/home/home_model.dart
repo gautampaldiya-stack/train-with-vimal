@@ -196,6 +196,7 @@ class HomeMeal {
         name = '${j['name']}',
         time = '${j['time'] ?? ''}',
         pill = '${j['pill'] ?? ''}',
+        opensAt = DateTime.tryParse('${j['opens_at']}')?.toLocal(),
         foods = '${j['foods'] ?? ''}',
         kcal = _n(j['kcal']),
         protein = _n(j['protein']),
@@ -204,6 +205,10 @@ class HomeMeal {
   final int id;
   final String name, time, foods;
   String pill;
+
+  /// Before this the meal cannot be logged (30 min before its time, Probid 2026-10-30).
+  final DateTime? opensAt;
+  bool get locked => opensAt != null && DateTime.now().isBefore(opensAt!);
   final num kcal, protein, carbs, fat;
   bool get eaten => pill == 'logged';
   bool get open => pill != 'logged' && pill != 'skipped';

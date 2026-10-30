@@ -109,7 +109,12 @@ Future<void> showLogFoodSheet(BuildContext context, HomeController c, void Funct
               ChRow(first: i == 0, children: [
                 ChIcon(AppIcons.food, tone: m.eaten ? ChTone.green : ChTone.gray),
                 Expanded(child: ChTwoLine(m.foods, '${m.name}, ${mealTime(m.time)} · ${inNum(m.kcal)} kcal', size: 13.5)),
-                if (m.eaten) const ChOk('Logged') else if (m.open) chSm('Ate it', () => eat(m)),
+                if (m.eaten)
+                  const ChOk('Logged')
+                else if (m.open && m.locked)
+                  Text('Opens ${clock(m.opensAt!)}', style: AppText.s(12, W.w6, color: AppColors.muted))
+                else if (m.open)
+                  chSm('Ate it', () => eat(m)),
               ]),
           ]),
         ]),

@@ -109,3 +109,48 @@ def test_kcal_that_does_not_match_the_macros_is_logged(client_user, caplog):
                                                        "protein": 10, "carbs": 20, "fat": 5}, format="json")
     assert r.status_code == 201, r.content
     assert "Odd bar" in caplog.text and "165 kcal from 4P+4C+9F" in caplog.text  # 40 + 80 + 45 = 165
+
+
+def test_day_target_is_what_the_plan_assigns(client_user):
+    """Probid 2026-10-30: the target is the day's planned foods added up, so eating all of them leaves nothing."""
+    d = _day(client_user)
+    planned = sum(m["assigned"]["kcal"] for m in d["meals"])
+    assert abs(d["plan"]["kcal"] - planned) <= len(d["meals"])  # each meal rounded once
+    assert d["ring"]["target"] == d["plan"]["kcal"]
+    for m in d["meals"]:
+        _act(client_user, m, "eat")
+    d = _day(client_user)
+    off_plan = sum(e["kcal"] for e in d["log"] if e["source"] != "plan")
+    assert abs(d["ring"]["eaten"] - off_plan - d["ring"]["target"]) <= len(d["meals"])
+
+
+def test_assigned_stays_the_planned_amount_after_a_portion_change(client_user):
+    meal = _meal(client_user, n=1)
+    a = meal["items"][0]
+    before = meal["assigned"]["kcal"]
+    _, m = _act(client_user, meal, "portions", portions={str(a["item"]): a["planned_quantity"] * 2})
+    assert m["assigned"]["kcal"] == before and m["kcal"] > before  # "ate X of 259": the of stays what was assigned
+
+
+def test_a_meal_cannot_be_logged_before_it_opens(client_user, settings):
+    """Probid 2026-10-30: nothing before the meal's time; it opens 30 minutes before."""
+    from datetime import datetime, timedelta
+
+    from django.utils import timezone
+
+    from apps.nutrition.models import Meal
+
+    settings.MEAL_OPEN_BEFORE_MINUTES = 30
+    meal = _meal(client_user, n=1)
+    later = (timezone.localtime() + timedelta(hours=2)).time().replace(second=0, microsecond=0)
+    if later < timezone.localtime().time():  # past midnight: no "later today" to test with
+        return
+    Meal.objects.filter(id=meal["id"]).update(time=later)
+    r = client_user.post(f"/api/v1/me/food/meals/{meal['id']}/eat/", {"date": _today()}, format="json")
+    assert r.status_code == 400 and "opens at" in str(r.json()).lower()
+    m = next(x for x in _day(client_user)["meals"] if x["id"] == meal["id"])
+    opens = datetime.fromisoformat(m["opens_at"].replace("Z", "+00:00"))
+    assert abs((timezone.localtime(opens) - (timezone.localtime() + timedelta(hours=2) - timedelta(minutes=30))).total_seconds()) < 120
+    Meal.objects.filter(id=meal["id"]).update(time=(timezone.localtime() + timedelta(minutes=20)).time())
+    if (timezone.localtime() + timedelta(minutes=20)).date() == timezone.localdate():
+        _act(client_user, meal, "eat")  # 20 minutes before: open

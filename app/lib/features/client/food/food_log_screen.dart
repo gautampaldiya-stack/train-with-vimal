@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/services.dart';
+import '../../../app/shell/back_nav.dart' show BackIntercept;
 import '../../../core/api/api_error.dart';
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
@@ -85,6 +86,9 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
   // Added while offline (not in the day view yet)
   final List<FEntry> _pending = [];
 
+  /// Picked with + but not logged yet: Add N foods logs them all, back asks first (Probid 2026-10-30).
+  final List<_Sel> _sel = [];
+
   // Quick add
   final _qa = [0.0, 0.0, 0.0, 0.0];
   static const _qaSteps = [25.0, 1.0, 1.0, 1.0];
@@ -137,8 +141,9 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     if (_at != null) return _meal ?? 'Other time';
     if (_meal != null && _mealNames.contains(_meal)) return _meal!;
     final ms = day.data?.meals ?? const <FMeal>[];
-    final open = ms.where((m) => m.open).firstOrNull;
-    return open?.name ?? (ms.isNotEmpty ? ms.last.name : (_meal ?? 'Snack'));
+    // the first meal still open and not locked; else the latest one already open (logged), never a locked one
+    final open = ms.where((m) => m.open && !m.locked).firstOrNull ?? ms.where((m) => !m.locked).lastOrNull;
+    return open?.name ?? (ms.isNotEmpty ? ms.first.name : (_meal ?? 'Snack'));
   }
 
   /// Foods added to [name] today outside the plan's own rows.
@@ -224,7 +229,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
 
   // ─────────────────────────────── Writes
 
-  Future<void> _log(Map<String, dynamic> body, {required String title, required String sub}) async {
+  Future<FEntry?> _log(Map<String, dynamic> body, {required String title, required String sub, bool quiet = false}) async {
     final m = meal;
     final at = _at;
     final full = {
@@ -238,7 +243,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     try {
       final send = {...full}..removeWhere((k, _) => k.startsWith('_'));
       final r = await Services.outbox.enqueue('POST', 'me/food-log/', send, tag: 'food:log:add');
-      if (!mounted) return;
+      if (!mounted) return null;
       FEntry? added;
       if (r is Map) {
         final j = r.cast<String, dynamic>();
@@ -265,11 +270,72 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
       }
       setState(() {});
       final e = added;
+      if (quiet) return e;
       showToast(context, title, sub: sub, kind: ToastKind.ok, action: 'Undo', onAction: () => _remove(e, toast: false));
       await day.load();
+      return e;
     } on ApiError catch (e) {
       if (mounted) fdError(context, e);
+      if (quiet) rethrow;
+      return null;
     }
+  }
+
+  /// Add N foods: logs every picked food into [meal] at once, then back to the meal plan.
+  Future<void> _addSelected() async {
+    if (_sel.isEmpty) return;
+    final m = meal, picks = [..._sel];
+    final done = <FEntry>[];
+    try {
+      for (final x in picks) {
+        final e = await _log(x.body, title: x.name, sub: '', quiet: true);
+        if (e != null) done.add(e);
+        _sel.remove(x);
+      }
+    } on ApiError {
+      if (mounted) setState(() {});
+      return;
+    }
+    if (!mounted) return;
+    final k = picks.fold(0, (a, x) => a + x.kcal);
+    setState(() {});
+    showToast(context, picks.length == 1 ? '${picks.first.name} added to $m' : '${picks.length} foods added to $m',
+        sub: '+${inNum(k)} kcal${_offNow ? ' · marked off-plan' : ''}', kind: ToastKind.ok, action: 'Undo', onAction: () {
+      for (final e in done) {
+        _remove(e, toast: false);
+      }
+    });
+    await day.load();
+    if (mounted) context.go('/food');
+  }
+
+  /// Back from Log food: with foods picked but not added, ask first.
+  Future<bool> _leave() async {
+    if (_sel.isEmpty) {
+      context.go('/food');
+      return true;
+    }
+    final n = _sel.length, m = meal;
+    final go = await showAppSheet<String>(
+      context,
+      title: 'Add ${n == 1 ? _sel.first.name : '$n selected foods'} to $m?',
+      sub: 'You picked ${n == 1 ? 'it' : 'them'} but did not add ${n == 1 ? 'it' : 'them'} yet · +${inNum(_sel.fold(0, (a, x) => a + x.kcal))} kcal',
+      builder: (ctx) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
+        CaButton('Add to $m', icon: AppIcons.check, onPressed: () => Navigator.of(ctx).pop('add')),
+        Row(spacing: 8, children: [
+          Expanded(child: CaButton('Cancel', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop())),
+          Expanded(child: CaButton('Discard', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop('discard'))),
+        ]),
+      ]),
+    );
+    if (!mounted) return true;
+    if (go == 'add') {
+      await _addSelected();
+    } else if (go == 'discard') {
+      setState(_sel.clear);
+      context.go('/food');
+    }
+    return true;
   }
 
   Future<void> _remove(FEntry e, {bool toast = true}) async {
@@ -297,14 +363,23 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     final g = f.grams(u, q);
     final m = f.mac(g);
     final amt = u == null ? amtOf('g', q) : amtOf(u.name, q);
-    _log(
-      {'food': f.id, 'quantity': q, if (u != null) 'unit': u.id, 'name': f.name, '_kcal': m[0].round(), '_protein': m[1], 'unit_name': u?.name ?? 'g'},
-      title: '${f.name} added to $meal',
-      sub: '$amt · ${inNum(m[0])} kcal${_offNow ? ' · marked off-plan' : ''}',
-    );
+    setState(() {
+      _sel.removeWhere((x) => x.food == f.id);
+      _sel.add(_Sel(
+        name: f.name,
+        line: '$amt · ${inNum(m[0])} kcal · ${m[1].round()} g P',
+        kcal: m[0].round(),
+        food: f.id,
+        body: {'food': f.id, 'quantity': q, if (u != null) 'unit': u.id, 'name': f.name, '_kcal': m[0].round(), '_protein': m[1], 'unit_name': u?.name ?? 'g'},
+      ));
+    });
   }
 
   void _toggle(FdFood f) {
+    if (_sel.any((x) => x.food == f.id)) {
+      setState(() => _sel.removeWhere((x) => x.food == f.id));
+      return;
+    }
     final has = _added(meal).where((e) => '${e.j['food']}' == f.id).lastOrNull;
     if (has != null) {
       _remove(has);
@@ -319,27 +394,62 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
       return;
     }
     final v = [..._qa];
-    _log(
-      {'name': 'Quick add', 'kcal': v[0].round(), 'protein': v[1], 'carbs': v[2], 'fat': v[3]},
-      title: 'Quick add · ${inNum(v[0])} kcal to $meal',
-      sub: '${v[1].round()} g protein',
-    );
-    setState(() => _qa.setAll(0, [0, 0, 0, 0]));
+    setState(() {
+      _sel.add(_Sel(
+        name: 'Quick add',
+        line: '${inNum(v[0])} kcal · ${v[1].round()} g P',
+        kcal: v[0].round(),
+        body: {'name': 'Quick add', 'kcal': v[0].round(), 'protein': v[1], 'carbs': v[2], 'fat': v[3]},
+      ));
+      _qa.setAll(0, [0, 0, 0, 0]);
+    });
   }
 
   // ─────────────────────────────── Build
 
   @override
-  Widget build(BuildContext context) => context.isPhone ? _phone() : _web();
+  Widget build(BuildContext context) => BackIntercept(
+    onBack: () {
+      if (_sel.isEmpty) return false;
+      _leave();
+      return true;
+    },
+    // /food/log sits on top of /food in the router, so the phone's back pops this page itself: ask here too.
+    child: PopScope(
+      canPop: _sel.isEmpty,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _leave();
+      },
+      child: context.isPhone ? _phone() : _web(),
+    ),
+  );
 
-  Widget _phone() => SingleChildScrollView(
+  /// Picked foods: one tap adds them all to the meal.
+  Widget _addBtn() {
+    final k = _sel.fold(0, (a, x) => a + x.kcal);
+    return CaButton('Add ${_sel.length == 1 ? '1 food' : '${_sel.length} foods'} to $meal · +${inNum(k)} kcal', icon: AppIcons.check, onPressed: _addSelected);
+  }
+
+  Widget _phone() => Column(children: [
+    Expanded(child: _phoneScroll()),
+    if (_sel.isNotEmpty)
+      Container(
+        padding: EdgeInsets.fromLTRB(16, 10, 16, 10 + MediaQuery.paddingOf(context).bottom),
+        decoration: const BoxDecoration(color: AppColors.white, border: Border(top: BorderSide(color: AppColors.line))),
+        child: _addBtn(),
+      ),
+  ]);
+
+  Widget _phoneScroll() => SingleChildScrollView(
     keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
     padding: const EdgeInsets.fromLTRB(16, 6, 16, 20),
     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+      // What she added and Quick add first, the food list last, so Show all only grows the end of the page
+      // (Probid 2026-10-30).
       _top(),
-      ..._searchPart(),
       _addedCard(),
       _exCard(),
+      ..._searchPart(),
     ]),
   );
 
@@ -357,9 +467,9 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
         return SingleChildScrollView(
           child: frame(Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
             _top(),
-            ..._searchPart(),
             _addedCard(),
             _exCard(),
+            ..._searchPart(),
           ])),
         );
       }
@@ -386,7 +496,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
   );
 
   Widget _top() => Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
-    Padding(padding: const EdgeInsets.only(top: 2), child: CaIconBtn(AppIcons.chevronLeft, tooltip: 'Back to meal plan', onTap: () => context.go('/food'))),
+    Padding(padding: const EdgeInsets.only(top: 2), child: CaIconBtn(AppIcons.chevronLeft, tooltip: 'Back to meal plan', onTap: _leave)),
     Expanded(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('Log food', style: AppText.s(12, W.w6, color: AppColors.muted)),
@@ -419,6 +529,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     final add = _added(name, other: false);
     if (add.isNotEmpty) return '${inNum(add.fold(0, (a, e) => a + e.kcal))} kcal added now';
     final m = _mealOf(name);
+    if (m != null && m.open && m.locked) return '${m.opensLine} · you can add to it from then';
     return m == null ? 'Nothing added yet' : 'Plan: ${m.foods}';
   }
 
@@ -479,7 +590,16 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     );
   }
 
-  void _pickMeal(String n) => setState(() {
+  void _pickMeal(String n) {
+    final m = _mealOf(n);
+    if (m != null && m.open && m.locked) {
+      showToast(context, '$n ${m.opensLine.toLowerCase()}', sub: 'Pick another meal, or Other time for something eaten outside your meals.', kind: ToastKind.info);
+      return;
+    }
+    _setMeal(n);
+  }
+
+  void _setMeal(String n) => setState(() {
     _meal = n;
     _at = null;
   });
@@ -533,7 +653,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                 _at = at.value;
                 _meal = n.isEmpty ? 'Other time' : n;
               });
-              showToast(context, 'Adding to ${_meal!} · ${fdClock(at.value)}', sub: 'Tap + on a food to log it', kind: ToastKind.info);
+              showToast(context, 'Adding to ${_meal!} · ${fdClock(at.value)}', sub: 'Tap + on a food, then Add', kind: ToastKind.info);
             }),
           ),
         ]),
@@ -656,7 +776,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
             ),
           )
         else
-          for (final f in rows) _foodRow(f, added.any((e) => '${e.j['food']}' == f.id)),
+          for (final f in rows) _foodRow(f, _sel.any((x) => x.food == f.id) || added.any((e) => '${e.j['food']}' == f.id)),
         if (!showAll && _count > 8 && _error == null)
           _more('Show all $_count foods', () => setState(() => _all = true))
         else if (showAll && _hasNext && _error == null)
@@ -748,12 +868,33 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
         ),
         if (add.isNotEmpty) Text('+${inNum(k)} kcal', style: AppText.s(14, W.w8, color: AppColors.accentText)),
       ]),
-      if (add.isEmpty)
+      if (_sel.isNotEmpty) ...[
+        Text('SELECTED · NOT ADDED YET', style: AppText.s(11, W.w7, color: AppColors.muted, ls: .55)),
+        Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          for (final x in _sel)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
+              child: Row(spacing: 8, children: [
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    CutText(x.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
+                    Text(x.line, style: AppText.s(12, W.w4, color: AppColors.muted)),
+                  ]),
+                ),
+                CaIconBtn(AppIcons.close, tooltip: 'Remove', onTap: () => setState(() => _sel.remove(x))),
+              ]),
+            ),
+        ]),
+        if (!context.isPhone) _addBtn(),
+      ],
+      if (add.isEmpty && _sel.isEmpty)
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Text('Nothing added yet. Tap + on a food.', textAlign: TextAlign.center, style: AppText.s(13, W.w4, color: AppColors.muted)),
+          child: Text('Nothing added yet. Tap + on a food below.', textAlign: TextAlign.center, style: AppText.s(13, W.w4, color: AppColors.muted)),
         )
-      else ...[
+      else if (add.isNotEmpty) ...[
+        if (_sel.isNotEmpty) Text('ADDED', style: AppText.s(11, W.w7, color: AppColors.muted, ls: .55)),
         Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           for (final e in add)
             Container(
@@ -776,7 +917,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
               ]),
             ),
         ]),
-        CaButton('Done · back to meal plan', onPressed: () => context.go('/food')),
+        if (_sel.isEmpty) CaButton('Done · back to meal plan', onPressed: () => context.go('/food')),
       ],
     ]);
   }
@@ -899,23 +1040,11 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                 st.value = (unit: u, q: nq.toDouble());
               }),
           ]),
-          Row(spacing: 6, children: [
-            for (final (l, v) in [('kcal', inNum(m[0])), ('Protein', '${m[1].round()} g'), ('Carbs', '${m[2].round()} g'), ('Fat', '${m[3].round()} g')])
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                  decoration: BoxDecoration(color: AppColors.caWebBg, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.line)),
-                  child: Column(children: [
-                    Text(v, style: AppText.s(15, W.w8)),
-                    Text(l, style: AppText.s(11, W.w6, color: AppColors.muted)),
-                  ]),
-                ),
-              ),
-          ]),
+          fdMacroBoxes(m),
         ]);
       },
       footer: (ctx) => [
-        CaButton('Add to $meal', onPressed: () {
+        CaButton('Select', icon: AppIcons.check, onPressed: () {
           Navigator.of(ctx).pop();
           final s = st.value;
           _add(f, unit: s.unit, qty: s.q, useDefault: false);
@@ -973,7 +1102,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                 _tab = 'My foods';
                 _all = false;
                 _search();
-                showToast(context, '$n saved to My foods', sub: 'Tap + to log it', kind: ToastKind.ok);
+                showToast(context, '$n saved to My foods', sub: 'Tap + to pick it, then Add', kind: ToastKind.ok);
               } on ApiError catch (e) {
                 busy.value = false;
                 if (e.fields.containsKey('name')) {
@@ -1005,4 +1134,13 @@ class ChCardLite extends StatelessWidget {
     decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: gap, children: children),
   );
+}
+
+/// A food picked on Log food, waiting for Add N foods.
+class _Sel {
+  _Sel({required this.name, required this.line, required this.kcal, required this.body, this.food});
+  final String name, line;
+  final int kcal;
+  final Map<String, dynamic> body;
+  final String? food;
 }

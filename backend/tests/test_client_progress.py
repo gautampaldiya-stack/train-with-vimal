@@ -111,3 +111,31 @@ def test_checkin_measurement_answer_lands_on_progress(client_user, fresh_measure
     r = client_user.post("/api/v1/me/submissions/", {"form": f["id"], "answers": answers}, format="json")
     assert r.status_code == 201, r.content
     assert Measurement.objects.get(client__email="riya@example.com", date=timezone.localdate()).values["waist"] == 77.5
+
+
+def test_a_photo_can_be_changed_only_on_the_day_it_was_added(client_user):
+    """Probid 2026-10-30: today's own photos can be deleted or replaced today; an older set stays as it is."""
+    import base64
+    from datetime import timedelta
+    from io import BytesIO
+
+    from PIL import Image
+
+    from apps.checkins.models import PhotoSet, ProgressPhoto
+
+    buf = BytesIO()
+    Image.new("RGB", (8, 8), (200, 220, 250)).save(buf, "JPEG")
+    png = "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
+    p = client_user.post("/api/v1/me/photos/", {"pose": "back", "image": png}, format="json").json()
+    old = ProgressPhoto.objects.get(id=p["id"])
+    set_ = old.photo_set
+    set_.date = timezone.localdate() - timedelta(days=1)
+    set_.save(update_fields=["date"])
+    r = client_user.delete(f"/api/v1/me/photos/?id={old.id}")
+    assert r.status_code == 400 and r.json()["error"]["fields"]["id"] == ["Photos can be changed only on the day they were added."]
+    assert ProgressPhoto.objects.filter(id=old.id).exists()
+    # today: deleting the last photo takes the empty set off too
+    q = client_user.post("/api/v1/me/photos/", {"pose": "back", "image": png}, format="json").json()
+    today_set = ProgressPhoto.objects.get(id=q["id"]).photo_set_id
+    assert client_user.delete(f"/api/v1/me/photos/?id={q['id']}").status_code == 204
+    assert not PhotoSet.objects.filter(id=today_set).exists()

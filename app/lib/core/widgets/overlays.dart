@@ -249,10 +249,18 @@ Future<bool> confirmAction(BuildContext context,
     body: body,
     icon: icon,
     danger: danger,
-    actions: (ctx) => [
-      AppButton('Cancel', onPressed: () => Navigator.of(ctx).pop(false), expand: ctx.isPhone),
-      AppButton(confirm, kind: danger ? BtnKind.danger : BtnKind.primary, onPressed: () => Navigator.of(ctx).pop(true), expand: ctx.isPhone),
-    ],
+    // Phone sheet: Cancel and the action side by side, not stacked (Probid 2026-10-30).
+    actions: (ctx) => ctx.isPhone
+        ? [
+            Row(spacing: 8, children: [
+              Expanded(child: AppButton('Cancel', onPressed: () => Navigator.of(ctx).pop(false), expand: true)),
+              Expanded(child: AppButton(confirm, kind: danger ? BtnKind.danger : BtnKind.primary, onPressed: () => Navigator.of(ctx).pop(true), expand: true)),
+            ]),
+          ]
+        : [
+            AppButton('Cancel', onPressed: () => Navigator.of(ctx).pop(false)),
+            AppButton(confirm, kind: danger ? BtnKind.danger : BtnKind.primary, onPressed: () => Navigator.of(ctx).pop(true)),
+          ],
   );
   return r ?? false;
 }
@@ -558,7 +566,7 @@ class _ToastHostState extends State<ToastHost> {
                       key: ValueKey(_t),
                       valueListenable: ToastHost.shiftX,
                       builder: (context, dx, child) => Transform.translate(offset: Offset(wide ? 0 : dx, 0), child: child),
-                      child: Align(alignment: wide ? Alignment.centerRight : Alignment.center, child: _ToastBox(t: _t!, close: hide, wide: wide)),
+                      child: Align(alignment: wide ? Alignment.centerRight : Alignment.center, child: _SwipeAway(onGone: hide, child: _ToastBox(t: _t!, close: hide, wide: wide))),
                     ),
             ),
           ),
@@ -617,6 +625,51 @@ class _ToastOffsetState extends State<ToastOffset> {
 
   @override
   Widget build(BuildContext context) => widget.child;
+}
+
+/// A toast follows the finger sideways and goes when swiped far or fast enough (Probid 2026-10-30); a short drag
+/// springs back.
+class _SwipeAway extends StatefulWidget {
+  const _SwipeAway({required this.onGone, required this.child});
+  final VoidCallback onGone;
+  final Widget child;
+  @override
+  State<_SwipeAway> createState() => _SwipeAwayState();
+}
+
+class _SwipeAwayState extends State<_SwipeAway> {
+  double _dx = 0;
+  bool _drag = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final w = MediaQuery.sizeOf(context).width;
+    return GestureDetector(
+      onHorizontalDragStart: (_) => setState(() => _drag = true),
+      onHorizontalDragUpdate: (d) => setState(() => _dx += d.delta.dx),
+      onHorizontalDragEnd: (d) {
+        final v = d.primaryVelocity ?? 0;
+        if (_dx.abs() > 90 || v.abs() > 700) {
+          setState(() {
+            _drag = false;
+            _dx = (_dx == 0 ? v : _dx).sign * w;
+          });
+          widget.onGone();
+        } else {
+          setState(() {
+            _drag = false;
+            _dx = 0;
+          });
+        }
+      },
+      child: AnimatedSlide(
+        duration: _drag ? Duration.zero : Motion.of(context, Motion.short),
+        curve: Motion.curve,
+        offset: Offset(w == 0 ? 0 : _dx / w, 0),
+        child: Opacity(opacity: (1 - _dx.abs() / (w * .8)).clamp(0.0, 1.0), child: widget.child),
+      ),
+    );
+  }
 }
 
 class _ToastBox extends StatelessWidget {
