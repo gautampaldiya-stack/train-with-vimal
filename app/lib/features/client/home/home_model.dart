@@ -105,6 +105,13 @@ class HomeController extends ChangeNotifier {
     _send('me/supplements/${s.id}/', {'taken': taken});
   }
 
+  /// Edit home → Done: the new card order shows at once and is saved (offline too).
+  void saveLayout(List<String> layout) {
+    data!.json['layout'] = layout;
+    changed();
+    Services.outbox.enqueue('PATCH', 'me/home/layout/', {'layout': layout}, tag: 'home:layout').then((_) {}, onError: (_) => unawaited(load()));
+  }
+
   void readAll() {
     for (final n in data!.notices) {
       n.read = true;
@@ -181,10 +188,11 @@ class HomeDay {
         minutes = _n(j['minutes']).toInt(),
         exercises = [for (final e in (j['exercises'] as List? ?? const [])) (name: '${e['name']}', line: '${e['line']}')],
         done = j['done'] == true,
+        inProgress = j['in_progress'] == true,
         exercisesDone = _n(j['exercises_done']).toInt(),
         doneLine = '${j['done_line'] ?? ''}';
   final DateTime date;
-  final bool today, rest, cardio, done;
+  final bool today, rest, cardio, done, inProgress;
   final String name, doneLine;
   final int minutes, exercisesDone;
   final List<({String name, String line})> exercises;
@@ -327,4 +335,46 @@ String since(DateTime t, {bool ago = false}) {
   if (d.inHours < 24) return '${d.inHours} h$tail';
   if (d.inDays < 7) return DateFormat('EEE').format(t);
   return DateFormat('d MMM').format(t);
+}
+
+
+/// Home cards that Edit home can order or remove (`layout` from `GET me/home/`, D-87), and their names.
+const homeCards = {
+  'workout': 'Workout',
+  'checkin': 'Daily check-in',
+  'food': 'Food',
+  'progress': 'Progress summary',
+  'adherence': 'Weekly adherence',
+  'water': 'Water',
+  'rest_timer': 'Rest timer',
+};
+
+/// (now, change since start) of one Progress summary number; null when not measured.
+typedef HomeStat = ({double now, double? change});
+
+extension HomeExtras on HomeData {
+  List<String> get layout => [for (final k in (json['layout'] as List? ?? homeCards.keys)) if (homeCards.containsKey('$k')) '$k'];
+
+  /// Workout day id of today (Start workout opens the logger with it).
+  int? get dayId => ((json['workout'] as Map?)?['day'] as Map?)?['id'] as int?;
+
+  /// Today's daily check-in: (form id, sent, sent at, questions); null when the coach has no daily form.
+  ({String form, bool sent, DateTime? at, int questions, String due})? get checkin {
+    final c = json['checkin_today'] as Map?;
+    if (c == null) return null;
+    return (form: '${c['form']}', sent: c['status'] == 'sent', at: _dateOr(c['sent_at']), questions: _n(c['questions']).toInt(), due: '${c['due'] ?? ''}');
+  }
+
+  ({int done, int days}) get adherence {
+    final a = json['adherence_week'] as Map?;
+    return (done: _n(a?['done']).toInt(), days: _n(a?['days'] ?? 1).toInt());
+  }
+
+  HomeStat? stat(String key) {
+    final m = (json['progress_summary'] as Map?)?[key] as Map?;
+    if (m == null) return null;
+    return (now: _n(m['now']).toDouble(), change: m['change'] == null ? null : _n(m['change']).toDouble());
+  }
+
+  String get strengthName => '${(((json['progress_summary'] as Map?)?['strength'] as Map?)?['name']) ?? ''}';
 }

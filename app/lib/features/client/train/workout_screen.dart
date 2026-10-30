@@ -453,7 +453,6 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   Widget _box(WorkoutController c, TrainEx e, {required bool web}) {
     final xs = c.sets[c.cur];
     final cols = c.cols(e);
-    final allBw = xs.isNotEmpty && xs.every((s) => s.bw);
     var wn = 0;
     final rows = <Widget>[];
     for (final (k, s) in xs.indexed) {
@@ -466,14 +465,6 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       padding: web ? const EdgeInsets.symmetric(horizontal: 16, vertical: 14) : const EdgeInsets.all(12),
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.line)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
-        if (e.kind == ExKind.weight)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Row(children: [
-              Expanded(child: Text('Load', style: AppText.s(13.5, W.w7))),
-              _seg(['kg', 'Bodyweight'], allBw ? 1 : 0, (i) => c.loadAll(bw: i == 1)),
-            ]),
-          ),
         Row(spacing: 6, children: _grid(c, e, web: web, cells: [
           _th('Set', left: true),
           if (web) _th('Prev', left: true),
@@ -525,25 +516,6 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   Widget _th(String t, {bool left = false}) => Padding(
         padding: EdgeInsets.only(left: left ? 4 : 0),
         child: Text(t, textAlign: left ? TextAlign.left : TextAlign.center, maxLines: 1, style: AppText.s(11, W.w7, color: AppColors.muted)),
-      );
-
-  /// `cl-seg`: kg / Bodyweight.
-  Widget _seg(List<String> labels, int on, ValueChanged<int> pick) => Container(
-        padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(10)),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          for (final (i, l) in labels.indexed)
-            Hover(
-              onTap: () => pick(i),
-              builder: (_, h, _) => Container(
-                height: 30,
-                alignment: Alignment.center,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(color: i == on ? AppColors.text : null, borderRadius: BorderRadius.circular(8)),
-                child: Text(l, style: AppText.s(13, i == on ? W.w7 : W.w6, color: i == on ? AppColors.white : (h ? AppColors.text : AppColors.text2))),
-              ),
-            ),
-        ]),
       );
 
   Widget _setRow(WorkoutController c, TrainEx e, int k, WSet s, String lbl, String prev, {required bool web}) {

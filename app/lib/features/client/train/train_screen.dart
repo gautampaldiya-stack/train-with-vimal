@@ -222,10 +222,8 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
       mark = Container(width: size, height: size, decoration: const BoxDecoration(color: AppColors.sub, shape: BoxShape.circle));
     }
     final wdText = Text(wd, style: AppText.s(web ? 11 : 10.5, W.w6, color: today ? AppColors.sessText : AppColors.muted));
-    final name = CutText(rest ? 'Rest' : (day.name.isEmpty ? '—' : day.name),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: AppText.s(web ? (narrow ? 12 : 12.5) : 10, rest ? W.w6 : W.w7, color: rest && !today ? AppColors.muted : ink));
+    // Weekday and date only (D-87): no workout names in the strip; the mark shows rest / done.
+    final name = Text('${day.date.day}', maxLines: 1, style: AppText.s(web ? (narrow ? 13 : 14) : 13, W.w7, color: rest && !today ? AppColors.muted : ink));
     return Semantics(
       button: true,
       selected: today,

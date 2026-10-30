@@ -402,6 +402,7 @@ Send a form to one client later or again and again (Client profile → Send a fo
 | `activity_level` | CharField |  |
 | `injury_areas` | JSONField |  |
 | `conditions` | JSONField |  |
+| `home_layout` | JSONField | Home card order from Edit home; empty = default (D-87) |
 | `doctor_ok` | BooleanField | optional |
 | `past_injuries` | TextField |  |
 | `surgeries` | TextField |  |

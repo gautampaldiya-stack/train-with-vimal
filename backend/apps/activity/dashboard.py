@@ -315,6 +315,78 @@ def home_week(client, today, pa):
     return out
 
 
+# Client Home cards that "Edit home" can order or remove (D-87). Habits, Supplements and Coming up stay fixed.
+HOME_CARDS = ["workout", "checkin", "food", "progress", "adherence", "water", "rest_timer"]
+
+
+def home_layout(cp):
+    """The client's card order: their saved one (unknown ids dropped), else every card in the default order."""
+    saved = [k for k in (cp.home_layout or []) if k in HOME_CARDS]
+    return saved if cp.home_layout else list(HOME_CARDS)
+
+
+def checkin_today(client, today):
+    """Home Check-in card: today's daily check-in, pending or sent; None when there is no daily form."""
+    from apps.checkins.models import Form, Question, Submission
+
+    form = Form.objects.filter(type="daily", status="published").first()
+    if not form:
+        return None
+    sub = Submission.objects.filter(client=client, form_type="daily", date=today).order_by("-created_at").first()
+    return {"form": form.id, "status": "sent" if sub else "pending", "sent_at": sub.created_at if sub else None,
+            "questions": Question.objects.filter(form=form, is_removed=False).count(), "due": "9:00 pm"}
+
+
+def adherence_week(client, today):
+    """Home Weekly adherence: daily check-ins sent Monday to today ("4 of 6 days")."""
+    from apps.checkins.models import Submission
+
+    monday = today - timedelta(days=today.weekday())
+    done = (Submission.objects.filter(client=client, form_type="daily", date__range=(monday, today))
+            .values("date").distinct().count())
+    return {"done": done, "days": today.weekday() + 1}
+
+
+def progress_summary(client):
+    """Home Progress summary since the start: weight, body fat, best lift and muscle mass (only when measured).
+    Same numbers as the Progress page (`progress_page`)."""
+    from apps.checkins.models import Measurement
+    from apps.checkins.progress import _lifts, progress_page_weights
+
+    start, now = progress_page_weights(client)
+    out = {"weight": None, "body_fat": None, "strength": None, "muscle": None}
+    if now is not None:
+        out["weight"] = {"now": now, "change": round(now - start, 1) if start is not None else None}
+    ms = list(Measurement.objects.filter(client=client).order_by("date").values_list("values", flat=True))
+    for key, name in (("body_fat", "body_fat"), ("muscle_mass", "muscle")):
+        vals = [float(v[key]) for v in ms if v.get(key) is not None]
+        if vals:
+            out[name] = {"now": vals[-1], "change": round(vals[-1] - vals[0], 1)}
+    lift = next(iter(_lifts(client, limit=1)), None)
+    if lift:
+        out["strength"] = {"name": lift["name"], "now": lift["best"]["kg"],
+                           "change": round(lift["best"]["kg"] - lift["started"]["kg"], 1)}
+    return out
+
+
+class HomeLayoutView(APIView):
+    """Edit home → Done: `PATCH me/home/layout/ {"layout": [...]}` saves the card order (an empty list = default)."""
+
+    permission_classes = [IsClient]
+
+    def patch(self, request):
+        layout = request.data.get("layout")
+        if not isinstance(layout, list) or any(not isinstance(k, str) for k in layout):
+            raise serializers.ValidationError({"layout": ["Send the card ids as a list."]})
+        bad = [k for k in layout if k not in HOME_CARDS]
+        if bad:
+            raise serializers.ValidationError({"layout": [f"Unknown card: {', '.join(bad)}."]})
+        cp = request.user.client_profile
+        cp.home_layout = list(dict.fromkeys(layout))
+        cp.save(update_fields=["home_layout", "updated_at"])
+        return Response({"layout": home_layout(cp)})
+
+
 class ClientHomeView(APIView):
     permission_classes = [IsClient]
 
@@ -400,6 +472,10 @@ class ClientHomeView(APIView):
                          "read": n.read_at is not None, "event": n.event, "data": n.data} for n in notices],
             "unread": Notification.objects.filter(recipient=u, in_app=True, read_at__isnull=True).count(),
             "trainer": _person(cp.trainer) if cp.trainer else None,
+            "layout": home_layout(cp),
+            "checkin_today": checkin_today(u, today),
+            "adherence_week": adherence_week(u, today),
+            "progress_summary": progress_summary(u),
             "trainer_note": {"by": _person(reply.reviewed_by) if reply.reviewed_by else None, "body": reply.reply,
                              "at": reply.reviewed_at} if reply else None,
         })

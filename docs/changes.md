@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-30 · Phase 6: Home cards aur Train strip (D-87)
+- **Pehle:** Home ke cards ka order fix tha; Workout card me puri exercise list; Train strip me workout ke naam; logger me kg / Bodyweight tabs.
+- **Ab:** Home pe hi "Edit home": cards drag karo, ✕ se hatao, Add card se wapas lao, Done (DB me save, har device pe same). Naye cards: Daily check-in, Progress summary, Weekly adherence, Rest timer (sirf web). Workout card me ek button Start / Continue. Train strip me sirf din + date. Logger ka Load switch hata.
+- **Kyun:** Batch 1 Phase 6, Probid ne plan OK kiya.
+- **Updated:** backend activity/dashboard.py, clients home_layout (migration 0008), app home_screen/home_model, train_screen, workout_screen/model, tests · Decision D-87
+
 ### 2026-10-30 · Roti "1 piece / 238 kcal" checked (D-86)
 - **Pehle:** Phone test me roti "1 piece" ke saath 238 kcal (2 roti) dikhi. Client activity detail me Amount "2 1 piece" aata tha.
 - **Ab:** Database sahi hai: 2 × "1 piece" (40 g) = 80 g = 238 kcal. Food page, item sheet aur log sab "2 pieces" dikhate hain. Activity detail ab bhi "2 pieces" likhta hai (`name_label`).

@@ -76,6 +76,8 @@ class ClientProfile(TimeStampedModel):
     activity_level = models.CharField(max_length=12, blank=True, default="")
     injury_areas = models.JSONField(default=list, blank=True)  # knee, lower_back… or ["none"]
     conditions = models.JSONField(default=list, blank=True)  # diabetes, thyroid… or ["none"]
+    # Client Home card order from "Edit home" (D-87): ["workout", "checkin", ...]; empty = the default order.
+    home_layout = models.JSONField(default=list, blank=True)
     doctor_ok = models.BooleanField(null=True, blank=True)
     past_injuries = models.TextField(blank=True, default="", max_length=2000)
     surgeries = models.TextField(blank=True, default="", max_length=2000)

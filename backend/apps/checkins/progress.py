@@ -110,6 +110,15 @@ def _adherence(client, today):
     return out
 
 
+def progress_page_weights(client):
+    """Start and current body weight as the Progress page shows them (kg, or None)."""
+    cp = client.client_profile
+    first = WeightLog.objects.filter(client=client).order_by("date").first()
+    last = WeightLog.objects.filter(client=client).order_by("-date").first()
+    start = cp.start_weight_kg if cp.start_weight_kg is not None else getattr(first, "weight_kg", None)
+    return _f(start), _f(last.weight_kg) if last else None
+
+
 def progress_page(client, request=None):
     from .serializers import PhotoSetSerializer
 

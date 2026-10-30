@@ -13,5 +13,6 @@ urlpatterns = [
     path("dashboard/trainer/activity/", dashboard.TrainerActivityView.as_view(), name="dashboard-trainer-activity"),
     path("dashboard/dismiss/", dashboard.DismissView.as_view(), name="dashboard-dismiss"),
     path("me/home/", dashboard.ClientHomeView.as_view(), name="my-home"),
+    path("me/home/layout/", dashboard.HomeLayoutView.as_view(), name="my-home-layout"),
     *router.urls,
 ]

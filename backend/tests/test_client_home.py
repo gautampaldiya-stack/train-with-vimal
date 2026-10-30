@@ -80,3 +80,42 @@ def test_habits_page_week_grid(client_user):
     past = date.fromisoformat(wk["start"]).toordinal() - 7
     r = client_user.get("/api/v1/me/habits/", {"date": date.fromordinal(past).isoformat()})
     assert date.fromisoformat(r.json()["week"]["start"]).toordinal() == past
+
+
+def test_home_layout_saves_and_refuses_unknown_cards(client_user):
+    assert _home(client_user)["layout"][:3] == ["workout", "checkin", "food"]
+    r = client_user.patch("/api/v1/me/home/layout/", {"layout": ["food", "workout", "food"]}, format="json")
+    assert r.status_code == 200 and r.json()["layout"] == ["food", "workout"]
+    assert _home(client_user)["layout"] == ["food", "workout"]
+    r = client_user.patch("/api/v1/me/home/layout/", {"layout": ["food", "bananas"]}, format="json")
+    assert r.status_code == 400 and "layout" in r.json()["error"]["fields"]
+    client_user.patch("/api/v1/me/home/layout/", {"layout": []}, format="json")
+    assert "water" in _home(client_user)["layout"]
+
+
+def test_home_adherence_counts_daily_checkins_this_week(client_user):
+    from datetime import timedelta
+
+    from apps.accounts.models import User
+    from apps.checkins.models import Form, Submission
+
+    riya = User.objects.get(email="riya@example.com")
+    today = timezone.localdate()
+    monday = today - timedelta(days=today.weekday())
+    form = Form.objects.filter(type="daily", status="published").first()
+    Submission.objects.filter(client=riya, form_type="daily", date__gte=monday).delete()
+    for i in range(today.weekday() + 1):
+        if i != 1:
+            Submission.objects.create(form=form, form_type="daily", client=riya, date=monday + timedelta(days=i))
+    d = _home(client_user)
+    assert d["adherence_week"] == {"done": today.weekday() + (0 if today.weekday() >= 1 else 1), "days": today.weekday() + 1}
+    assert d["checkin_today"]["status"] == "sent" and d["checkin_today"]["form"] == str(form.id)
+
+
+def test_home_progress_summary_matches_the_progress_page(client_user):
+    p = client_user.get("/api/v1/me/progress/").json()
+    s = _home(client_user)["progress_summary"]
+    assert s["weight"]["now"] == p["now"]["kg"]
+    assert s["weight"]["change"] == round(p["now"]["kg"] - p["start"]["kg"], 1)
+    if p["lifts"]:
+        assert s["strength"]["now"] == max(l["best"]["kg"] for l in p["lifts"][:1])

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -11,6 +13,7 @@ import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
+import '../train/workout_model.dart';
 import 'home_model.dart';
 import 'home_parts.dart';
 import 'home_sheets.dart';
@@ -27,6 +30,9 @@ class ClientHomeScreen extends StatefulWidget {
 class _ClientHomeScreenState extends State<ClientHomeScreen> {
   final c = HomeController();
   int? _day; // picked day in the week strip; null = today
+
+  /// Edit home (D-87): the card order being edited, null outside edit mode. Cards move only in edit mode.
+  List<String>? _edit;
 
   @override
   void initState() {
@@ -171,15 +177,190 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     );
   }
 
-  List<Widget> _phoneCards(HomeData d) => [
-            _workout(d),
-            _waterCard(d),
-            _food(d),
-            _habits(d),
-            if (_dueSupps(d).isNotEmpty) _supps(d),
-            ?_coach(d),
-            if (d.coming.isNotEmpty) ...[const ChSection('Coming up'), _coming(d)],
-          ];
+  List<Widget> _phoneCards(HomeData d) => _edit != null
+      ? [_editor(d, web: false)]
+      : [
+          for (final k in d.layout) ?_card(k, d, web: false),
+          _habits(d),
+          if (_dueSupps(d).isNotEmpty) _supps(d),
+          ?_coach(d),
+          if (d.coming.isNotEmpty) ...[const ChSection('Coming up'), _coming(d)],
+          _editBtn(d),
+        ];
+
+  // ─────────────────────────────── Edit home (D-87): the cards in the client's order, drag to move
+
+  /// One card of the layout, or null when it is off for this client (no daily form, or no rest running on web).
+  /// The Rest timer card is web only.
+  Widget? _card(String k, HomeData d, {required bool web, bool editing = false}) => switch (k) {
+        'workout' => _workout(d),
+        'checkin' => d.checkin == null ? null : _checkinCard(d),
+        'food' => _food(d),
+        'progress' => _progressCard(d),
+        'adherence' => _adherenceCard(d),
+        'water' => _waterCard(d),
+        'rest_timer' => !web ? null : (editing ? _restCard(null) : _liveRest()),
+        _ => null,
+      };
+
+  /// The cards Edit home can show on this device (no Rest timer on the phone, no Check-in without a daily form).
+  bool _fits(String k, HomeData d, bool web) => (k != 'rest_timer' || web) && (k != 'checkin' || d.checkin != null);
+
+  Widget _editBtn(HomeData d) => Center(
+        child: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: CaButton('Edit home', kind: CaBtnKind.out, expand: false, icon: AppIcons.edit, onPressed: () => setState(() => _edit = [...d.layout])),
+        ),
+      );
+
+  Widget _editor(HomeData d, {required bool web}) {
+    final order = _edit!.where((k) => _fits(k, d, web)).toList();
+    final off = [for (final k in homeCards.keys) if (!_edit!.contains(k) && _fits(k, d, web)) k];
+    List<Widget> actions() => [
+          CaButton('Cancel', kind: CaBtnKind.out, expand: false, onPressed: () => setState(() => _edit = null)),
+          CaButton('Done', expand: false, onPressed: () {
+            final l = _edit!;
+            setState(() => _edit = null);
+            c.saveLayout(l);
+            showToast(context, 'Home saved', sub: 'Your cards show in this order on every device', kind: ToastKind.ok);
+          }),
+        ];
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+      Container(
+        padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+        decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
+        child: Row(spacing: 8, children: [
+          Expanded(child: ChTwoLine('Edit home', 'Drag a card to move it, ✕ to remove it')),
+          ...actions(),
+        ]),
+      ),
+      ReorderableListView(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        buildDefaultDragHandles: false,
+        proxyDecorator: (child, _, _) => Material(color: Colors.transparent, child: child),
+        onReorderItem: (a, to) => setState(() {
+          final k = order[a];
+          final l = [...order]..removeAt(a)..insert(to, k);
+          _edit = [...l, ..._edit!.where((x) => !l.contains(x))];
+        }),
+        children: [
+          for (final (i, k) in order.indexed)
+            Padding(
+              key: ValueKey(k),
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Container(
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.accent, width: 1.5)),
+                padding: const EdgeInsets.all(4),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  Row(children: [
+                    ReorderableDragStartListener(
+                      index: i,
+                      child: const MouseRegion(
+                        cursor: SystemMouseCursors.grab,
+                        child: Padding(padding: EdgeInsets.all(8), child: AppIcon(AppIcons.drag, size: 18, color: AppColors.muted)),
+                      ),
+                    ),
+                    Expanded(child: Text(homeCards[k]!, style: AppText.s(13, W.w7, color: AppColors.text2))),
+                    CaIconBtn(AppIcons.close, tooltip: 'Remove ${homeCards[k]}', onTap: () => setState(() => _edit!.remove(k))),
+                  ]),
+                  IgnorePointer(child: Opacity(opacity: .75, child: _card(k, d, web: web, editing: true) ?? const SizedBox.shrink())),
+                ]),
+              ),
+            ),
+        ],
+      ),
+      if (off.isNotEmpty)
+        Builder(
+          builder: (bc) => CaButton('Add card', kind: CaBtnKind.out, icon: AppIcons.plus, onPressed: () => showActionSheet(bc, title: 'Add card', [
+            for (final k in off) MenuEntry(homeCards[k]!, icon: AppIcons.plus, onTap: () => setState(() => _edit!.add(k))),
+          ])),
+        ),
+      // Done and Cancel at the end too, so a long list needs no scroll back up.
+      Row(mainAxisAlignment: MainAxisAlignment.end, spacing: 8, children: actions()),
+    ]);
+  }
+
+  // ─────────────────────────────── Check-in, Progress summary, Weekly adherence, Rest timer (D-87)
+
+  Widget _checkinCard(HomeData d) {
+    final ci = d.checkin!;
+    return ChCard(children: [
+      ChHead(
+        lead: ChIcon(AppIcons.clipboard, tone: ci.sent ? ChTone.green : ChTone.amber),
+        title: 'Daily check-in',
+        sub: ci.sent
+            ? 'Sent ✓${ci.at == null ? '' : ' · ${clock(ci.at!)}'}'
+            : 'Not filled yet · ${ci.questions} question${ci.questions == 1 ? '' : 's'}${ci.due.isEmpty ? '' : ' · by ${ci.due}'}',
+      ),
+      if (!ci.sent) CaButton('Fill now', icon: AppIcons.edit, onPressed: () => context.go('/checkins/daily')),
+    ]);
+  }
+
+  String _sign(double v, String unit) => '${v > 0 ? '+' : v < 0 ? '−' : '±'}${_one(v.abs())}$unit';
+  String _one(double v) => v == v.roundToDouble() ? '${v.round()}' : v.toStringAsFixed(1);
+
+  Widget _progressCard(HomeData d) {
+    final w = d.stat('weight'), f = d.stat('body_fat'), s = d.stat('strength'), m = d.stat('muscle');
+    Widget cell(String label, HomeStat? v, String unit, {bool upGood = false}) {
+      final ch = v?.change;
+      final good = ch == null || ch == 0 ? null : (ch > 0) == upGood;
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+        Text(label, style: AppText.s(12, W.w6, color: AppColors.muted)),
+        Text(v == null ? '–' : '${_one(v.now)}$unit', style: AppText.s(18, W.w8)),
+        Text(ch == null ? (v == null ? 'Not measured yet' : 'Since start') : '${_sign(ch, unit)} since start',
+            style: AppText.s(12, W.w6, color: good == null ? AppColors.muted : (good ? AppColors.okText : AppColors.badText))),
+      ]);
+    }
+
+    final cells = [
+      cell('Weight', w, ' kg'),
+      cell('Body fat', f, '%'),
+      cell(s == null ? 'Strength' : d.strengthName, s, ' kg', upGood: true),
+      if (m != null) cell('Muscle mass', m, ' kg', upGood: true),
+    ];
+    return ChCard(children: [
+      ChHead(
+        lead: const ChIcon(AppIcons.trendUp, tone: ChTone.blue),
+        title: 'Progress',
+        sub: 'Since your start date',
+        action: chSm('Open', () => context.go('/progress')),
+      ),
+      for (var i = 0; i < cells.length; i += 2)
+        Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 12, children: [
+          Expanded(child: cells[i]),
+          Expanded(child: i + 1 < cells.length ? cells[i + 1] : const SizedBox.shrink()),
+        ]),
+    ]);
+  }
+
+  Widget _adherenceCard(HomeData d) {
+    final a = d.adherence;
+    return ChCard(children: [
+      ChHead(lead: const ChIcon(AppIcons.checkCircle, tone: ChTone.green), title: 'Weekly adherence', sub: 'Progress of this week till now'),
+      Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, spacing: 6, children: [
+        Text('${a.done} of ${a.days}', style: AppText.s(26, W.w8, ls: -0.5)),
+        Text('day${a.days == 1 ? '' : 's'} checked in', style: AppText.s(13, W.w6, color: AppColors.muted)),
+      ]),
+      ChBar(a.days == 0 ? 0 : a.done / a.days, color: AppColors.okSolid),
+    ]);
+  }
+
+  /// Web only: shows while a rest runs in the workout (it hides when the rest is over).
+  Widget _liveRest() => ValueListenableBuilder(
+        valueListenable: WorkoutController.liveRest,
+        builder: (_, r, _) => r == null ? const SizedBox.shrink() : _RestTicker(ends: r.ends, builder: (left) => left <= 0 ? const SizedBox.shrink() : _restCard((left, r.next, r.route))),
+      );
+
+  Widget _restCard((int, String, String)? r) => ChCard(children: [
+        ChHead(
+          lead: const ChIcon(AppIcons.clock, tone: ChTone.blue),
+          title: 'Rest timer',
+          sub: r == null ? 'Shows while a rest is running' : 'Next: ${r.$2}',
+          action: r == null ? null : chSm('Back to workout', () => context.go(r.$3)),
+        ),
+        if (r != null) Text('${r.$1 ~/ 60}:${(r.$1 % 60).toString().padLeft(2, '0')}', style: AppText.s(30, W.w8, ls: -0.6)),
+      ]);
 
   Widget _web(HomeData d) => CaWeb(
         web: true,
@@ -193,17 +374,25 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 1080),
                 child: LayoutBuilder(builder: (context, box) {
+                  if (_edit != null) {
+                    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 18, children: [
+                      _top(d, web: true),
+                      Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 560), child: _editor(d, web: true))),
+                    ]);
+                  }
+                  // The layout cards alternate between the two columns, in the client's order.
+                  final cards = [for (final k in d.layout) ?_card(k, d, web: true)];
                   final left = [
                     _week(d, web: true),
-                    _workout(d),
-                    _waterCard(d),
+                    for (final (i, w) in cards.indexed) if (i.isEven) w,
                     if (d.coming.isNotEmpty) ...[const ChSection('Coming up'), _coming(d)],
                   ];
                   final right = [
-                    _food(d),
+                    for (final (i, w) in cards.indexed) if (i.isOdd) w,
                     _habits(d),
                     if (_dueSupps(d).isNotEmpty) _supps(d),
                     ?_coach(d),
+                    _editBtn(d),
                   ];
                   final two = box.maxWidth >= 680;
                   return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 18, children: [
@@ -215,9 +404,10 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                       ])
                     else
                       Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [
-                        ...left.take(3),
-                        ...right,
-                        ...left.skip(3),
+                        _week(d, web: true),
+                        ...cards,
+                        ...right.skip(cards.length ~/ 2),
+                        if (d.coming.isNotEmpty) ...[const ChSection('Coming up'), _coming(d)],
                       ]),
                   ]);
                 }),
@@ -416,27 +606,6 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     ));
 
     final body = <Widget>[];
-    final showList = !day.rest && (!past || !day.done);
-    if (showList) {
-      body.add(Padding(
-        padding: const EdgeInsets.only(top: 4),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          for (final (i, e) in day.exercises.take(4).indexed) _exRow(i, e, today ? day.exercisesDone : -1),
-          if (n > 4)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Hover(
-                onTap: () => showWorkoutPreview(context, day),
-                builder: (_, h, _) => Padding(
-                  padding: const EdgeInsets.only(top: 10, bottom: 2),
-                  child: Text('+ ${n - 4} more',
-                      style: AppText.s(13, W.w7, color: AppColors.accentText).copyWith(decoration: h ? TextDecoration.underline : null, decorationColor: AppColors.accentText)),
-                ),
-              ),
-            ),
-        ]),
-      ));
-    }
     if (day.rest) {
       body.add(Padding(
         padding: const EdgeInsets.only(top: 10),
@@ -473,17 +642,12 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
         child: ChNote(icon: AppIcons.checkCircle, bg: AppColors.okBg, fg: AppColors.okText, child: Text(day.doneLine, style: AppText.s(13, W.w7, color: AppColors.okText))),
       ));
     } else if (today && !day.rest) {
-      final k = day.exercisesDone.clamp(0, n);
+      // One button (D-87): Continue once a workout has started, else Start opens the logger on today's workout.
+      final going = day.inProgress || day.exercisesDone > 0;
       body.add(Padding(
         padding: const EdgeInsets.only(top: 12),
-        child: Row(spacing: 10, children: [
-          Expanded(child: ChBar(n == 0 ? 0 : k / n, color: AppColors.okSolid)),
-          Text('$k of $n done', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
-        ]),
-      ));
-      body.add(Padding(
-        padding: const EdgeInsets.only(top: 10),
-        child: CaButton(k > 0 ? 'Continue workout' : 'Start workout', icon: AppIcons.play, onPressed: () => context.go('/train')),
+        child: CaButton(going ? 'Continue workout' : 'Start workout', icon: AppIcons.play,
+            onPressed: () => context.go(going ? '/train/workout' : '/train/workout?start=${d.dayId ?? ''}')),
       ));
     } else if (future && !day.rest) {
       body.add(Padding(
@@ -497,25 +661,6 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         ...kids,
         if (body.isNotEmpty) Padding(padding: const EdgeInsets.fromLTRB(14, 0, 14, 14), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: body)),
-      ]),
-    );
-  }
-
-  Widget _exRow(int i, ({String name, String line}) e, int done) {
-    final on = done >= 0 && i < done, next = done >= 0 && i == done;
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 9),
-      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
-      child: Row(spacing: 11, children: [
-        Container(
-          width: 26,
-          height: 26,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(color: on ? AppColors.okBg : (next ? AppColors.accent : AppColors.sub), borderRadius: BorderRadius.circular(8)),
-          child: Text('${i + 1}', style: AppText.s(12, W.w8, color: on ? AppColors.okText : (next ? AppColors.white : AppColors.text2))),
-        ),
-        Expanded(child: ChTwoLine(e.name, e.line, titleStyle: AppText.s(14, W.w7, color: on ? AppColors.muted : AppColors.text))),
-        if (on) const AppIcon(AppIcons.check, size: 18, color: AppColors.okSolid, stroke: 2.6),
       ]),
     );
   }
@@ -809,4 +954,33 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     }
     return ChCard(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4), gap: 0, children: rows);
   }
+}
+
+
+/// Counts down to [ends] once a second (the web Home Rest timer card).
+class _RestTicker extends StatefulWidget {
+  const _RestTicker({required this.ends, required this.builder});
+  final DateTime ends;
+  final Widget Function(int left) builder;
+  @override
+  State<_RestTicker> createState() => _RestTickerState();
+}
+
+class _RestTickerState extends State<_RestTicker> {
+  Timer? _t;
+
+  @override
+  void initState() {
+    super.initState();
+    _t = Timer.periodic(const Duration(seconds: 1), (_) => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _t?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(widget.ends.difference(DateTime.now()).inSeconds);
 }

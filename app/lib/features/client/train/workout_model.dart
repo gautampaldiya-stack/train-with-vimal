@@ -138,6 +138,23 @@ class WorkoutController extends ChangeNotifier {
   bool ready = false;
   String? failed;
 
+  /// The rest running now, for the web Home Rest timer card (D-87): when it ends, what is next and the workout's
+  /// route. Null when no rest runs (or it is paused).
+  static final liveRest = ValueNotifier<({DateTime ends, String next, String route})?>(null);
+
+  @override
+  void notifyListeners() {
+    final live = rest > 0 && !restPaused && !finished && id != null;
+    final v = liveRest.value;
+    if (!live) {
+      if (v != null) liveRest.value = null;
+    } else {
+      final ends = DateTime.now().add(Duration(seconds: rest));
+      if (v == null || (v.ends.difference(ends).inSeconds).abs() > 2) liveRest.value = (ends: ends, next: nextUp, route: '/train/workout');
+    }
+    super.notifyListeners();
+  }
+
   // rest timer
   int rest = 0, restMax = 0, restUsed = 0;
   bool restPaused = false, restOpen = false;
