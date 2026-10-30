@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -54,6 +56,18 @@ class _AppShellState extends State<AppShell> {
       if (mounted) setState(() => _mini = p.getBool('twv.sideMini') ?? false);
     });
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadCounts()); // not during build: it notifies the badges
+    // A change saved offline that the server refused later: say so, it is not kept (before it went silently).
+    _refused = Services.outbox.results.where((r) => r.late && r.error != null && !r.error!.offline).listen((r) {
+      if (mounted) showToast(context, 'A change you made offline was not saved', sub: r.error!.message, kind: ToastKind.err);
+    });
+  }
+
+  StreamSubscription? _refused;
+
+  @override
+  void dispose() {
+    _refused?.cancel();
+    super.dispose();
   }
 
   /// The trainer's Check-ins badge (and the admin's Approvals badge) shows on every page (board TrainerMoreMobile), not only after

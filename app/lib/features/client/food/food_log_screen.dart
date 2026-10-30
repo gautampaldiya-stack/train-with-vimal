@@ -108,12 +108,19 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     day.addListener(_onDay);
     day.start();
     _search();
+    Services.outbox.online.addListener(_onOnline);
+  }
+
+  /// Back online: a list that failed to load offline loads again.
+  void _onOnline() {
+    if (Services.outbox.online.value && _error != null && mounted) _search();
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
     day.removeListener(_onDay);
+    Services.outbox.online.removeListener(_onOnline);
     day.dispose();
     _q.dispose();
     super.dispose();

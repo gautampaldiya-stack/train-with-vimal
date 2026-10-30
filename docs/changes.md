@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-30 · Offline food taps are kept and synced (D-86)
+- **Pehle:** Offline me food pe "Ate this" dabaya to row kuch der baad "Not logged yet" ho jaati thi. Wajah: kisi aur sync (pani) ke baad app server ka purana din le aata tha, aur queue se baad me aaya jawab chhod deta tha. Server ne koi queued change mana kiya to chupchaap hat jaata tha.
+- **Ab:** Jab tak meal ke changes queue me hain, Food screen apna dikhaya hua din rakhti hai (reload aur app dobara kholne par bhi, cache me). Queue se baad me aaya jawab screen par lagta hai. Mana kiya hua offline change toast me dikhta hai. Log food ki list net aate hi dobara load hoti hai.
+- **Kyun:** Probid ke phone test me Curd ka log kho gaya tha.
+- **Updated:** app core/offline/outbox.dart, app_shell.dart, food_model.dart, food_log_screen.dart · Decision D-86
+
 ### 2026-10-30 · Food, progress photos, app icon — phone test fixes (D-86)
 - **Pehle:**
   - Sab food log karne ke baad bhi "404 kcal left" aata tha, kyunki target plan ke stored number se aata tha.

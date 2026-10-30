@@ -13,7 +13,21 @@ class FoodController extends ChangeNotifier {
   FoodController() {
     // Something sent from another page (Log food, Home): show it here too.
     _results = Services.outbox.results.listen((r) {
-      if (r.error == null && data != null && !r.tag.startsWith('food:day')) load();
+      if (data == null) return;
+      if (!r.tag.startsWith('food:day')) {
+        if (r.error == null) load();
+        return;
+      }
+      // A meal write saved offline went through later (or was refused): show the server's day now. Before, a late
+      // answer was dropped and the screen kept an older day (Probid's phone test, 2026-10-30: Curd stayed "Not logged
+      // yet" after the phone was back online).
+      if (!r.late) return; // the write that queued it is still waiting and handles the answer itself
+      final j = r.data;
+      if (r.error == null && j is Map && DateUtils0.same(DateTime.parse('${j['date']}'), day)) {
+        _apply(j.cast<String, dynamic>());
+      } else {
+        load();
+      }
     });
   }
 
@@ -48,12 +62,23 @@ class FoodController extends ChangeNotifier {
     await load();
   }
 
+  /// The server's day, unless meal writes made on the phone are still waiting to go: then the screen keeps
+  /// showing them (a reload while offline brought the old day back and the tap looked lost).
+  Future<void> _apply(Map<String, dynamic> j) async {
+    if (data != null && await Services.outbox.hasPending('food:day')) return;
+    if (DateUtils0.same(DateTime.parse('${j['date']}'), today)) unawaited(Services.cache.write(_cacheKey, j));
+    data = FoodDay(j);
+    error = null;
+    notifyListeners();
+  }
+
   Future<void> load() async {
     final n = ++_seq;
     final d = day;
     try {
       final j = await Services.api.get<Map<String, dynamic>>('me/food/', query: {'date': ymd(d)});
       if (n != _seq) return;
+      if (DateUtils0.same(d, today) && data != null && DateUtils0.same(data!.date, d) && await Services.outbox.hasPending('food:day')) return;
       if (DateUtils0.same(d, today)) unawaited(Services.cache.write(_cacheKey, j));
       data = FoodDay(j);
       error = null;
@@ -122,9 +147,10 @@ class FoodController extends ChangeNotifier {
     try {
       final r = await Services.outbox.enqueue('POST', 'me/food/meals/${m.id}/$op/', {...body, 'date': ymd(d.date)}, tag: 'food:day:$op');
       if (r is Map && DateUtils0.same(DateTime.parse('${r['date']}'), day)) {
-        data = FoodDay(r.cast<String, dynamic>());
-        if (DateUtils0.same(data!.date, today)) unawaited(Services.cache.write(_cacheKey, r));
-        notifyListeners();
+        await _apply(r.cast<String, dynamic>());
+      } else if (r == null && DateUtils0.same(d.date, today)) {
+        // Saved for later: keep what the screen shows when the app opens again offline.
+        unawaited(Services.cache.write(_cacheKey, d.j));
       }
     } on ApiError {
       await load(); // the server said no: show its day again

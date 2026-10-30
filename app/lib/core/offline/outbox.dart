@@ -20,6 +20,9 @@ class Outbox {
   final online = ValueNotifier<bool>(true);
   StreamSubscription? _sub;
   bool _flushing = false;
+
+  /// Queued writes whose caller is still waiting for the answer (see [enqueue]).
+  final _waiting = <int>{};
   Timer? _retry;
 
   /// Listeners get each answer the server sends for a queued item (for screens to refresh).
@@ -55,6 +58,7 @@ class Outbox {
       'tries': 0,
     };
     final id = await _store.add(db, item);
+    _waiting.add(id);
     await _count();
     final completer = Completer<dynamic>();
     late StreamSubscription s;
@@ -63,6 +67,7 @@ class Outbox {
       if (!completer.isCompleted) completer.complete(r.error == null ? r.data : Future.error(r.error!));
     });
     await flush();
+    _waiting.remove(id);
     if (!completer.isCompleted) {
       s.cancel();
       return null; // saved offline, will sync later
@@ -82,7 +87,8 @@ class Outbox {
         try {
           final res = await api.send('${v['method']}', '${v['path']}', v['data'], '${v['key']}');
           await _store.record(rec.key).delete(db);
-          _done.add(OutboxResult(rec.key, '${v['tag']}', res, null));
+          online.value = true; // the server answered, so we are back
+          _done.add(OutboxResult(rec.key, '${v['tag']}', res, null, late: !_waiting.contains(rec.key)));
         } on ApiError catch (e) {
           if (e.offline || (e.status ?? 0) >= 500 || e.status == 401) {
             online.value = !e.offline ? online.value : false;
@@ -93,7 +99,7 @@ class Outbox {
           }
           // The server said no (validation, 404, 409): drop it so the queue keeps moving, tell the screen.
           await _store.record(rec.key).delete(db);
-          _done.add(OutboxResult(rec.key, '${v['tag']}', null, e));
+          _done.add(OutboxResult(rec.key, '${v['tag']}', null, e, late: !_waiting.contains(rec.key)));
         }
       }
     } finally {
@@ -104,6 +110,12 @@ class Outbox {
 
   Future<void> _count() async => pending.value = await _store.count(await LocalDb.open());
 
+  /// Writes still waiting to go whose tag starts with [prefix] (a screen keeps what it showed until they are sent).
+  Future<bool> hasPending(String prefix) async {
+    final rows = await _store.find(await LocalDb.open());
+    return rows.any((r) => '${r.value['tag']}'.startsWith(prefix));
+  }
+
   Future<void> clear() async {
     await _store.delete(await LocalDb.open());
     await _count();
@@ -111,8 +123,12 @@ class Outbox {
 }
 
 class OutboxResult {
-  OutboxResult(this.id, this.tag, this.data, this.error);
+  OutboxResult(this.id, this.tag, this.data, this.error, {this.late = false});
   final int id;
+
+  /// Sent after the screen that queued it had moved on (saved offline, or left from an earlier run): nobody is
+  /// waiting for this answer, so a refusal has to be shown by whoever listens.
+  final bool late;
   final String tag;
   final dynamic data;
   final ApiError? error;
