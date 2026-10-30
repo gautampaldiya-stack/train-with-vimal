@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-30 · Roti "1 piece / 238 kcal" checked (D-86)
+- **Pehle:** Phone test me roti "1 piece" ke saath 238 kcal (2 roti) dikhi. Client activity detail me Amount "2 1 piece" aata tha.
+- **Ab:** Database sahi hai: 2 × "1 piece" (40 g) = 80 g = 238 kcal. Food page, item sheet aur log sab "2 pieces" dikhate hain. Activity detail ab bhi "2 pieces" likhta hai (`name_label`).
+- **Kyun:** Unit ka naam hi "1 piece" hai; jo jagah sirf unit ka naam dikhati thi wahan quantity chhoot jaati thi.
+- **Updated:** backend nutrition/swaps.py, clients/account.py, tests/test_unit_labels.py · Decision D-86
+
 ### 2026-10-30 · Offline food taps are kept and synced (D-86)
 - **Pehle:** Offline me food pe "Ate this" dabaya to row kuch der baad "Not logged yet" ho jaati thi. Wajah: kisi aur sync (pani) ke baad app server ka purana din le aata tha, aur queue se baad me aaya jawab chhod deta tha. Server ne koi queued change mana kiya to chupchaap hat jaata tha.
 - **Ab:** Jab tak meal ke changes queue me hain, Food screen apna dikhaya hua din rakhti hai (reload aur app dobara kholne par bhi, cache me). Queue se baad me aaya jawab screen par lagta hai. Mana kiya hua offline change toast me dikhta hai. Log food ki list net aate hi dobara load hoti hai.

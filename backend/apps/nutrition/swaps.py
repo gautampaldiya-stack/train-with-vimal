@@ -85,10 +85,15 @@ def friendly_qty(q):
 
 def portion_label(quantity, unit):
     """'½ katori', '1½ katori', '2 pieces', '150 g' (never '0.5 × 1 katori'). Same as the app's `portionText`."""
+    return name_label(quantity, unit.name if unit is not None else None)
+
+
+def name_label(quantity, unit_name):
+    """portion_label from a stored unit name (FoodLogEntry.unit_name): 2 of '1 piece' → '2 pieces', not '2 1 piece'."""
     q = float(quantity)
-    if unit is None:
+    if not unit_name or unit_name.strip() == "g":
         return f"{q:g} g"
-    name = unit.name.strip()
+    name = unit_name.strip()
     if not name.startswith("1 "):
         return name if q == 1 else f"{friendly_qty(q)} × {name}"
     noun = name[2:].strip()

@@ -17,6 +17,7 @@ from django.core.files.storage import default_storage
 from django.utils import timezone
 
 from apps.common.utils import dfmt
+from apps.nutrition.swaps import name_label
 
 log = logging.getLogger(__name__)
 
@@ -251,7 +252,7 @@ def my_activity(client, kind="All"):
         for e in food:
             if e.source != "plan" or not e.meal_id:
                 add("Food", e.logged_at, "food", "green", f"Logged {e.name}", f"{e.meal_name} · {show_kcal(e.kcal):,} kcal",
-                    [["Food", e.name], ["Amount", f"{float(e.quantity):g} {e.unit_name}"], ["Calories", f"{show_kcal(e.kcal):,} kcal"],
+                    [["Food", e.name], ["Amount", name_label(e.quantity, e.unit_name)], ["Calories", f"{show_kcal(e.kcal):,} kcal"],
                      ["Protein", f"{show_g(e.protein):g} g"]], "/food", "Open meal plan", day=e.date)
 
     if kind in ("All", "Check-ins"):
