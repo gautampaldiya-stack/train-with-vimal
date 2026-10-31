@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../../app/unread.dart';
 import '../../../core/icons/app_icons.dart';
@@ -14,6 +15,7 @@ import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
 import '../train/workout_model.dart';
+import '../progress/progress_parts.dart';
 import 'home_model.dart';
 import 'home_parts.dart';
 import 'home_sheets.dart';
@@ -297,28 +299,86 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     ]);
   }
 
-  String _sign(double v, String unit) => '${v > 0 ? '+' : v < 0 ? '−' : '±'}${_one(v.abs())}$unit';
+  String _sign(num v, String unit) => '${v > 0 ? '+' : v < 0 ? '−' : '±'}${_one(v.abs().toDouble())}$unit';
   String _one(double v) => v == v.roundToDouble() ? '${v.round()}' : v.toStringAsFixed(1);
+  double _d(dynamic v) => v is num ? v.toDouble() : double.tryParse('$v') ?? 0;
+  String _since(dynamic v) => v == null ? 'start' : DateFormat('d MMM').format(DateTime.parse('$v'));
 
+  int _ptab = 0;
+
+  /// Progress card (D-87): tabs Weight · Body fat · Muscle · Strength, each since the start, with where it comes from.
   Widget _progressCard(HomeData d) {
-    final w = d.stat('weight'), f = d.stat('body_fat'), s = d.stat('strength'), m = d.stat('muscle');
-    Widget cell(String label, HomeStat? v, String unit, {bool upGood = false}) {
-      final ch = v?.change;
-      final good = ch == null || ch == 0 ? null : (ch > 0) == upGood;
-      return Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-        Text(label, style: AppText.s(12, W.w6, color: AppColors.muted)),
-        Text(v == null ? '–' : '${_one(v.now)}$unit', style: AppText.s(18, W.w8)),
-        Text(ch == null ? (v == null ? 'Not measured yet' : 'Since start') : '${_sign(ch, unit)} since start',
-            style: AppText.s(12, W.w6, color: good == null ? AppColors.muted : (good ? AppColors.okText : AppColors.badText))),
-      ]);
-    }
+    const tabs = ['Weight', 'Body fat', 'Muscle', 'Strength'];
+    Widget big(String v, String? change, bool? good) => Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, spacing: 8, children: [
+          Text(v, style: AppText.s(28, W.w8, ls: -0.5)),
+          if (change != null)
+            Flexible(child: Text(change, style: AppText.s(13, W.w7, color: good == null ? AppColors.muted : (good ? AppColors.okText : AppColors.badText)))),
+        ]);
+    Widget line(String t) => Text(t, style: AppText.s(13, W.w4, color: AppColors.text2));
+    Widget from(String t) => Text(t, style: AppText.s(11.5, W.w4, color: AppColors.muted));
+    bool? good(double ch, {required bool up}) => ch == 0 ? null : (ch > 0) == up;
 
-    final cells = [
-      cell('Weight', w, ' kg'),
-      cell('Body fat', f, '%'),
-      cell(s == null ? 'Strength' : d.strengthName, s, ' kg', upGood: true),
-      if (m != null) cell('Muscle mass', m, ' kg', upGood: true),
-    ];
+    final List<Widget> body;
+    switch (_ptab) {
+      case 0:
+        final w = d.summary('weight');
+        if (w == null) {
+          body = [line('No weigh-in yet'), from('Log your weight in the daily check-in or Progress')];
+        } else {
+          final now = _d(w['now']), start = w['start'] == null ? null : _d(w['start']), goal = w['goal'] == null ? null : _d(w['goal']);
+          final ch = w['change'] == null ? null : _d(w['change']);
+          final down = goal == null || start == null || goal < start;
+          body = [
+            big('${_one(now)} kg', ch == null ? null : '${_sign(ch, ' kg')} since start', ch == null ? null : good(ch, up: !down)),
+            if (start != null) line('Start ${_one(start)} kg${goal == null ? '' : ' · Goal ${_one(goal)} kg · ${_one((now - goal).abs())} kg to go'}'),
+            from('From your weigh-ins (check-ins and Progress)'),
+          ];
+        }
+      case 1:
+        final f = d.summary('body_fat');
+        if (f == null) {
+          body = [line('Not measured yet'), from('Log body fat in Progress → Measurements')];
+        } else {
+          final ch = _d(f['change']);
+          body = [
+            big('${_one(_d(f['now']))}%', '${_sign(ch, '%')} since ${_since(f['since'])}', good(ch, up: false)),
+            line('Start ${_one(_d(f['start']))}%${f['fat_kg'] == null ? '' : ' · Fat mass ${_one(_d(f['fat_kg']))} kg${f['fat_kg_change'] == null ? '' : ' (${_sign(_d(f['fat_kg_change']), ' kg')})'}'}'),
+            from('From your body measurements; fat mass = weight × body fat %'),
+          ];
+        }
+      case 2:
+        final m = d.summary('muscle');
+        if (m == null) {
+          body = [line('Not measured yet'), from('Needs muscle mass or body fat in Progress → Measurements')];
+        } else {
+          final ch = _d(m['change']);
+          final est = m['estimated'] == true;
+          body = [
+            big('${_one(_d(m['now']))} kg', '${_sign(ch, ' kg')} since ${_since(m['since'])}', good(ch, up: true)),
+            line('${est ? 'Lean mass' : 'Muscle mass'} · start ${_one(_d(m['start']))} kg'),
+            from(est ? 'Worked out from weight and body fat (lean mass = weight − fat). Log muscle mass for the exact number.' : 'From your muscle mass measurements'),
+          ];
+        }
+      default:
+        final s = d.summary('strength');
+        if (s == null) {
+          body = [line('Shows after 2 workouts with weights'), from('From the sets you log in your workouts')];
+        } else {
+          final pct = _d(s['pct']);
+          final lifts = [for (final l in (s['lifts'] as List? ?? const [])) (l as Map).cast<String, dynamic>()];
+          body = [
+            big(_sign(pct, '%'), 'overall since ${_since(s['since'])}', good(pct, up: true)),
+            line('Average of ${s['exercises']} exercise${s['exercises'] == 1 ? '' : 's'}'),
+            for (final l in lifts.take(3))
+              Row(spacing: 8, children: [
+                Expanded(child: CutText('${l['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6))),
+                Text('${_one(_d(l['start']))} → ${_one(_d(l['now']))} kg', style: AppText.s(12.5, W.w4, color: AppColors.text2)),
+                SizedBox(width: 56, child: Text(_sign(_d(l['pct']), '%'), textAlign: TextAlign.right, style: AppText.s(12.5, W.w7, color: _d(l['pct']) > 0 ? AppColors.okText : AppColors.muted))),
+              ]),
+            from('Best estimated 1-rep max (Epley) of the first day vs the latest day, each exercise lifted on 2+ days'),
+          ];
+        }
+    }
     return ChCard(children: [
       ChHead(
         lead: const ChIcon(AppIcons.trendUp, tone: ChTone.blue),
@@ -326,11 +386,8 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
         sub: 'Since your start date',
         action: chSm('Open', () => context.go('/progress')),
       ),
-      for (var i = 0; i < cells.length; i += 2)
-        Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 12, children: [
-          Expanded(child: cells[i]),
-          Expanded(child: i + 1 < cells.length ? cells[i + 1] : const SizedBox.shrink()),
-        ]),
+      PxTabs(labels: tabs, index: _ptab, fit: false, onPick: (i) => setState(() => _ptab = i)),
+      Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 6, children: body),
     ]);
   }
 
@@ -338,11 +395,12 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     final a = d.adherence;
     return ChCard(children: [
       ChHead(lead: const ChIcon(AppIcons.checkCircle, tone: ChTone.green), title: 'Weekly adherence', sub: 'Progress of this week till now'),
-      Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, spacing: 6, children: [
-        Text('${a.done} of ${a.days}', style: AppText.s(26, W.w8, ls: -0.5)),
-        Text('day${a.days == 1 ? '' : 's'} checked in', style: AppText.s(13, W.w6, color: AppColors.muted)),
+      Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, spacing: 8, children: [
+        Text('${a.pct}%', style: AppText.s(28, W.w8, ls: -0.5)),
+        Flexible(child: Text('${a.done} of ${a.days} day${a.days == 1 ? '' : 's'} checked in', style: AppText.s(13, W.w6, color: AppColors.muted))),
       ]),
       ChBar(a.days == 0 ? 0 : a.done / a.days, color: AppColors.okSolid),
+      Text('From your daily check-ins, Monday to today', style: AppText.s(11.5, W.w4, color: AppColors.muted)),
     ]);
   }
 

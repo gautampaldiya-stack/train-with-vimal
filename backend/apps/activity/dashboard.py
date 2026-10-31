@@ -338,34 +338,63 @@ def checkin_today(client, today):
 
 
 def adherence_week(client, today):
-    """Home Weekly adherence: daily check-ins sent Monday to today ("4 of 6 days")."""
+    """Home Weekly adherence: daily check-ins sent Monday to today ("4 of 6 days · 67%")."""
     from apps.checkins.models import Submission
 
     monday = today - timedelta(days=today.weekday())
     done = (Submission.objects.filter(client=client, form_type="daily", date__range=(monday, today))
             .values("date").distinct().count())
-    return {"done": done, "days": today.weekday() + 1}
+    days = today.weekday() + 1
+    return {"done": done, "days": days, "pct": round(100 * done / days)}
 
 
 def progress_summary(client):
-    """Home Progress summary since the start: weight, body fat, best lift and muscle mass (only when measured).
-    Same numbers as the Progress page (`progress_page`)."""
-    from apps.checkins.models import Measurement
-    from apps.checkins.progress import _lifts, progress_page_weights
+    """Home Progress card (tabs Weight · Body fat · Muscle · Strength), everything since the start (D-87).
+
+    - Weight: start weight (profile, else first weigh-in) → latest weigh-in (`WeightLog`: daily / weekly check-in,
+      Progress → Log weight). Same numbers as the Progress page.
+    - Body fat %: first → latest `Measurement` with body_fat; fat mass = weight that day × body fat %.
+    - Muscle: `muscle_mass` measurements (scale / coach) when logged; else lean mass = weight × (1 − body fat %)
+      on the first and latest body-fat days (marked `estimated`).
+    - Strength: every exercise trained with weight on 2+ days; its best estimated 1RM (Epley, `calc.e1rm`) on the
+      first day vs the latest day; overall = the average % change of those exercises.
+    """
+    from apps.checkins.models import Measurement, WeightLog
+    from apps.checkins.progress import progress_page_weights, strength_progress
 
     start, now = progress_page_weights(client)
-    out = {"weight": None, "body_fat": None, "strength": None, "muscle": None}
+    out = {"weight": None, "body_fat": None, "muscle": None, "strength": strength_progress(client)}
     if now is not None:
-        out["weight"] = {"now": now, "change": round(now - start, 1) if start is not None else None}
-    ms = list(Measurement.objects.filter(client=client).order_by("date").values_list("values", flat=True))
-    for key, name in (("body_fat", "body_fat"), ("muscle_mass", "muscle")):
-        vals = [float(v[key]) for v in ms if v.get(key) is not None]
-        if vals:
-            out[name] = {"now": vals[-1], "change": round(vals[-1] - vals[0], 1)}
-    lift = next(iter(_lifts(client, limit=1)), None)
-    if lift:
-        out["strength"] = {"name": lift["name"], "now": lift["best"]["kg"],
-                           "change": round(lift["best"]["kg"] - lift["started"]["kg"], 1)}
+        out["weight"] = {"start": start, "now": now, "change": round(now - start, 1) if start is not None else None,
+                         "goal": float(client.client_profile.target_weight_kg)
+                         if client.client_profile.target_weight_kg is not None else None}
+    ms = list(Measurement.objects.filter(client=client).order_by("date"))
+    weights = list(WeightLog.objects.filter(client=client).order_by("date").values_list("date", "weight_kg"))
+
+    def kg_on(d):
+        """Weigh-in on or before d (else the first one)."""
+        best = None
+        for wd, kg in weights:
+            if wd <= d:
+                best = float(kg)
+        return best if best is not None else (float(weights[0][1]) if weights else None)
+
+    bf = [(m.date, float(m.values["body_fat"])) for m in ms if m.values.get("body_fat") is not None]
+    if bf:
+        (d0, f0), (d1, f1) = bf[0], bf[-1]
+        w0, w1 = kg_on(d0), kg_on(d1)
+        out["body_fat"] = {"start": f0, "now": f1, "change": round(f1 - f0, 1), "since": d0,
+                           "fat_kg": round(w1 * f1 / 100, 1) if w1 else None,
+                           "fat_kg_change": round(w1 * f1 / 100 - w0 * f0 / 100, 1) if w0 and w1 else None}
+    mm = [(m.date, float(m.values["muscle_mass"])) for m in ms if m.values.get("muscle_mass") is not None]
+    if mm:
+        out["muscle"] = {"start": mm[0][1], "now": mm[-1][1], "change": round(mm[-1][1] - mm[0][1], 1),
+                         "since": mm[0][0], "estimated": False}
+    elif bf and kg_on(bf[0][0]) and kg_on(bf[-1][0]):
+        l0 = kg_on(bf[0][0]) * (1 - bf[0][1] / 100)
+        l1 = kg_on(bf[-1][0]) * (1 - bf[-1][1] / 100)
+        out["muscle"] = {"start": round(l0, 1), "now": round(l1, 1), "change": round(round(l1, 1) - round(l0, 1), 1),
+                         "since": bf[0][0], "estimated": True}
     return out
 
 

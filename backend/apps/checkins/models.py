@@ -164,6 +164,8 @@ MEASURES = [
     ("hips", "Hips", "cm"), ("bicep_l", "Left bicep", "cm"), ("bicep_r", "Right bicep", "cm"),
     ("thigh_l", "Left thigh", "cm"), ("thigh_r", "Right thigh", "cm"), ("calf_l", "Left calf", "cm"),
     ("calf_r", "Right calf", "cm"), ("body_fat", "Body fat", "%"),
+    # From a body-composition scale or the coach's test (D-87); off until the coach tracks it.
+    ("muscle_mass", "Muscle mass", "kg"),
 ]
 MEASURE_KEYS = [k for k, _, _ in MEASURES]
 # What a client tracks until the coach picks (ClientProfile.measure_keys).

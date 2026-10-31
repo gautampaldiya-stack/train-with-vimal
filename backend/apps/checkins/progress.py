@@ -119,6 +119,35 @@ def progress_page_weights(client):
     return _f(start), _f(last.weight_kg) if last else None
 
 
+def strength_progress(client):
+    """Overall strength since the start (D-87): for each exercise lifted with weight on 2+ days, the best estimated
+    1RM (Epley) of its first day vs its latest day. Overall = the average % change. None before 2 such days."""
+    from apps.common.calc import e1rm
+    from apps.training.models import SetLog
+
+    best = defaultdict(dict)  # exercise → {date: best e1RM}
+    names = {}
+    for s in (SetLog.objects.filter(workout__client=client, workout__status="completed", done=True, is_warmup=False,
+                                    weight_kg__gt=0, reps__gt=0)
+              .values("exercise_id", "exercise__name", "workout__date", "weight_kg", "reps")):
+        v = e1rm(s["weight_kg"], s["reps"])
+        d = best[s["exercise_id"]]
+        d[s["workout__date"]] = max(v, d.get(s["workout__date"], 0))
+        names[s["exercise_id"]] = s["exercise__name"]
+    rows = []
+    for ex, days in best.items():
+        if len(days) < 2:
+            continue
+        first, last = days[min(days)], days[max(days)]
+        rows.append({"name": names[ex], "start": round(first, 1), "now": round(last, 1),
+                     "pct": round(100 * (last - first) / first, 1), "since": min(days)})
+    if not rows:
+        return None
+    rows.sort(key=lambda r: -r["pct"])
+    return {"pct": round(sum(r["pct"] for r in rows) / len(rows), 1), "exercises": len(rows),
+            "since": min(r["since"] for r in rows), "lifts": rows[:5]}
+
+
 def progress_page(client, request=None):
     from .serializers import PhotoSetSerializer
 

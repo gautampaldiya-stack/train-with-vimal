@@ -108,14 +108,46 @@ def test_home_adherence_counts_daily_checkins_this_week(client_user):
         if i != 1:
             Submission.objects.create(form=form, form_type="daily", client=riya, date=monday + timedelta(days=i))
     d = _home(client_user)
-    assert d["adherence_week"] == {"done": today.weekday() + (0 if today.weekday() >= 1 else 1), "days": today.weekday() + 1}
+    done, days = today.weekday() + (0 if today.weekday() >= 1 else 1), today.weekday() + 1
+    assert d["adherence_week"] == {"done": done, "days": days, "pct": round(100 * done / days)}
     assert d["checkin_today"]["status"] == "sent" and d["checkin_today"]["form"] == str(form.id)
 
 
 def test_home_progress_summary_matches_the_progress_page(client_user):
+    from apps.common.calc import e1rm
+
     p = client_user.get("/api/v1/me/progress/").json()
     s = _home(client_user)["progress_summary"]
-    assert s["weight"]["now"] == p["now"]["kg"]
+    assert s["weight"]["now"] == p["now"]["kg"] and s["weight"]["start"] == p["start"]["kg"]
     assert s["weight"]["change"] == round(p["now"]["kg"] - p["start"]["kg"], 1)
-    if p["lifts"]:
-        assert s["strength"]["now"] == max(l["best"]["kg"] for l in p["lifts"][:1])
+    bf = [m["body_fat"] for m in p["measurements"] if m.get("body_fat") is not None]
+    if bf:
+        assert (s["body_fat"]["start"], s["body_fat"]["now"]) == (bf[0], bf[-1])
+        assert s["muscle"]["estimated"] is True  # no muscle_mass logged: lean mass from weight and body fat
+    st = s["strength"]
+    if st:
+        assert st["pct"] == round(sum(r["pct"] for r in st["lifts"][:st["exercises"]]) / st["exercises"], 1) or st["exercises"] > 5
+        top = st["lifts"][0]
+        assert top["pct"] == round(100 * (top["now"] - top["start"]) / top["start"], 1) or abs(
+            top["pct"] - 100 * (top["now"] - top["start"]) / top["start"]) < 0.3
+    assert e1rm(50, 6) == 60.0
+
+
+def test_strength_uses_first_and_latest_day_e1rm(client_user):
+    from datetime import timedelta
+
+    from apps.accounts.models import User
+    from apps.checkins.progress import strength_progress
+    from apps.training.models import Exercise, SetLog, WorkoutLog
+
+    riya = User.objects.get(email="riya@example.com")
+    SetLog.objects.filter(workout__client=riya).delete()
+    ex = Exercise.objects.first()
+    today = timezone.localdate()
+    for days, kg, reps in ((20, 40, 10), (1, 50, 5)):
+        w = WorkoutLog.objects.create(client=riya, date=today - timedelta(days=days), status="completed", name="T")
+        SetLog.objects.create(workout=w, exercise=ex, set_number=1, weight_kg=kg, reps=reps, done=True)
+    s = strength_progress(riya)
+    # 40 × (1 + 10/30) = 53.3 → 50 × (1 + 5/30) = 58.3: +9.4 %
+    assert s["exercises"] == 1 and s["lifts"][0]["start"] == 53.3 and s["lifts"][0]["now"] == 58.3
+    assert s["pct"] == 9.4

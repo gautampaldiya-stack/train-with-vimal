@@ -24,3 +24,15 @@ Date: 2026-10-30 · Batch 1, Phase 6 · Plan OK'd by Probid (Claude Doc "Phase 6
 
 ## Open
 - Check-ins stay under More (no bottom-nav change); per-client card switches come in Phase 18.1.
+
+## 31 Oct: Progress card tabs and adherence %
+Probid asked for accurate numbers and where they come from. The Progress card now has tabs, all since the start:
+- **Weight:** latest weigh-in vs start weight (profile, else first weigh-in), goal and kg to go. Source: `WeightLog`
+  (daily / weekly check-in, Progress → Log weight). Same as the Progress page.
+- **Body fat:** first vs latest `Measurement.body_fat`; fat mass = that day's weight × body fat %.
+- **Muscle:** `Measurement.muscle_mass` (new measurement, kg, from a body-composition scale or the coach; off until the
+  coach tracks it). Without it: lean mass = weight × (1 − body fat %), labelled as worked out.
+- **Strength:** overall % = the average change of every exercise lifted with weight on 2+ days, each one's best
+  estimated 1RM (Epley, `calc.e1rm`) on its first day vs its latest day; top 3 lifts listed. The single "Barbell
+  Bench Press" cell is gone.
+- **Weekly adherence:** big % (daily check-ins sent ÷ days Monday to today) with "N of M days checked in".

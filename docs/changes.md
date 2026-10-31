@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-31 · Home Progress card tabs, adherence % (D-87)
+- **Pehle:** Progress card me sirf ek lift (Barbell Bench Press), muscle mass nahi, adherence sirf "2 of 5".
+- **Ab:** Tabs Weight · Body fat · Muscle · Strength, sab start se, har tab me likha hai data kahan se aata hai. Strength = sab exercises ka average % (Epley 1RM, pehla din vs latest din) + top 3 lifts. Muscle mass naya measurement; na ho to lean mass (weight − fat). Adherence bada % + "2 of 6 days".
+- **Kyun:** Probid: accurate values aur source batao.
+- **Updated:** backend activity/dashboard.py, checkins/progress.py + models.py (muscle_mass), app home_screen/home_model, progress_model, tests · Decision D-87
+
 ### 2026-10-30 · Phase 6: Home cards aur Train strip (D-87)
 - **Pehle:** Home ke cards ka order fix tha; Workout card me puri exercise list; Train strip me workout ke naam; logger me kg / Bodyweight tabs.
 - **Ab:** Home pe hi "Edit home": cards drag karo, ✕ se hatao, Add card se wapas lao, Done (DB me save, har device pe same). Naye cards: Daily check-in, Progress summary, Weekly adherence, Rest timer (sirf web). Workout card me ek button Start / Continue. Train strip me sirf din + date. Logger ka Load switch hata.

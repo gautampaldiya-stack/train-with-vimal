@@ -349,9 +349,6 @@ const homeCards = {
   'rest_timer': 'Rest timer',
 };
 
-/// (now, change since start) of one Progress summary number; null when not measured.
-typedef HomeStat = ({double now, double? change});
-
 extension HomeExtras on HomeData {
   List<String> get layout => [for (final k in (json['layout'] as List? ?? homeCards.keys)) if (homeCards.containsKey('$k')) '$k'];
 
@@ -365,16 +362,12 @@ extension HomeExtras on HomeData {
     return (form: '${c['form']}', sent: c['status'] == 'sent', at: _dateOr(c['sent_at']), questions: _n(c['questions']).toInt(), due: '${c['due'] ?? ''}');
   }
 
-  ({int done, int days}) get adherence {
+  ({int done, int days, int pct}) get adherence {
     final a = json['adherence_week'] as Map?;
-    return (done: _n(a?['done']).toInt(), days: _n(a?['days'] ?? 1).toInt());
+    return (done: _n(a?['done']).toInt(), days: _n(a?['days'] ?? 1).toInt(), pct: _n(a?['pct']).toInt());
   }
 
-  HomeStat? stat(String key) {
-    final m = (json['progress_summary'] as Map?)?[key] as Map?;
-    if (m == null) return null;
-    return (now: _n(m['now']).toDouble(), change: m['change'] == null ? null : _n(m['change']).toDouble());
-  }
+  /// One Progress tab's numbers (`progress_summary.<key>`: weight, body_fat, muscle, strength); null = no data yet.
+  Map<String, dynamic>? summary(String key) => ((json['progress_summary'] as Map?)?[key] as Map?)?.cast<String, dynamic>();
 
-  String get strengthName => '${(((json['progress_summary'] as Map?)?['strength'] as Map?)?['name']) ?? ''}';
 }

@@ -88,7 +88,7 @@ class PxMetric {
 const pxMeasureKeys = [
   ('neck', 'Neck', 'cm'), ('chest', 'Chest', 'cm'), ('abdomen', 'Abdomen (navel)', 'cm'), ('waist', 'Waist', 'cm'),
   ('hips', 'Hips', 'cm'), ('bicep_l', 'Left bicep', 'cm'), ('bicep_r', 'Right bicep', 'cm'), ('thigh_l', 'Left thigh', 'cm'),
-  ('thigh_r', 'Right thigh', 'cm'), ('calf_l', 'Left calf', 'cm'), ('calf_r', 'Right calf', 'cm'), ('body_fat', 'Body fat', '%'),
+  ('thigh_r', 'Right thigh', 'cm'), ('calf_l', 'Left calf', 'cm'), ('calf_r', 'Right calf', 'cm'), ('body_fat', 'Body fat', '%'), ('muscle_mass', 'Muscle mass', 'kg'),
 ];
 const _defaultMeasures = ['waist', 'hips', 'chest', 'bicep_l', 'bicep_r', 'body_fat'];
 
