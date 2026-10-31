@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-31 · Edit home bar, Add card list, check-in edit same day, weekly as a list
+- **Pehle:** Edit home me Cancel/Done upar aur neeche dono; Add card ek simple menu; Sent check-in card bada; check-in 6 din tak edit; weekly ek sawal ek page; daily me weight sawal ka naam "Morning weight" fixed.
+- **Ab:** Phone pe Edit home me bottom nav chhupta hai, uski jagah "Edit home" bar (Cancel, Done). Add card sheet me har card ka icon, naam aur kya dikhata hai. Sent daily check-in: ek line "Sent ✓ · time", tap = Check-ins page (wahan Edit answers). Daily aur weekly check-in sirf usi din edit (server bhi mana karta hai). Weekly ab ek list me saare sawal, Send; sent ke din "Edit answers" (photos waise hi). Daily ka weight sawal form me jo naam hai wahi dikhata hai.
+- **Kyun:** Probid ka feedback.
+- **Updated:** app shell (hideBottomBar), home_screen, checkins_weekly, checkins_daily, backend checkins/views.py, tests · Decision D-87/D-88
+
 ### 2026-10-31 · Form sawalon pe Progress tag (D-88)
 - **Pehle:** Sirf seed ke 7 sawalon pe tag tha; form builder me naya Weight sawal Progress me nahi jaata tha.
 - **Ab:** Question editor me "Progress tag": Weight, Height, Body fat, Muscle mass, body sizes, Sleep, aur scale ke liye Energy/Mood/Hunger/Soreness. Kisi bhi form ka tagged jawab weigh-ins / profile / measurements me save hota hai. Naye number sawal me "weight"/"height" likha ho to tag apne aap lagta hai. Row pe "Tag: Weight (kg)".

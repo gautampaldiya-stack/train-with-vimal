@@ -457,8 +457,9 @@ class MySubmissionViewSet(mixins.RetrieveModelMixin, mixins.CreateModelMixin, mi
 
     def partial_update(self, request, pk=None):
         sub = get_object_or_404(self.get_queryset(), pk=pk)
-        if sub.date < timezone.localdate() - timedelta(days=6):
-            raise serializers.ValidationError("This check-in is too old to change.")
+        # Daily and weekly check-ins can be changed only on the day they were sent (Probid, 2026-10-31).
+        if sub.date != timezone.localdate():
+            raise serializers.ValidationError("A check-in can be changed only on the day it was sent.")
         answers, files = self._payload(request)
         note = request.data.get("note", (sub.metrics or {}).get("note", "")) or ""
         services.submit(request.user, sub.form, answers, files, submission=sub, note=note)

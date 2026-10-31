@@ -10,7 +10,6 @@ import '../../../core/theme/theme.dart';
 import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/overlays.dart';
-import '../../../core/widgets/photo_viewer.dart';
 import '../../../core/widgets/responsive.dart';
 import '../food/food_parts.dart' show NumStepper;
 import '../home/home_model.dart' show clock, dayShort;
@@ -19,8 +18,9 @@ import 'checkins_model.dart';
 import 'checkins_parts.dart';
 import '../../../core/widgets/tooltip.dart';
 
-/// Weekly check-in (board ClientCheckin, `isWeekly`): one question a page, a review page, then
-/// "Week N check-in sent". Answers are kept as a draft on the phone until it is sent.
+/// Weekly check-in: every question in one list (Probid 2026-10-31, no more one question a page), then
+/// "Week N check-in sent". Answers are kept as a draft on the phone until it is sent. Edit answers works only on
+/// the day it was sent.
 class WeeklyCheckin extends StatefulWidget {
   const WeeklyCheckin({super.key, required this.c});
   final CheckinsController c;
@@ -34,8 +34,10 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
   final _photos = <String, String>{}; // slot ("front", "meal"…) → data URL
   final _texts = <int, TextEditingController>{};
   bool _noPhotos = false, _filled = false, _busy = false;
-  int _step = 0;
   CkRow? _sent;
+
+  /// Edit answers of the check-in sent today (photos stay as sent).
+  bool _editing = false;
 
   static const _tips = ['Office travel next week, Tue to Thu', 'Knee felt better on box squats', 'Can I get more dinner ideas?', 'Nothing this week'];
 
@@ -71,7 +73,6 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
         _v.addAll((dr['answers'] as Map? ?? {}).cast<String, Object?>());
         _photos.addAll((dr['photos'] as Map? ?? {}).cast<String, String>());
         _noPhotos = dr['no_photos'] == true;
-        _step = ((dr['step'] as num?)?.toInt() ?? 0).clamp(0, qs.length);
       }
       for (final q in qs) {
         if (q.metric == 'weight' && _v['${q.id}'] == null) _v['${q.id}'] = _todayWeight ?? w.lastWeight ?? 70.0;
@@ -107,7 +108,8 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
   int get _answered => qs.where((q) => _ans(q) != null).length;
 
   void _save() {
-    c.saveDraft(w.week, {'answers': _v, 'photos': _photos, 'no_photos': _noPhotos, 'step': _step});
+    if (_editing) return;
+    c.saveDraft(w.week, {'answers': _v, 'photos': _photos, 'no_photos': _noPhotos});
   }
 
   void _set(CkQ q, Object? v) {
@@ -115,12 +117,11 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
     _save();
   }
 
-  void _go(int n) {
-    setState(() => _step = n);
-    _save();
-  }
-
   void _exit() {
+    if (_editing) {
+      setState(() => _editing = false);
+      return;
+    }
     if (sent == null && _answered > 0) {
       _save();
       showToast(context, 'Draft saved', sub: '$_answered of ${qs.length} answered · finish by ${w.due}', kind: ToastKind.info);
@@ -128,22 +129,9 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
     context.go('/checkins');
   }
 
-  void _next() {
-    if (_step >= qs.length) {
-      _send();
-      return;
-    }
-    final q = qs[_step];
-    if (q.required && _ans(q) == null) {
-      showToast(context, 'Pick an answer to continue', sub: 'This question is required', kind: ToastKind.warn);
-      return;
-    }
-    _go(_step + 1);
-  }
-
   Future<void> _send() async {
     final miss = [
-      for (final q in qs)
+      for (final q in _shown)
         if (q.required && _ans(q) == null) q,
     ];
     if (miss.isNotEmpty) {
@@ -161,6 +149,25 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
     }
     if (_busy) return;
     setState(() => _busy = true);
+    if (_editing) {
+      final row = sent!;
+      final answers = {
+        for (final q in qs)
+          if (q.type != 'photo' && _v['${q.id}'] != null && _v['${q.id}'] != '') '${q.id}': _v['${q.id}'],
+      };
+      try {
+        await c.edit(f, row.id!, answers);
+        if (!mounted) return;
+        row.j['answers'] = answers;
+        setState(() => _editing = false);
+        showToast(context, 'Check-in updated', sub: '$coach sees your new answers', kind: ToastKind.ok);
+      } catch (e) {
+        if (mounted) showToast(context, 'Could not save it', sub: '$e', kind: ToastKind.err);
+      } finally {
+        if (mounted) setState(() => _busy = false);
+      }
+      return;
+    }
     final photoQ = qs.where((q) => q.type == 'photo').firstOrNull;
     final answers = {
       for (final q in qs)
@@ -220,51 +227,79 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
       return CkPage(
         web: web,
         header: [
-          CkTop(title: 'Weekly check-in', sub: 'Week ${w.week} · due ${w.due}', onBack: _exit, backLabel: 'Save and exit'),
-          if (sent == null)
+          CkTop(
+            title: _editing ? 'Edit weekly check-in' : 'Weekly check-in',
+            sub: 'Week ${w.week} · due ${w.due}',
+            onBack: _exit,
+            backLabel: _editing ? 'Cancel' : 'Save and exit',
+          ),
+          if (sent == null || _editing)
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               spacing: 6,
               children: [
-                Text(
-                  _step < qs.length ? 'Question ${_step + 1} of ${qs.length}' : 'Review · all ${qs.length} questions',
-                  style: AppText.s(12, W.w7, color: AppColors.muted),
-                ),
-                CkBar((_step + 1).clamp(1, qs.length) / qs.length),
+                Text('$_answered of ${_shown.length} answered', style: AppText.s(12, W.w7, color: AppColors.muted)),
+                CkBar(_shown.isEmpty ? 0 : _answered / _shown.length),
               ],
             ),
         ],
-        children: sent != null ? [_done()] : [_card(), _nav()],
+        children: sent != null && !_editing ? [_done()] : [for (final (i, q) in _shown.indexed) _card(i, q), _sendBtn()],
       );
     },
   );
 
-  Widget _card() {
-    final review = _step >= qs.length;
-    final q = review ? null : qs[_step];
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.line),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: 12,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            spacing: 6,
-            children: [
-              Text(review ? 'Check your answers' : '${_step + 1}. ${q!.text}', style: AppText.s(17, W.w8, h: 1.3)),
-              Text(review ? 'Tap Edit to change one. $coach gets it as soon as you send.' : q!.help, style: AppText.s(12.5, W.w4, color: AppColors.muted)),
-            ],
-          ),
-          if (review) _review() else ..._answer(q!),
-        ],
-      ),
-    );
+  /// The questions on the page: in Edit answers the photos stay as sent, so the photo question is left out.
+  List<CkQ> get _shown => _editing ? qs.where((q) => q.type != 'photo').toList() : qs;
+
+  Widget _card(int i, CkQ q) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+    decoration: BoxDecoration(
+      color: AppColors.white,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: AppColors.line),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: 12,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: 6,
+          children: [
+            Text.rich(
+              TextSpan(
+                text: '${i + 1}. ${q.text}',
+                children: [if (!q.required) TextSpan(text: ' · optional', style: AppText.s(12.5, W.w6, color: AppColors.muted))],
+              ),
+              style: AppText.s(16, W.w8, h: 1.3),
+            ),
+            if (q.help.isNotEmpty) Text(q.help, style: AppText.s(12.5, W.w4, color: AppColors.muted)),
+          ],
+        ),
+        ..._answer(q),
+      ],
+    ),
+  );
+
+  Widget _sendBtn() => CaButton(
+    _editing ? 'Save changes' : 'Send to $coach',
+    icon: _editing ? AppIcons.check : AppIcons.send,
+    loading: _busy,
+    dimmed: _shown.any((q) => q.required && _ans(q) == null),
+    onPressed: _send,
+  );
+
+  /// Edit answers (only on the day it was sent): the sent answers back in the list.
+  void _startEdit(CkRow row) {
+    setState(() {
+      _v
+        ..clear()
+        ..addAll(row.answers.cast<String, Object?>());
+      for (final q in qs) {
+        if (q.type == 'short' || q.type == 'long') _texts[q.id] = TextEditingController(text: '${_v['${q.id}'] ?? ''}');
+      }
+      _editing = true;
+    });
   }
 
   List<Widget> _answer(CkQ q) {
@@ -591,83 +626,6 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
 
   // ─────────────────────────────── Review, nav, sent
 
-  Widget _review() => Column(
-    children: [
-      for (final (i, q) in qs.indexed)
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 9),
-          decoration: BoxDecoration(
-            border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line)),
-          ),
-          child: Row(
-            spacing: 10,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  spacing: 1,
-                  children: [
-                    Text('${i + 1}. ${q.text}', style: AppText.s(11.5, W.w6, color: AppColors.muted)),
-                    Builder(
-                      builder: (_) {
-                        final a = _ans(q);
-                        final t = Text(
-                          a ?? (q.required ? 'Not answered · required' : 'Skipped'),
-                          style: AppText.s(
-                            13.5,
-                            a == null && !q.required ? W.w6 : W.w7,
-                            color: a != null ? AppColors.text : (q.required ? AppColors.badText : AppColors.muted),
-                          ),
-                        );
-                        if (q.type != 'photo' || _thumbs.isEmpty) return t;
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          spacing: 6,
-                          children: [t, photoThumbs(_thumbs, size: 44)],
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: 30, child: chSmall('Edit', () => _go(i))),
-            ],
-          ),
-        ),
-    ],
-  );
-
-  Widget _nav() {
-    final review = _step >= qs.length;
-    final q = review ? null : qs[_step];
-    final label = review
-        ? 'Send to $coach'
-        : _step == qs.length - 1
-        ? 'Review'
-        : (q != null && !q.required && _ans(q) == null ? 'Skip' : 'Next');
-    return Row(
-      spacing: 8,
-      children: [
-        Expanded(
-          child: Opacity(
-            opacity: _step == 0 ? .4 : 1,
-            child: CaButton('Back', kind: CaBtnKind.out, icon: AppIcons.chevronLeft, onPressed: _step == 0 ? () {} : () => _go(_step - 1)),
-          ),
-        ),
-        Expanded(
-          flex: 2,
-          child: CaButton(
-            label,
-            trailingIcon: review ? null : AppIcons.chevronRight,
-            dimmed: q != null && q.required && _ans(q) == null,
-            loading: _busy,
-            onPressed: _next,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _done() {
     final row = sent!;
     final at = row.sentAt ?? DateTime.now();
@@ -692,7 +650,15 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
           : '${dayShort(at)}, ${clock(at)} · $coach usually replies within a day',
       rows: rows,
       photos: thumbs,
-      buttons: CaButton('Back to check-ins', onPressed: () => context.go('/checkins')),
+      buttons: row.id != null && DateUtils.isSameDay(row.date, DateTime.now())
+          ? Row(
+              spacing: 8,
+              children: [
+                Expanded(child: CaButton('Edit answers', kind: CaBtnKind.out, icon: AppIcons.edit, onPressed: () => _startEdit(row))),
+                Expanded(child: CaButton('Back to check-ins', onPressed: () => context.go('/checkins'))),
+              ],
+            )
+          : CaButton('Back to check-ins', onPressed: () => context.go('/checkins')),
     );
   }
 }

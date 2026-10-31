@@ -14,6 +14,7 @@ import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
+import '../../../app/shell/app_shell.dart' show hideBottomBar;
 import '../train/workout_model.dart';
 import '../progress/progress_parts.dart';
 import 'home_model.dart';
@@ -35,6 +36,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
 
   /// Edit home (D-87): the card order being edited, null outside edit mode. Cards move only in edit mode.
   List<String>? _edit;
+  final _editTop = GlobalKey();
 
   @override
   void initState() {
@@ -44,6 +46,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
 
   @override
   void dispose() {
+    hideBottomBar.value = false;
     c.dispose();
     super.dispose();
   }
@@ -76,7 +79,11 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
 
   /// Phone = board `ClientHomeHero` (Gautam picked the hero, 2026-10-16): the blue hero runs under the status
   /// bar and the week strip overlaps its bottom edge by 34.
-  Widget _phone(HomeData d) => AnnotatedRegion<SystemUiOverlayStyle>(
+  Widget _phone(HomeData d) => _edit == null
+      ? _phoneBody(d)
+      : Column(children: [Expanded(child: _phoneBody(d)), _editBar()]);
+
+  Widget _phoneBody(HomeData d) => AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.light,
         child: RefreshIndicator(
           onRefresh: c.load,
@@ -208,35 +215,111 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
   /// The cards Edit home can show on this device (no Rest timer on the phone, no Check-in without a daily form).
   bool _fits(String k, HomeData d, bool web) => (k != 'rest_timer' || web) && (k != 'checkin' || d.checkin != null);
 
+  /// Edit mode on / off. On a phone the bottom tabs hide and the Edit home bar takes their place.
+  void _setEdit(List<String>? v) {
+    setState(() => _edit = v);
+    hideBottomBar.value = v != null && context.isPhone;
+    if (v != null) {
+      // Edit mode starts at the first card, not at the bottom where the button was.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final cx = _editTop.currentContext;
+        if (cx != null) Scrollable.ensureVisible(cx, alignment: .05, duration: const Duration(milliseconds: 250));
+      });
+    }
+  }
+
+  void _saveEdit() {
+    final l = _edit!;
+    _setEdit(null);
+    c.saveLayout(l);
+    showToast(context, 'Home saved', sub: 'Your cards show in this order on every device', kind: ToastKind.ok);
+  }
+
   Widget _editBtn(HomeData d) => Center(
         child: Padding(
           padding: const EdgeInsets.only(top: 4),
-          child: CaButton('Edit home', kind: CaBtnKind.out, expand: false, icon: AppIcons.edit, onPressed: () => setState(() => _edit = [...d.layout])),
+          child: CaButton('Edit home', kind: CaBtnKind.out, expand: false, icon: AppIcons.edit, onPressed: () => _setEdit([...d.layout])),
         ),
       );
+
+  /// Phone: the Edit home bar in place of the bottom tabs (a sheet edge with the title, Cancel and Done).
+  Widget _editBar() => Container(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+        decoration: const BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          boxShadow: [BoxShadow(color: AppColors.weekShadow, blurRadius: 18, offset: Offset(0, -4))],
+        ),
+        child: Row(spacing: 8, children: [
+          Expanded(child: ChTwoLine('Edit home', 'Drag to move · ✕ to remove')),
+          CaButton('Cancel', kind: CaBtnKind.out, expand: false, onPressed: () => _setEdit(null)),
+          CaButton('Done', expand: false, onPressed: _saveEdit),
+        ]),
+      );
+
+  /// Add card: the cards taken off Home, each with what it shows.
+  void _addCard(List<String> off) => showAppSheet(
+        context,
+        title: 'Add card',
+        sub: 'Pick a card to put back on Home',
+        builder: (ctx) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          for (final (i, k) in off.indexed)
+            Hover(
+              onTap: () {
+                Navigator.of(ctx).pop();
+                setState(() => _edit!.add(k));
+              },
+              builder: (_, h, _) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+                decoration: BoxDecoration(
+                  color: h ? AppColors.sub : null,
+                  border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line)),
+                ),
+                child: Row(spacing: 12, children: [
+                  ChIcon(_cardIcon[k]!.$1, tone: _cardIcon[k]!.$2),
+                  Expanded(child: ChTwoLine(homeCards[k]!, _cardSub[k]!)),
+                  const AppIcon(AppIcons.plus, size: 18, color: AppColors.accentText),
+                ]),
+              ),
+            ),
+        ]),
+      );
+
+  static const _cardIcon = {
+    'workout': (AppIcons.dumbbell, ChTone.green),
+    'checkin': (AppIcons.clipboard, ChTone.amber),
+    'food': (AppIcons.food, ChTone.green),
+    'progress': (AppIcons.trendUp, ChTone.blue),
+    'adherence': (AppIcons.checkCircle, ChTone.green),
+    'water': (AppIcons.water, ChTone.warm),
+    'rest_timer': (AppIcons.clock, ChTone.blue),
+  };
+  static const _cardSub = {
+    'workout': 'Today’s workout and Start',
+    'checkin': 'Fill today’s daily check-in',
+    'food': 'Calories left and the next meal',
+    'progress': 'Weight, body fat, muscle, strength',
+    'adherence': 'Check-ins this week in %',
+    'water': 'Glasses today',
+    'rest_timer': 'Your rest while working out',
+  };
 
   Widget _editor(HomeData d, {required bool web}) {
     final order = _edit!.where((k) => _fits(k, d, web)).toList();
     final off = [for (final k in homeCards.keys) if (!_edit!.contains(k) && _fits(k, d, web)) k];
-    List<Widget> actions() => [
-          CaButton('Cancel', kind: CaBtnKind.out, expand: false, onPressed: () => setState(() => _edit = null)),
-          CaButton('Done', expand: false, onPressed: () {
-            final l = _edit!;
-            setState(() => _edit = null);
-            c.saveLayout(l);
-            showToast(context, 'Home saved', sub: 'Your cards show in this order on every device', kind: ToastKind.ok);
-          }),
-        ];
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-      Container(
-        padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
-        decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
-        child: Row(spacing: 8, children: [
-          Expanded(child: ChTwoLine('Edit home', 'Drag a card to move it, ✕ to remove it')),
-          ...actions(),
-        ]),
-      ),
+      if (web)
+        Container(
+          padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+          decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
+          child: Row(spacing: 8, children: [
+            Expanded(child: ChTwoLine('Edit home', 'Drag a card to move it, ✕ to remove it')),
+            CaButton('Cancel', kind: CaBtnKind.out, expand: false, onPressed: () => _setEdit(null)),
+            CaButton('Done', expand: false, onPressed: _saveEdit),
+          ]),
+        ),
       ReorderableListView(
+        key: _editTop,
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         buildDefaultDragHandles: false,
@@ -272,14 +355,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
             ),
         ],
       ),
-      if (off.isNotEmpty)
-        Builder(
-          builder: (bc) => CaButton('Add card', kind: CaBtnKind.out, icon: AppIcons.plus, onPressed: () => showActionSheet(bc, title: 'Add card', [
-            for (final k in off) MenuEntry(homeCards[k]!, icon: AppIcons.plus, onTap: () => setState(() => _edit!.add(k))),
-          ])),
-        ),
-      // Done and Cancel at the end too, so a long list needs no scroll back up.
-      Row(mainAxisAlignment: MainAxisAlignment.end, spacing: 8, children: actions()),
+      if (off.isNotEmpty) CaButton('Add card', kind: CaBtnKind.out, icon: AppIcons.plus, onPressed: () => _addCard(off)),
     ]);
   }
 
@@ -287,15 +363,27 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
 
   Widget _checkinCard(HomeData d) {
     final ci = d.checkin!;
+    if (ci.sent) {
+      // Sent: one line; a tap opens Check-ins, where Edit answers is (today only).
+      return Hover(
+        onTap: () => context.go('/checkins'),
+        builder: (_, h, _) => ChCard(children: [
+          ChHead(
+            lead: const ChIcon(AppIcons.checkCircle, tone: ChTone.green),
+            title: 'Daily check-in',
+            sub: 'Sent ✓${ci.at == null ? '' : ' · ${clock(ci.at!)}'}',
+            action: const AppIcon(AppIcons.chevronRight, size: 18, color: AppColors.muted),
+          ),
+        ]),
+      );
+    }
     return ChCard(children: [
       ChHead(
-        lead: ChIcon(AppIcons.clipboard, tone: ci.sent ? ChTone.green : ChTone.amber),
+        lead: const ChIcon(AppIcons.clipboard, tone: ChTone.amber),
         title: 'Daily check-in',
-        sub: ci.sent
-            ? 'Sent ✓${ci.at == null ? '' : ' · ${clock(ci.at!)}'}'
-            : 'Not filled yet · ${ci.questions} question${ci.questions == 1 ? '' : 's'}${ci.due.isEmpty ? '' : ' · by ${ci.due}'}',
+        sub: 'Not filled yet · ${ci.questions} question${ci.questions == 1 ? '' : 's'}${ci.due.isEmpty ? '' : ' · by ${ci.due}'}',
       ),
-      if (!ci.sent) CaButton('Fill now', icon: AppIcons.edit, onPressed: () => context.go('/checkins/daily')),
+      CaButton('Fill now', icon: AppIcons.edit, onPressed: () => context.go('/checkins/daily')),
     ]);
   }
 

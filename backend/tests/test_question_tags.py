@@ -21,3 +21,16 @@ def test_tagged_answers_of_any_form_go_to_weight_height_and_measurements(db):
     riya.client_profile.refresh_from_db()
     assert riya.client_profile.height_cm == Decimal("163.0")
     assert Measurement.objects.filter(client=riya).order_by("-date").first().values["muscle_mass"] == 27.5
+
+
+def test_a_checkin_can_be_edited_only_on_the_day_it_was_sent(client_user):
+    from datetime import timedelta
+
+    from apps.checkins.models import Submission
+
+    riya = User.objects.get(email="riya@example.com")
+    form = Form.objects.filter(type="weekly", status="published").first()
+    old = Submission.objects.create(form=form, form_type="weekly", client=riya,
+                                    date=timezone.localdate() - timedelta(days=1))
+    r = client_user.patch(f"/api/v1/me/submissions/{old.id}/", {"answers": {}}, format="json")
+    assert r.status_code == 400 and "only on the day" in r.json()["error"]["message"]

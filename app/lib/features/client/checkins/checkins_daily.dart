@@ -224,7 +224,7 @@ class _DailyCheckinState extends State<DailyCheckin> {
 
   Widget _question(CkQ q) {
     final v = _v[q.id];
-    final title = q.metric == 'weight' ? 'Morning weight' : q.text;
+    final title = q.text;
     if (q.metric == 'weight' || q.type == 'number') {
       final x = (v as num?)?.toDouble() ?? 0;
       final last = d.lastWeight, when = d.lastWeightDate;
