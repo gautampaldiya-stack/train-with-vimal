@@ -432,7 +432,9 @@ String tagLabel(String metric) => metric.isEmpty
     ? 'None'
     : [...questionTags('number'), ...questionTags('scale')].firstWhere((x) => x.$1 == metric, orElse: () => (metric, metric)).$2;
 
-Future<FmQ?> showQuestionEditor(BuildContext context, {required FmQ q, required bool isNew, int index = 0, int total = 0, String profileLabel = ''}) {
+/// [used]: tags other questions of this form already carry (a tag is used once a form).
+Future<FmQ?> showQuestionEditor(BuildContext context,
+    {required FmQ q, required bool isNew, int index = 0, int total = 0, String profileLabel = '', Set<String> used = const {}}) {
   final w = q.copy();
   final text = TextEditingController(text: w.text);
   final opts = TextEditingController(text: w.options.join('\n'));
@@ -459,8 +461,8 @@ Future<FmQ?> showQuestionEditor(BuildContext context, {required FmQ q, required 
           // A new number question about weight / height gets its tag on its own (it can be set back to None).
           if (isNew && w.metric.isEmpty && w.type == 'number') {
             final l = t.toLowerCase();
-            if (l.contains('weight')) w.metric = 'weight';
-            if (l.contains('height')) w.metric = 'height';
+            if (l.contains('weight') && !used.contains('weight')) w.metric = 'weight';
+            if (l.contains('height') && !used.contains('height')) w.metric = 'height';
           }
           if (!w.keyed) w.options = w.choice ? list : (w.type == 'photo' ? w.options : []);
           if (!w.choice) w.other = false;
@@ -495,7 +497,8 @@ Future<FmQ?> showQuestionEditor(BuildContext context, {required FmQ q, required 
               'Progress tag (optional)',
               Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
                 AppSelect(tagLabel(w.metric), entries: [
-                  for (final (k, l) in [('', 'None'), ...questionTags(w.type)]) MenuEntry(l, selected: w.metric == k, onTap: () => set(() => w.metric = k)),
+                  for (final (k, l) in [('', 'None'), ...questionTags(w.type)])
+                    if (k.isEmpty || !used.contains(k)) MenuEntry(l, selected: w.metric == k, onTap: () => set(() => w.metric = k)),
                 ]),
                 Text('The answer is saved there too: Weight → weigh-ins, Height → profile, Body fat, Muscle mass and body sizes → measurements. Progress and Home read it from there.',
                     style: AppText.s(12, W.w5, color: AppColors.muted)),

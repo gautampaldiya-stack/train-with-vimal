@@ -271,7 +271,7 @@ class _FormBuilderScreenState extends State<FormBuilderScreen> {
   }
 
   Future<void> _add(String type) async {
-    final q = await showQuestionEditor(context, q: FmQ.blank(type), isNew: true);
+    final q = await showQuestionEditor(context, q: FmQ.blank(type), isNew: true, used: {for (final x in qs) x.metric});
     if (q == null || !mounted) return;
     _change(() => qs.add(q), toast: 'Question added', sub: 'Placed at the end of the form');
   }
@@ -373,7 +373,7 @@ class _FormBuilderScreenState extends State<FormBuilderScreen> {
       ]);
 
   Future<void> _edit(int i) async {
-    final q = await showQuestionEditor(context, q: qs[i], isNew: false, index: i, total: qs.length);
+    final q = await showQuestionEditor(context, q: qs[i], isNew: false, index: i, total: qs.length, used: {for (final (k, x) in qs.indexed) if (k != i) x.metric});
     if (q == null || !mounted) return;
     _change(() => qs[i] = q, toast: 'Question saved');
   }
