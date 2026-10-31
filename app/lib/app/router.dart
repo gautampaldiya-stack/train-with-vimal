@@ -104,6 +104,7 @@ final Map<String, Widget Function(GoRouterState)> screens = {
         key: ValueKey(st.uri.toString()),
         id: st.pathParameters['id'],
         edit: st.uri.queryParameters['edit'] == '1',
+        from: st.uri.queryParameters['from'],
       ),
   '/progress': (_) => const ClientProgressScreen(),
   '/progress/:id': (st) {

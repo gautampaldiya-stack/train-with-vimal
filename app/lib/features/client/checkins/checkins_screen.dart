@@ -19,9 +19,12 @@ import '../../../core/widgets/tooltip.dart';
 /// Check-ins (boards `ClientCheckin` phone and `ClientCheckinWeb`). `/checkins` is the list,
 /// `/checkins/daily` and `/checkins/weekly` the two forms, `/checkins/<id>` opens a past check-in.
 class ClientCheckinsScreen extends StatefulWidget {
-  const ClientCheckinsScreen({super.key, this.id, this.edit = false});
+  const ClientCheckinsScreen({super.key, this.id, this.edit = false, this.from});
   final String? id;
   final bool edit;
+
+  /// `?from=home`: opened from the Home card, so back goes to Home.
+  final String? from;
   @override
   State<ClientCheckinsScreen> createState() => _ClientCheckinsScreenState();
 }
@@ -64,7 +67,7 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.id == 'daily') return DailyCheckin(c: c, edit: widget.edit);
+    if (widget.id == 'daily') return DailyCheckin(c: c, edit: widget.edit, back: widget.from == 'home' ? '/home' : '/checkins');
     if (widget.id == 'weekly') return WeeklyCheckin(c: c);
     return ListenableBuilder(
       listenable: c,

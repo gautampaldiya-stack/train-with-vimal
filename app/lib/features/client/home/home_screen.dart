@@ -383,7 +383,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
         title: 'Daily check-in',
         sub: 'Not filled yet · ${ci.questions} question${ci.questions == 1 ? '' : 's'}${ci.due.isEmpty ? '' : ' · by ${ci.due}'}',
       ),
-      CaButton('Fill now', icon: AppIcons.edit, onPressed: () => context.go('/checkins/daily')),
+      CaButton('Fill now', icon: AppIcons.edit, onPressed: () => context.go('/checkins/daily?from=home')),
     ]);
   }
 
@@ -455,7 +455,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
           final pct = _d(s['pct']);
           final lifts = [for (final l in (s['lifts'] as List? ?? const [])) (l as Map).cast<String, dynamic>()];
           body = [
-            big(_sign(pct, '%'), 'overall since ${_since(s['since'])}', good(pct, up: true)),
+            big(_sign(pct, '%'), 'overall since your first workout, ${_since(s['since'])}', good(pct, up: true)),
             line('Average of ${s['exercises']} exercise${s['exercises'] == 1 ? '' : 's'}'),
             for (final l in lifts.take(3))
               Row(spacing: 8, children: [

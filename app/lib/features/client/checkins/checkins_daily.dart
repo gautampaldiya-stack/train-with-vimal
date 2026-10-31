@@ -14,9 +14,12 @@ import 'checkins_parts.dart';
 /// Daily check-in (board ClientCheckin, `isDaily`): every question on one page, then "Sent to Aman".
 /// [edit] opens today's answers to change them.
 class DailyCheckin extends StatefulWidget {
-  const DailyCheckin({super.key, required this.c, required this.edit});
+  const DailyCheckin({super.key, required this.c, required this.edit, this.back = '/checkins'});
   final CheckinsController c;
   final bool edit;
+
+  /// Where back goes: Check-ins, or Home when it was opened from the Home card (Fill now).
+  final String back;
   @override
   State<DailyCheckin> createState() => _DailyCheckinState();
 }
@@ -150,8 +153,12 @@ class _DailyCheckinState extends State<DailyCheckin> {
   @override
   Widget build(BuildContext context) => BackIntercept(
     onBack: () {
-      if (!_editing || today == null) return false;
-      setState(() => _editing = false);
+      if (_editing && today != null) {
+        setState(() => _editing = false);
+        return true;
+      }
+      if (widget.back == '/checkins') return false;
+      context.go(widget.back);
       return true;
     },
     child: Builder(builder: _page),
@@ -178,7 +185,7 @@ class _DailyCheckinState extends State<DailyCheckin> {
           CkTop(
             title: 'Daily check-in',
             sub: '${dayShortNoYear(d.date)} · $answered of $total answered',
-            onBack: () => _editing && today != null ? setState(() => _editing = false) : context.go('/checkins'),
+            onBack: () => _editing && today != null ? setState(() => _editing = false) : context.go(widget.back),
           ),
           CkBar(total == 0 ? 0 : answered / total),
         ],
