@@ -318,7 +318,7 @@ class _FormBuilderScreenState extends State<FormBuilderScreen> {
   Widget _card(int i) {
     final q = qs[i];
     final phone = context.isPhone;
-    final meta = [qTypeLabel(q.type), if (q.optionsLine.isNotEmpty) q.optionsLine, if (q.help.isNotEmpty) q.help].join(' · ');
+    final meta = [qTypeLabel(q.type), if (q.metric.isNotEmpty) 'Tag: ${tagLabel(q.metric)}', if (q.optionsLine.isNotEmpty) q.optionsLine, if (q.help.isNotEmpty) q.help].join(' · ');
     return Hover(
       onTap: () => _edit(i),
       builder: (_, h, _) => Container(

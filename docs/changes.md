@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-10-31 · Form sawalon pe Progress tag (D-88)
+- **Pehle:** Sirf seed ke 7 sawalon pe tag tha; form builder me naya Weight sawal Progress me nahi jaata tha.
+- **Ab:** Question editor me "Progress tag": Weight, Height, Body fat, Muscle mass, body sizes, Sleep, aur scale ke liye Energy/Mood/Hunger/Soreness. Kisi bhi form ka tagged jawab weigh-ins / profile / measurements me save hota hai. Naye number sawal me "weight"/"height" likha ho to tag apne aap lagta hai. Row pe "Tag: Weight (kg)".
+- **Kyun:** Probid: trainer weight daily, weekly ya kabhi kabhi le sake.
+- **Updated:** backend checkins/serializers.py + services.py (height), app admin/forms, tests/test_question_tags.py · Decision D-88
+
 ### 2026-10-31 · Home Progress card tabs, adherence % (D-87)
 - **Pehle:** Progress card me sirf ek lift (Barbell Bench Press), muscle mass nahi, adherence sirf "2 of 5".
 - **Ab:** Tabs Weight · Body fat · Muscle · Strength, sab start se, har tab me likha hai data kahan se aata hai. Strength = sab exercises ka average % (Epley 1RM, pehla din vs latest din) + top 3 lifts. Muscle mass naya measurement; na ho to lean mass (weight − fat). Adherence bada % + "2 of 6 days".

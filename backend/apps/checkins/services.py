@@ -53,6 +53,8 @@ def _clean_value(q, v):
             raise ValidationError({str(q.id): ["Enter a number."]})
         if q.metric == "weight" and not 20 <= n <= 400:
             raise ValidationError({str(q.id): ["Enter your weight in kg."]})
+        if q.metric == "height" and not 100 <= n <= 250:
+            raise ValidationError({str(q.id): ["Enter your height in cm."]})
         if q.metric in MEASURE_KEYS and not ((3 <= n <= 70) if q.metric == "body_fat" else (10 <= n <= 300)):
             raise ValidationError({str(q.id): ["Check this number."]})
         return float(n)
@@ -241,6 +243,10 @@ def submit(client, form, answers, files=None, *, request_obj=None, submission=No
     if taken:
         open_ = measure_entry(client, submission.date)
         save_measures(client, open_.date if open_ else submission.date, taken)
+    if metrics.get("height") is not None:  # a question tagged Height fills the client profile (D-88)
+        cp = client.client_profile
+        cp.height_cm = Decimal(str(metrics["height"]))
+        cp.save(update_fields=["height_cm"])
     if "weight" in metrics:
         WeightLog.objects.update_or_create(client=client, date=submission.date,
                                            defaults={"weight_kg": Decimal(str(metrics["weight"])),

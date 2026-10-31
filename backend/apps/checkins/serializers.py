@@ -17,7 +17,7 @@ from .models import (
     WeightLog,
 )
 
-METRICS = {"", "weight", "sleep_hours", "energy", "mood", "hunger", "soreness", "steps", *(k for k, _, _ in MEASURES)}
+METRICS = {"", "weight", "height", "sleep_hours", "energy", "mood", "hunger", "soreness", "steps", *(k for k, _, _ in MEASURES)}
 
 
 class QuestionSerializer(serializers.ModelSerializer):

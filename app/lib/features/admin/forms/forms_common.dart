@@ -415,6 +415,23 @@ class _PreviewState extends State<_Preview> {
 
 /// "New question / Placed at the end of the form" or "Edit question / Question i of N". Returns the saved
 /// question, or null on Cancel.
+/// Progress tags a question can carry (`Question.metric`, D-88): its answer also goes to the client's weigh-ins,
+/// profile or measurements. Number questions: body numbers; 1–5 scales: how the day felt.
+List<(String, String)> questionTags(String type) => switch (type) {
+      'number' => const [
+          ('weight', 'Weight (kg)'), ('height', 'Height (cm)'), ('body_fat', 'Body fat (%)'), ('muscle_mass', 'Muscle mass (kg)'),
+          ('waist', 'Waist (cm)'), ('hips', 'Hips (cm)'), ('chest', 'Chest (cm)'), ('abdomen', 'Abdomen (cm)'), ('neck', 'Neck (cm)'),
+          ('bicep_l', 'Left bicep (cm)'), ('bicep_r', 'Right bicep (cm)'), ('thigh_l', 'Left thigh (cm)'), ('thigh_r', 'Right thigh (cm)'),
+          ('calf_l', 'Left calf (cm)'), ('calf_r', 'Right calf (cm)'), ('sleep_hours', 'Sleep (hours)'),
+        ],
+      'scale' => const [('energy', 'Energy'), ('mood', 'Mood'), ('hunger', 'Hunger'), ('soreness', 'Soreness'), ('sleep_hours', 'Sleep')],
+      _ => const [],
+    };
+
+String tagLabel(String metric) => metric.isEmpty
+    ? 'None'
+    : [...questionTags('number'), ...questionTags('scale')].firstWhere((x) => x.$1 == metric, orElse: () => (metric, metric)).$2;
+
 Future<FmQ?> showQuestionEditor(BuildContext context, {required FmQ q, required bool isNew, int index = 0, int total = 0, String profileLabel = ''}) {
   final w = q.copy();
   final text = TextEditingController(text: w.text);
@@ -438,6 +455,13 @@ Future<FmQ?> showQuestionEditor(BuildContext context, {required FmQ q, required 
           w
             ..text = t
             ..help = help.text.trim();
+          if (!questionTags(w.type).any((x) => x.$1 == w.metric)) w.metric = '';
+          // A new number question about weight / height gets its tag on its own (it can be set back to None).
+          if (isNew && w.metric.isEmpty && w.type == 'number') {
+            final l = t.toLowerCase();
+            if (l.contains('weight')) w.metric = 'weight';
+            if (l.contains('height')) w.metric = 'height';
+          }
           if (!w.keyed) w.options = w.choice ? list : (w.type == 'photo' ? w.options : []);
           if (!w.choice) w.other = false;
           Navigator.of(ctx).pop(w);
@@ -466,6 +490,17 @@ Future<FmQ?> showQuestionEditor(BuildContext context, {required FmQ q, required 
           if (w.type == 'photo')
             const FmNote(AppIcons.camera, 'The client takes up to 3 photos or picks them from the gallery. They show in the client profile under Progress.'),
           if (w.type == 'scale') const FmNote(AppIcons.doc, 'Clients rate from 1 to 5. Use the help text to say what 1 and 5 mean.'),
+          if (questionTags(w.type).isNotEmpty)
+            drField(
+              'Progress tag (optional)',
+              Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
+                AppSelect(tagLabel(w.metric), entries: [
+                  for (final (k, l) in [('', 'None'), ...questionTags(w.type)]) MenuEntry(l, selected: w.metric == k, onTap: () => set(() => w.metric = k)),
+                ]),
+                Text('The answer is saved there too: Weight → weigh-ins, Height → profile, Body fat, Muscle mass and body sizes → measurements. Progress and Home read it from there.',
+                    style: AppText.s(12, W.w5, color: AppColors.muted)),
+              ]),
+            ),
           drField('Help text (optional)', AppTextField(controller: help, placeholder: 'e.g. Empty stomach, same scale')),
           DrSwitch(title: 'Required', sub: 'The client must answer it', value: w.required, onChanged: (v) => set(() => w.required = v)),
           Row(mainAxisAlignment: MainAxisAlignment.end, spacing: 8, children: [
