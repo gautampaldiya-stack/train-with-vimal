@@ -24,6 +24,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Kyun:** Probid 2026-10-31.
 - **Updated:** backend/apps/nutrition/views.py, tests/test_food_phase3.py, app/lib/features/client/food/food_screen.dart
 
+### 2026-11-02 · Docs — work tracker (Completed / Remaining)
+- **Pehle:** Probid ki poori list (Completed, Remaining A–S, decisions) kisi file me nahi thi.
+- **Ab:** `docs/WORK-TRACKER.md`: Completed 1–11, Remaining A–S Probid ki numbering me, har item par status mark (✅ 🔧 ◐ ⬜), abhi chalta kaam, code se cross-check, incomplete notes. HANDOFF.md aur CURRENT.md se link.
+- **Kyun:** Probid: kitna kaam hua, kitna baki, ek file me.
+- **Updated:** docs/WORK-TRACKER.md, docs/HANDOFF.md, docs/phases/CURRENT.md
+
 ### 2026-11-02 · Food — foods added outside the plan: one line each, Ate it, Edit portion
 - **Pehle:** Meal card me "Also logged · outside the plan" wale foods ka sheet sirf Log more / Delete deta tha; portion badal nahi sakte the; row me time aur reason stack the.
 - **Ab:** Har food ek line me, planned foods jaisa (naam, amount, Eaten, kcal). Tap par planned food jaisa sheet: stepper (jo log kiya wahi default, food ka default nahi), "Logged …" line, 4 macro boxes, Save portion, Ate it, Log more, Not eaten (Undo ke saath). Naya API `PATCH me/food-log/<id>/ {quantity}`.

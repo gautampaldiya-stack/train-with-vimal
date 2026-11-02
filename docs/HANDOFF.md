@@ -33,6 +33,7 @@ If an artifact link does not open from the new account (artifacts are private to
 Gautam has to share it from the old account, or just use `design/screens/` from the repo, which has everything.
 
 ## 3. Read before any work (Gautam's rule)
+0. [`docs/WORK-TRACKER.md`](WORK-TRACKER.md) — Probid's full list: kya ho gaya (Completed) aur kya baki (Remaining A–S), with status marks. Update it with every piece of work.
 1. `CLAUDE.md`
 2. `docs/phases/CURRENT.md` — what is happening now / next (handoff note, updated with every push)
 3. `docs/screens/status.md` — every board, Done / Partial / Not started

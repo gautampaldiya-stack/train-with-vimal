@@ -2,7 +2,9 @@
 
 Updated with every push, so anyone (another Claude session, local Claude Code, a developer) can pick up from here.
 
-**Last updated:** 2026-10-29 · branch `working`
+**Last updated:** 2026-11-02 · branch `working`
+
+**Full list of done / remaining work: [../WORK-TRACKER.md](../WORK-TRACKER.md)** (update it with every push).
 
 ## Done
 - 2026-10-29 (latest): D-82 Phase 1 of batch 1: shared calculation module (`apps/common/calc.py`), food log
