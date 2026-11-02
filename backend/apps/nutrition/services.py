@@ -644,15 +644,24 @@ def day_view(client, day, request=None):
                     _entry_for_item(client, day, meal, it, None, now)
                 assigned.append(a)
                 planned_rows.append(a)
+                # Planned = what the coach assigned (MealItem.quantity in its unit). A swapped food is in grams:
+                # its planned amount is the swap for the assigned portion, never the food's own default.
+                sw = st.swaps.get(str(it.id)) if apply_today and st and e.swapped_from else None
+                if sw:
+                    planned = float(sw.get("planned") or sw.get("grams") or e.grams)
+                    edited = round(float(e.grams), 1) != round(planned, 1)
+                else:
+                    planned = float(it.quantity)
+                    edited = bool(apply_today and st and str(it.id) in st.portions
+                                  and float(st.portions[str(it.id)]) != float(it.quantity))
                 items.append({"item": it.id, "food": e.food_id, "name": e.name, "quantity": float(e.quantity),
                               "unit": e.unit_name, "grams": float(e.grams), "kcal": show_kcal(e.kcal),
                               "protein": show_g(e.protein), "carbs": show_g(e.carbs), "fat": show_g(e.fat),
                               "swapped_from": e.swapped_from, "swaps": len(swaps.item_swaps(it)),
-                              "planned_quantity": float(it.quantity),
+                              "planned_quantity": planned,
                               # eaten | skipped | "" (not logged yet); edited: today's portion is not the planned one
                               "state": (st.items.get(str(it.id)) if st else None) or "",
-                              "edited": bool(apply_today and st and str(it.id) in st.portions
-                                             and float(st.portions[str(it.id)]) != float(it.quantity))})
+                              "edited": edited})
             meals.append({
                 "id": meal.id, "name": meal.name, "time": meal.time, "kcal_target": meal.kcal_target, "pill": pill,
                 "option": opt.id if opt else None,

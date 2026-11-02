@@ -154,3 +154,26 @@ def test_a_meal_cannot_be_logged_before_it_opens(client_user, settings):
     Meal.objects.filter(id=meal["id"]).update(time=(timezone.localtime() + timedelta(minutes=20)).time())
     if (timezone.localtime() + timedelta(minutes=20)).date() == timezone.localdate():
         _act(client_user, meal, "eat")  # 20 minutes before: open
+
+
+def test_swapped_food_planned_is_the_assigned_portion_not_the_food_default(client_user):
+    """Probid 2026-10-31: after a swap, Planned and Set to default are the swap for the coach's portion (in g)."""
+    from apps.nutrition.models import Food, MealItem, MealPlan
+    from apps.nutrition.swaps import same_kcal_grams
+    MealPlan.all_objects.update(allow_swaps=True, allow_search_any=True)
+    meal = _meal(client_user)
+    a = meal["items"][0]
+    item = MealItem.objects.get(id=a["item"])
+    alt = Food.objects.exclude(id=item.food_id).filter(kcal__gt=0).first()
+    want = same_kcal_grams(item.food, item.grams, alt)
+    _, m = _act(client_user, meal, "swap", item=a["item"], food=str(alt.id))
+    s = m["items"][0]
+    assert s["unit"] == "g" and s["planned_quantity"] == want and not s["edited"]
+    # Edit portions on the swapped food changes the swap's grams
+    _, m = _act(client_user, meal, "portions", portions={str(a["item"]): want + 50})
+    s = m["items"][0]
+    assert s["quantity"] == want + 50 and s["planned_quantity"] == want and s["edited"]
+    # Set to default (left out of portions) goes back to the planned grams
+    _, m = _act(client_user, meal, "portions", portions={})
+    s = m["items"][0]
+    assert s["quantity"] == want and not s["edited"]

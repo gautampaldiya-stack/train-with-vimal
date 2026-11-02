@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-11-02 · Food — swapped food Planned = coach's portion; food list crash
+- **Pehle:** Swap ke baad Edit portions me "Planned 1 g" dikhta tha (coach ki 1 slice wali value grams me), aur Set to default food ka apna default deta tha. Food list me unit ke bina wala food (grams) app crash karta tha (Null is not num).
+- **Ab:** Swapped food ka Planned = coach ke diye portion ke barabar kcal wala swap amount (jaise 120 g). Edit portions swap ke grams badalta hai; Set to default wapas usi planned grams par. Food list null values safely padhti hai.
+- **Kyun:** Probid 2026-10-31 / 11-02.
+- **Updated:** backend/apps/nutrition/views.py, services.py, tests/test_food_phase3.py, app/lib/features/client/food/food_log_screen.dart
+
 ### 2026-10-31 · Edit home bar, Add card list, check-in edit same day, weekly as a list
 - **Pehle:** Edit home me Cancel/Done upar aur neeche dono; Add card ek simple menu; Sent check-in card bada; check-in 6 din tak edit; weekly ek sawal ek page; daily me weight sawal ka naam "Morning weight" fixed.
 - **Ab:** Phone pe Edit home me bottom nav chhupta hai, uski jagah "Edit home" bar (Cancel, Done). Add card sheet me har card ka icon, naam aur kya dikhata hai. Sent daily check-in: ek line "Sent ✓ · time", tap = Check-ins page (wahan Edit answers). Daily aur weekly check-in sirf usi din edit (server bhi mana karta hai). Weekly ab ek list me saare sawal, Send; sent ke din "Edit answers" (photos waise hi). Daily ka weight sawal form me jo naam hai wahi dikhata hai.

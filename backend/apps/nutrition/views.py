@@ -704,8 +704,15 @@ class MyMealActionView(APIView):
                         clean[str(int(k))] = float(v)
                 except (TypeError, ValueError):
                     continue
+            # A swapped food is shown in grams: its portion is the swap's grams, not the planned food's units.
+            # Left out = back to the planned amount (Set to default), like portions.
+            for k, sw in list(st.swaps.items()):
+                if k in clean:
+                    st.swaps[k] = {**sw, "grams": round(clean.pop(k), 1)}
+                elif sw.get("planned"):
+                    st.swaps[k] = {**sw, "grams": sw["planned"]}
             st.portions = clean
-            st.save(update_fields=["portions", "updated_at"])
+            st.save(update_fields=["portions", "swaps", "updated_at"])
             services.rewrite_eaten(request.user, meal, day, st)  # eaten foods follow the new portions
         elif op == "swap":
             if not plan.allow_swaps:
@@ -723,15 +730,19 @@ class MyMealActionView(APIView):
                     raise PermissionDenied("Pick one of the approved swaps.")
                 eaten = services._grams(item, st.portions.get(str(item.id)))
                 grams = same_kcal_grams(item.food, eaten, alt)
+                # planned: the swap's amount for the portion the coach assigned (Set to default goes back to it)
+                planned = same_kcal_grams(item.food, item.grams, alt)
                 if own is not None:  # the coach's amount, scaled to today's portion
                     unit = FoodUnit.objects.filter(id=own.get("unit"), food=alt).first() if own.get("unit") else None
                     g = Decimal(str(own.get("quantity") or 1)) * (unit.grams if unit else Decimal(1))
                     grams = round(float(g * eaten / item.grams)) if item.grams else round(float(g))
-                st.swaps[str(item.id)] = {"food": str(alt.id), "grams": grams}
+                    planned = round(float(g))
+                st.swaps[str(item.id)] = {"food": str(alt.id), "grams": grams, "planned": planned}
+                st.portions.pop(str(item.id), None)  # today's portion is now in the swap's grams
                 activity_log(f"swapped a food at {meal.name.lower()}", "meal", actor=request.user,
                              client=request.user, target_label=meal.name,
                              change=(item.food.name, f"{alt.name} {grams:g} g" if grams else alt.name))
-            st.save(update_fields=["swaps", "updated_at"])
+            st.save(update_fields=["swaps", "portions", "updated_at"])
             services.rewrite_eaten(request.user, meal, day, st)
         elif op == "option":
             if not plan.allow_switch_options:
