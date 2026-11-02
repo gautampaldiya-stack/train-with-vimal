@@ -241,9 +241,11 @@ class _DailyCheckinState extends State<DailyCheckin> {
         label: diff,
         children: [
           CkStepper(
-            value: q.metric == 'weight' ? kg(x) : x.toStringAsFixed(1),
+            value: x.toStringAsFixed(1),
+            suffix: q.metric == 'weight' ? 'kg' : null,
             onMinus: () => _set(q, ((x - .1) * 10).round() / 10),
             onPlus: () => _set(q, ((x + .1) * 10).round() / 10),
+            onType: (n) => _set(q, n),
           ),
         ],
       );

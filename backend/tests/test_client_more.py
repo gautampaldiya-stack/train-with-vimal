@@ -185,7 +185,7 @@ def test_photo_week_checkin_asks_measurements_and_saves_them_to_progress(client_
     form = client_user.get("/api/v1/me/checkins/").json()["weekly"]["form"]
     mq = next(q for q in form["questions"] if q["type"] == "measures")
     keys = [m["key"] for m in mq["measures"]]
-    assert mq["id"] == -1 and "waist" in keys and not mq["required"]
+    assert mq["id"] > 0 and "waist" in keys and not mq["required"]  # a real question of the form now
     assert next(m for m in mq["measures"] if m["key"] == "waist")["last"] is not None
     i = [q["type"] for q in form["questions"]]
     assert i.index("measures") == i.index("photo") - 1
@@ -193,11 +193,12 @@ def test_photo_week_checkin_asks_measurements_and_saves_them_to_progress(client_
     for q in form["questions"]:
         if q["required"] and str(q["id"]) not in answers:
             answers[str(q["id"])] = q["options"][0] if q["options"] else 4
-    bad = client_user.post("/api/v1/me/submissions/", {"form": form["id"], "answers": {**answers, "-1": {"waist": 5}}},
+    m = str(mq["id"])
+    bad = client_user.post("/api/v1/me/submissions/", {"form": form["id"], "answers": {**answers, m: {"waist": 5}}},
                            format="json")
-    assert bad.status_code == 400 and "-1" in bad.json()["error"]["fields"]
-    r = client_user.post("/api/v1/me/submissions/", {"form": form["id"], "answers": {**answers, "-1": {"waist": 79,
-                                                                                                    "hips": ""}}},
+    assert bad.status_code == 400 and m in bad.json()["error"]["fields"]
+    r = client_user.post("/api/v1/me/submissions/", {"form": form["id"], "answers": {**answers, m: {"waist": 79,
+                                                                                                 "hips": ""}}},
                          format="json")
     assert r.status_code == 201, r.content
     assert Measurement.objects.get(client=riya, date=today).values["waist"] == 79.0

@@ -7,7 +7,7 @@ SLEEP_OPTIONS = ["5 h", "6 h", "6.5 h", "7 h", "7.5 h", "8 h", "9 h"]
 
 # Check-ins page: the short name of a weekly question on the "what it asks" chips.
 CHIPS = {"Body weight (kg)": "Weight", "How was your week?": "Your week", "Did you follow the meal plan?": "Meal plan",
-         "Progress photos this week?": "3 photos", "Anything your coach should know?": "Notes",
+         "Progress photos this week?": "3 photos", "Body measurements": "Measurements", "Anything your coach should know?": "Notes",
          # Forms the coach sends (the Check-ins card, D-49)
          "How happy are you with your coaching?": "How happy you are", "What is working well?": "What works",
          "What should we do better?": "What to do better",
@@ -23,9 +23,13 @@ CHIPS = {"Body weight (kg)": "Weight", "How was your week?": "Your week", "Did y
          "Do you know any other reason you should not do physical activity?": "Anything else"}
 
 
-def q(text, type, *, options=None, scale=None, help="", required=False, metric="", other=False):
+def q(text, type, *, options=None, scale=None, help="", required=False, metric="", other=False, tips=None):
     return {"text": text, "type": type, "options": options or [], "scale_labels": scale or [], "help_text": help,
-            "required": required, "metric": metric, "allow_other": other}
+            "required": required, "metric": metric, "allow_other": other, "suggestions": tips or []}
+
+
+NOTE_TIPS = ["Office travel next week, Tue to Thu", "Knee felt better on box squats", "Can I get more dinner ideas?",
+             "Nothing this week"]
 
 
 def _onboarding():
@@ -44,8 +48,10 @@ TEMPLATES = {
         q("Did you follow the meal plan?", "single",
           options=["Yes, all week", "Mostly, ate out once or twice", "No, it was a hard week"],
           help="Be honest, it helps {coach} plan your food.", required=True),
+        q("Body measurements", "measures", help="Relaxed, tape snug but not tight. Change only what you measured."),
         q("Progress photos this week?", "photo", help="Front, side and back. Tap a slot to add a photo."),
-        q("Anything your coach should know?", "long", help="Optional. Travel, injuries, stress, questions."),
+        q("Anything your coach should know?", "long", help="Optional. Travel, injuries, stress, questions.",
+          tips=NOTE_TIPS),
     ],
     "daily": [
         q("Morning weight", "number", help="Empty stomach, same scale", required=True, metric="weight"),

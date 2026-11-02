@@ -9,7 +9,7 @@ from datetime import datetime, time, timedelta
 from django.utils import timezone
 
 from .defaults import CHIPS
-from .models import MEASURE_KEYS, Form, QuestionType, Submission, WeightLog
+from .models import Form, QuestionType, Submission, WeightLog
 
 WEEKLY_DUE = time(18, 0)  # Sunday 6:00 pm
 DAILY_REMINDER = "9:00 pm"
@@ -43,24 +43,21 @@ def _chip(q):
     return t if len(t) <= 18 else t[:17].rstrip() + "…"
 
 
-MEASURES_Q = -1  # the "Body measurements" step: not a stored question, its answer is {key: number}
+MEASURES_Q = -1  # older app builds: the auto "Body measurements" step; its answer is {key: number}
 
 
-def measures_question(client):
-    """Photo weeks of the weekly check-in also ask the coach's measurements (D-24). One step, all optional;
-    the numbers go to Progress on submit. Each row starts from the last value logged."""
+def measure_rows(client, keys=None):
+    """The rows of a "Body measurements" question: [keys] the coach picked, else the client's tracked ones (D-24).
+    Each row starts from the last value logged."""
     from .models import DEFAULT_MEASURES, MEASURES, Measurement
 
-    keys = client.client_profile.measure_keys or DEFAULT_MEASURES
+    keys = keys or (client.client_profile.measure_keys if client else None) or DEFAULT_MEASURES
     last = {}
-    for m in Measurement.objects.filter(client=client).order_by("-date")[:60]:
+    for m in (Measurement.objects.filter(client=client).order_by("-date")[:60] if client else []):
         for k, v in m.values.items():
             last.setdefault(k, (v, m.date))
-    rows = [{"key": k, "label": lbl, "unit": u, "last": last.get(k, (None, None))[0],
+    return [{"key": k, "label": lbl, "unit": u, "last": last.get(k, (None, None))[0],
              "last_date": last.get(k, (None, None))[1]} for k, lbl, u in MEASURES if k in keys]
-    return {"id": MEASURES_Q, "text": "Body measurements", "type": "measures", "options": [], "scale_labels": [],
-            "allow_other": False, "help_text": "Relaxed, tape snug but not tight. Change only what you measured.",
-            "required": False, "metric": "", "chip": "Measurements", "measures": rows}
 
 
 def form_payload(form, coach_first, photos=True, client=None):
@@ -68,18 +65,23 @@ def form_payload(form, coach_first, photos=True, client=None):
     With `client` on a photo week, a "Body measurements" step goes in just before the photos."""
     if form is None:
         return None
-    qs = [q for q in form.questions.all() if not q.is_removed and (photos or q.type != QuestionType.PHOTO)]
-    out = [{
-        "id": q.id, "text": q.text, "type": q.type, "options": q.options, "scale_labels": q.scale_labels,
-        "allow_other": q.allow_other, "help_text": q.help_text.replace("{coach}", coach_first or "your coach"),
-        "required": q.required, "metric": q.metric, "chip": _chip(q)} for q in qs]
-    # Skipped when this period already has its entry (logged from Progress): one entry per period (D-25).
     from .services import measure_entry
 
-    if photos and client is not None and form.type == "weekly" and \
-            not any(q.metric in MEASURE_KEYS for q in qs) and measure_entry(client) is None:
-        at = next((i for i, q in enumerate(qs) if q.type == QuestionType.PHOTO), len(out))
-        out.insert(at, measures_question(client))
+    # A weekly "Body measurements" question goes with the photos (off weeks leave it out) and is skipped when this
+    # period already has its entry (logged from Progress): one entry per period (D-25). Every question is the
+    # coach's own (Probid 2026-10-31); nothing is added here.
+    taken = form.type == "weekly" and client is not None and measure_entry(client) is not None
+    qs = [q for q in form.questions.all() if not q.is_removed and (photos or q.type != QuestionType.PHOTO)
+          and not (q.type == QuestionType.MEASURES and (taken or (form.type == "weekly" and not photos)))]
+    out = []
+    for q in qs:
+        row = {"id": q.id, "text": q.text, "type": q.type, "options": q.options, "scale_labels": q.scale_labels,
+               "allow_other": q.allow_other, "suggestions": q.suggestions, "allow_skip": q.allow_skip,
+               "help_text": q.help_text.replace("{coach}", coach_first or "your coach"),
+               "required": q.required, "metric": q.metric, "chip": _chip(q)}
+        if q.type == QuestionType.MEASURES:
+            row["measures"] = measure_rows(client, q.options)
+        out.append(row)
     return {"id": str(form.id), "name": form.name, "type": form.type, "questions": out}
 
 

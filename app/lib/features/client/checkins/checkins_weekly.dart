@@ -39,11 +39,12 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
   /// Edit answers of the check-in sent today (photos stay as sent).
   bool _editing = false;
 
-  static const _tips = ['Office travel next week, Tue to Thu', 'Knee felt better on box squats', 'Can I get more dinner ideas?', 'Nothing this week'];
+  /// Her own words for Other on a choice question, by question id.
+  final Map<int, TextEditingController> _others = {};
 
   @override
   void dispose() {
-    for (final t in _texts.values) {
+    for (final t in [..._texts.values, ..._others.values]) {
       t.dispose();
     }
     super.dispose();
@@ -57,6 +58,7 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
 
   /// The photos the photo question asks for: names and keys ("Front" → "front").
   List<String> get _slotNames => qs.where((q) => q.type == 'photo').firstOrNull?.slots ?? const [];
+  bool get _canSkipPhotos => qs.where((q) => q.type == 'photo').firstOrNull?.allowSkip ?? true;
   List<String> get _slotKeys => [for (final n in _slotNames) n.toLowerCase()];
   List<(String, String)> get _thumbs => [
     for (final (i, k) in _slotKeys.indexed)
@@ -86,7 +88,7 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
   /// Weight is answered once it was touched or came from a draft; everything else once set.
   String? _ans(CkQ q) {
     if (q.type == 'photo') {
-      if (_noPhotos) return 'No photos this week';
+      if (_noPhotos && _canSkipPhotos) return 'No photos this week';
       final n = _thumbs.length, all = _slotKeys.length;
       if (n == 0) return null;
       if (all == 1) return '1 photo';
@@ -312,9 +314,11 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
       final diff = d == null || !isW ? null : (d == 0 ? 'Same as last week' : '${kgChange(d)} since last week');
       return [
         CkStepper(
-          value: isW ? kg(x) : x.toStringAsFixed(1),
+          value: x.toStringAsFixed(1),
+          suffix: isW ? 'kg' : null,
           onMinus: () => _set(q, ((x - .1) * 10).round() / 10),
           onPlus: () => _set(q, ((x + .1) * 10).round() / 10),
+          onType: (n) => _set(q, n),
           under: diff == null
               ? null
               : Text(diff, style: AppText.s(12.5, W.w7, color: d! < 0 ? AppColors.okText : (d > 0 ? AppColors.amberText : AppColors.muted))),
@@ -350,6 +354,7 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
                   }
                 },
               ),
+            ..._other(q, sel, multi),
           ],
         ),
       ];
@@ -364,11 +369,12 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
     }
 
     return [
-      CkInput(controller: t, hint: 'Type your answer, or tap a suggestion below', area: true, onChanged: changed),
-      if (q.type == 'long')
+      CkInput(controller: t, hint: q.suggestions.isEmpty ? 'Type your answer' : 'Type your answer, or tap a suggestion below', area: q.type == 'long', onChanged: changed),
+      // The coach's own chips; none = no chips (Probid 2026-10-31).
+      if (q.suggestions.isNotEmpty)
         CkTry(
           lead: 'Tap to add',
-          items: _tips,
+          items: q.suggestions,
           onPick: (s) {
             final n = t.text.trim();
             t.text = n.isNotEmpty && !n.contains(s) ? '$n. $s' : (n.contains(s) ? n : s);
@@ -440,6 +446,31 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
     );
   }
 
+  /// Other on a choice question the coach allows it on: her own words, saved as "Other: …" (Probid 2026-10-31).
+  List<Widget> _other(CkQ q, List<Object?> sel, bool multi) {
+    if (!q.allowOther) return const [];
+    bool isOther(Object? x) => '$x'.toLowerCase().startsWith('other:');
+    final on = sel.any(isOther);
+    final t = _others[q.id] ??= TextEditingController(text: '${sel.firstWhere(isOther, orElse: () => '')}'.replaceFirst(RegExp(r'^[Oo]ther:\s*'), ''));
+    String mine() => 'Other: ${t.text.trim()}';
+    return [
+      _Opt('Other', on: on, onTap: () {
+        if (multi) {
+          on ? sel.removeWhere(isOther) : sel.add(mine());
+          _set(q, sel.isEmpty ? null : sel);
+        } else {
+          _set(q, on ? null : mine());
+        }
+      }),
+      if (on)
+        CkInput(
+          controller: t,
+          hint: 'Type your answer',
+          onChanged: () => _set(q, multi ? [...sel.where((x) => !isOther(x)), mine()] : mine()),
+        ),
+    ];
+  }
+
   // ─────────────────────────────── Photos
 
   List<Widget> _photosQ() {
@@ -458,7 +489,7 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
               ),
           ],
         ),
-      Hover(
+      if (_canSkipPhotos) Hover(
         onTap: () {
           setState(() {
             _noPhotos = !_noPhotos;

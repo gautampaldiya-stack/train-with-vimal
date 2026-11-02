@@ -57,6 +57,8 @@ class QuestionType(models.TextChoices):
     SCALE = "scale", "Scale 1–5"
     YES_NO = "yes_no", "Yes / No"
     PHOTO = "photo", "Photo upload"
+    # One card of the coach's body measurements (options = measure keys; none = the client's tracked ones).
+    MEASURES = "measures", "Body measurements"
 
 
 CHOICE_TYPES = {QuestionType.SINGLE, QuestionType.MULTIPLE, QuestionType.DROPDOWN}
@@ -70,6 +72,10 @@ class Question(models.Model):
     options = ArrayField(models.CharField(max_length=120), default=list, blank=True)
     scale_labels = ArrayField(models.CharField(max_length=30), default=list, blank=True)  # "Very low" … "Great"
     allow_other = models.BooleanField(default=False)
+    # Short / long answer: "Tap to add" suggestion chips the coach writes (Probid 2026-10-31).
+    suggestions = ArrayField(models.CharField(max_length=120), default=list, blank=True)
+    # Photo question: show "No photos this week" so she can send without photos.
+    allow_skip = models.BooleanField(default=True)
     help_text = models.CharField(max_length=200, blank=True, default="")
     required = models.BooleanField(default=False)
     # Maps an answer to a tracked metric: weight, sleep_hours, energy, mood, hunger, soreness, waist…

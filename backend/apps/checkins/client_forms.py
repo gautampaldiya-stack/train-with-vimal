@@ -129,7 +129,7 @@ def _copy(master, client, actor, name=None):
 def _copy_questions(src, dst):
     Question.objects.bulk_create([
         Question(form=dst, order=q.order, text=q.text, type=q.type, options=q.options, scale_labels=q.scale_labels,
-                 allow_other=q.allow_other, help_text=q.help_text, required=q.required, metric=q.metric,
+                 allow_other=q.allow_other, suggestions=q.suggestions, allow_skip=q.allow_skip, help_text=q.help_text, required=q.required, metric=q.metric,
                  profile_key=q.profile_key, copied_from_id=q.copied_from_id if src.status == Form.Status.CLIENT else q.id)
         for q in live_questions(src)])
 
@@ -149,7 +149,8 @@ def save_questions(form, items, master=None):
             m = src.get(qid)
             q = Question(form=form, copied_from=m)
             if m is not None:  # fields the editor does not show come from the master question
-                for k in ("options", "scale_labels", "allow_other", "help_text", "metric", "profile_key"):
+                for k in ("options", "scale_labels", "allow_other", "suggestions", "allow_skip", "help_text", "metric",
+                          "profile_key"):
                     setattr(q, k, getattr(m, k))
         for k, v in qd.items():
             if k != "id":

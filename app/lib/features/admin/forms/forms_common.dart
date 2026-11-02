@@ -44,7 +44,7 @@ AppIconData kindIcon(String k) => switch (k) {
 /// `.hb-ic` tone per kind (t1 blue, t2 green, t3 orange, t4 purple; the "All forms" row is green).
 (Color, Color) kindTone(String k) => AppColors.hbTones[const {'onboarding': 0, 'weekly': 1, 'daily': 2, 'survey': 3, 'waiver': 0}[k] ?? 1];
 
-/// The 9 answer types (`QT`), API key → label.
+/// The 10 answer types (`QT`), API key → label.
 const qTypes = [
   ('short', 'Short answer'),
   ('long', 'Long answer'),
@@ -55,6 +55,7 @@ const qTypes = [
   ('scale', 'Scale 1–5'),
   ('yes_no', 'Yes / No'),
   ('photo', 'Photo upload'),
+  ('measures', 'Body measurements'),
 ];
 const choiceTypes = {'single', 'multiple', 'dropdown'};
 
@@ -69,6 +70,7 @@ AppIconData qTypeIcon(String t) => switch (t) {
       'scale' => AppIcons.qScale,
       'yes_no' => AppIcons.checkCircle,
       'photo' => AppIcons.camera,
+      'measures' => AppIcons.ruler,
       _ => AppIcons.qShort,
     };
 
@@ -100,6 +102,8 @@ class FmQ {
         options = [for (final o in (j['options'] as List?) ?? const []) '$o'],
         scaleLabels = [for (final o in (j['scale_labels'] as List?) ?? const []) '$o'],
         other = j['allow_other'] == true,
+        suggestions = [for (final o in (j['suggestions'] as List?) ?? const []) '$o'],
+        allowSkip = j['allow_skip'] != false,
         help = '${j['help_text'] ?? ''}',
         required = j['required'] == true,
         metric = '${j['metric'] ?? ''}',
@@ -111,6 +115,8 @@ class FmQ {
         options = [],
         scaleLabels = [],
         other = false,
+        suggestions = [],
+        allowSkip = true,
         help = '',
         required = true,
         metric = '',
@@ -119,8 +125,8 @@ class FmQ {
 
   int? id;
   String text, type, help, metric, profileKey;
-  List<String> options, scaleLabels;
-  bool other, required;
+  List<String> options, scaleLabels, suggestions;
+  bool other, required, allowSkip;
   final Key key;
 
   /// Fills a client profile field (the onboarding questionnaire): its answer type and options stay as they are.
@@ -136,6 +142,8 @@ class FmQ {
         'options': options,
         'scale_labels': scaleLabels,
         'allow_other': other,
+        'suggestions': suggestions,
+        'allow_skip': allowSkip,
         'help_text': help,
         'required': required,
         'metric': metric,
@@ -143,7 +151,11 @@ class FmQ {
       };
 
   /// "4 options + Other" on a choice question.
-  String get optionsLine => choice ? '${options.length} options${other ? ' + Other' : ''}' : '';
+  String get optionsLine => choice
+      ? '${options.length} options${other ? ' + Other' : ''}'
+      : type == 'measures'
+          ? (options.isEmpty ? 'The client\'s tracked measurements' : '${options.length} measurements')
+          : '';
 }
 
 /// `.hb-ic.sm` tile of a form kind.
@@ -377,6 +389,11 @@ class _PreviewState extends State<_Preview> {
       'dropdown' => AppSelect(got.isEmpty ? 'Choose one' : got.first, entries: [
           for (final o in [...q.options, if (q.other) 'Other']) MenuEntry(o, selected: got.contains(o), onTap: () => pick(o)),
         ]),
+      'measures' => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
+          for (final (k, l) in measureKeys)
+            if (q.options.isEmpty ? defaultMeasures.contains(k) : q.options.contains(k))
+              Row(children: [Expanded(child: Text(l, style: AppText.s(13.5, W.w5))), Text('—', style: AppText.s(13, W.w7, color: AppColors.muted))]),
+        ]),
       _ => Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(borderRadius: AppRadius.all(10), border: Border.all(color: AppColors.line2, width: 1.5)),
@@ -405,6 +422,9 @@ class _PreviewState extends State<_Preview> {
           if (q.help.isNotEmpty) Text(q.help, style: AppText.s(12, W.w5, color: AppColors.muted)),
           answer,
           if (got.contains('Other') && q.type != 'scale') const AppTextField(placeholder: 'Type your answer'),
+          if (q.suggestions.isNotEmpty && (q.type == 'short' || q.type == 'long'))
+            Wrap(spacing: 6, runSpacing: 6, children: [for (final t in q.suggestions) CaChip(t)]),
+          if (q.type == 'photo' && q.allowSkip) Row(spacing: 10, children: [const FmCheck(on: false, square: true), Text('No photos this week', style: AppText.s(13.5, W.w5))]),
         ]),
       ),
     ]);
@@ -428,6 +448,14 @@ List<(String, String)> questionTags(String type) => switch (type) {
       _ => const [],
     };
 
+/// Body measurements a "Body measurements" question can ask (`MEASURES`), and the ones a client tracks by default.
+const measureKeys = [
+  ('neck', 'Neck'), ('chest', 'Chest'), ('abdomen', 'Abdomen'), ('waist', 'Waist'), ('hips', 'Hips'), ('bicep_l', 'Left bicep'),
+  ('bicep_r', 'Right bicep'), ('thigh_l', 'Left thigh'), ('thigh_r', 'Right thigh'), ('calf_l', 'Left calf'), ('calf_r', 'Right calf'),
+  ('body_fat', 'Body fat %'), ('muscle_mass', 'Muscle mass'),
+];
+const defaultMeasures = {'waist', 'hips', 'chest', 'bicep_l', 'bicep_r', 'body_fat'};
+
 String tagLabel(String metric) => metric.isEmpty
     ? 'None'
     : [...questionTags('number'), ...questionTags('scale')].firstWhere((x) => x.$1 == metric, orElse: () => (metric, metric)).$2;
@@ -439,6 +467,7 @@ Future<FmQ?> showQuestionEditor(BuildContext context,
   final text = TextEditingController(text: w.text);
   final opts = TextEditingController(text: w.options.join('\n'));
   final help = TextEditingController(text: w.help);
+  final tips = TextEditingController(text: w.suggestions.join('\n'));
   String? textErr, optErr;
   return showAppModal<FmQ>(
     context,
@@ -464,8 +493,12 @@ Future<FmQ?> showQuestionEditor(BuildContext context,
             if (l.contains('weight') && !used.contains('weight')) w.metric = 'weight';
             if (l.contains('height') && !used.contains('height')) w.metric = 'height';
           }
-          if (!w.keyed) w.options = w.choice ? list : (w.type == 'photo' ? w.options : []);
+          if (!w.keyed) w.options = w.choice ? list : (w.type == 'photo' || w.type == 'measures' ? w.options : []);
           if (!w.choice) w.other = false;
+          w.suggestions = w.type == 'short' || w.type == 'long'
+              ? [for (final l in tips.text.split('\n')) if (l.trim().isNotEmpty) l.trim()].take(8).toList()
+              : [];
+          if (w.type != 'photo') w.allowSkip = true;
           Navigator.of(ctx).pop(w);
         }
 
@@ -489,8 +522,38 @@ Future<FmQ?> showQuestionEditor(BuildContext context,
             ]),
             DrSwitch(title: 'Add an "Other" option', sub: 'The client can pick Other and type their own answer', value: w.other, onChanged: (v) => set(() => w.other = v)),
           ],
-          if (w.type == 'photo')
+          if (w.type == 'photo') ...[
             const FmNote(AppIcons.camera, 'The client takes up to 3 photos or picks them from the gallery. They show in the client profile under Progress.'),
+            DrSwitch(
+              title: 'Show "No photos this week"',
+              sub: 'The client can tick it and send the check-in without photos',
+              value: w.allowSkip,
+              onChanged: (v) => set(() => w.allowSkip = v),
+            ),
+          ],
+          if (w.type == 'measures')
+            drField(
+              'Measurements it asks',
+              Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
+                Wrap(spacing: 6, runSpacing: 6, children: [
+                  for (final (k, l) in measureKeys)
+                    _TypeChip('measures', l, on: w.options.contains(k), onTap: () => set(() => w.options.contains(k) ? w.options.remove(k) : w.options.add(k))),
+                ]),
+                Text(
+                    w.options.isEmpty
+                        ? 'None picked: the client gets the measurements their coach tracks for them. Every row is optional; the numbers go to Progress.'
+                        : 'Every row is optional; the numbers go to Progress. In a weekly check-in it comes with the photos.',
+                    style: AppText.s(12, W.w5, color: AppColors.muted)),
+              ]),
+            ),
+          if (w.type == 'short' || w.type == 'long')
+            drField(
+              'Suggestions (optional)',
+              Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
+                AppTextField(controller: tips, maxLines: 6, minLines: 2, placeholder: 'One per line, e.g. Nothing this week'),
+                Text('Shown under the answer box as "Tap to add" chips. Up to 8.', style: AppText.s(12, W.w5, color: AppColors.muted)),
+              ]),
+            ),
           if (w.type == 'scale') const FmNote(AppIcons.doc, 'Clients rate from 1 to 5. Use the help text to say what 1 and 5 mean.'),
           if (questionTags(w.type).isNotEmpty)
             drField(

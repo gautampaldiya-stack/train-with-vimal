@@ -152,11 +152,42 @@ class CkChoiceGrid extends StatelessWidget {
 }
 
 /// `fd-step lg` inside `ck-num`: round − / + and the big value.
-class CkStepper extends StatelessWidget {
-  const CkStepper({super.key, required this.value, required this.onMinus, required this.onPlus, this.under});
+/// − value + for a number question. With [onType] the middle is a box she can type in (Probid 2026-10-31):
+/// [value] is the plain number, [suffix] ("kg") sits beside it.
+class CkStepper extends StatefulWidget {
+  const CkStepper({super.key, required this.value, required this.onMinus, required this.onPlus, this.under, this.onType, this.suffix});
   final String value;
   final VoidCallback onMinus, onPlus;
   final Widget? under;
+  final ValueChanged<double?>? onType;
+  final String? suffix;
+  @override
+  State<CkStepper> createState() => _CkStepperState();
+}
+
+class _CkStepperState extends State<CkStepper> {
+  late final _t = TextEditingController(text: widget.value);
+  final _f = FocusNode();
+
+  @override
+  void didUpdateWidget(CkStepper old) {
+    super.didUpdateWidget(old);
+    // − / + and quick picks change the number; while she types, her text stays as it is.
+    if (!_f.hasFocus && _t.text != widget.value) _t.text = widget.value;
+  }
+
+  @override
+  void dispose() {
+    _t.dispose();
+    _f.dispose();
+    super.dispose();
+  }
+
+  void _step(VoidCallback f) {
+    _f.unfocus();
+    f();
+  }
+
   @override
   Widget build(BuildContext context) => Column(
     spacing: 4,
@@ -165,15 +196,35 @@ class CkStepper extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         spacing: 4,
         children: [
-          _round(AppIcons.minus, 'Less', onMinus),
+          _round(AppIcons.minus, 'Less', () => _step(widget.onMinus)),
           SizedBox(
-            width: 120,
-            child: Text(value, textAlign: TextAlign.center, style: AppText.s(22, W.w8, tabular: true)),
+            width: 132,
+            child: widget.onType == null
+                ? Text(widget.suffix == null ? widget.value : '${widget.value} ${widget.suffix}', textAlign: TextAlign.center, style: AppText.s(22, W.w8, tabular: true))
+                : Container(
+                    height: 46,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.line2)),
+                    child: Row(spacing: 4, children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _t,
+                          focusNode: _f,
+                          textAlign: TextAlign.center,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          style: AppText.s(22, W.w8, tabular: true),
+                          decoration: const InputDecoration(isDense: true, border: InputBorder.none, contentPadding: EdgeInsets.zero),
+                          onChanged: (t) => widget.onType!(double.tryParse(t.trim().replaceAll(',', '.'))),
+                        ),
+                      ),
+                      if (widget.suffix != null) Text(widget.suffix!, style: AppText.s(13, W.w7, color: AppColors.muted)),
+                    ]),
+                  ),
           ),
-          _round(AppIcons.plus, 'More', onPlus),
+          _round(AppIcons.plus, 'More', () => _step(widget.onPlus)),
         ],
       ),
-      ?under,
+      ?widget.under,
     ],
   );
 

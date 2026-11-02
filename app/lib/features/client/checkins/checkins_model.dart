@@ -414,6 +414,12 @@ class CkQ {
   String get metric => '${j['metric'] ?? ''}';
   String get chip => '${j['chip'] ?? text}';
   bool get required => j['required'] == true;
+  /// Choice questions: an "Other" option with her own words, stored as "Other: …".
+  bool get allowOther => j['allow_other'] == true;
+  /// Short / long answer: the coach's "Tap to add" chips.
+  List<String> get suggestions => [for (final o in (j['suggestions'] as List? ?? const [])) '$o'];
+  /// Photo question: "No photos this week" is offered.
+  bool get allowSkip => j['allow_skip'] != false;
   List<String> get options => type == 'yes_no' ? const ['Yes', 'No'] : [for (final o in (j['options'] as List? ?? [])) '$o'];
   List<String> get labels {
     final l = [for (final o in (j['scale_labels'] as List? ?? [])) '$o'];

@@ -231,6 +231,8 @@ Tasks card on the trainer dashboard (from automations or added by hand).
 | `options` | ArrayField |  |
 | `scale_labels` | ArrayField |  |
 | `allow_other` | BooleanField |  |
+| `suggestions` | ArrayField | Short / long answer: the coach's "Tap to add" chips |
+| `allow_skip` | BooleanField | Photo question: offers "No photos this week" (default on) |
 | `help_text` | CharField |  |
 | `required` | BooleanField |  |
 | `metric` | CharField |  |

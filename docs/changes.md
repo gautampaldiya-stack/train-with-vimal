@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-11-02 · Check-ins — admin builds every weekly question (no inbuilt ones)
+- **Pehle:** Weekly check-in me "Body measurements" step app/server khud jodta tha; note question ke suggestion chips app me fix the; photo question me "No photos this week" hamesha; number me sirf − / + (type nahi kar sakte); weekly me "Other" option nahi chalta tha.
+- **Ab:** Builder me naya answer type **Body measurements** (admin measurements chunta hai; kuch na chune to client ke tracked). Short/long question me **Suggestions** (ek line ek chip, max 8). Photo question me toggle **Show "No photos this week"**. Number stepper ke beech type box (weekly + daily). Weekly me "Other" option + text field ("Other: …" save hota hai). Weight tag wale number question me "This morning / Last week" quick pick apne aap. Single choice hamesha bade boxes. Purane weekly forms me migration ne measures question (photo se pehle) aur note chips daal diye. Weekly me measures question photo wale hafte hi aata hai, aur period ki entry ho chuki ho to nahi.
+- **Kyun:** Probid 2026-10-31: "sare questions admin banaega".
+- **Updated:** backend/apps/checkins/models.py, migrations/0008, serializers.py, services.py, client_page.py, defaults.py, library.py, client_forms.py, tests; app/lib/features/admin/forms/forms_common.dart, client/checkins/checkins_parts.dart, checkins_weekly.dart, checkins_daily.dart, checkins_model.dart; docs/architecture/data-model.md
+
 ### 2026-11-02 · Food — meal: add several photos first, then Mark as eaten
 - **Pehle:** Log se pehle sirf ek photo (Change se replace hoti thi); baaki photos log ke baad hi add ho sakti thi.
 - **Ab:** "Upload photo and mark as eaten" ke baad Add photo se 4 tak photos, har photo par alag remove. Ek Mark as eaten sab photos ke saath meal log karta hai. API: eat op `photos: [..]` (max 4), purana `photo` bhi chalta hai.

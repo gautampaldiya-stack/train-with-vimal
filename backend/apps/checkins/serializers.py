@@ -7,6 +7,7 @@ from .models import (
     Answer,
     Form,
     FormRequest,
+    MEASURE_KEYS,
     MEASURES,
     Measurement,
     PhotoSet,
@@ -22,11 +23,13 @@ METRICS = {"", "weight", "height", "sleep_hours", "energy", "mood", "hunger", "s
 
 class QuestionSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False, allow_null=True)
+    suggestions = serializers.ListField(child=serializers.CharField(max_length=120, allow_blank=True, trim_whitespace=False),
+                                        required=False)
 
     class Meta:
         model = Question
-        fields = ["id", "text", "type", "options", "scale_labels", "allow_other", "help_text", "required", "metric",
-                  "profile_key"]
+        fields = ["id", "text", "type", "options", "scale_labels", "allow_other", "suggestions", "allow_skip", "help_text",
+                  "required", "metric", "profile_key"]
         # Set by the built-in onboarding questionnaire (which profile field a question fills); the builder keeps it.
         read_only_fields = ["profile_key"]
 
@@ -51,10 +54,24 @@ class QuestionSerializer(serializers.ModelSerializer):
             if len(opts) > 6 or any(len(o) > 20 for o in opts):
                 raise serializers.ValidationError({"options": ["Up to 6 photos, each name up to 20 letters."]})
             attrs["allow_other"] = False
+        elif t == QuestionType.MEASURES:  # options = the measure keys it asks; none = the client's tracked ones
+            if any(o not in MEASURE_KEYS for o in opts):
+                raise serializers.ValidationError({"options": ["Unknown measurement."]})
+            opts = list(dict.fromkeys(opts))
+            attrs["allow_other"] = False
+            attrs["metric"] = ""
         else:
             opts = []
             attrs["allow_other"] = False
         attrs["options"] = opts
+        tips = [" ".join(s.split()) for s in attrs.get("suggestions", []) if s and s.strip()]
+        if t not in (QuestionType.SHORT, QuestionType.LONG):
+            tips = []
+        if len(tips) > 8:
+            raise serializers.ValidationError({"suggestions": ["Up to 8 suggestions."]})
+        attrs["suggestions"] = list(dict.fromkeys(tips))
+        if t != QuestionType.PHOTO:
+            attrs["allow_skip"] = True
         if t == QuestionType.SCALE:
             labels = attrs.get("scale_labels") or []
             if labels and len(labels) != 5:

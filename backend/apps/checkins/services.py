@@ -58,6 +58,10 @@ def _clean_value(q, v):
         if q.metric in MEASURE_KEYS and not ((3 <= n <= 70) if q.metric == "body_fat" else (10 <= n <= 300)):
             raise ValidationError({str(q.id): ["Check this number."]})
         return float(n)
+    if t == QuestionType.MEASURES:  # {key: number}, every row optional
+        if not isinstance(v, dict):
+            raise ValidationError({str(q.id): ["Send the measurements as {name: number}."]})
+        return _measures(str(q.id), v, q.options) or None
     if t == QuestionType.SCALE:
         try:
             n = int(v)
@@ -89,6 +93,24 @@ def _clean_value(q, v):
                 raise ValidationError({str(q.id): ["Pick one of the options."]})
         return out if t == QuestionType.MULTIPLE else out[0]
     return None
+
+
+def _measures(key, v, allowed=None):
+    """{key: number} of a measurements answer, checked: known keys (the question's own, when it names them), sane
+    numbers (body fat 3–70 %, the rest 10–300 cm/kg)."""
+    out = {}
+    for k, n in v.items():
+        if n in (None, ""):
+            continue
+        try:
+            n = round(float(n), 1)
+        except (TypeError, ValueError):
+            raise ValidationError({key: [f"{k}: enter a number."]}) from None
+        if k not in MEASURE_KEYS or (allowed and k not in allowed) or \
+                not ((3 <= n <= 70) if k == "body_fat" else (10 <= n <= 300)):
+            raise ValidationError({key: [f"{k}: that number looks off. Check it and try again."]})
+        out[k] = n
+    return out
 
 
 def _metric_value(q, v):
@@ -173,30 +195,23 @@ def submit(client, form, answers, files=None, *, request_obj=None, submission=No
     # Off weeks of "photos every N weeks" do not ask for photos, so the photo question is not required then.
     no_photos = form.type == "weekly" and not photo_week(client, when)
     cleaned, metrics = {}, {}
-    # The "Body measurements" step of photo weeks (client_page.MEASURES_Q): {key: number}, all optional.
+    # Older app builds send the auto "Body measurements" step as "-1": {key: number}, all optional.
     taken_in = answers.get("-1", answers.get(-1)) if isinstance(answers, dict) else None
     if taken_in:
         if not isinstance(taken_in, dict):
             raise ValidationError({"-1": ["Send the measurements as {name: number}."]})
-        for k, n in taken_in.items():
-            if n in (None, ""):
-                continue
-            try:
-                n = round(float(n), 1)
-            except (TypeError, ValueError):
-                raise ValidationError({"-1": [f"{k}: enter a number."]}) from None
-            if k not in MEASURE_KEYS or not ((3 <= n <= 70) if k == "body_fat" else (10 <= n <= 300)):
-                raise ValidationError({"-1": [f"{k}: that number looks off. Check it and try again."]})
-            metrics[k] = n
+        metrics.update(_measures("-1", taken_in))
     for q in questions:
         v = _clean_value(q, answers.get(str(q.id), answers.get(q.id)))
         has_photo = bool(files.get(str(q.id)))
         keep_photo = submission is not None and q.type == QuestionType.PHOTO and \
             submission.answers.filter(question=q).exclude(photo="").exists()
-        skip = no_photos and q.type == QuestionType.PHOTO
+        skip = no_photos and q.type in (QuestionType.PHOTO, QuestionType.MEASURES)
         if q.required and v is None and not has_photo and not keep_photo and not skip:
             raise ValidationError({str(q.id): ["This question needs an answer."]})
         cleaned[q.id] = v
+        if q.type == QuestionType.MEASURES and v:
+            metrics.update(v)  # they go on Progress like the old step
         mv = _metric_value(q, v)
         if mv is not None:
             metrics[q.metric] = mv
