@@ -40,16 +40,23 @@ class FdFood {
   String get id => '${j['id']}';
   String get name => '${j['name']}';
   bool get mine => j['mine'] == true;
-  List<double> get per100 => [for (final k in ['kcal', 'protein', 'carbs', 'fat']) ((j[k] as num?) ?? 0).toDouble()];
+  List<double> get per100 => [for (final k in ['kcal', 'protein', 'carbs', 'fat']) _n(j[k]) ?? 0];
+  /// A number from the API: a num, a decimal string ("40.00") or null.
+  static double? _n(dynamic v) => v is num ? v.toDouble() : double.tryParse('${v ?? ''}');
+
   List<({int id, String name, double grams})> get units => [
-    for (final u in (j['units'] as List? ?? [])) (id: (u['id'] as num).toInt(), name: '${u['name']}', grams: ((u['grams'] as num?) ?? 0).toDouble()),
+    for (final u in (j['units'] as List? ?? []))
+      if (_n((u as Map)['id']) != null) (id: _n(u['id'])!.toInt(), name: '${u['name']}', grams: _n(u['grams']) ?? 0),
   ];
+
+  /// The food's default serving unit; null = grams (a food with no units sends `{"id": null, "name": "g"}`).
   ({int id, String name, double grams})? get unit {
     final d = j['default_unit'] as Map?;
-    return d == null ? null : (id: (d['id'] as num).toInt(), name: '${d['name']}', grams: ((d['grams'] as num?) ?? 0).toDouble());
+    final id = _n(d?['id']), g = _n(d?['grams']);
+    return d == null || id == null || g == null || g <= 0 ? null : (id: id.toInt(), name: '${d['name']}', grams: g);
   }
 
-  double get qty => ((j['default_quantity'] as num?) ?? 1).toDouble();
+  double get qty => _n(j['default_quantity']) ?? 1;
 
   /// Grams of [q] of [u] (null = grams).
   double grams(({int id, String name, double grams})? u, double q) => u == null ? q : q * u.grams;
