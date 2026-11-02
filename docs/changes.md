@@ -20,7 +20,7 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 
 ### 2026-11-02 · Check-ins — builder settings for number, choice, measurements, photos
 - **Pehle:** Number hamesha stepper (0.1), quick pick sirf weight par; choice hamesha bade boxes; measurements sab optional aur cm me; photo slot naam builder se nahi badalte the.
-- **Ab:** Question me `settings`. Number: Stepper ya Field, Min/Max/Step, Quick pick on/off + step (client ke pichhle jawab ke aas-paas 5 chips; weight me last weigh-in). Single/multiple: Big boxes ya Compact chips, option ke saath subtitle ("Option | subtitle"). Measurements: har row cm/in (in wali value cm me save hoti hai) aur Required. Photo: slot naam (max 6). Server min/max aur required rows check karta hai.
+- **Ab:** Question me `settings`. Number: Stepper ya Field, Min/Max/Step, Quick pick on/off + step (client ke pichhle jawab ke aas-paas 5 chips; weight me last weigh-in). Single/multiple: style coach nahi chunta: question ke hisaab se apne aap (subtitle ya lambe options = bade boxes, 5+ chhote options = chips), option ke saath subtitle ("Option | subtitle"). Measurements: har row cm/in (in wali value cm me save hoti hai) aur Required. Photo: slot naam (max 6). Server min/max aur required rows check karta hai.
 - **Kyun:** Probid 2026-10-31 list, R3–R8 (OK 2026-11-02).
 - **Updated:** backend/apps/checkins (models, migration 0009, serializers, services, client_page, library, client_forms), tests/test_question_tags.py; app forms_common.dart, checkins_weekly.dart, checkins_daily.dart, checkins_model.dart; docs/WORK-TRACKER.md
 

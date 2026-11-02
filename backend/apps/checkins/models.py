@@ -78,7 +78,7 @@ class Question(models.Model):
     allow_skip = models.BooleanField(default=True)
     # Per-type look and limits the builder sets (Probid 2026-11-02, checked by QuestionSerializer):
     #   number:  {"input": "stepper" | "field", "min", "max", "step", "quick": bool, "quick_step"}
-    #   single / multiple: {"style": "cards" | "compact", "subs": {option: subtitle}}
+    #   single / multiple: {"subs": {option: subtitle}} (always the big boxes)
     #   measures: {"units": {key: "cm" | "in"}, "required": [key, …]}
     settings = models.JSONField(default=dict, blank=True)
     help_text = models.CharField(max_length=200, blank=True, default="")

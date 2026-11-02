@@ -433,8 +433,9 @@ class CkQ {
   bool get quick => settings['quick'] == true;
   double get quickStep => _sn('quick_step') ?? step;
   double? get last => (j['last'] as num?)?.toDouble();
-  /// Single / multiple: big boxes with a subtitle, or compact chips.
-  bool get compact => settings['style'] == 'compact';
+  /// Single / multiple: one look chosen from the question itself, never by the coach (Probid 2026-11-02): the
+  /// weekly check-in's big boxes, or small chips for 5+ short options with no subtitles (e.g. "6 h", "7 h"…).
+  bool get compact => options.length >= 5 && options.every((o) => o.length <= 14) && !options.any((o) => (subOf(o) ?? '').isNotEmpty);
   String? subOf(String o) => ((settings['subs'] as Map?) ?? const {})[o] as String?;
   List<String> get options => type == 'yes_no' ? const ['Yes', 'No'] : [for (final o in (j['options'] as List? ?? [])) '$o'];
   List<String> get labels {

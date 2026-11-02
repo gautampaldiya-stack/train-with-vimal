@@ -480,12 +480,20 @@ Future<FmQ?> showQuestionEditor(BuildContext context,
   final help = TextEditingController(text: w.help);
   final tips = TextEditingController(text: w.suggestions.join('\n'));
   String? textErr, optErr;
+  // Set by the content each build; the footer's Add / Save button calls it.
+  void Function() saveNow = () {};
   return showAppModal<FmQ>(
     context,
     title: isNew ? 'New question' : 'Edit question',
     body: isNew ? 'Placed at the end of the form' : 'Question ${index + 1} of $total',
     icon: AppIcons.clipboard,
-    width: 560,
+    // Wider, and Cancel / Add question stay fixed in the footer while the fields scroll (Probid 2026-11-02).
+    width: 680,
+    actions: (ctx) {
+      final cancel = AppButton('Cancel', expand: ctx.isPhone, onPressed: () => Navigator.of(ctx).pop());
+      final ok = AppButton.primary(isNew ? 'Add question' : 'Save question', icon: AppIcons.check, expand: ctx.isPhone, onPressed: () => saveNow());
+      return ctx.isPhone ? [Row(spacing: 8, children: [Expanded(child: cancel), Expanded(child: ok)])] : [cancel, ok];
+    },
     content: (ctx) => StatefulBuilder(
       builder: (ctx, set) {
         void save() {
@@ -517,7 +525,7 @@ Future<FmQ?> showQuestionEditor(BuildContext context,
           double? num(TextEditingController c) => double.tryParse(c.text.trim().replaceAll(',', '.'));
           w.settings = switch (w.type) {
             'number' => {'input': w.settings['input'] ?? 'stepper', 'min': num(nMin), 'max': num(nMax), 'step': num(nStep), 'quick': w.settings['quick'] == true, 'quick_step': num(qStep)},
-            'single' || 'multiple' => {'style': w.settings['style'] ?? (subs.isEmpty ? 'compact' : 'cards'), 'subs': subs},
+            'single' || 'multiple' => {'subs': subs},
             'measures' => {'units': w.settings['units'] ?? {}, 'required': w.settings['required'] ?? []},
             _ => {},
           };
@@ -529,6 +537,7 @@ Future<FmQ?> showQuestionEditor(BuildContext context,
           Navigator.of(ctx).pop(w);
         }
 
+        saveNow = save;
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [
           _req('Question', AppTextField(controller: text, placeholder: 'Enter the question', error: textErr, autofocus: isNew)),
           drField(
@@ -548,14 +557,6 @@ Future<FmQ?> showQuestionEditor(BuildContext context,
               AppTextField(controller: opts, maxLines: 8, minLines: 4, error: optErr),
               if (optErr == null) Text('Add at least two options.', style: AppText.s(12, W.w5, color: AppColors.muted)),
             ]),
-            if (w.type == 'single' || w.type == 'multiple')
-              drField(
-                'Look',
-                Wrap(spacing: 6, runSpacing: 6, children: [
-                  _Pick('Big boxes', on: (w.settings['style'] ?? 'cards') == 'cards', onTap: () => set(() => w.settings['style'] = 'cards')),
-                  _Pick('Compact chips', on: w.settings['style'] == 'compact', onTap: () => set(() => w.settings['style'] = 'compact')),
-                ]),
-              ),
             DrSwitch(title: 'Add an "Other" option', sub: 'The client can pick Other and type their own answer', value: w.other, onChanged: (v) => set(() => w.other = v)),
           ],
           if (w.type == 'photo') ...[
@@ -656,10 +657,6 @@ Future<FmQ?> showQuestionEditor(BuildContext context,
             ),
           drField('Help text (optional)', AppTextField(controller: help, placeholder: 'e.g. Empty stomach, same scale')),
           DrSwitch(title: 'Required', sub: 'The client must answer it', value: w.required, onChanged: (v) => set(() => w.required = v)),
-          Row(mainAxisAlignment: MainAxisAlignment.end, spacing: 8, children: [
-            Expanded(flex: ctx.isPhone ? 1 : 0, child: AppButton('Cancel', expand: ctx.isPhone, onPressed: () => Navigator.of(ctx).pop())),
-            Expanded(flex: ctx.isPhone ? 1 : 0, child: AppButton.primary(isNew ? 'Add question' : 'Save question', icon: AppIcons.check, expand: ctx.isPhone, onPressed: save)),
-          ]),
         ]);
       },
     ),

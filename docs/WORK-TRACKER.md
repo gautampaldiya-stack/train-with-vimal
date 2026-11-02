@@ -40,6 +40,7 @@ Is thread me Probid ki 31 Oct wali list ka kaam chal raha hai:
 - ◐ Check-in form builder — commit `4a78061`: number stepper ke beech type box, weekly me "Other" text field, admin Body measurements question (measurements chunna), photo "No photos this week" toggle, admin ke suggestion chips, koi auto-added question nahi (purane forms ke liye migration). Weight quick pick: Weight-tag wale number question par apne aap. Baaki R3–R8 settings neeche likhi hain.
 
 - ✅ Toast ki jagah (2 Nov, screenshots): workout logger me toast mini bar se 10 upar (pehle tab bar ka 75 bhi juda tha, isliye bahut upar). Bottom sheet khuli ho to toast sheet ke theek upar, screen ke top par nahi (sheet bahut lambi ho tabhi top).
+- ✅ Form builder "New question" modal: Cancel / Add question footer me fixed, modal 680 wide (2 Nov).
 - ✅ Check-in builder ki baaki R settings (R3–R8), Probid OK 2 Nov. Sirf choice option ka icon baaki (R5).
 
 Probid ka rule (2 Nov): abhi screenshot nahi lena, mobile par try nahi karna. Sirf code, `flutter analyze` aur backend tests; test Probid karenge.
@@ -410,7 +411,7 @@ Probid ka rule (2 Nov): abhi screenshot nahi lena, mobile par try nahi karna. Si
 2. ✅ Weekly check-in ka hardcoded aakhri sawal hatao. Saare sawal sirf builder se. Zaroorat ho to admin normal sawal ki tarah jode.
 3. ✅ Number question: Field ya Stepper (dono optional min/max ke saath). Stepper mode me beech ki value editable text field.
 4. ✅ Quick pick (jaise weight) *(builder me on/off + step; weight question me last weigh-in se, baaki me client ke pichhle jawab se)*: Number question ki setting. On ho to client ki last logged value ke aas-paas chips (jaise last 72.4 kg to 72.0, 72.2, 72.4, 72.6, 72.8). Admin on/off kare aur step set kare (jaise 0.2 kg). Client chip tap kare ya alag value type kare.
-5. ◐ *(Big boxes / Compact chips + subtitle ✅; option ka icon baaki)* Single/multiple choice display style, admin har sawal par chune:
+5. ◐ *(Probid 2 Nov: style ka option nahi, question ke hisaab se apne aap; subtitle ✅; option ka icon baaki)* Single/multiple choice display style, admin har sawal par chune:
    * Cards: bade boxes jisme title, subtitle aur icon.
    * List/Chips: compact.
    * Default compact jab options me subtitle ya icon na ho.

@@ -357,7 +357,7 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
       final multi = q.type == 'multiple';
       final sel = multi ? [...((v as List?) ?? const [])] : [if (v != null) q.type == 'yes_no' ? ((v as bool) ? 'Yes' : 'No') : v];
       if (q.compact) {
-        // Compact: small chips in rows (the coach chose Compact)
+        // many short options: small chips in rows (chosen from the question)
         void tap(String o) {
           if (multi) {
             sel.contains(o) ? sel.remove(o) : sel.add(o);
@@ -814,7 +814,7 @@ class _Opt extends StatelessWidget {
   );
 }
 
-/// Compact choice: a small round chip (the coach chose Compact).
+/// A short option of a long list: a small round chip.
 class _Chip extends StatelessWidget {
   const _Chip(this.label, {required this.on, required this.onTap});
   final String label;

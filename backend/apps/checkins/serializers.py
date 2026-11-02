@@ -51,8 +51,7 @@ def _settings(t, s, opts):
         if not isinstance(subs, dict):
             raise serializers.ValidationError({"settings": ["Subtitles go as {option: text}."]})
         subs = {o: " ".join(str(subs[o]).split())[:80] for o in opts if str(subs.get(o) or "").strip()}
-        style = s.get("style") if s.get("style") in ("cards", "compact") else ("cards" if subs else "compact")
-        return {"style": style, "subs": subs}
+        return {"subs": subs}  # one look for every choice question: the big boxes (Probid 2026-11-02)
     if t == QuestionType.MEASURES:
         units = s.get("units") or {}
         req = s.get("required") or []

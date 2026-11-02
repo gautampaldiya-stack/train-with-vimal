@@ -65,7 +65,7 @@ def test_question_settings_are_checked_and_used(client_user):
     assert not QuestionSerializer(data={"text": "x", "type": "number", "settings": {"min": 5, "max": 1}}).is_valid()
     s = QuestionSerializer(data={"text": "Diet?", "type": "single", "options": ["Yes", "No"],
                                  "settings": {"subs": {"Yes": "All week", "Maybe": "x"}}})
-    assert s.is_valid() and s.validated_data["settings"] == {"style": "cards", "subs": {"Yes": "All week"}}
+    assert s.is_valid() and s.validated_data["settings"] == {"subs": {"Yes": "All week"}}
     s = QuestionSerializer(data={"text": "Sizes", "type": "measures", "options": ["waist", "hips"],
                                  "settings": {"units": {"waist": "in", "body_fat": "in"}, "required": ["waist", "chest"]}})
     assert s.is_valid() and s.validated_data["settings"] == {"units": {"waist": "in"}, "required": ["waist"]}

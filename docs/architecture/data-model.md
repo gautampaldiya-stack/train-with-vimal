@@ -233,7 +233,7 @@ Tasks card on the trainer dashboard (from automations or added by hand).
 | `allow_other` | BooleanField |  |
 | `suggestions` | ArrayField | Short / long answer: the coach's "Tap to add" chips |
 | `allow_skip` | BooleanField | Photo question: offers "No photos this week" (default on) |
-| `settings` | JSONField | Builder look/limits: number `{input, min, max, step, quick, quick_step}`, choice `{style, subs}`, measures `{units, required}` |
+| `settings` | JSONField | Builder look/limits: number `{input, min, max, step, quick, quick_step}`, choice `{subs}`, measures `{units, required}` |
 | `help_text` | CharField |  |
 | `required` | BooleanField |  |
 | `metric` | CharField |  |
