@@ -168,8 +168,8 @@ Probid ka rule (2 Nov): abhi screenshot nahi lena, mobile par try nahi karna. Si
     * Weight aur measurement due dates weekly schedule ke hisaab se. Log ke baad next due date dikhao.
     * Measurement tap = past logs ki sheet: date, value, pichle se change.
     * Wahan stepper hatao, plain numeric field.
-30. 🔧 Daily check-in bugs (har ek ka root cause dhundho)
-    * 🔧 Single/multiple choice par "Other" configured hai par dikhta nahi. Dikhna chahiye aur free text lena chahiye. *(form builder thread me chal raha)*
+30. ◐ Daily check-in bugs (har ek ka root cause dhundho)
+    * ◐ Single/multiple choice par "Other" configured hai par dikhta nahi. Dikhna chahiye aur free text lena chahiye. *(weekly me ✅ `4a78061`; daily me check karna)*
     * ⬜ Duplicate questions ("Morning weight", "Anything else"). Karan dhundho (duplicate rows, duplicate form assignment ya template). Sirf configured sawal dikhao.
     * ⬜ Submit error. Logs me dhundho, fix karo, regression test.
     * ⬜ Daily check-in dikh nahi raha. Form assignment, schedule aur automation verify karo. Automation na ho to banao.
