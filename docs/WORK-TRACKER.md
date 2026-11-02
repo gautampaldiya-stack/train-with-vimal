@@ -39,6 +39,9 @@ Is thread me Probid ki 31 Oct wali list ka kaam chal raha hai:
 - ✅ Meal photos: pehle 4 tak photos (har ek remove), phir ek Mark as eaten (S3) — push ho gaya
 - ◐ Check-in form builder — commit `4a78061`: number stepper ke beech type box, weekly me "Other" text field, admin Body measurements question (measurements chunna), photo "No photos this week" toggle, admin ke suggestion chips, koi auto-added question nahi (purane forms ke liye migration). Weight quick pick: Weight-tag wale number question par apne aap. Baaki R3–R8 settings neeche likhi hain.
 
+- ✅ Toast ki jagah (2 Nov, screenshots): workout logger me toast mini bar se 10 upar (pehle tab bar ka 75 bhi juda tha, isliye bahut upar). Bottom sheet khuli ho to toast sheet ke theek upar, screen ke top par nahi (sheet bahut lambi ho tabhi top).
+- 🔧 Check-in builder ki baaki R settings (R3–R8), Probid OK 2 Nov.
+
 Probid ka rule (2 Nov): abhi screenshot nahi lena, mobile par try nahi karna. Sirf code, `flutter analyze` aur backend tests; test Probid karenge.
 
 ## Decisions (confirmed)

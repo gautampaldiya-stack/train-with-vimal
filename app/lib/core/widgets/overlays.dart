@@ -399,7 +399,7 @@ Future<T?> showAppSheet<T>(
                 ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: footer(ctx))
                 : Row(mainAxisAlignment: MainAxisAlignment.end, spacing: 8, children: footer(ctx)),
           ),
-        // A toast no longer pushes the sheet up: while a sheet is open it shows at the top (phone).
+        // A toast no longer pushes the sheet up: while a sheet is open it sits just above the sheet (phone).
         SizedBox(height: 18 + (phone ? MediaQuery.paddingOf(ctx).bottom : 0)),
       ]);
 
@@ -417,7 +417,7 @@ Future<T?> showAppSheet<T>(
       sheetAnimationStyle: Motion.off(context)
           ? AnimationStyle.noAnimation
           : const AnimationStyle(duration: Motion.sheet, reverseDuration: Motion.short, curve: Motion.curve),
-      builder: (ctx) => Padding(padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom), child: body(ctx, phone: true)),
+      builder: (ctx) => SheetMeasure(child: Padding(padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom), child: body(ctx, phone: true))),
     ));
   }
   return showGeneralDialog<T>(
@@ -479,9 +479,20 @@ class ToastHost extends StatefulWidget {
   /// (`:root:has(.ca-toast) .ca-sheet { padding-bottom: 78px }`).
   static final showing = ValueNotifier<bool>(false);
 
-  /// Bottom sheets open now (phone). While one is open, toasts show at the top of the screen
-  /// so they never cover the sheet (Gautam, 2026-10-15).
+  /// Bottom sheets open now (phone). While one is open, a toast sits 10 above the sheet's top edge
+  /// so it never covers the sheet and stays near the thumb (Probid 2026-11-02; before: the top of the screen).
   static final sheets = ValueNotifier<int>(0);
+
+  /// Height of the open bottom sheet, measured by [SheetMeasure] (0 = not measured yet).
+  static final sheetH = ValueNotifier<double>(0);
+
+  /// Phone, with a sheet open: true when the sheet is too tall to leave room for a toast above it,
+  /// so the toast goes to the top of the screen instead.
+  static bool atTop(BuildContext context) {
+    if (sheets.value == 0) return false;
+    final mq = MediaQuery.of(context);
+    return sheetH.value <= 0 || sheetH.value + 10 + 80 > mq.size.height - mq.padding.top;
+  }
   static _ToastHostState? _instance;
 
   @override
@@ -534,15 +545,17 @@ class _ToastHostState extends State<ToastHost> {
     return Stack(children: [
         Positioned.fill(child: widget.child),
         ListenableBuilder(
-          listenable: Listenable.merge([ToastHost.bottomOffset, ToastHost.sheets]),
+          listenable: Listenable.merge([ToastHost.bottomOffset, ToastHost.sheets, ToastHost.sheetH]),
           builder: (context, child) {
-            final top = !wide && ToastHost.sheets.value > 0;
+            final sheet = !wide && ToastHost.sheets.value > 0;
+            final top = sheet && ToastHost.atTop(context);
             return AnimatedPositioned(
               duration: const Duration(milliseconds: 150),
               left: wide ? 24 : 12,
               right: wide ? 24 : 12,
               top: top ? MediaQuery.paddingOf(context).top + 12 : null,
-              bottom: top ? null : ToastHost.bottomOffset.value + MediaQuery.paddingOf(context).bottom,
+              // the sheet's measured height already holds the bottom inset
+              bottom: top ? null : (sheet ? ToastHost.sheetH.value + 10 : ToastHost.bottomOffset.value + MediaQuery.paddingOf(context).bottom),
               child: child!,
             );
           },
@@ -556,7 +569,7 @@ class _ToastHostState extends State<ToastHost> {
               transitionBuilder: (c, a) => FadeTransition(
                 opacity: a,
                 child: SlideTransition(
-                  position: Tween(begin: wide ? const Offset(.12, 0) : Offset(0, ToastHost.sheets.value > 0 ? -.6 : .6), end: Offset.zero).animate(a),
+                  position: Tween(begin: wide ? const Offset(.12, 0) : Offset(0, ToastHost.atTop(context) ? -.6 : .6), end: Offset.zero).animate(a),
                   child: ScaleTransition(scale: Tween(begin: .96, end: 1.0).animate(a), child: c),
                 ),
               ),
@@ -752,7 +765,26 @@ class _ToastBox extends StatelessWidget {
 /// Counts a phone bottom sheet as open until it closes (see [ToastHost.sheets]).
 Future<T?> trackSheet<T>(Future<T?> sheet) {
   Timer.run(() => ToastHost.sheets.value += 1);
-  return sheet.whenComplete(() => Timer.run(() => ToastHost.sheets.value = math.max(0, ToastHost.sheets.value - 1)));
+  return sheet.whenComplete(() => Timer.run(() {
+        ToastHost.sheets.value = math.max(0, ToastHost.sheets.value - 1);
+        if (ToastHost.sheets.value == 0) ToastHost.sheetH.value = 0;
+      }));
+}
+
+/// Wraps a phone bottom sheet's content and tells [ToastHost] how tall the sheet is, so a toast can sit just
+/// above it.
+class SheetMeasure extends StatelessWidget {
+  const SheetMeasure({super.key, required this.child});
+  final Widget child;
+  @override
+  Widget build(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!context.mounted) return;
+      final h = context.size?.height;
+      if (h != null && h != ToastHost.sheetH.value) ToastHost.sheetH.value = h;
+    });
+    return child;
+  }
 }
 
 void showToast(BuildContext context, String title, {String? sub, ToastKind kind = ToastKind.staff, String? action, VoidCallback? onAction, AppIconData? icon}) {

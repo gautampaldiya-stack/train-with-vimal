@@ -590,10 +590,12 @@ Future<T?> showFixedSheet<T>(BuildContext context, Widget Function(BuildContext)
       barrierColor: AppColors.scrimSheet,
       constraints: BoxConstraints(maxHeight: h * .86),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.caSheet))),
-      builder: (ctx) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Center(child: Container(width: 38, height: 4, margin: const EdgeInsets.fromLTRB(0, 8, 0, 8), decoration: BoxDecoration(color: AppColors.grab, borderRadius: AppRadius.all(4)))),
-        Flexible(child: Padding(padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + MediaQuery.paddingOf(ctx).bottom), child: builder(ctx))),
-      ]),
+      builder: (ctx) => SheetMeasure(
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Center(child: Container(width: 38, height: 4, margin: const EdgeInsets.fromLTRB(0, 8, 0, 8), decoration: BoxDecoration(color: AppColors.grab, borderRadius: AppRadius.all(4)))),
+          Flexible(child: Padding(padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + MediaQuery.paddingOf(ctx).bottom), child: builder(ctx))),
+        ]),
+      ),
     ));
   }
   return showGeneralDialog<T>(

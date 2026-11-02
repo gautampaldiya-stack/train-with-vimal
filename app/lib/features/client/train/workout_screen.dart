@@ -49,6 +49,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
   /// Phone: toasts sit above the timer / rest bar while the logger is open.
   double? _lifted;
+  double _barH = 0;
   bool _idleUp = false;
   final _note = TextEditingController();
 
@@ -153,7 +154,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       listenable: c,
       builder: (context, _) {
         final phone = context.isPhone;
-        _lift(phone && !c.finished ? 75 + 66 : null);
+        // 10 above the timer / rest bar, measured; there is no tab bar on the logger (the old 75 + 66 counted one,
+        // so toasts floated ~75 too high, Probid 2026-11-02).
+        _lift(phone && !c.finished ? (_barH > 0 ? _barH + 10 : 76) : null);
         if (c.finished) return _doneView(c, phone);
         return phone ? _phone(c) : _web(c);
       },
@@ -182,7 +185,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           _panel(c, web: false),
         ]),
       ),
-      Positioned(left: 0, right: 0, bottom: 0, child: resting ? _restBar(c, web: false) : _timerBar(c)),
+      Positioned(left: 0, right: 0, bottom: 0, child: _BarMeasure(onHeight: (h) {
+        if (h != _barH && mounted) setState(() => _barH = h);
+      }, child: resting ? _restBar(c, web: false) : _timerBar(c))),
     ]);
   }
 
@@ -1578,4 +1583,19 @@ class _Ring extends CustomPainter {
 
   @override
   bool shouldRepaint(_Ring old) => old.p != p;
+}
+
+/// Reports the height of the logger's bottom bar (timer or rest), so toasts sit 10 above it.
+class _BarMeasure extends StatelessWidget {
+  const _BarMeasure({required this.onHeight, required this.child});
+  final void Function(double) onHeight;
+  final Widget child;
+  @override
+  Widget build(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final h = context.mounted ? context.size?.height : null;
+      if (h != null) onHeight(h);
+    });
+    return child;
+  }
 }

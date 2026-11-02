@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-11-02 · Toast — near the timer bar and just above an open sheet
+- **Pehle:** Workout logger me toast mini timer bar se kaafi upar tairta tha (offset me tab bar ka 75 bhi juda tha, jabki logger par tab bar nahi). Koi bottom sheet khulte hi toast screen ke top par chala jata tha.
+- **Ab:** Logger me toast bar ki naapi hui height se 10 upar. Sheet khuli ho to toast sheet ke upar wale kinare se 10 upar; sheet itni lambi ho ki jagah na bache tabhi top par.
+- **Kyun:** Probid 2026-11-02 screenshots.
+- **Updated:** app/lib/core/widgets/overlays.dart, app/lib/features/client/train/workout_screen.dart, train_parts.dart, docs/WORK-TRACKER.md
+
 ### 2026-11-02 · Check-ins — admin builds every weekly question (no inbuilt ones)
 - **Pehle:** Weekly check-in me "Body measurements" step app/server khud jodta tha; note question ke suggestion chips app me fix the; photo question me "No photos this week" hamesha; number me sirf − / + (type nahi kar sakte); weekly me "Other" option nahi chalta tha.
 - **Ab:** Builder me naya answer type **Body measurements** (admin measurements chunta hai; kuch na chune to client ke tracked). Short/long question me **Suggestions** (ek line ek chip, max 8). Photo question me toggle **Show "No photos this week"**. Number stepper ke beech type box (weekly + daily). Weekly me "Other" option + text field ("Other: …" save hota hai). Weight tag wale number question me "This morning / Last week" quick pick apne aap. Single choice hamesha bade boxes. Purane weekly forms me migration ne measures question (photo se pehle) aur note chips daal diye. Weekly me measures question photo wale hafte hi aata hai, aur period ki entry ho chuki ho to nahi.
