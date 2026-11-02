@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-11-02 · Food — meal: add several photos first, then Mark as eaten
+- **Pehle:** Log se pehle sirf ek photo (Change se replace hoti thi); baaki photos log ke baad hi add ho sakti thi.
+- **Ab:** "Upload photo and mark as eaten" ke baad Add photo se 4 tak photos, har photo par alag remove. Ek Mark as eaten sab photos ke saath meal log karta hai. API: eat op `photos: [..]` (max 4), purana `photo` bhi chalta hai.
+- **Kyun:** Probid 2026-10-31.
+- **Updated:** backend/apps/nutrition/views.py, tests/test_food_phase3.py, app/lib/features/client/food/food_screen.dart
+
 ### 2026-11-02 · Food — foods added outside the plan: one line each, Ate it, Edit portion
 - **Pehle:** Meal card me "Also logged · outside the plan" wale foods ka sheet sirf Log more / Delete deta tha; portion badal nahi sakte the; row me time aur reason stack the.
 - **Ab:** Har food ek line me, planned foods jaisa (naam, amount, Eaten, kcal). Tap par planned food jaisa sheet: stepper (jo log kiya wahi default, food ka default nahi), "Logged …" line, 4 macro boxes, Save portion, Ate it, Log more, Not eaten (Undo ke saath). Naya API `PATCH me/food-log/<id>/ {quantity}`.

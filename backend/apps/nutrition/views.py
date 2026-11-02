@@ -661,9 +661,14 @@ class MyMealActionView(APIView):
             services.check_meal_open(meal, day)
         plan = mp.followed
         if op == "eat":
-            photo = request.data.get("photo")  # optional: a picture of the meal, as a data URL (works offline)
-            services.mark_eaten(request.user, meal, day,
-                                photo=data_url_file(photo, f"meal-{meal.id}") if photo else None)
+            # optional: pictures of the meal as data URLs (works offline); `photos` (up to 4, Probid 2026-10-31) or one `photo`
+            pics = [p for p in (request.data.get("photos") or [request.data.get("photo")]) if p]
+            if len(pics) > MealDayState.MAX_PHOTOS:
+                raise serializers.ValidationError({"photos": [f"A meal can have up to {MealDayState.MAX_PHOTOS} photos."]})
+            st = services.mark_eaten(request.user, meal, day,
+                                     photo=data_url_file(pics[0], f"meal-{meal.id}") if pics else None)
+            for p in pics[1:]:
+                services.add_meal_photo(st, data_url_file(p, f"meal-{meal.id}"))
             _log_meal(request.user, meal, day, f"logged {meal.name.lower()}")
         elif op in ("unlog", "unskip"):
             services.unmark(request.user, meal, day)

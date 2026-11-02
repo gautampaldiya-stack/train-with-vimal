@@ -30,7 +30,8 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
   final c = FoodController();
 
   /// Photos picked for a meal that is not marked as eaten yet (meal id → data URL).
-  final Map<int, String> _photos = {};
+  /// Photos picked for a meal not logged yet (up to 4); one Mark as eaten logs it with all of them (Probid 2026-10-31).
+  final Map<int, List<String>> _photos = {};
 
   @override
   void initState() {
@@ -544,7 +545,7 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
             ]),
           ),
           if (m.logged && m.photo != null) FdPhoto(m.photo!, name: m.name, all: m.photos),
-          if (today && m.open && _photos[m.id] != null) FdPhoto(_photos[m.id]!, name: m.name),
+          if (today && m.open && _photos[m.id] != null) FdPhoto(_photos[m.id]!.first, name: m.name, all: _photos[m.id]!),
           fdPill(pill),
           if (today) CaIconBtn(AppIcons.dots, tooltip: 'Meal options', onTap: () => lock ? _lockedToast(m) : _menu(m)),
         ]),
@@ -562,7 +563,7 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
             Expanded(
               child: _photos[m.id] != null
                   // A photo is picked: one tap logs the meal with it.
-                  ? fdBtn('Mark as eaten', () => _eat(m, photo: _photos[m.id]), icon: AppIcons.check, kind: next ? CaBtnKind.pri : CaBtnKind.dark)
+                  ? fdBtn('Mark as eaten', () => _eat(m, photos: _photos[m.id]), icon: AppIcons.check, kind: next ? CaBtnKind.pri : CaBtnKind.dark)
                   : Builder(
                       builder: (bc) => fdBtn('Mark as eaten', () => _eatMenu(bc, m), icon: AppIcons.check, trailing: AppIcons.chevronDown, kind: next ? CaBtnKind.pri : CaBtnKind.dark),
                     ),
@@ -785,31 +786,66 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
     MenuEntry('Mark as eaten without a photo', icon: AppIcons.check, onTap: () => _eat(m)),
   ]);
 
-  /// Picks (or changes) the photo; the meal is logged only when Mark as eaten is tapped.
+  /// Adds one more photo (up to 4); the meal is logged only when Mark as eaten is tapped.
   Future<void> _eatWithPhoto(FMeal m) async {
-    final had = _photos.containsKey(m.id);
+    final n = _photos[m.id]?.length ?? 0;
+    if (n >= 4) {
+      showToast(context, 'Up to 4 photos a meal', sub: 'Remove one to add another', kind: ToastKind.info);
+      return;
+    }
     final photo = await pickMealPhoto(context, m.name);
     if (photo == null || !mounted) return;
-    setState(() => _photos[m.id] = photo);
-    showToast(context, had ? 'Photo changed' : 'Photo added', sub: 'Tap Mark as eaten to log ${m.name}', kind: ToastKind.info);
+    setState(() => _photos[m.id] = [...?_photos[m.id], photo]);
+    showToast(context, n == 0 ? 'Photo added' : '${n + 1} photos added', sub: 'Add more or tap Mark as eaten to log ${m.name}', kind: ToastKind.info);
   }
 
-  /// Under the foods while a photo waits: the photo, Change and Remove.
-  Widget _photoBar(FMeal m) => Container(
-    padding: const EdgeInsets.all(8),
-    decoration: BoxDecoration(color: AppColors.nextBg, borderRadius: BorderRadius.circular(10)),
-    child: Row(spacing: 10, children: [
-      FdPhoto(_photos[m.id]!, name: m.name, size: 40),
-      Expanded(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Photo ready', style: AppText.s(13, W.w7)),
-          CutText('${m.name} is not logged yet', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
+  /// Under the foods while photos wait: each photo with its own remove, Add photo (up to 4).
+  Widget _photoBar(FMeal m) {
+    final ps = _photos[m.id]!;
+    void drop(int i) => setState(() {
+      final left = [...ps]..removeAt(i);
+      left.isEmpty ? _photos.remove(m.id) : _photos[m.id] = left;
+    });
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(color: AppColors.nextBg, borderRadius: BorderRadius.circular(10)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
+        Row(spacing: 10, children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(ps.length == 1 ? 'Photo ready' : '${ps.length} photos ready', style: AppText.s(13, W.w7)),
+              CutText('${m.name} is not logged yet', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
+            ]),
+          ),
+          if (ps.length < 4) chSm('Add photo', () => _eatWithPhoto(m), icon: AppIcons.camera),
         ]),
-      ),
-      chSm('Change', () => _eatWithPhoto(m), icon: AppIcons.camera),
-      CaIconBtn(AppIcons.close, tooltip: 'Remove photo', onTap: () => setState(() => _photos.remove(m.id))),
-    ]),
-  );
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          for (final (i, p) in ps.indexed)
+            Stack(clipBehavior: Clip.none, children: [
+              FdPhoto(p, name: m.name, size: 48, all: ps),
+              Positioned(
+                top: -6,
+                right: -6,
+                child: Semantics(
+                  button: true,
+                  label: 'Remove photo ${i + 1}',
+                  child: Hover(
+                    onTap: () => drop(i),
+                    builder: (_, h, _) => Container(
+                      width: 20,
+                      height: 20,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(color: h ? AppColors.badText : AppColors.text, shape: BoxShape.circle, border: Border.all(color: AppColors.white, width: 1.5)),
+                      child: const AppIcon(AppIcons.close, size: 11, color: AppColors.white),
+                    ),
+                  ),
+                ),
+              ),
+            ]),
+        ]),
+      ]),
+    );
+  }
 
   /// Foods added to this meal from Log food (outside the plan's own foods).
   List<Widget> _extras(FoodDay d, FMeal m) {
@@ -978,7 +1014,8 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
     return ok == true && mounted;
   }
 
-  Future<void> _eat(FMeal m, {String? photo}) async {
+  Future<void> _eat(FMeal m, {List<String>? photos}) async {
+    final photo = photos == null || photos.isEmpty ? null : photos.first;
     // what this tap adds: the foods not decided yet (a fully skipped meal: all of them, "I ate it")
     final allSkipped = m.items.every((i) => i.state == 'skipped');
     final adds = m.items.where((i) => allSkipped || i.state.isEmpty).toList();
@@ -991,14 +1028,14 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
     final all = d.meals.every((x) => x == m || !x.open);
     try {
       setState(() => _photos.remove(m.id));
-      final f = c.meal(m, 'eat', {'photo': ?photo});
+      final f = c.meal(m, 'eat', {if (photos != null && photos.isNotEmpty) 'photos': photos});
       if (all) {
         showToast(context, 'All meals logged for today',
             sub: '${inNum(nt)} kcal${t[0] > 0 && nt > t[0] ? ' · ${inNum(nt - t[0])} kcal over' : ''} · ${np.round()} g protein', kind: ToastKind.star, action: 'Undo', onAction: () => _undoEat(m.id));
       } else {
         final left = t[0] - nt;
         showToast(context, '${m.name} logged',
-            sub: '${inNum(kcal)} kcal · ${left >= 0 ? '${inNum(left)} kcal left' : '${inNum(-left)} kcal over'}${photo != null ? ' · photo added' : ''}',
+            sub: '${inNum(kcal)} kcal · ${left >= 0 ? '${inNum(left)} kcal left' : '${inNum(-left)} kcal over'}${photo == null ? '' : photos!.length == 1 ? ' · photo added' : ' · ${photos.length} photos added'}',
             kind: ToastKind.ok, action: 'Undo', onAction: () => _undoEat(m.id));
       }
       await f;

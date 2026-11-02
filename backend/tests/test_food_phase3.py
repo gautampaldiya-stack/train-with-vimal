@@ -177,3 +177,14 @@ def test_swapped_food_planned_is_the_assigned_portion_not_the_food_default(clien
     _, m = _act(client_user, meal, "portions", portions={})
     s = m["items"][0]
     assert s["quantity"] == want and not s["edited"]
+
+
+def test_mark_as_eaten_with_several_photos_at_once(client_user):
+    """Probid 2026-10-31: add the photos first, then one Mark as eaten logs the meal with all of them."""
+    meal = _meal(client_user, n=1)
+    _, m = _act(client_user, meal, "eat", photos=[PNG, PNG, PNG])
+    assert m["pill"] == "logged" and len(m["photos"]) == 3
+    meal2 = next(x for x in _day(client_user)["meals"] if x["pill"] not in ("logged", "skipped"))
+    r = client_user.post(f"/api/v1/me/food/meals/{meal2['id']}/eat/", {"date": _today(), "photos": [PNG] * 5},
+                         format="json")
+    assert r.status_code == 400
