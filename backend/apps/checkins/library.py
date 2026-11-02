@@ -17,7 +17,7 @@ from apps.clients.services import visible_clients
 from .models import Answer, Form, FormRequest, Question, Submission
 
 # Fields a question dict carries (QuestionSerializer); `id` and `profile_key` are handled apart.
-Q_FIELDS = ("text", "type", "options", "scale_labels", "allow_other", "suggestions", "allow_skip", "help_text", "required",
+Q_FIELDS = ("text", "type", "options", "scale_labels", "allow_other", "suggestions", "allow_skip", "settings", "help_text", "required",
             "metric")
 
 

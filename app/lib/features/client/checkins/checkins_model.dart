@@ -420,6 +420,22 @@ class CkQ {
   List<String> get suggestions => [for (final o in (j['suggestions'] as List? ?? const [])) '$o'];
   /// Photo question: "No photos this week" is offered.
   bool get allowSkip => j['allow_skip'] != false;
+
+  /// Builder settings (Question.settings, Probid 2026-11-02).
+  Map<String, dynamic> get settings => ((j['settings'] as Map?) ?? const {}).cast<String, dynamic>();
+  double? _sn(String k) => (settings[k] as num?)?.toDouble();
+  /// Number: typed in a plain box instead of − / +.
+  bool get asField => settings['input'] == 'field';
+  double? get min => _sn('min');
+  double? get max => _sn('max');
+  double get step => _sn('step') ?? .1;
+  /// Number: quick pick chips around [last] (her last answer), [quickStep] apart.
+  bool get quick => settings['quick'] == true;
+  double get quickStep => _sn('quick_step') ?? step;
+  double? get last => (j['last'] as num?)?.toDouble();
+  /// Single / multiple: big boxes with a subtitle, or compact chips.
+  bool get compact => settings['style'] == 'compact';
+  String? subOf(String o) => ((settings['subs'] as Map?) ?? const {})[o] as String?;
   List<String> get options => type == 'yes_no' ? const ['Yes', 'No'] : [for (final o in (j['options'] as List? ?? [])) '$o'];
   List<String> get labels {
     final l = [for (final o in (j['scale_labels'] as List? ?? [])) '$o'];

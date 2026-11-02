@@ -46,7 +46,7 @@ def _chip(q):
 MEASURES_Q = -1  # older app builds: the auto "Body measurements" step; its answer is {key: number}
 
 
-def measure_rows(client, keys=None):
+def measure_rows(client, keys=None, settings=None):
     """The rows of a "Body measurements" question: [keys] the coach picked, else the client's tracked ones (D-24).
     Each row starts from the last value logged."""
     from .models import DEFAULT_MEASURES, MEASURES, Measurement
@@ -56,8 +56,31 @@ def measure_rows(client, keys=None):
     for m in (Measurement.objects.filter(client=client).order_by("-date")[:60] if client else []):
         for k, v in m.values.items():
             last.setdefault(k, (v, m.date))
-    return [{"key": k, "label": lbl, "unit": u, "last": last.get(k, (None, None))[0],
-             "last_date": last.get(k, (None, None))[1]} for k, lbl, u in MEASURES if k in keys]
+    st = settings or {}
+    inch, req = st.get("units") or {}, set(st.get("required") or [])
+
+    def row(k, lbl, u):
+        v, on = last.get(k, (None, None))
+        if inch.get(k) == "in":  # the coach asks this one in inches; stored in cm
+            u, v = "in", (round(float(v) / 2.54, 1) if v is not None else None)
+        return {"key": k, "label": lbl, "unit": u, "last": v, "last_date": on, "required": k in req}
+
+    return [row(k, lbl, u) for k, lbl, u in MEASURES if k in keys]
+
+
+def last_number(client, q):
+    """Quick pick starts from her last answer: a weight question from her last weigh-in, else her last answer to
+    this question (or the master question it was copied from)."""
+    from .models import Answer
+
+    if q.metric == "weight":
+        w = WeightLog.objects.filter(client=client).order_by("-date").values_list("weight_kg", flat=True).first()
+        if w is not None:
+            return float(w)
+    ids = [i for i in (q.id, q.copied_from_id) if i]
+    v = (Answer.objects.filter(submission__client=client, question_id__in=ids).exclude(value=None)
+         .order_by("-submission__date", "-submission__created_at").values_list("value", flat=True).first())
+    return float(v) if isinstance(v, (int, float)) else None
 
 
 def form_payload(form, coach_first, photos=True, client=None):
@@ -77,10 +100,13 @@ def form_payload(form, coach_first, photos=True, client=None):
     for q in qs:
         row = {"id": q.id, "text": q.text, "type": q.type, "options": q.options, "scale_labels": q.scale_labels,
                "allow_other": q.allow_other, "suggestions": q.suggestions, "allow_skip": q.allow_skip,
+               "settings": q.settings,
                "help_text": q.help_text.replace("{coach}", coach_first or "your coach"),
                "required": q.required, "metric": q.metric, "chip": _chip(q)}
         if q.type == QuestionType.MEASURES:
-            row["measures"] = measure_rows(client, q.options)
+            row["measures"] = measure_rows(client, q.options, q.settings)
+        if q.type == QuestionType.NUMBER and client is not None and (q.settings or {}).get("quick"):
+            row["last"] = last_number(client, q)
         out.append(row)
     return {"id": str(form.id), "name": form.name, "type": form.type, "questions": out}
 

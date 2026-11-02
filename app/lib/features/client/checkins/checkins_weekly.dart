@@ -99,7 +99,10 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
       return '$n of $all photos${miss.isEmpty ? '' : ' (${miss.join(', ')} missing)'}';
     }
     final v = _v['${q.id}'];
-    if (q.type == 'measures') return v is Map && v.isNotEmpty ? q.show(v, short: true) : null;
+    if (q.type == 'measures') {
+      final need = [for (final m in q.measures) if (m['required'] == true) '${m['key']}'];
+      return v is Map && v.isNotEmpty && need.every(v.containsKey) ? q.show(v, short: true) : null;
+    }
     if (q.metric == 'weight' && v is num) {
       final last = w.lastWeight;
       return kg(v.toDouble()) + (last != null && v < last ? ' (${kgChange(v - last)})' : '');
@@ -306,8 +309,23 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
 
   List<Widget> _answer(CkQ q) {
     final v = _v['${q.id}'];
+    if (q.type == 'number' && q.asField) {
+      // a plain number box (the coach chose Field)
+      final t = _texts[q.id] ??= TextEditingController(text: v == null ? '' : '$v');
+      return [
+        CkInput(
+          controller: t,
+          hint: 'Type a number',
+          keyboard: const TextInputType.numberWithOptions(decimal: true),
+          onChanged: () => _set(q, double.tryParse(t.text.trim().replaceAll(',', '.'))),
+        ),
+        ?_quickPick(q, (v as num?)?.toDouble()),
+      ];
+    }
     if (q.type == 'number') {
-      final x = (v as num?)?.toDouble() ?? 0;
+      final x = (v as num?)?.toDouble() ?? q.last ?? q.min ?? 0;
+      double fit(double n) => n.clamp(q.min ?? -1e9, q.max ?? 1e9).toDouble();
+      final st = q.step;
       final last = w.lastWeight;
       final isW = q.metric == 'weight';
       final d = last == null ? null : ((x - last) * 10).round() / 10;
@@ -316,14 +334,15 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
         CkStepper(
           value: x.toStringAsFixed(1),
           suffix: isW ? 'kg' : null,
-          onMinus: () => _set(q, ((x - .1) * 10).round() / 10),
-          onPlus: () => _set(q, ((x + .1) * 10).round() / 10),
+          onMinus: () => _set(q, fit(((x - st) * 100).round() / 100)),
+          onPlus: () => _set(q, fit(((x + st) * 100).round() / 100)),
           onType: (n) => _set(q, n),
           under: diff == null
               ? null
               : Text(diff, style: AppText.s(12.5, W.w7, color: d! < 0 ? AppColors.okText : (d > 0 ? AppColors.amberText : AppColors.muted))),
         ),
-        if (isW && (_todayWeight != null || last != null))
+        ?_quickPick(q, x),
+        if (isW && !q.quick && (_todayWeight != null || last != null))
           CkTry(
             lead: 'Quick',
             items: [if (_todayWeight != null) 'This morning, ${_todayWeight!.toStringAsFixed(1)}', if (last != null) 'Last week, ${last.toStringAsFixed(1)}'],
@@ -337,6 +356,26 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
     if (q.isChoice || q.type == 'multiple') {
       final multi = q.type == 'multiple';
       final sel = multi ? [...((v as List?) ?? const [])] : [if (v != null) q.type == 'yes_no' ? ((v as bool) ? 'Yes' : 'No') : v];
+      if (q.compact) {
+        // Compact: small chips in rows (the coach chose Compact)
+        void tap(String o) {
+          if (multi) {
+            sel.contains(o) ? sel.remove(o) : sel.add(o);
+            _set(q, sel.isEmpty ? null : sel);
+          } else {
+            _set(q, q.type == 'yes_no' ? o == 'Yes' : o);
+          }
+        }
+
+        final other = _other(q, sel, multi);
+        return [
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            for (final o in q.options) _Chip(o, on: sel.contains(o), onTap: () => tap(o)),
+            if (other.isNotEmpty) other.first,
+          ]),
+          ...other.skip(1),
+        ];
+      }
       return [
         Column(
           spacing: 8,
@@ -344,6 +383,7 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
             for (final o in q.options)
               _Opt(
                 o,
+                sub: q.subOf(o),
                 on: sel.contains(o),
                 onTap: () {
                   if (multi) {
@@ -413,14 +453,15 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
     final last = (m['last'] as num?)?.toDouble();
     final lastOn = m['last_date'] == null ? null : DateTime.tryParse('${m['last_date']}');
     final on = got.containsKey(k);
-    final v = (got[k] as num?)?.toDouble() ?? last ?? _startCm[k] ?? 50;
+    final inch = unit == 'in';
+    final v = (got[k] as num?)?.toDouble() ?? last ?? (inch ? ((_startCm[k] ?? 50) / 2.54).roundToDouble() : (_startCm[k] ?? 50));
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(border: first ? null : const Border(top: BorderSide(color: AppColors.line))),
       child: Row(spacing: 10, children: [
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-            Text('${m['label']}', style: AppText.s(13.5, W.w7, color: on ? AppColors.text : AppColors.text2)),
+            Text('${m['label']}${m['required'] == true ? ' *' : ''}', style: AppText.s(13.5, W.w7, color: on ? AppColors.text : AppColors.text2)),
             Hover(
               onTap: on ? () => put(k, null) : null,
               builder: (_, h, _) => Text(
@@ -437,13 +478,30 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
             onChanged: (n) => put(k, n),
             label: (n) => pxAmt(n, unit),
             step: .5,
-            min: unit == '%' ? 3 : 10,
-            max: unit == '%' ? 70 : 300,
+            min: unit == '%' ? 3 : (inch ? 4 : 10),
+            max: unit == '%' ? 70 : (inch ? 118 : 300),
             name: '${m['label']}',
           ),
         ),
       ]),
     );
+  }
+
+  /// Quick pick: chips around her last answer, the coach's step apart (Probid 2026-11-02).
+  Widget? _quickPick(CkQ q, double? now) {
+    final l = q.last;
+    if (!q.quick || l == null) return null;
+    final s = q.quickStep;
+    String f(double n) => n == n.roundToDouble() ? '${n.round()}' : n.toStringAsFixed(s < .1 ? 2 : 1);
+    final vals = [for (var i = -2; i <= 2; i++) ((l + i * s) * 100).round() / 100]
+        .where((n) => (q.min == null || n >= q.min!) && (q.max == null || n <= q.max!))
+        .toList();
+    return CkTry(lead: 'Last ${f(l)}', items: [for (final n in vals) f(n)], onPick: (t) {
+      final n = double.parse(t);
+      final c = _texts[q.id];
+      if (c != null) c.text = t;
+      _set(q, n);
+    });
   }
 
   /// Other on a choice question the coach allows it on: her own words, saved as "Other: …" (Probid 2026-10-31).
@@ -454,7 +512,7 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
     final t = _others[q.id] ??= TextEditingController(text: '${sel.firstWhere(isOther, orElse: () => '')}'.replaceFirst(RegExp(r'^[Oo]ther:\s*'), ''));
     String mine() => 'Other: ${t.text.trim()}';
     return [
-      _Opt('Other', on: on, onTap: () {
+      (q.compact ? _Chip.new : _Opt.new)('Other', on: on, onTap: () {
         if (multi) {
           on ? sel.removeWhere(isOther) : sel.add(mine());
           _set(q, sel.isEmpty ? null : sel);
@@ -712,8 +770,9 @@ Widget chSmall(String label, VoidCallback onTap) => Hover(
 
 /// `dr-opt sm`: a radio row.
 class _Opt extends StatelessWidget {
-  const _Opt(this.label, {required this.on, required this.onTap});
+  const _Opt(this.label, {this.sub, required this.on, required this.onTap});
   final String label;
+  final String? sub;
   final bool on;
   final VoidCallback onTap;
   @override
@@ -742,9 +801,41 @@ class _Opt extends StatelessWidget {
                 border: Border.all(color: on ? AppColors.accent : AppColors.line2, width: on ? 5 : 1.5),
               ),
             ),
-            Expanded(child: Text(label, style: AppText.s(13.5, W.w7))),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+                Text(label, style: AppText.s(13.5, W.w7)),
+                if (sub != null && sub!.isNotEmpty) Text(sub!, style: AppText.s(12, W.w5, color: AppColors.muted)),
+              ]),
+            ),
           ],
         ),
+      ),
+    ),
+  );
+}
+
+/// Compact choice: a small round chip (the coach chose Compact).
+class _Chip extends StatelessWidget {
+  const _Chip(this.label, {required this.on, required this.onTap});
+  final String label;
+  final bool on;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    selected: on,
+    child: Hover(
+      onTap: onTap,
+      builder: (_, h, _) => Container(
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: on ? AppColors.pickBg : AppColors.white,
+          borderRadius: BorderRadius.circular(99),
+          border: Border.all(color: on ? AppColors.accent : (h ? AppColors.lineHover : AppColors.line2)),
+        ),
+        child: Text(label, style: AppText.s(13, W.w7, color: on ? AppColors.accentText : AppColors.text2)),
       ),
     ),
   );

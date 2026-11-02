@@ -26,7 +26,7 @@ Numbering Probid ki list jaisi hi hai (A–M ke item 1–80 ek chain me; N–S k
 | O Custom notification (1–3) | 3 | 0 | 0 | 0 | 3 |
 | P Circuit (1–7) | 7 | 0 | 0 | 0 | 7 |
 | Q Workout plan weeks/swap/copy (1–4) | 4 | 0 | 0 | 0 | 4 |
-| R Check-in builder (1–9) | 9 | 2 | 0 | 6 | 1 |
+| R Check-in builder (1–9) | 9 | 7 | 0 | 1 | 1 |
 | S Nutrition additions (1–3) | 3 | 3 | 0 | 0 | 0 |
 
 (Item 12 of Completed khali tha; neeche "Incomplete notes" dekho.)
@@ -40,7 +40,7 @@ Is thread me Probid ki 31 Oct wali list ka kaam chal raha hai:
 - ◐ Check-in form builder — commit `4a78061`: number stepper ke beech type box, weekly me "Other" text field, admin Body measurements question (measurements chunna), photo "No photos this week" toggle, admin ke suggestion chips, koi auto-added question nahi (purane forms ke liye migration). Weight quick pick: Weight-tag wale number question par apne aap. Baaki R3–R8 settings neeche likhi hain.
 
 - ✅ Toast ki jagah (2 Nov, screenshots): workout logger me toast mini bar se 10 upar (pehle tab bar ka 75 bhi juda tha, isliye bahut upar). Bottom sheet khuli ho to toast sheet ke theek upar, screen ke top par nahi (sheet bahut lambi ho tabhi top).
-- 🔧 Check-in builder ki baaki R settings (R3–R8), Probid OK 2 Nov.
+- ✅ Check-in builder ki baaki R settings (R3–R8), Probid OK 2 Nov. Sirf choice option ka icon baaki (R5).
 
 Probid ka rule (2 Nov): abhi screenshot nahi lena, mobile par try nahi karna. Sirf code, `flutter analyze` aur backend tests; test Probid karenge.
 
@@ -406,19 +406,19 @@ Probid ka rule (2 Nov): abhi screenshot nahi lena, mobile par try nahi karna. Si
 
 ### R. Check-in Builder: Admin/Trainer jo client dekhta hai wo banate hain
 
-1. ◐ Admin aur trainer weekly aur daily check-in ke sawal, client jitne question types aaj dekhta hai un sab se bana sake.
+1. ✅ Admin aur trainer weekly aur daily check-in ke sawal, client jitne question types aaj dekhta hai un sab se bana sake.
 2. ✅ Weekly check-in ka hardcoded aakhri sawal hatao. Saare sawal sirf builder se. Zaroorat ho to admin normal sawal ki tarah jode.
-3. ◐ *(stepper ka beech editable ✅; Field/Stepper mode aur min/max baaki)* Number question: Field ya Stepper (dono optional min/max ke saath). Stepper mode me beech ki value editable text field.
-4. ◐ Quick pick (jaise weight) *(Weight-tagged number question par auto ✅ — "This morning / Last week"; on/off + step setting aur aas-paas chips baaki)*: Number question ki setting. On ho to client ki last logged value ke aas-paas chips (jaise last 72.4 kg to 72.0, 72.2, 72.4, 72.6, 72.8). Admin on/off kare aur step set kare (jaise 0.2 kg). Client chip tap kare ya alag value type kare.
-5. ◐ *(single choice hamesha bade boxes ✅; Cards/Compact setting, subtitle, icon baaki)* Single/multiple choice display style, admin har sawal par chune:
+3. ✅ Number question: Field ya Stepper (dono optional min/max ke saath). Stepper mode me beech ki value editable text field.
+4. ✅ Quick pick (jaise weight) *(builder me on/off + step; weight question me last weigh-in se, baaki me client ke pichhle jawab se)*: Number question ki setting. On ho to client ki last logged value ke aas-paas chips (jaise last 72.4 kg to 72.0, 72.2, 72.4, 72.6, 72.8). Admin on/off kare aur step set kare (jaise 0.2 kg). Client chip tap kare ya alag value type kare.
+5. ◐ *(Big boxes / Compact chips + subtitle ✅; option ka icon baaki)* Single/multiple choice display style, admin har sawal par chune:
    * Cards: bade boxes jisme title, subtitle aur icon.
    * List/Chips: compact.
    * Default compact jab options me subtitle ya icon na ho.
 6. ✅ *(weekly; builder ka toggle pehle se tha)* Choice questions par "Allow Other" toggle. "Other" text field kholta hai aur type kiya text save hota hai.
-7. ◐ Body measurements question type *(type + measurements chunna ✅; har field ki unit/required baaki)*
+7. ✅ Body measurements question type *(cm/in unit, har row Required)*
    * Admin chune kaun si measurements dikhein (chest, waist, hips, etc.), unit, aur har field required ya optional.
    * Client ek card me dekhe.
-8. ◐ Photos question type *(No photos toggle ✅; builder me slot names edit baaki)*
+8. ✅ Photos question type
    * Admin photo slots set kare (front, side, back) aur required ya optional.
    * Admin "No photos this week" checkbox on/off kar sake.
 9. ⬜ Admin preview har sawal bilkul waisa dikhaye jaisa client dekhta hai.

@@ -243,8 +243,8 @@ class _DailyCheckinState extends State<DailyCheckin> {
           CkStepper(
             value: x.toStringAsFixed(1),
             suffix: q.metric == 'weight' ? 'kg' : null,
-            onMinus: () => _set(q, ((x - .1) * 10).round() / 10),
-            onPlus: () => _set(q, ((x + .1) * 10).round() / 10),
+            onMinus: () => _set(q, (((x - q.step) * 100).round() / 100).clamp(q.min ?? -1e9, q.max ?? 1e9).toDouble()),
+            onPlus: () => _set(q, (((x + q.step) * 100).round() / 100).clamp(q.min ?? -1e9, q.max ?? 1e9).toDouble()),
             onType: (n) => _set(q, n),
           ),
         ],

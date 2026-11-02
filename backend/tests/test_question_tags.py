@@ -51,3 +51,36 @@ def test_builder_question_settings_measures_suggestions_and_photo_skip():
     assert s.is_valid() and s.validated_data["suggestions"] == []
     s = QuestionSerializer(data={"text": "Photos", "type": "photo", "allow_skip": False})
     assert s.is_valid() and s.validated_data["allow_skip"] is False
+
+
+def test_question_settings_are_checked_and_used(client_user):
+    """Probid 2026-11-02: number min/max/step/quick pick, choice style, measurement units and required rows."""
+    from apps.checkins.serializers import QuestionSerializer
+
+    s = QuestionSerializer(data={"text": "Steps", "type": "number", "settings": {"input": "field", "min": 0, "max": 50000,
+                                                                                 "quick": True, "junk": 1}})
+    assert s.is_valid(), s.errors
+    assert s.validated_data["settings"] == {"input": "field", "min": 0.0, "max": 50000.0, "step": 0.1, "quick": True,
+                                            "quick_step": 0.1}
+    assert not QuestionSerializer(data={"text": "x", "type": "number", "settings": {"min": 5, "max": 1}}).is_valid()
+    s = QuestionSerializer(data={"text": "Diet?", "type": "single", "options": ["Yes", "No"],
+                                 "settings": {"subs": {"Yes": "All week", "Maybe": "x"}}})
+    assert s.is_valid() and s.validated_data["settings"] == {"style": "cards", "subs": {"Yes": "All week"}}
+    s = QuestionSerializer(data={"text": "Sizes", "type": "measures", "options": ["waist", "hips"],
+                                 "settings": {"units": {"waist": "in", "body_fat": "in"}, "required": ["waist", "chest"]}})
+    assert s.is_valid() and s.validated_data["settings"] == {"units": {"waist": "in"}, "required": ["waist"]}
+    assert s.validated_data["required"] is True
+
+    riya = User.objects.get(email="riya@example.com")
+    form = Form.objects.create(type="survey", name="Sizes", status="published")
+    n = Question.objects.create(form=form, order=0, text="Steps", type="number", settings={"min": 0, "max": 100})
+    m = Question.objects.create(form=form, order=1, text="Sizes", type="measures", options=["waist", "hips"],
+                                settings={"units": {"waist": "in"}, "required": ["waist"]})
+    import pytest
+    from rest_framework.exceptions import ValidationError
+    with pytest.raises(ValidationError):
+        submit(riya, form, {str(n.id): 500})
+    with pytest.raises(ValidationError):
+        submit(riya, form, {str(n.id): 5, str(m.id): {"hips": 90}})
+    sub = submit(riya, form, {str(n.id): 5, str(m.id): {"waist": 30}})
+    assert sub.metrics["waist"] == 76.2

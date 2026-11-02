@@ -21,6 +21,49 @@ from .models import (
 METRICS = {"", "weight", "height", "sleep_hours", "energy", "mood", "hunger", "soreness", "steps", *(k for k, _, _ in MEASURES)}
 
 
+def _num(v, key, lo=-100000, hi=100000):
+    if v in (None, ""):
+        return None
+    try:
+        n = float(v)
+    except (TypeError, ValueError):
+        raise serializers.ValidationError({"settings": [f"{key}: enter a number."]}) from None
+    if not lo <= n <= hi:
+        raise serializers.ValidationError({"settings": [f"{key}: that number looks off."]})
+    return n
+
+
+def _settings(t, s, opts):
+    """Keeps only what the question's type uses, checked (Question.settings)."""
+    if not isinstance(s, dict):
+        raise serializers.ValidationError({"settings": ["Send the settings as an object."]})
+    if t == QuestionType.NUMBER:
+        out = {"input": "field" if s.get("input") == "field" else "stepper"}
+        lo, hi = _num(s.get("min"), "Min"), _num(s.get("max"), "Max")
+        if lo is not None and hi is not None and lo >= hi:
+            raise serializers.ValidationError({"settings": ["Min must be less than Max."]})
+        step = _num(s.get("step"), "Step", 0.01, 1000) or 0.1
+        qstep = _num(s.get("quick_step"), "Quick pick step", 0.01, 1000) or step
+        out.update({"min": lo, "max": hi, "step": step, "quick": bool(s.get("quick")), "quick_step": qstep})
+        return out
+    if t in (QuestionType.SINGLE, QuestionType.MULTIPLE):
+        subs = s.get("subs") or {}
+        if not isinstance(subs, dict):
+            raise serializers.ValidationError({"settings": ["Subtitles go as {option: text}."]})
+        subs = {o: " ".join(str(subs[o]).split())[:80] for o in opts if str(subs.get(o) or "").strip()}
+        style = s.get("style") if s.get("style") in ("cards", "compact") else ("cards" if subs else "compact")
+        return {"style": style, "subs": subs}
+    if t == QuestionType.MEASURES:
+        units = s.get("units") or {}
+        req = s.get("required") or []
+        if not isinstance(units, dict) or not isinstance(req, list):
+            raise serializers.ValidationError({"settings": ["Units go as {key: unit}, required as a list."]})
+        lengths = set(MEASURE_KEYS) - {"body_fat", "muscle_mass"}
+        return {"units": {k: "in" for k, u in units.items() if k in lengths and u == "in"},
+                "required": [k for k in dict.fromkeys(req) if k in MEASURE_KEYS and (not opts or k in opts)]}
+    return {}
+
+
 class QuestionSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False, allow_null=True)
     suggestions = serializers.ListField(child=serializers.CharField(max_length=120, allow_blank=True, trim_whitespace=False),
@@ -28,7 +71,7 @@ class QuestionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Question
-        fields = ["id", "text", "type", "options", "scale_labels", "allow_other", "suggestions", "allow_skip", "help_text",
+        fields = ["id", "text", "type", "options", "scale_labels", "allow_other", "suggestions", "allow_skip", "settings", "help_text",
                   "required", "metric", "profile_key"]
         # Set by the built-in onboarding questionnaire (which profile field a question fills); the builder keeps it.
         read_only_fields = ["profile_key"]
@@ -72,6 +115,9 @@ class QuestionSerializer(serializers.ModelSerializer):
         attrs["suggestions"] = list(dict.fromkeys(tips))
         if t != QuestionType.PHOTO:
             attrs["allow_skip"] = True
+        attrs["settings"] = _settings(t, attrs.get("settings") or {}, opts)
+        if attrs["settings"].get("required"):
+            attrs["required"] = True  # a measurement that must be filled makes the card required
         if t == QuestionType.SCALE:
             labels = attrs.get("scale_labels") or []
             if labels and len(labels) != 5:

@@ -104,6 +104,7 @@ class FmQ {
         other = j['allow_other'] == true,
         suggestions = [for (final o in (j['suggestions'] as List?) ?? const []) '$o'],
         allowSkip = j['allow_skip'] != false,
+        settings = {...((j['settings'] as Map?) ?? const {}).cast<String, dynamic>()},
         help = '${j['help_text'] ?? ''}',
         required = j['required'] == true,
         metric = '${j['metric'] ?? ''}',
@@ -117,6 +118,7 @@ class FmQ {
         other = false,
         suggestions = [],
         allowSkip = true,
+        settings = {},
         help = '',
         required = true,
         metric = '',
@@ -127,6 +129,8 @@ class FmQ {
   String text, type, help, metric, profileKey;
   List<String> options, scaleLabels, suggestions;
   bool other, required, allowSkip;
+  /// Question.settings: number input / limits / quick pick, choice style + subtitles, measurement units / required.
+  Map<String, dynamic> settings;
   final Key key;
 
   /// Fills a client profile field (the onboarding questionnaire): its answer type and options stay as they are.
@@ -144,6 +148,7 @@ class FmQ {
         'allow_other': other,
         'suggestions': suggestions,
         'allow_skip': allowSkip,
+        'settings': settings,
         'help_text': help,
         'required': required,
         'metric': metric,
@@ -465,7 +470,13 @@ Future<FmQ?> showQuestionEditor(BuildContext context,
     {required FmQ q, required bool isNew, int index = 0, int total = 0, String profileLabel = '', Set<String> used = const {}}) {
   final w = q.copy();
   final text = TextEditingController(text: w.text);
-  final opts = TextEditingController(text: w.options.join('\n'));
+  final subs0 = ((w.settings['subs'] as Map?) ?? const {}).cast<String, dynamic>();
+  final opts = TextEditingController(
+      text: w.type == 'photo' ? '' : [for (final o in w.options) subs0[o] == null ? o : '$o | ${subs0[o]}'].join('\n'));
+  final slots = TextEditingController(text: w.type == 'photo' ? w.options.join('\n') : '');
+  String n(String k) => w.settings[k] == null ? '' : '${w.settings[k]}'.replaceFirst(RegExp(r'\.0$'), '');
+  final nMin = TextEditingController(text: n('min')), nMax = TextEditingController(text: n('max'));
+  final nStep = TextEditingController(text: n('step')), qStep = TextEditingController(text: n('quick_step'));
   final help = TextEditingController(text: w.help);
   final tips = TextEditingController(text: w.suggestions.join('\n'));
   String? textErr, optErr;
@@ -479,7 +490,10 @@ Future<FmQ?> showQuestionEditor(BuildContext context,
       builder: (ctx, set) {
         void save() {
           final t = text.text.trim();
-          final list = [for (final l in opts.text.split('\n')) if (l.trim().isNotEmpty) l.trim()];
+          // "Option | subtitle": the part after | is the option's subtitle on the big boxes
+          final rows = [for (final l in opts.text.split('\n')) if (l.split('|').first.trim().isNotEmpty) l.split('|')];
+          final list = [for (final r in rows) r.first.trim()];
+          final subs = {for (final r in rows) if (r.length > 1 && r.sublist(1).join('|').trim().isNotEmpty) r.first.trim(): r.sublist(1).join('|').trim()};
           textErr = t.isEmpty ? 'Enter the question.' : null;
           optErr = w.choice && !w.keyed && list.length + (w.other ? 1 : 0) < 2 ? 'Add at least two options.' : null;
           if (textErr != null || optErr != null) return set(() {});
@@ -493,7 +507,20 @@ Future<FmQ?> showQuestionEditor(BuildContext context,
             if (l.contains('weight') && !used.contains('weight')) w.metric = 'weight';
             if (l.contains('height') && !used.contains('height')) w.metric = 'height';
           }
-          if (!w.keyed) w.options = w.choice ? list : (w.type == 'photo' || w.type == 'measures' ? w.options : []);
+          if (!w.keyed) {
+            w.options = w.choice
+                ? list
+                : w.type == 'photo'
+                    ? [for (final l in slots.text.split('\n')) if (l.trim().isNotEmpty) l.trim()].take(6).toList()
+                    : (w.type == 'measures' ? w.options : []);
+          }
+          double? num(TextEditingController c) => double.tryParse(c.text.trim().replaceAll(',', '.'));
+          w.settings = switch (w.type) {
+            'number' => {'input': w.settings['input'] ?? 'stepper', 'min': num(nMin), 'max': num(nMax), 'step': num(nStep), 'quick': w.settings['quick'] == true, 'quick_step': num(qStep)},
+            'single' || 'multiple' => {'style': w.settings['style'] ?? (subs.isEmpty ? 'compact' : 'cards'), 'subs': subs},
+            'measures' => {'units': w.settings['units'] ?? {}, 'required': w.settings['required'] ?? []},
+            _ => {},
+          };
           if (!w.choice) w.other = false;
           w.suggestions = w.type == 'short' || w.type == 'long'
               ? [for (final l in tips.text.split('\n')) if (l.trim().isNotEmpty) l.trim()].take(8).toList()
@@ -517,13 +544,29 @@ Future<FmQ?> showQuestionEditor(BuildContext context,
           if (w.choice && !w.keyed) ...[
             Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
               Text('Options, one per line', style: AppText.label),
+              Text('Add a subtitle after a |, e.g. "Yes, all week | Seven days on plan"', style: AppText.s(12, W.w5, color: AppColors.muted)),
               AppTextField(controller: opts, maxLines: 8, minLines: 4, error: optErr),
               if (optErr == null) Text('Add at least two options.', style: AppText.s(12, W.w5, color: AppColors.muted)),
             ]),
+            if (w.type == 'single' || w.type == 'multiple')
+              drField(
+                'Look',
+                Wrap(spacing: 6, runSpacing: 6, children: [
+                  _Pick('Big boxes', on: (w.settings['style'] ?? 'cards') == 'cards', onTap: () => set(() => w.settings['style'] = 'cards')),
+                  _Pick('Compact chips', on: w.settings['style'] == 'compact', onTap: () => set(() => w.settings['style'] = 'compact')),
+                ]),
+              ),
             DrSwitch(title: 'Add an "Other" option', sub: 'The client can pick Other and type their own answer', value: w.other, onChanged: (v) => set(() => w.other = v)),
           ],
           if (w.type == 'photo') ...[
             const FmNote(AppIcons.camera, 'The client takes up to 3 photos or picks them from the gallery. They show in the client profile under Progress.'),
+            drField(
+              'Photos it asks (optional)',
+              Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
+                AppTextField(controller: slots, maxLines: 6, minLines: 2, placeholder: 'One per line, e.g. Front'),
+                Text('Up to 6, each name up to 20 letters. Empty = Front, Side, Back.', style: AppText.s(12, W.w5, color: AppColors.muted)),
+              ]),
+            ),
             DrSwitch(
               title: 'Show "No photos this week"',
               sub: 'The client can tick it and send the check-in without photos',
@@ -546,6 +589,50 @@ Future<FmQ?> showQuestionEditor(BuildContext context,
                     style: AppText.s(12, W.w5, color: AppColors.muted)),
               ]),
             ),
+          if (w.type == 'measures')
+            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              for (final (k, l) in measureKeys)
+                if (w.options.isEmpty ? defaultMeasures.contains(k) : w.options.contains(k))
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 3),
+                    child: Row(spacing: 6, children: [
+                      Expanded(child: Text(l, style: AppText.s(13, W.w6))),
+                      if (k != 'body_fat' && k != 'muscle_mass')
+                        _Pick(((w.settings['units'] as Map?)?[k]) == 'in' ? 'in' : 'cm', on: false, onTap: () => set(() {
+                          final u = {...((w.settings['units'] as Map?) ?? const {})};
+                          u[k] == 'in' ? u.remove(k) : u[k] = 'in';
+                          w.settings['units'] = u;
+                        })),
+                      _Pick('Required', on: ((w.settings['required'] as List?) ?? const []).contains(k), onTap: () => set(() {
+                        final r = [...((w.settings['required'] as List?) ?? const [])];
+                        r.contains(k) ? r.remove(k) : r.add(k);
+                        w.settings['required'] = r;
+                      })),
+                    ]),
+                  ),
+            ]),
+          if (w.type == 'number') ...[
+            drField(
+              'Input',
+              Wrap(spacing: 6, runSpacing: 6, children: [
+                _Pick('Stepper − / +', on: w.settings['input'] != 'field', onTap: () => set(() => w.settings['input'] = 'stepper')),
+                _Pick('Field', on: w.settings['input'] == 'field', onTap: () => set(() => w.settings['input'] = 'field')),
+              ]),
+            ),
+            Row(spacing: 8, children: [
+              Expanded(child: drField('Min', AppTextField(controller: nMin, placeholder: 'None', keyboard: const TextInputType.numberWithOptions(decimal: true, signed: true)))),
+              Expanded(child: drField('Max', AppTextField(controller: nMax, placeholder: 'None', keyboard: const TextInputType.numberWithOptions(decimal: true, signed: true)))),
+              Expanded(child: drField('Step', AppTextField(controller: nStep, placeholder: '0.1', keyboard: const TextInputType.numberWithOptions(decimal: true)))),
+            ]),
+            DrSwitch(
+              title: 'Quick pick',
+              sub: 'Chips around the client\'s last answer, e.g. 72.0 · 72.2 · 72.4 · 72.6 · 72.8',
+              value: w.settings['quick'] == true,
+              onChanged: (v) => set(() => w.settings['quick'] = v),
+            ),
+            if (w.settings['quick'] == true)
+              drField('Quick pick step', AppTextField(controller: qStep, placeholder: 'Same as Step', keyboard: const TextInputType.numberWithOptions(decimal: true))),
+          ],
           if (w.type == 'short' || w.type == 'long')
             drField(
               'Suggestions (optional)',
@@ -583,6 +670,33 @@ Widget _req(String label, Widget child) => Column(crossAxisAlignment: CrossAxisA
       Text.rich(TextSpan(text: label, style: AppText.label, children: [TextSpan(text: '*', style: AppText.label.copyWith(color: AppColors.badText))])),
       child,
     ]);
+
+/// A small pick chip in the question editor (blue when on).
+class _Pick extends StatelessWidget {
+  const _Pick(this.label, {required this.on, required this.onTap});
+  final String label;
+  final bool on;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        selected: on,
+        child: Hover(
+          onTap: onTap,
+          builder: (_, h, _) => Container(
+            height: 30,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: on ? AppColors.accentSoft : null,
+              borderRadius: AppRadius.all(8),
+              border: Border.all(color: on ? AppColors.accent : (h ? AppColors.hbIcoHover : AppColors.line2)),
+            ),
+            child: Text(label, style: AppText.s(12.5, W.w6, color: on ? AppColors.accentText : AppColors.text2)),
+          ),
+        ),
+      );
+}
 
 /// `.fm-tp`: one answer type chip (blue when picked).
 class _TypeChip extends StatelessWidget {

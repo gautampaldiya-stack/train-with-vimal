@@ -57,11 +57,23 @@ def _clean_value(q, v):
             raise ValidationError({str(q.id): ["Enter your height in cm."]})
         if q.metric in MEASURE_KEYS and not ((3 <= n <= 70) if q.metric == "body_fat" else (10 <= n <= 300)):
             raise ValidationError({str(q.id): ["Check this number."]})
+        lo, hi = (q.settings or {}).get("min"), (q.settings or {}).get("max")
+        if (lo is not None and n < Decimal(str(lo))) or (hi is not None and n > Decimal(str(hi))):
+            raise ValidationError({str(q.id): [f"Enter a number from {lo:g} to {hi:g}." if lo is not None and hi is not None
+                                               else (f"Enter {lo:g} or more." if lo is not None else f"Enter {hi:g} or less.")]})
         return float(n)
     if t == QuestionType.MEASURES:  # {key: number}, every row optional
         if not isinstance(v, dict):
             raise ValidationError({str(q.id): ["Send the measurements as {name: number}."]})
-        return _measures(str(q.id), v, q.options) or None
+        st = q.settings or {}
+        # inches the coach chose for a row are stored in cm, like every other measurement
+        inch = st.get("units") or {}
+        v = {k: (round(float(n) * 2.54, 1) if inch.get(k) == "in" and n not in (None, "") else n) for k, n in v.items()}
+        got = _measures(str(q.id), v, q.options)
+        miss = [k for k in st.get("required") or [] if k not in got]
+        if miss:
+            raise ValidationError({str(q.id): [f"Add {', '.join(miss)}."]})
+        return got or None
     if t == QuestionType.SCALE:
         try:
             n = int(v)
