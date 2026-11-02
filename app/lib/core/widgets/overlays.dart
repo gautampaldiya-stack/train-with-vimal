@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import '../icons/app_icons.dart';
 import '../theme/theme.dart';
@@ -555,7 +556,12 @@ class _ToastHostState extends State<ToastHost> {
               right: wide ? 24 : 12,
               top: top ? MediaQuery.paddingOf(context).top + 12 : null,
               // the sheet's measured height already holds the bottom inset
-              bottom: top ? null : (sheet ? ToastHost.sheetH.value + 10 : ToastHost.bottomOffset.value + MediaQuery.paddingOf(context).bottom),
+              // and with the keyboard up the toast stays above it, never under it or off screen
+              bottom: top
+                  ? null
+                  : (sheet
+                      ? ToastHost.sheetH.value + 10
+                      : math.max(ToastHost.bottomOffset.value + MediaQuery.paddingOf(context).bottom, MediaQuery.viewInsetsOf(context).bottom + 10)),
               child: child!,
             );
           },
@@ -773,17 +779,24 @@ Future<T?> trackSheet<T>(Future<T?> sheet) {
 
 /// Wraps a phone bottom sheet's content and tells [ToastHost] how tall the sheet is, so a toast can sit just
 /// above it.
-class SheetMeasure extends StatelessWidget {
-  const SheetMeasure({super.key, required this.child});
-  final Widget child;
+/// Measured on every layout, so a sheet that grows or shrinks (a Save button appears, the keyboard opens) moves
+/// the toast with it and the two never overlap.
+class SheetMeasure extends SingleChildRenderObjectWidget {
+  const SheetMeasure({super.key, required Widget super.child});
   @override
-  Widget build(BuildContext context) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!context.mounted) return;
-      final h = context.size?.height;
-      if (h != null && h != ToastHost.sheetH.value) ToastHost.sheetH.value = h;
-    });
-    return child;
+  RenderObject createRenderObject(BuildContext context) => _SheetMeasureBox();
+}
+
+class _SheetMeasureBox extends RenderProxyBox {
+  @override
+  void performLayout() {
+    super.performLayout();
+    final h = size.height;
+    if (h != ToastHost.sheetH.value) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (owner != null) ToastHost.sheetH.value = h;
+      });
+    }
   }
 }
 
