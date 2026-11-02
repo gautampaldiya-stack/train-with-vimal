@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-11-02 · Food — foods added outside the plan: one line each, Ate it, Edit portion
+- **Pehle:** Meal card me "Also logged · outside the plan" wale foods ka sheet sirf Log more / Delete deta tha; portion badal nahi sakte the; row me time aur reason stack the.
+- **Ab:** Har food ek line me, planned foods jaisa (naam, amount, Eaten, kcal). Tap par planned food jaisa sheet: stepper (jo log kiya wahi default, food ka default nahi), "Logged …" line, 4 macro boxes, Save portion, Ate it, Log more, Not eaten (Undo ke saath). Naya API `PATCH me/food-log/<id>/ {quantity}`.
+- **Kyun:** Probid 2026-10-31.
+- **Updated:** backend/apps/nutrition/views.py, tests/test_client_food.py, app/lib/features/client/food/food_screen.dart, food_model.dart, docs/architecture/api-endpoints.md
+
 ### 2026-11-02 · Food — swapped food Planned = coach's portion; food list crash
 - **Pehle:** Swap ke baad Edit portions me "Planned 1 g" dikhta tha (coach ki 1 slice wali value grams me), aur Set to default food ka apna default deta tha. Food list me unit ke bina wala food (grams) app crash karta tha (Null is not num).
 - **Ab:** Swapped food ka Planned = coach ke diye portion ke barabar kcal wala swap amount (jaise 120 g). Edit portions swap ke grams badalta hai; Set to default wapas usi planned grams par. Food list null values safely padhti hai.

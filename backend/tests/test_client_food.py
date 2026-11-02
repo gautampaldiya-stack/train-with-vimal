@@ -118,3 +118,19 @@ def test_other_time_entry_has_its_own_name_and_time(client_user):
     row = next(x for x in _day(client_user)["log"] if x["id"] == e["id"])
     assert row["other_time"] and abs((timezone.datetime.fromisoformat(row["time"]) - at).total_seconds()) < 1
     client_user.delete(f"/api/v1/me/food-log/{e['id']}/")
+
+
+def test_edit_portion_of_a_food_outside_the_plan(client_user):
+    """Probid 2026-10-31: Edit portion on a food added outside the plan scales what was logged, in its own unit."""
+    food = Food.objects.filter(units__isnull=False, kcal__gt=0).first()
+    unit = food.units.first()
+    r = client_user.post("/api/v1/me/food-log/", {"meal_name": "Other time", "other_time": True, "food": str(food.id),
+                                                  "quantity": 2, "unit": unit.id}, format="json")
+    assert r.status_code == 201, r.content
+    e = r.json()
+    r = client_user.patch(f"/api/v1/me/food-log/{e['id']}/", {"quantity": 3}, format="json")
+    assert r.status_code == 200, r.content
+    x = r.json()
+    assert float(x["quantity"]) == 3 and x["unit_name"] == unit.name
+    assert abs(x["kcal"] - e["kcal"] * 1.5) <= 1 and abs(float(x["grams"]) - float(e["grams"]) * 1.5) < .1
+    assert client_user.patch(f"/api/v1/me/food-log/{e['id']}/", {"quantity": 0}, format="json").status_code == 400

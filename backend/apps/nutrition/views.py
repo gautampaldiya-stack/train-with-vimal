@@ -812,6 +812,31 @@ class MyFoodLogViewSet(mixins.CreateModelMixin, mixins.DestroyModelMixin, viewse
                      meta={"note": f"{e.name}, {show_kcal(e.kcal)} kcal" + (" · off plan" if e.source == "off_plan" else "")})
         return Response(FoodLogSerializer(e).data, status=201)
 
+    def partial_update(self, request, pk=None):
+        """Edit portion on a food added outside the plan: a new amount in its own unit; the numbers scale with it
+        (from what was logged, never the food's default). Planned foods change through the meal's portions."""
+        e = get_object_or_404(self.get_queryset(), pk=pk)
+        if e.date < timezone.localdate() - timedelta(days=1):
+            raise serializers.ValidationError("You can only change today's log.")
+        if e.meal_item_id and e.source == FoodLogEntry.Source.PLAN:
+            raise serializers.ValidationError("Change a planned food with Edit portions.")
+        try:
+            q = Decimal(str(request.data.get("quantity")))
+        except (ArithmeticError, ValueError, TypeError):
+            q = Decimal(0)
+        if not q.is_finite() or q <= 0 or q > 5000:
+            raise serializers.ValidationError({"quantity": "Enter an amount above 0."})
+        old = Decimal(str(e.quantity or 1))
+        f = q / old
+        e.quantity = q
+        for k in ("grams", "kcal", "protein", "carbs", "fat"):
+            if getattr(e, k) is not None:
+                setattr(e, k, Decimal(str(getattr(e, k))) * f)
+        e.save(update_fields=["quantity", "grams", "kcal", "protein", "carbs", "fat"])
+        activity_log("changed a food portion", "meal", actor=request.user, client=request.user, target_label=e.name,
+                     meta={"note": f"{e.name}, {show_kcal(e.kcal)} kcal"})
+        return Response(FoodLogSerializer(e).data)
+
     def destroy(self, request, pk=None):
         e = get_object_or_404(self.get_queryset(), pk=pk)
         if e.date < timezone.localdate() - timedelta(days=1):

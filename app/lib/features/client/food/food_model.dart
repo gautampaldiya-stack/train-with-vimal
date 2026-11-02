@@ -183,6 +183,12 @@ class FoodController extends ChangeNotifier {
     return e;
   }
 
+  /// Edit portion on a food added outside the plan: its new amount in its own unit.
+  Future<void> editEntry(FEntry e, double q) async {
+    await Services.outbox.enqueue('PATCH', 'me/food-log/${e.id}/', {'quantity': q}, tag: 'food:day:entry');
+    await load();
+  }
+
   /// Puts a deleted entry back (Undo).
   Future<void> restore(FEntry e) async {
     await Services.outbox.enqueue('POST', 'me/food-log/', e.again(), tag: 'food:day:restore');
@@ -467,6 +473,12 @@ class FEntry {
   String? get photo => (j['photo'] as String?)?.isEmpty ?? true ? null : j['photo'] as String;
   String get swappedFrom => '${j['swapped_from'] ?? ''}';
   String get amount => amtOf(unit, quantity);
+
+  /// Numbers at [q] of its own unit, scaled from what was logged (never the food's default).
+  List<double> at(double q) {
+    final k = quantity > 0 ? q / quantity : 0.0;
+    return [_n(j['kcal']) * k, protein * k, carbs * k, fat * k];
+  }
 
   /// The body that logs this entry again (Undo of Delete entry).
   Map<String, dynamic> again() => {

@@ -261,7 +261,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `foods/import/check/` | POST | FoodViewSet | Food library (staff). Clients search foods through /me/foods/. |
 | `foods/import/template/` | GET | FoodViewSet | Food library (staff). Clients search foods through /me/foods/. |
 | `me/food-log/` | POST | MyFoodLogViewSet |  |
-| `me/food-log/<pk>/` | DELETE | MyFoodLogViewSet |  |
+| `me/food-log/<pk>/` | PATCH, DELETE | MyFoodLogViewSet | PATCH `{quantity}`: Edit portion on a food outside the plan (scales what was logged) |
 | `me/food-log/copy-yesterday/` | POST | MyFoodLogViewSet |  |
 | `me/food-log/undo-copy/` | POST | MyFoodLogViewSet |  |
 | `me/food-log/water/` | POST | MyFoodLogViewSet |  |

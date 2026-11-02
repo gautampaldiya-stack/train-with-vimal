@@ -824,33 +824,115 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
           Text('+${inNum(xs.fold(0, (a, e) => a + e.kcal))} kcal', style: AppText.s(11.5, W.w7, color: AppColors.amberText)),
         ]),
       ),
+      // One line a food, like the plan's own foods (Probid 2026-10-31): name, amount, Eaten, kcal.
       Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         for (final (i, e) in xs.indexed)
           Semantics(
             button: true,
+            label: '${e.name}. Eaten',
             child: Hover(
-              onTap: () => showEntrySheet(context, c, FdLogRow.entry(e), onEdit: () {}, onUneat: () {}),
-              builder: (_, h, _) => Container(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line))),
-                child: Row(spacing: 8, children: [
-                  Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Row(children: [
-                        Flexible(child: CutText(e.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7, color: h ? AppColors.accentText : AppColors.text))),
-                        if (e.source == 'off_plan') fdTag('Off-plan', amber: true),
+              onTap: () => _entryMenu(d, e),
+              builder: (_, h, _) => Opacity(
+                opacity: h ? .8 : 1,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 7),
+                  decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line))),
+                  child: Row(spacing: 8, children: [
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Row(children: [
+                          Flexible(child: CutText(e.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
+                          if (e.source == 'off_plan') fdTag('Off-plan', amber: true),
+                        ]),
+                        CutText('${e.amount}${e.reason.isEmpty ? '' : ' · ${e.reason}'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
                       ]),
-                      Text('${e.amount} · ${fdClock(e.time)}${e.reason.isEmpty ? '' : ' · ${e.reason}'}', style: AppText.s(12, W.w4, color: AppColors.muted)),
-                    ]),
-                  ),
-                  Text('${inNum(e.kcal)} kcal', style: AppText.s(12, W.w7, color: AppColors.text2)),
-                  AppIcon(AppIcons.chevronRight, size: 15, color: h ? AppColors.accentText : AppColors.muted),
-                ]),
+                    ),
+                    fdPill('Eaten', small: true),
+                    Text('${inNum(e.kcal)} kcal', style: AppText.s(12, W.w7, color: AppColors.text2)),
+                  ]),
+                ),
               ),
             ),
           ),
       ]),
     ];
+  }
+
+  /// A food added outside the plan, like a planned food's sheet: its amount (a stepper on today, Save portion when
+  /// changed, starting from what was logged, not the food's default), four macro boxes, then Ate it (it counts),
+  /// Log more and Remove (Probid 2026-10-31).
+  void _entryMenu(FoodDay d, FEntry e) {
+    final q = ValueNotifier(e.quantity);
+    final g = e.unit == 'g';
+    final step = g ? 10.0 : (e.quantity != e.quantity.roundToDouble() ? .5 : 1.0);
+    showAppSheet(
+      context,
+      listen: q,
+      title: e.name,
+      sub: '${e.mealName} · added ${fdClock(e.time)}${e.source == 'off_plan' ? ' · outside the plan' : ''}',
+      webWidth: 440,
+      builder: (ctx) {
+        final changed = q.value != e.quantity;
+        void go(Future<void> Function() f) {
+          Navigator.of(ctx).pop();
+          f().catchError((Object x) {
+            if (mounted && x is ApiError) fdError(context, x);
+          });
+        }
+
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+          Column(spacing: 2, children: [
+            if (d.isToday)
+              NumStepper(
+                value: q.value,
+                step: step,
+                min: g ? 5 : .5,
+                max: g ? 2000 : 50,
+                big: true,
+                decimals: !g,
+                name: '${e.name} amount',
+                label: (v) => amtOf(e.unit, v),
+                onChanged: (v) => q.value = v,
+              )
+            else
+              Text(e.amount, style: AppText.s(22, W.w8)),
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Text('Logged ${e.amount}', style: AppText.s(12, W.w6, color: AppColors.muted)),
+              if (changed) fdTag('Edited'),
+            ]),
+          ]),
+          if (e.reason.isNotEmpty) fdCap('Why: ${e.reason}'),
+          fdMacroBoxes(e.at(q.value)),
+          if (changed)
+            Row(spacing: 8, children: [
+              Expanded(child: CaButton('Reset', kind: CaBtnKind.out, small: true, onPressed: () => q.value = e.quantity)),
+              Expanded(child: CaButton('Save portion', small: true, icon: AppIcons.check, onPressed: () => go(() async {
+                final v = q.value;
+                await c.editEntry(e, v);
+                if (mounted) showToast(context, '${e.name} · ${amtOf(e.unit, v)}', sub: '${inNum(e.at(v)[0])} kcal today', kind: ToastKind.ok);
+              }))),
+            ]),
+          if (d.isToday && !changed)
+            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              FdMenuItem(first: true, icon: AppIcons.check, title: 'Ate it', sub: 'Counts ${inNum(e.kcal)} kcal today', onTap: () {
+                Navigator.of(ctx).pop();
+                showToast(context, '${e.name} is logged as eaten', sub: '${inNum(e.kcal)} kcal counts today', kind: ToastKind.ok);
+              }),
+              FdMenuItem(
+                icon: AppIcons.plus,
+                title: 'Log more to ${e.mealName}',
+                sub: 'Search and add another food',
+                onTap: () => go(() async => context.go('/food/log?meal=${Uri.encodeComponent(e.mealName)}')),
+              ),
+              FdMenuItem(icon: AppIcons.close, title: 'Not eaten', sub: 'Take it off today’s log · you can undo', danger: true, onTap: () => go(() async {
+                await c.deleteEntry(e);
+                if (!mounted) return;
+                showToast(context, '${e.name} taken off', sub: '${inNum(e.kcal)} kcal off today', kind: ToastKind.del, action: 'Undo', onAction: () => c.restore(e).catchError((_) {}));
+              })),
+            ]),
+        ]);
+      },
+    ).whenComplete(() => Future.delayed(const Duration(milliseconds: 600), q.dispose));
   }
 
   /// A meal with foods already logged as eaten asks before its portions or a swap change them (Probid 2026-10-30).
@@ -1035,7 +1117,9 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
   Widget _logRow(FoodDay d, FdLogRow r, {required bool first}) => Semantics(
     button: true,
     child: Hover(
-      onTap: () => showEntrySheet(context, c, r, onEdit: () => showPortionsSheet(context, c, r.meal!), onUneat: () => _uneat(r.meal!)),
+      onTap: () => r.entry != null && r.meal == null
+          ? _entryMenu(d, r.entry!)
+          : showEntrySheet(context, c, r, onEdit: () => showPortionsSheet(context, c, r.meal!), onUneat: () => _uneat(r.meal!)),
       builder: (_, h, _) => Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(border: first ? null : const Border(top: BorderSide(color: AppColors.line))),
