@@ -329,11 +329,15 @@ def checkin_today(client, today):
     """Home Check-in card: today's daily check-in, pending or sent; None when there is no daily form."""
     from apps.checkins.models import Form, Question, Submission
 
-    form = Form.objects.filter(type="daily", status="published").first()
+    form = _live_form("daily")
     if not form:
         return None
-    sub = Submission.objects.filter(client=client, form_type="daily", date=today).order_by("-created_at").first()
+    from apps.checkins.client_page import daily_open_day
+
+    day = daily_open_day(client, today)  # yesterday while it is still open and not sent (E27)
+    sub = Submission.objects.filter(client=client, form_type="daily", date=day).order_by("-created_at").first()
     return {"form": form.id, "status": "sent" if sub else "pending", "sent_at": sub.created_at if sub else None,
+            "date": day, "is_yesterday": day < today,
             "questions": Question.objects.filter(form=form, is_removed=False).count(), "due": "9:00 pm"}
 
 
@@ -445,7 +449,7 @@ class ClientHomeView(APIView):
         session = (Session.objects.filter(client=u, start__gte=now - timedelta(hours=1), status="booked")
                    .select_related("trainer").order_by("start").first())
 
-        weekly = Form.objects.filter(type="weekly", status="published").first()
+        weekly = _live_form("weekly")
         last_weekly = Submission.objects.filter(client=u, form_type="weekly").order_by("-date").first()
         coming = []
         if session:
@@ -505,3 +509,9 @@ class ClientHomeView(APIView):
             "trainer_note": {"by": _person(reply.reviewed_by) if reply.reviewed_by else None, "body": reply.reply,
                              "at": reply.reviewed_at} if reply else None,
         })
+
+
+def _live_form(form_type):
+    from apps.checkins.library import live_form
+
+    return live_form(form_type)

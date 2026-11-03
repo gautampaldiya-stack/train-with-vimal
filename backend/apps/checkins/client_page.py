@@ -1,8 +1,9 @@
 """Client app → Check-ins page (boards ClientCheckin / ClientCheckinWeb).
 
-The weekly check-in is due every Sunday at 6:00 pm (a calendar week, Monday to Sunday). A week with no
-weekly check-in is shown as Missed; a day with no daily check-in is shown as Missed (after the 9 pm
-reminder). History is paged with `before` (a date), newest first.
+The weekly check-in is due on the client's schedule day (`schedule.py`, default Sunday 6:00 pm), open that day
+and 2 more, then Missed. A daily check-in belongs to its own day and stays open until the end of the next day
+(last night's sleep is known only the next morning, like Food); after that it is Missed. History is paged with
+`before` (a date), newest first.
 """
 from datetime import datetime, time, timedelta
 
@@ -95,7 +96,9 @@ def form_payload(form, coach_first, photos=True, client=None):
     # coach's own (Probid 2026-10-31); nothing is added here.
     taken = form.type == "weekly" and client is not None and measure_entry(client) is not None
     qs = [q for q in form.questions.all() if not q.is_removed and (photos or q.type != QuestionType.PHOTO)
-          and not (q.type == QuestionType.MEASURES and (taken or (form.type == "weekly" and not photos)))]
+          and not (q.type == QuestionType.MEASURES and (taken or (form.type == "weekly" and not photos)))
+          # the daily check-in is one quick page: photos and body measurements belong to the weekly one
+          and not (form.type == "daily" and q.type in (QuestionType.PHOTO, QuestionType.MEASURES))]
     out = []
     for q in qs:
         row = {"id": q.id, "text": q.text, "type": q.type, "options": q.options, "scale_labels": q.scale_labels,
@@ -194,31 +197,32 @@ def _photo_counts(subs):
 
 
 def weekly_rows(client, before=None):
+    from . import schedule
     from .services import week_number
 
     today = timezone.localdate()
-    this_monday = _monday(today)
     start = _start(client)
+    wd, t = schedule.slot(client)
     subs = list(Submission.objects.filter(client=client, form_type="weekly").order_by("-date", "-created_at"))
     _photo_counts(subs)
-    by_week = {}
-    for s in subs:
-        by_week.setdefault(_monday(s.date), []).append(s)
+    keyed = set()
     rows = []
     for s in subs:
+        due = schedule.due_for(client, s.date, wd)  # the due date it belongs to (new ones are stored on it)
+        keyed.add(due)
         r = _row(s)
-        r["week_number"] = s.week_number or week_number(client, s.date)
-        r["on_time"] = s.created_at <= _due_at(_monday(s.date) + timedelta(days=6))
+        r["due"] = due
+        r["week_number"] = s.week_number or week_number(client, due)
+        r["on_time"] = s.created_at <= schedule.due_at(client, due, t)
         rows.append(r)
-    # Missed: every finished week since the start with nothing sent.
-    m = _monday(start)
-    while m < this_monday:
-        sunday = m + timedelta(days=6)
-        if sunday >= start and m not in by_week:
-            rows.append({"id": None, "kind": "missed", "date": sunday, "week_number": week_number(client, sunday),
-                         "due_at": _due_at(sunday)})
-        m += timedelta(days=7)
-    rows.sort(key=lambda r: (r["date"], r.get("sent_at") or _due_at(r["date"])), reverse=True)
+    # Missed: every due date since the start whose window has closed with nothing sent.
+    due = schedule.due_on_or_after(client, start, wd)
+    while due + timedelta(days=schedule.OPEN_DAYS) < today:
+        if due not in keyed:
+            rows.append({"id": None, "kind": "missed", "date": due, "due": due,
+                         "week_number": week_number(client, due), "due_at": schedule.due_at(client, due, t)})
+        due += timedelta(days=7)
+    rows.sort(key=lambda r: (r["date"], r.get("sent_at") or r.get("due_at")), reverse=True)
     # Weight change against the check-in before (the label says "In 2 weeks" across a gap).
     sent = [r for r in rows if r["kind"] == "sent"]
     for i, r in enumerate(sent):
@@ -230,6 +234,18 @@ def weekly_rows(client, before=None):
     return rows
 
 
+DAILY_OPEN_DAYS = 1  # a day's daily check-in can still be sent the next day
+
+
+def daily_open_day(client, today=None):
+    """The day the daily card asks about: yesterday while it is still open and not sent, else today."""
+    today = today or timezone.localdate()
+    y = today - timedelta(days=1)
+    if y >= _start(client) and not Submission.objects.filter(client=client, form_type="daily", date=y).exists():
+        return y
+    return today
+
+
 def daily_rows(client, form):
     today = timezone.localdate()
     start = max(_start(client), today - timedelta(days=365))
@@ -237,7 +253,7 @@ def daily_rows(client, form):
     rows = [_row(s) for s in subs]
     if form is not None:
         have = {s.date for s in subs}
-        d = today - timedelta(days=1)
+        d = today - timedelta(days=1 + DAILY_OPEN_DAYS)  # yesterday is still open, so not Missed yet
         while d >= start:
             if d not in have:
                 rows.append({"id": None, "kind": "missed", "date": d, "reminder": DAILY_REMINDER})
@@ -259,25 +275,27 @@ def client_weekly_form(client):
            .prefetch_related("questions").order_by("-created_at").first())
     if own is not None:
         return own if own.sending else None
-    return Form.objects.filter(type="weekly", status="published").prefetch_related("questions").first()
+    return _live_form("weekly")
 
 
 def checkins_page(client, tab="weekly", before=None, request=None):
     from apps.clients.metrics import active_program
 
+    from . import schedule
     from .services import next_photos_due, photo_week, streak, week_number
 
     today = timezone.localdate()
+    cur = schedule.current(client, today)
     cp = client.client_profile
     coach = cp.trainer
     coach_first = coach.first_name if coach else ""
     weekly = client_weekly_form(client)
-    daily = Form.objects.filter(type="daily", status="published").prefetch_related("questions").first()
+    daily = _live_form("daily")
 
     w_rows = weekly_rows(client)
     sent_w = [r for r in w_rows if r["kind"] == "sent"]
-    due_weeks = [r for r in w_rows if r["kind"] == "missed" or _monday(r["date"]) < _monday(today)]
-    this_week = next((r for r in sent_w if _monday(r["date"]) == _monday(today)), None)
+    due_weeks = [r for r in w_rows if r["kind"] == "missed" or r["due"] < cur["due"]]
+    this_week = next((r for r in sent_w if r["due"] == cur["due"]), None)
     due_total = len(due_weeks) + (1 if this_week else 0)
     on_time = len([r for r in sent_w if r.get("on_time")])
     last_change = next((r.get("change_kg") for r in sent_w if r.get("change_kg") is not None), None)
@@ -293,15 +311,15 @@ def checkins_page(client, tab="weekly", before=None, request=None):
     else:
         rows, more = page(all_rows, before)
         for r in rows:
-            r.update(_week_counts(client, _monday(r["date"])))
+            r.update(_week_counts(client, r["due"] - timedelta(days=6)))
 
-    d_today = Submission.objects.filter(client=client, form_type="daily", date=today).first()
-    last_w = WeightLog.objects.filter(client=client, date__lt=today).order_by("-date").first()
-    today_w = WeightLog.objects.filter(client=client, date=today).first()
+    day = daily_open_day(client, today)  # yesterday while it is still open, else today
+    d_today = Submission.objects.filter(client=client, form_type="daily", date=day).first()
+    last_w = WeightLog.objects.filter(client=client, date__lt=day).order_by("-date").first()
+    today_w = WeightLog.objects.filter(client=client, date=day).first()
     prev_weekly_w = next((r["metrics"]["weight"] for r in sent_w
                           if r["metrics"].get("weight") is not None and r is not this_week), None)
     pa = active_program(client, today)
-    sunday = _monday(today) + timedelta(days=6)
     return {
         "coach": {"name": coach.full_name, "first_name": coach_first, "initials": coach.initials,
                   "avatar_color": coach.avatar_color} if coach else None,
@@ -309,12 +327,13 @@ def checkins_page(client, tab="weekly", before=None, request=None):
                     "weeks": pa.effective_program.weeks} if pa else None,
         "stats": {"streak": streak(client, "daily"), "weekly_on_time": on_time, "weekly_due": due_total,
                   "last_change_kg": last_change},
-        "daily": {"date": today, "form": form_payload(daily, coach_first),
-                  "sent": full_row(d_today, request), **_habit_day(client, today),
+        "daily": {"date": day, "is_yesterday": day < today, "form": form_payload(daily, coach_first),
+                  "sent": full_row(d_today, request), **_habit_day(client, day),
                   "last_weight": {"date": last_w.date, "kg": float(last_w.weight_kg)} if last_w else None,
                   "today_weight": float(today_w.weight_kg) if today_w else None},
-        "weekly": {"week": week_number(client, today), "due_at": _due_at(sunday),
-                   "form": form_payload(weekly, coach_first, photos=photo_week(client, today), client=client),
+        "weekly": {"week": week_number(client, cur["due"]), "due_at": cur["due_at"], "due": cur["due"],
+                   "open": cur["open"], "late": cur["late"], "closes": cur["closes"],
+                   "form": form_payload(weekly, coach_first, photos=photo_week(client, cur["due"]), client=client),
                    "photos_due": next_photos_due(client, today),
                    "sent": {**this_week, **full_row(Submission.objects.get(id=this_week["id"]), request)}
                    if this_week else None,
@@ -376,3 +395,9 @@ def form_request(client, req, request=None):
         "answers": {str(a.question_id): a.value for a in sub.answers.all() if not a.photo},
         "photos": answer_photos(sub, request)}
     return out
+
+
+def _live_form(form_type):
+    from apps.checkins.library import live_form
+
+    return live_form(form_type)

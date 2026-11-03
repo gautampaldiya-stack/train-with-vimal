@@ -47,7 +47,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
             onPressed: () => context.go(ft < 0 ? '/setup/done' : '/setup?step=$ft')),
       ],
       children: [
-        Row(children: [CaIconBtn(AppIcons.chevronLeft, tooltip: 'Back', onTap: () => context.go(me.pending ? '/pending' : '/home'))]),
+        Row(children: [CaBackBtn(tooltip: 'Back', onTap: () => context.go(me.pending ? '/pending' : '/home'))]),
         Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 4, children: [
           Text('You’re almost there, ${me.firstName}', style: AppText.s(24, W.w8, ls: -0.24, h: 1.2)),
           Text('Your coach can’t build your plan until these are done.', style: AppText.s(13.5, W.w4, color: AppColors.muted, h: 1.45)),

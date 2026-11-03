@@ -536,7 +536,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
   );
 
   Widget _top() => Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
-    Padding(padding: const EdgeInsets.only(top: 2), child: CaIconBtn(AppIcons.chevronLeft, tooltip: 'Back to meal plan', onTap: _leave)),
+    Padding(padding: const EdgeInsets.only(top: 2), child: CaBackBtn(tooltip: 'Back to meal plan', onTap: _leave)),
     Expanded(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(DateUtils0.same(day.day, day.today) ? 'Log food' : 'Log food · yesterday, ${fdDay(day.day)}', style: AppText.s(12, W.w6, color: AppColors.muted)),

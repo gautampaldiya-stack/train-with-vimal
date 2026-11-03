@@ -72,7 +72,7 @@ class _ClientLibraryScreenState extends State<ClientLibraryScreen> {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
             Row(spacing: 10, children: [
-              CaIconBtn(AppIcons.chevronLeft, tooltip: 'Back to More', onTap: () => context.go('/more')),
+              CaBackBtn(tooltip: 'Back to More', onTap: () => context.go('/more')),
               Expanded(child: _title()),
             ]),
             _progress(),

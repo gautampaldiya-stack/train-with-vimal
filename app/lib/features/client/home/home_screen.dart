@@ -384,9 +384,11 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
       ChHead(
         lead: const ChIcon(AppIcons.clipboard, tone: ChTone.amber),
         title: 'Daily check-in',
-        sub: 'Not filled yet · ${ci.questions} question${ci.questions == 1 ? '' : 's'}${ci.due.isEmpty ? '' : ' · by ${ci.due}'}',
+        sub: ci.yesterday
+            ? 'Yesterday\'s is still open · ${ci.questions} question${ci.questions == 1 ? '' : 's'} · until tonight'
+            : 'Not filled yet · ${ci.questions} question${ci.questions == 1 ? '' : 's'}${ci.due.isEmpty ? '' : ' · by ${ci.due}'}',
       ),
-      CaButton('Fill now', icon: AppIcons.edit, onPressed: () => context.go('/checkins/daily?from=home')),
+      CaButton(ci.yesterday ? 'Fill yesterday\'s' : 'Fill now', icon: AppIcons.edit, onPressed: () => context.go('/checkins/daily?from=home')),
     ]);
   }
 

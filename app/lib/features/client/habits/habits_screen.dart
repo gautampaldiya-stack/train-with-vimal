@@ -130,7 +130,7 @@ class _ClientHabitsScreenState extends State<ClientHabitsScreen> {
     ]);
     if (web) return title;
     return Row(spacing: 10, children: [
-      CaIconBtn(AppIcons.chevronLeft, tooltip: 'Back to More', onTap: () => context.go('/more')),
+      CaBackBtn(tooltip: 'Back to More', onTap: () => context.go('/more')),
       Expanded(child: title),
     ]);
   }

@@ -85,7 +85,7 @@ def client_overview(user, request):
     note = ClientNote.objects.filter(client=user).select_related("author").first()
     nxt = (Session.objects.filter(client=user, start__gte=timezone.now(), status="booked")
            .select_related("trainer").order_by("start").first())
-    weekly_form = Form.objects.filter(type="weekly", status="published").first()
+    weekly_form = _live_form("weekly")
     last_request = FormRequest.objects.filter(client=user).order_by("-created_at").first()
     t = cp.trainer
     return {
@@ -152,3 +152,9 @@ def checkins_schedule(user):
                          "due": measure_entry(user, today) is None},
         "photos": {"every_weeks": n, "last": last_p, "next": next_photos_due(user, today)},
     }
+
+
+def _live_form(form_type):
+    from apps.checkins.library import live_form
+
+    return live_form(form_type)

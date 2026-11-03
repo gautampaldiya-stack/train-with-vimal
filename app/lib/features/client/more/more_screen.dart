@@ -426,7 +426,7 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
   // ─────────────────────────────── Profile (phone page, web Overview left)
 
   Widget _pageHead(String title, String sub, {List<Widget> actions = const []}) => Row(spacing: 10, children: [
-        CaIconBtn(AppIcons.chevronLeft, tooltip: 'Back to More', onTap: () => context.go('/more')),
+        CaBackBtn(tooltip: 'Back to More', onTap: () => context.go('/more')),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
             FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(title, maxLines: 1, style: AppText.s(21, W.w8, h: 1.2))),

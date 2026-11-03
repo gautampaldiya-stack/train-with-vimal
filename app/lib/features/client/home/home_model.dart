@@ -368,10 +368,18 @@ extension HomeExtras on HomeData {
   int? get dayId => ((json['workout'] as Map?)?['day'] as Map?)?['id'] as int?;
 
   /// Today's daily check-in: (form id, sent, sent at, questions); null when the coach has no daily form.
-  ({String form, bool sent, DateTime? at, int questions, String due})? get checkin {
+  /// [yesterday]: yesterday's is still open and not sent (it can be sent until the end of the next day).
+  ({String form, bool sent, DateTime? at, int questions, String due, bool yesterday})? get checkin {
     final c = json['checkin_today'] as Map?;
     if (c == null) return null;
-    return (form: '${c['form']}', sent: c['status'] == 'sent', at: _dateOr(c['sent_at']), questions: _n(c['questions']).toInt(), due: '${c['due'] ?? ''}');
+    return (
+      form: '${c['form']}',
+      sent: c['status'] == 'sent',
+      at: _dateOr(c['sent_at']),
+      questions: _n(c['questions']).toInt(),
+      due: '${c['due'] ?? ''}',
+      yesterday: c['is_yesterday'] == true,
+    );
   }
 
   /// Weekly adherence, Monday to now: workouts, meals, daily check-ins and habits planned vs done (Probid 2026-11-03).

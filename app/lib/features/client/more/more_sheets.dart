@@ -41,7 +41,8 @@ String moPhone(String p) {
 /// "Every day · sent today" / "Every day · reminder at 9:00 pm".
 String moDailyLine(MoData d) => d.dailySent ? 'Every day · sent today' : 'Every day · reminder at ${d.dailyReminder}';
 
-String moCheckinWhen(MoData d) => 'Every Sunday, ${minClock(hmsToMin(d.checkinTime))}';
+String moCheckinWhen(MoData d) =>
+    'Every ${const ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][d.checkinWeekday.clamp(0, 6)]}, ${minClock(hmsToMin(d.checkinTime))}';
 
 void moFailed(BuildContext context, [Object? e]) => showToast(context, 'Could not save',
     sub: e is ApiError && e.offline ? 'You are offline. Try again when you are back online.' : (e is ApiError ? e.message : 'Try again'),

@@ -7,7 +7,8 @@ import '../../../core/theme/theme.dart';
 import '../../../core/widgets/client.dart';
 import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
-import '../home/home_model.dart' show clock, inNum, litres;
+import '../../../core/api/api_error.dart';
+import '../home/home_model.dart' show clock;
 import 'checkins_model.dart';
 import 'checkins_parts.dart';
 
@@ -26,13 +27,10 @@ class DailyCheckin extends StatefulWidget {
 
 class _DailyCheckinState extends State<DailyCheckin> {
   CheckinsController get c => widget.c;
-  final _note = TextEditingController();
   final _v = <int, Object?>{};
+  final _texts = <int, TextEditingController>{};
   bool _editing = false, _filled = false, _busy = false;
   CkRow? _sent; // sent from this page (shown even before the reload)
-
-  static const _chips = ['Felt strong today', 'Knee a bit sore', 'Slept late', 'Busy day at work'];
-  static const _short = {'sleep_hours': 'Sleep', 'weight': 'Morning weight'};
 
   @override
   void initState() {
@@ -42,12 +40,21 @@ class _DailyCheckinState extends State<DailyCheckin> {
 
   @override
   void dispose() {
-    _note.dispose();
+    for (final t in _texts.values) {
+      t.dispose();
+    }
     super.dispose();
   }
 
   CkDaily get d => c.data!.daily;
   CkForm get f => d.form!;
+
+  /// Only the coach's own questions, each answered the way its type asks (E25). Photos and body measurements
+  /// belong to the weekly check-in, so the daily one never asks them.
+  List<CkQ> get qs => [
+    for (final q in f.questions)
+      if (q.type != 'photo' && q.type != 'measures') q,
+  ];
   CkRow? get today => _sent ?? d.sent ?? CheckinsController.queuedDaily;
   String get coach => c.data!.coachFirst;
 
@@ -55,9 +62,10 @@ class _DailyCheckinState extends State<DailyCheckin> {
   void _fill() {
     if (_filled || c.data == null || d.form == null) return;
     _filled = true;
+    if (!_editing) _readDraft();
     final m = today?.metrics ?? const {};
     final a = today?.answers ?? const {};
-    for (final q in f.questions) {
+    for (final q in qs) {
       // The answer as sent; older rows only have the numbers (metrics), so fit those to the question.
       final sent = a['${q.id}'];
       final v = sent ?? m[q.metric];
@@ -67,16 +75,17 @@ class _DailyCheckinState extends State<DailyCheckin> {
         continue;
       } else if (q.type == 'scale') {
         _v[q.id] = q.scaleOf(sent) ?? (q.metric == 'sleep_hours' && v is num ? _hoursToScale(q, v) : q.scaleOf(v));
+      } else if (q.type == 'multiple') {
+        if (v is List) _v[q.id] = [...v];
       } else if (q.isChoice) {
         final o = v is bool ? (v ? 'Yes' : 'No') : (v is num && q.metric == 'sleep_hours' ? hrs(v) : '$v');
-        if (q.options.contains(o)) _v[q.id] = q.type == 'yes_no' ? o == 'Yes' : o;
+        if (q.options.contains(o) || o.toLowerCase().startsWith('other:')) _v[q.id] = q.type == 'yes_no' ? o == 'Yes' : o;
       } else if (q.type == 'number') {
         if (v is num) _v[q.id] = v.toDouble();
       } else {
         _v[q.id] = '$v';
       }
     }
-    _note.text = '${m['note'] ?? ''}';
   }
 
   /// Sleep hours on a 5-point scale whose labels are hours ("5h" … "9h").
@@ -87,21 +96,66 @@ class _DailyCheckinState extends State<DailyCheckin> {
     return q.scaleOf(h - 4);
   }
 
-  bool _has(CkQ q) => _v[q.id] != null && _v[q.id] != '';
+  bool _has(CkQ q) => _v[q.id] != null && _v[q.id] != '' && !(_v[q.id] is List && (_v[q.id] as List).isEmpty);
   List<CkQ> get _missing => [
-    for (final q in f.questions)
+    for (final q in qs)
       if (q.required && !_has(q)) q,
   ];
 
-  void _set(CkQ q, Object? v) => setState(() => _v[q.id] = v);
+  void _set(CkQ q, Object? v) {
+    setState(() => _v[q.id] = v);
+    _dirty = true;
+  }
+
+  /// Answers changed on this page and not sent yet.
+  bool _dirty = false;
+
+  /// A draft saved by "Save and continue later" comes back the next time the page opens (today only).
+  Future<void> _readDraft() async {
+    if (today != null) return;
+    final dr = await c.readDailyDraft(d.date);
+    if (dr == null || !mounted) return;
+    setState(() {
+      for (final MapEntry(:key, :value) in ((dr['answers'] as Map?) ?? const {}).entries) {
+        final id = int.tryParse('$key');
+        if (id != null && value != null) _v[id] = value;
+      }
+      for (final t in _texts.values) {
+        t.dispose();
+      }
+      _texts.clear();
+    });
+  }
+
+  /// Back: out of Edit answers, else off the page.
+  void _close() => _editing && today != null ? setState(() => _editing = false) : context.go(widget.back);
+
+  /// Leaving with changed answers that are not sent asks (E32).
+  Future<void> _leave(VoidCallback go) async {
+    if (!_dirty || (today != null && !_editing)) return go();
+    final keep = await ckAskLeave(context);
+    if (keep == null || !mounted) return;
+    if (keep && today == null) {
+      await c.saveDailyDraft(d.date, {'answers': {for (final e in _v.entries) '${e.key}': e.value}});
+      if (mounted) showToast(context, 'Draft saved', sub: '${qs.where(_has).length} of ${qs.length} answered · finish it today', kind: ToastKind.info);
+    } else if (!keep) {
+      await c.saveDailyDraft(d.date, null);
+      if (_editing) {
+        _filled = false;
+        _v.clear();
+      }
+    }
+    _dirty = false;
+    if (mounted) go();
+  }
 
   Future<void> _send() async {
     final miss = _missing;
     if (miss.isNotEmpty) {
       showToast(
         context,
-        'Answer ${miss.map((q) => (_short[q.metric] ?? q.text).toLowerCase()).join(', ')} first',
-        sub: 'Only the note is optional',
+        miss.length == 1 ? 'Answer "${miss.first.text}" first' : 'Answer ${miss.length} more questions first',
+        sub: miss.length == 1 ? 'This one is required' : miss.map((q) => q.text).take(3).join(', '),
         kind: ToastKind.warn,
       );
       return;
@@ -109,18 +163,22 @@ class _DailyCheckinState extends State<DailyCheckin> {
     if (_busy) return;
     setState(() => _busy = true);
     final answers = {
-      for (final q in f.questions)
+      for (final q in qs)
         if (_has(q)) '${q.id}': _v[q.id],
     };
-    final note = _note.text.trim();
+    // No note box any more (E25): an edit keeps the note an older check-in had.
+    final note = '${today?.metrics['note'] ?? ''}';
     try {
       if (_editing && today?.id != null) {
         await c.edit(f, today!.id!, answers, note: note);
+        _dirty = false;
         if (!mounted) return;
         setState(() => _editing = false);
         showToast(context, 'Daily check-in updated', sub: '$coach will see it today', kind: ToastKind.ok);
       } else {
-        final row = await c.send(f, answers, note: note);
+        final row = await c.send(f, answers, note: note, day: d.date);
+        _dirty = false;
+        await c.saveDailyDraft(d.date, null);
         if (!mounted) return;
         setState(() {
           _sent = row;
@@ -143,22 +201,29 @@ class _DailyCheckinState extends State<DailyCheckin> {
         );
       }
     } catch (e) {
-      if (mounted) showToast(context, 'Could not send it', sub: '$e', kind: ToastKind.err);
+      if (mounted) showToast(context, 'Could not send it', sub: _why(e), kind: ToastKind.err);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// The server's reason, named by the question it is about ("Weight: Enter your weight in kg.").
+  String _why(Object e) {
+    if (e is! ApiError) return 'Try again in a moment';
+    for (final MapEntry(:key, :value) in e.fields.entries) {
+      final q = qs.where((q) => '${q.id}' == key).firstOrNull;
+      if (q != null && value.isNotEmpty) return '${q.text}: ${value.first}';
+    }
+    return e.offline ? 'You are offline. Try again when you are online' : e.shown;
   }
 
   /// The phone's back button closes the edit first, like the page's own back (Phase 4).
   @override
   Widget build(BuildContext context) => BackIntercept(
     onBack: () {
-      if (_editing && today != null) {
-        setState(() => _editing = false);
-        return true;
-      }
-      if (widget.back == '/checkins') return false;
-      context.go(widget.back);
+      final closeEdit = _editing && today != null;
+      if (!_dirty && !closeEdit && widget.back == '/checkins') return false;
+      _leave(_close);
       return true;
     },
     child: Builder(builder: _page),
@@ -176,16 +241,16 @@ class _DailyCheckinState extends State<DailyCheckin> {
       }
       _fill();
       final web = !context.isPhone;
-      final answered = f.questions.where(_has).length;
-      final total = f.questions.length;
+      final answered = qs.where(_has).length;
+      final total = qs.length;
       final showForm = today == null || _editing;
       return CkPage(
         web: web,
         header: [
           CkTop(
             title: 'Daily check-in',
-            sub: '${dayShortNoYear(d.date)} · $answered of $total answered',
-            onBack: () => _editing && today != null ? setState(() => _editing = false) : context.go(widget.back),
+            sub: '${d.isYesterday ? 'Yesterday, ' : ''}${dayShortNoYear(d.date)} · $answered of $total answered',
+            onBack: () => _leave(_close),
           ),
           CkBar(total == 0 ? 0 : answered / total),
         ],
@@ -195,23 +260,7 @@ class _DailyCheckinState extends State<DailyCheckin> {
   );
 
   List<Widget> _form() => [
-    for (final q in f.questions) _question(q),
-    CkQCard(
-      title: 'Anything else?',
-      label: 'Optional',
-      children: [
-        CkInput(controller: _note, hint: 'Type a note for $coach, or tap a suggestion', onChanged: () => setState(() {})),
-        CkTry(
-          items: _chips,
-          onPick: (t) {
-            final n = _note.text.trim();
-            _note.text = n.isNotEmpty && !n.contains(t) ? '$n. $t' : (n.contains(t) ? n : t);
-            setState(() {});
-          },
-        ),
-      ],
-    ),
-    if (_autoLine() != null) ckInfo(_autoLine()!),
+    for (final q in qs) _question(q),
     // Editing a sent check-in saves the changes; a new one is sent.
     if (_editing && today?.id != null)
       CaButton('Save changes', icon: AppIcons.check, dimmed: _missing.isNotEmpty, loading: _busy, onPressed: _send)
@@ -219,23 +268,34 @@ class _DailyCheckinState extends State<DailyCheckin> {
       CaButton('Send to $coach', icon: AppIcons.send, dimmed: _missing.isNotEmpty, loading: _busy, onPressed: _send),
   ];
 
-  /// `ck-auto`: what the check-in takes from Habits.
-  String? _autoLine() {
-    final st = d.steps == null ? null : 'Steps (${inNum(d.steps!)})';
-    final w = d.waterMl == null ? null : 'water (${litres(d.waterMl!)})';
-    if (st != null && w != null) return '$st and $w come from your habits, so you do not need to add them.';
-    if (st != null) return '$st come from your habits, so you do not need to add them.';
-    if (w != null) return 'Water (${litres(d.waterMl!)}) comes from your habits, so you do not need to add it.';
-    return null;
-  }
+  String _tag(CkQ q) => q.required ? 'Required' : 'Optional';
 
   Widget _question(CkQ q) {
     final v = _v[q.id];
     final title = q.text;
-    if (q.metric == 'weight' || q.type == 'number') {
-      final x = (v as num?)?.toDouble() ?? 0;
+    if (q.type == 'number' && q.asField) {
+      // a plain number box (the coach chose Field)
+      final t = _texts[q.id] ??= TextEditingController(text: v == null ? '' : (v as num).toDouble().toStringAsFixed(1));
+      return CkQCard(
+        title: title,
+        label: _tag(q),
+        got: v != null,
+        children: [
+          CkInput(
+            controller: t,
+            hint: 'Type a number',
+            keyboard: const TextInputType.numberWithOptions(decimal: true),
+            onChanged: () => _set(q, double.tryParse(t.text.trim().replaceAll(',', '.'))),
+          ),
+        ],
+      );
+    }
+    if (q.type == 'number') {
+      // − / + starts from her last weight (weight) or the coach's minimum, never below it (E30 submit error).
+      final x = (v as num?)?.toDouble() ?? q.last ?? q.min ?? 0;
+      double fit(double n) => n.clamp(q.min ?? -1e9, q.max ?? 1e9).toDouble();
       final last = d.lastWeight, when = d.lastWeightDate;
-      final diff = q.metric == 'weight' && last != null && when != null ? '${kgChange(x - last, zero: '±0.0 kg')} since ${dayName(when)}' : '';
+      final diff = q.metric == 'weight' && last != null && when != null ? '${kgChange(x - last, zero: '±0.0 kg')} since ${dayName(when)}' : _tag(q);
       return CkQCard(
         title: title,
         label: diff,
@@ -243,22 +303,20 @@ class _DailyCheckinState extends State<DailyCheckin> {
           CkStepper(
             value: x.toStringAsFixed(1),
             suffix: q.metric == 'weight' ? 'kg' : null,
-            onMinus: () => _set(q, (((x - q.step) * 100).round() / 100).clamp(q.min ?? -1e9, q.max ?? 1e9).toDouble()),
-            onPlus: () => _set(q, (((x + q.step) * 100).round() / 100).clamp(q.min ?? -1e9, q.max ?? 1e9).toDouble()),
+            onMinus: () => _set(q, fit(((x - q.step) * 100).round() / 100)),
+            onPlus: () => _set(q, fit(((x + q.step) * 100).round() / 100)),
             onType: (n) => _set(q, n),
           ),
         ],
       );
     }
-    final label = v == null ? 'Pick one' : (q.type == 'scale' ? (q.show(v, short: true) ?? 'Pick one') : (q.show(v) ?? '$v'));
-    if (q.isChoice) {
+    final label = v == null ? (q.required ? 'Pick one' : 'Optional') : (q.type == 'scale' ? (q.show(v, short: true) ?? 'Pick one') : (q.show(v) ?? '$v'));
+    if (q.isChoice || q.type == 'multiple') {
       return CkQCard(
         title: title,
-        label: label,
+        label: q.type == 'multiple' && v == null ? (q.required ? 'Pick one or more' : 'Optional') : label,
         got: v != null,
-        children: [
-          CkChoiceGrid(options: q.options, value: v is bool ? (v ? 'Yes' : 'No') : v as String?, onPick: (o) => _set(q, q.type == 'yes_no' ? o == 'Yes' : o)),
-        ],
+        children: [CkChoice(q: q, value: v, onChanged: (x) => _set(q, x))],
       );
     }
     if (q.type == 'scale') {
@@ -269,10 +327,26 @@ class _DailyCheckinState extends State<DailyCheckin> {
         children: [CkScale(labels: q.labels, value: q.scaleOf(v), onPick: (n) => _set(q, n))],
       );
     }
+    final t = _texts[q.id] ??= TextEditingController(text: '${v ?? ''}');
+    void changed() => _set(q, t.text.trim().isEmpty ? null : t.text.trim());
     return CkQCard(
       title: title,
-      label: q.required ? 'Required' : 'Optional',
-      children: [_TextAnswer(initial: '${v ?? ''}', onChanged: (t) => _v[q.id] = t.trim().isEmpty ? null : t.trim())],
+      label: _tag(q),
+      got: v != null,
+      children: [
+        CkInput(controller: t, hint: 'Type your answer', area: q.type == 'long', onChanged: changed),
+        // The coach's own chips; none = no chips.
+        if (q.suggestions.isNotEmpty)
+          CkTry(
+            lead: 'Tap to add',
+            items: q.suggestions,
+            onPick: (x) {
+              final n = t.text.trim();
+              t.text = n.isNotEmpty && !n.contains(x) ? '$n. $x' : (n.contains(x) ? n : x);
+              changed();
+            },
+          ),
+      ],
     );
   }
 
@@ -280,19 +354,18 @@ class _DailyCheckinState extends State<DailyCheckin> {
     final row = today!;
     final at = row.sentAt ?? DateTime.now();
     final rows = <(String, String)>[
-      for (final q in f.questions)
-        if (q.type != 'photo')
+      for (final q in qs)
           (
-            _short[q.metric] ?? q.text,
+            q.text,
             q.metric == 'sleep_hours' && row.metrics['sleep_hours'] is num
                 ? hrs(row.metrics['sleep_hours'] as num)
                 : q.show(row.answers['${q.id}'] ?? _v[q.id] ?? row.metrics[q.metric], short: true) ?? '—',
           ),
-      ('Note', '${row.metrics['note'] ?? ''}'.isEmpty ? '—' : '${row.metrics['note']}'),
+      if ('${row.metrics['note'] ?? ''}'.isNotEmpty) ('Note', '${row.metrics['note']}'),
     ];
     return CkDone(
       title: 'Sent to $coach',
-      sub: row.id == null ? 'Saved on this phone · it goes to $coach when you are online' : 'Today at ${clock(at)} · $coach will see it today',
+      sub: row.id == null ? 'Saved on this phone · it goes to $coach when you are online' : '${DateUtils.isSameDay(row.date, DateTime.now()) ? 'Today' : dayShortNoYear(row.date)}\'s check-in · sent at ${clock(at)}',
       rows: rows,
       photos: row.thumbs,
       buttons: Row(
@@ -318,26 +391,6 @@ class _DailyCheckinState extends State<DailyCheckin> {
       ),
     );
   }
-}
-
-class _TextAnswer extends StatefulWidget {
-  const _TextAnswer({required this.initial, required this.onChanged});
-  final String initial;
-  final ValueChanged<String> onChanged;
-  @override
-  State<_TextAnswer> createState() => _TextAnswerState();
-}
-
-class _TextAnswerState extends State<_TextAnswer> {
-  late final t = TextEditingController(text: widget.initial);
-  @override
-  void dispose() {
-    t.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => CkInput(controller: t, hint: 'Type your answer', area: true, onChanged: () => widget.onChanged(t.text));
 }
 
 /// "Thu, 15 Oct"

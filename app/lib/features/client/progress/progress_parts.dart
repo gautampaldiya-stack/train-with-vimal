@@ -572,3 +572,54 @@ class PxEntryRow extends StatelessWidget {
     );
   }
 }
+
+/// A plain number box for one measurement (E29: no − / +): the unit beside it, the last value as the hint.
+/// Empty = not measured this time.
+class MeasureField extends StatefulWidget {
+  const MeasureField({super.key, this.value, this.hint, required this.unit, required this.onChanged, this.name = ''});
+  final double? value;
+  final double? hint;
+  final String unit, name;
+  final ValueChanged<double?> onChanged;
+  @override
+  State<MeasureField> createState() => _MeasureFieldState();
+}
+
+class _MeasureFieldState extends State<MeasureField> {
+  static String _txt(double v) => v == v.roundToDouble() ? '${v.round()}' : '$v';
+  late final _t = TextEditingController(text: widget.value == null ? '' : _txt(widget.value!));
+
+  @override
+  void dispose() {
+    _t.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 112,
+    child: Semantics(
+      label: widget.name,
+      textField: true,
+      child: TextField(
+        controller: _t,
+        textAlign: TextAlign.right,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        style: AppText.s(14, W.w7),
+        onChanged: (s) => widget.onChanged(double.tryParse(s.trim().replaceAll(',', '.'))),
+        decoration: InputDecoration(
+          isDense: true,
+          hintText: widget.hint == null ? '—' : _txt(widget.hint!),
+          hintStyle: AppText.s(14, W.w5, color: AppColors.muted),
+          suffixText: widget.unit,
+          suffixStyle: AppText.s(12.5, W.w6, color: AppColors.muted),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+          filled: true,
+          fillColor: AppColors.white,
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.line2)),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.accent, width: 1.5)),
+        ),
+      ),
+    ),
+  );
+}

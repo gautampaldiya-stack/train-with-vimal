@@ -226,7 +226,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   Widget _top(WorkoutController c, {required bool web}) => Padding(
         padding: EdgeInsets.symmetric(vertical: web ? 4 : 0),
         child: Row(spacing: 10, children: [
-          CaIconBtn(AppIcons.chevronLeft, tooltip: 'Back to overview', onTap: () => context.go('/train')),
+          CaBackBtn(tooltip: 'Back to overview', onTap: () => context.go('/train')),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
               CutText(c.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(web ? 22 : 17, W.w8)),
@@ -877,7 +877,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(20), boxShadow: AppShadows.dialogBig),
       child: Column(mainAxisSize: MainAxisSize.min, spacing: 14, children: [
         Row(spacing: 10, children: [
-          CaIconBtn(AppIcons.chevronLeft, tooltip: 'Back to the workout', onTap: () => c.restShow(false)),
+          CaBackBtn(tooltip: 'Back to the workout', onTap: () => c.restShow(false)),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('Rest timer', style: AppText.s(15, W.w8)),

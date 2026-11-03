@@ -169,21 +169,23 @@ class CheckinsController extends ChangeNotifier {
   // ─────────────────────────────── Writes
 
   /// Sends a check-in. Returns the new row (id null while it waits offline).
-  Future<CkRow> send(CkForm f, Map<String, dynamic> answers, {String note = '', Map<String, Map<String, String>>? photos}) async {
+  /// [day]: the day a daily check-in is for (today, or yesterday while it is still open).
+  Future<CkRow> send(CkForm f, Map<String, dynamic> answers, {String note = '', Map<String, Map<String, String>>? photos, DateTime? day}) async {
     final now = DateTime.now();
+    final on = day ?? now;
     final body = {
       'form': f.id,
       'answers': answers,
       if (note.isNotEmpty) 'note': note,
       if (photos != null && photos.isNotEmpty) 'photos': photos,
-      'date': ymd(now),
+      'date': ymd(on),
     };
     final r = await Services.outbox.enqueue('POST', 'me/submissions/', body, tag: 'checkin:${f.type}');
     final metrics = _metrics(f, answers, note);
     final row = CkRow({
       'id': r is Map ? r['id'] : null,
       'kind': 'sent',
-      'date': ymd(now),
+      'date': ymd(on),
       'sent_at': now.toIso8601String(),
       'week_number': data?.weekly.week,
       'metrics': r is Map ? r['metrics'] : metrics,
@@ -269,6 +271,15 @@ class CheckinsController extends ChangeNotifier {
     await Services.cache.write(_draftKey(week), d);
   }
 
+  /// Today's unfinished daily check-in, kept on the phone ("Save and continue later", E32).
+  static String _dailyKey(DateTime day) => 'daily:draft:${day.year}-${day.month}-${day.day}';
+  Future<Map<String, dynamic>?> readDailyDraft(DateTime day) async {
+    final d = await Services.cache.read(_dailyKey(day));
+    return d is Map ? d.cast<String, dynamic>() : null;
+  }
+
+  Future<void> saveDailyDraft(DateTime day, Map<String, dynamic>? d) => Services.cache.write(_dailyKey(day), d);
+
   /// Reads this week's draft once, before the card is drawn (so it never blinks "Start").
   Future<void> _readDraft() async {
     final w = data?.weekly.week;
@@ -334,6 +345,13 @@ class CheckinsData {
     return '$who · ${p['name']}, week ${p['week']} of ${p['weeks']}';
   }
 
+  /// The phone header: short enough for one line on a small phone (E26), without the program's name.
+  String get subShort {
+    final p = j['program'] as Map<String, dynamic>?;
+    final who = '$coachFirst reads every one';
+    return p == null ? who : 'Week ${p['week']} of ${p['weeks']} · $who';
+  }
+
   Map<String, dynamic> get _stats => j['stats'] as Map<String, dynamic>? ?? {};
   int get streak => (_stats['streak'] as num?)?.toInt() ?? 0;
   List<(String, String)> cells(bool dailySentNow) {
@@ -372,6 +390,9 @@ class CkDaily {
   final CkForm? form;
   CkRow? sent;
   DateTime get date => DateTime.tryParse('${j['date']}') ?? DateTime.now();
+
+  /// Yesterday's check-in is still open (it can be sent until the end of the next day, E27).
+  bool get isYesterday => j['is_yesterday'] == true;
   int? get steps => (j['steps'] as num?)?.toInt();
   int? get waterMl => (j['water_ml'] as num?)?.toInt();
   double? get todayWeight => _num(j['today_weight']);
@@ -389,6 +410,11 @@ class CkWeekly {
   Map<String, dynamic>? draft;
   int get week => (j['week'] as num?)?.toInt() ?? 1;
   DateTime get dueAt => (DateTime.tryParse('${j['due_at']}') ?? DateTime.now()).toLocal();
+
+  /// It can be filled only from its due day, for that day and 2 more (E23); [late] = after the due day.
+  bool get open => j['open'] != false;
+  bool get late => j['late'] == true;
+  DateTime get closes => DateTime.tryParse('${j['closes']}') ?? dueAt;
   double? get lastWeight => _num(j['last_weight']);
 
   /// "Sun, 18 Oct, 6:00 pm"

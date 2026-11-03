@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-11-03 · Check-ins: schedule, daily open next day, only coach questions (E)
+- **Pehle:** Weekly har Sunday 6 pm (calendar week), pehle bhi bhar sakte the, 9 am ek reminder. Daily sirf aaj. Daily me app ka apna "Anything else?" note aur water line; multiple choice / Other daily me nahi. Live daily/weekly form `-updated_at` se (autosave se badal jaata tha). Past check-ins me kala scrollbar. Measurements − / + se. Back button box wala.
+- **Ab:** Weekly client ke schedule ke din se (default Sunday 6 pm), 3 din khula, 10/2/7 reminder, phir Missed; due date par save. Daily usi din ka, agle din tak khula. Sirf coach ke sawal, har type ka sahi input. Live form = sabse naya published. Measurements plain box + history. Adhoora check-in chhodne par Save / Discard. Sent page aur past detail me saaf Q&A. Back = plain ← arrow.
+- **Kyun:** Probid, WORK-TRACKER E23–E34 (3 Nov).
+- **Updated:** backend apps/checkins/schedule.py (naya), client_page.py, library.py (live_form), services.py, views.py, notifications/reminders.py, config beat, activity/dashboard.py, clients/account.py, overview.py; tests; app checkins_*, progress_sheets/parts, home, more, core/widgets/client.dart (CaBackBtn); docs/WORK-TRACKER.md
+
 ### 2026-11-03 · Progress stats, More rows, notification delete, trainer sheet (D)
 - **Pehle:** Progress ke stat tiles me sirf number (Workouts samajh nahi aata tha). More → Account me Notifications, Notification settings, Units & preferences rows. Notification sheet me Delete. Trainer Details sheet sirf naam + plan rows, photo nahi.
 - **Ab:** Tiles me value + matlab wali line (since start / this week X of Y / heaviest set). Account me sirf Privacy & data, My activity, Help & about (notification settings bell → gear se). Notification delete hata, sirf Mark as unread. Trainer sheet: photo left, naam/since/program/speciality right; neeche About, experience, languages, social, certificates (trainer ki visibility ke hisaab se) aur Your plan.

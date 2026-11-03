@@ -82,6 +82,8 @@ class MoData {
   int get checkinWeek => (checkin['week'] as num?)?.toInt() ?? 1;
   bool get checkinDue => checkin['due_this_week'] == true;
   String get checkinTime => '${checkin['time'] ?? '18:00:00'}';
+  /// 0 = Monday … 6 = Sunday (the client's weekly schedule).
+  int get checkinWeekday => (checkin['weekday'] as num?)?.toInt() ?? 6;
 }
 
 class MoNotice {

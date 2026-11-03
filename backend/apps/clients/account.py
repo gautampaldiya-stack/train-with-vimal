@@ -49,7 +49,7 @@ def _lower(name):
 
 
 def account_page(client, request=None):
-    from apps.checkins.client_page import DAILY_REMINDER, WEEKLY_DUE
+    from apps.checkins.client_page import DAILY_REMINDER
     from apps.checkins.models import Submission, WeightLog
     from apps.checkins.progress import _goal_eta
     from apps.checkins.services import week_number
@@ -81,11 +81,14 @@ def account_page(client, request=None):
     meal = {"kcal": mp.plan.kcal_target, "diet": mp.plan.get_diet_display().lower(),
             "water_ml": mp.plan.water_ml} if mp else None
 
-    # Weekly check-in: every Sunday at 6 pm; "next" is this Sunday until this week's is sent.
-    sunday = today + timedelta(days=6 - today.weekday())
+    # Weekly check-in: on the client's schedule day (default Sunday 6 pm); "next" is the open / coming one until
+    # it is sent.
+    from apps.checkins import schedule
+
+    cur = schedule.current(client, today)
     sent_this_week = Submission.objects.filter(client=client, form_type="weekly",
-                                               date__gte=sunday - timedelta(days=6)).exists()
-    next_ci = sunday + timedelta(days=7) if sent_this_week else sunday
+                                               date__gte=cur["due"] - timedelta(days=schedule.OPEN_DAYS)).exists()
+    next_ci = cur["due"] + timedelta(days=7) if sent_this_week else cur["due"]
     sent_count = Submission.objects.filter(client=client, form_type="weekly").count()
 
     # Goal
@@ -138,7 +141,7 @@ def account_page(client, request=None):
                   # Photo and the extras the trainer shows clients ('What clients see'), for the Details sheet.
                   **_coach_card(coach, request)} if coach else None,
         "next_session": nxt,
-        "checkin": {"weekday": 6, "time": WEEKLY_DUE, "next": next_ci, "week": week_number(client, next_ci),
+        "checkin": {"weekday": cur["weekday"], "time": cur["time"], "next": next_ci, "week": week_number(client, next_ci),
                     "due_this_week": not sent_this_week, "reply": f"{first} replies by Monday evening"},
         "program": program,
         "meal_plan": meal,

@@ -183,36 +183,31 @@ Probid ka rule (2 Nov): abhi screenshot nahi lena, mobile par try nahi karna. Si
 
 ### E. Check-ins (Client)
 
-23. ⬜ Check-in page cards
-    * Top card: saaf details, equal height. Neeche ke cards bhi.
-    * Daily Check-in card: admin ka description aur details. Card ke andar sawal nahi.
-    * Weekly Check-in card: same saaf layout.
-    * Weekly check-in button sirf due day par enabled. Us din "Due today".
-    * Complete nahi hua to din me 2-3 baar reminder, 2-3 din tak. Uske baad Missed mark karo aur agla dikhao. Fill sirf due day par.
-24. ⬜ Past Check-ins: kala scrollbar dikhta hai, hatao. Detail bottom sheet theek se arranged.
-25. ⬜ Questions: koi default question nahi. Sirf admin ke chune sawal, har type ke hisaab se sahi answer input. Daily check-in ke neeche "water intake" line hatao.
-26. ⬜ Header: mobile par subtitle kat jaata hai. Bina wrap ke aur bina lambe header ke theek se dikhao.
-27. ◐ Daily check-in card *(31 Oct: sent hone par ek line "Sent ✓ · time", weight sawal ka naam form wala; baaki baaki)*
-    * Data kal ka hai chahe aaj bhara jaye. Saaf likho: "Log yesterday's data (Oct 26)".
-    * Detailed lekin compact. Admin ka description ho to dikhao.
-28. ◐ Weekly check-in card *(31 Oct: weekly ab ek list me saare sawal, same-day edit, `fed2bf5`)*
-    * Tag/badge chips hatao.
-    * Next due date check-in schedule se aaye, last weight log se nahi.
-    * Sirf scheduled din par enabled.
-29. ⬜ Measurement logs
-    * Weight aur measurement due dates weekly schedule ke hisaab se. Log ke baad next due date dikhao.
-    * Measurement tap = past logs ki sheet: date, value, pichle se change.
-    * Wahan stepper hatao, plain numeric field.
-30. ◐ Daily check-in bugs (har ek ka root cause dhundho)
-    * ◐ Single/multiple choice par "Other" configured hai par dikhta nahi. Dikhna chahiye aur free text lena chahiye. *(weekly me ✅ `4a78061`; daily me check karna)*
-    * ⬜ Duplicate questions ("Morning weight", "Anything else"). Karan dhundho (duplicate rows, duplicate form assignment ya template). Sirf configured sawal dikhao.
-    * ⬜ Submit error. Logs me dhundho, fix karo, regression test.
-    * ⬜ Daily check-in dikh nahi raha. Form assignment, schedule aur automation verify karo. Automation na ho to banao.
-31. ⬜ Partially completed onboarding
-    * Check-in page "0 questions filled" dikhata hai chahe kuch answered hon. Count fix karo.
-    * Resume original onboarding jaise same single-page layout me.
-    * Bahar nikalne par progress dikhao ("You have completed 4 of 12 questions") aur Continue / Save and do it later.
-32. ⬜ Unsaved check-in exit: adhoora weekly ya daily check-in chhodne par "You have not finished this check-in. Save and continue later, or discard?" aur buttons Save and continue later / Discard. *(app me "Draft saved" back-par kuch hai, poora spec check karna)*
+23. ✅ Check-in page cards *(3 Nov)*
+    * Daily card par sawal ki list nahi: "6 questions from Aman · takes about 30 seconds".
+    * Weekly: due din aur time client ke weekly schedule se (Client profile → Send a form → When, "Every week"; warna Sunday 6 pm). Usi din se khulta hai aur 2 din aur khula rehta hai; pehle din se pehle button locked ("Opens Sun"). Due din par "Due today", baad me "Still open".
+    * Reminder 10 am, 2 pm, 7 pm har khule din par (jab tak na bhara). 3 din baad Missed, agla dikhta hai.
+    * ⬜ Admin ka description card par: form me description field nahi hai, Probid se poocha (builder me "Description" box?).
+24. ✅ Past Check-ins: scrollbar hata (fade + "Scroll for older" bache). Detail sheet: upar numbers (sirf jo hain), coach reply, phir "Your answers" box me har sawal (form ke shabd) left, jawab right; photos neeche.
+25. ✅ Questions: sirf admin ke sawal. Daily ka "Anything else?" note card aur water/steps line hata. Har type ka sahi input (number box ya − / +, single/multiple/dropdown/yes-no with Other, scale, short/long with coach chips). Photo aur body measurements sirf weekly me.
+26. ✅ Header: phone par "Week 3 of 12 · Aman reads every one" (program ka naam sirf web par).
+27. ✅ Daily check-in card *(Probid 3 Nov: aaj ke din ka, agle din bhi khula, Food jaisa)*
+    * Check-in usi din ka hai; agle din raat tak bhi bhar sakte hain. Card: "Yesterday, Mon 2 Nov · open until tonight", "Log yesterday's data (Mon, 2 Nov)…", button "Fill yesterday's check-in". Home card bhi.
+    * Server: daily sirf aaj ya kal ki date. 2 din purana Missed.
+28. ✅ Weekly check-in card: chips hataye ("6 questions · takes about 2 minutes"); next due date schedule se; sirf khule din par enabled.
+29. ✅ Measurement logs
+    * Weight, measurements aur photos weekly check-in ke din due (schedule wala din).
+    * Progress → Log measurements me naam tap = us measurement ki history sheet (date, value, pichle se change).
+    * Stepper hata, plain number box (khali = is baar nahi napa). Weekly check-in ke measurements me bhi.
+30. ✅ Daily check-in bugs *(root causes)*
+    * ✅ Other: daily me ab weekly wala same choice widget (`CkChoice`), Other + text box. Coach forms me bhi.
+    * ✅ Duplicate questions: do published daily forms ho to app `-updated_at` se form uthata tha, builder ka draft autosave bhi `updated_at` badalta tha, isliye form badal jaata tha. Ab `library.live_form()` = sabse naya banaya published form. Daily ka hard-coded "Anything else?" bhi hata. Test.
+    * ✅ Submit error: daily multiple choice ko text box se bhejta tha ("Pick one of the options"), number − / + 0 se shuru hota tha (min se kam), photo/measures ka galat jawab. Sab theek; error toast ab sawal ka naam aur server ka reason dikhata hai. Test.
+    * ✅ Daily na dikhna: wahi form swap (archived/badla form). Ab ek tay rule.
+31. ⬜ Partially completed onboarding: "0 questions filled" kis screen par hai, Probid se screenshot maanga.
+32. ✅ Unsaved check-in exit: weekly ya daily me jawab badle aur bheja nahi, back par "You have not finished this check-in" · "Save and continue later" / "Discard". Daily ka draft bhi phone par (aaj tak).
+33. ✅ Finish (sent) page: hara header (tick, title, kab), "Your answers" box me har sawal number ke saath, sawal grey, jawab bold neeche; khali = "Skipped"; photos alag box.
+34. ✅ Sub-pages ka back button: box hata, plain ← arrow (`CaBackBtn`), har client sub-page aur setup pages par ek hi widget.
 
 ### F. Workout Logger (Strong app design aur layout)
 *(Dhyaan: 28 Oct ka pichla logger kaam (D-75, rest D-79 etc.) rollback me hataya gaya, sirf backup bundle me hai: `/mnt/project-files/backup-oct28/`. Wapas lana ya naya banana Probid decide karega.)*

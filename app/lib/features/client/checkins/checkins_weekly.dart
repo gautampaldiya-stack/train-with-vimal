@@ -11,9 +11,9 @@ import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
-import '../food/food_parts.dart' show NumStepper;
 import '../home/home_model.dart' show clock, dayShort;
 import '../progress/progress_model.dart' show pxAmt, pxDm;
+import '../progress/progress_parts.dart' show MeasureField;
 import 'checkins_model.dart';
 import 'checkins_parts.dart';
 import '../../../core/widgets/tooltip.dart';
@@ -40,11 +40,10 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
   bool _editing = false;
 
   /// Her own words for Other on a choice question, by question id.
-  final Map<int, TextEditingController> _others = {};
 
   @override
   void dispose() {
-    for (final t in [..._texts.values, ..._others.values]) {
+    for (final t in _texts.values) {
       t.dispose();
     }
     super.dispose();
@@ -122,16 +121,25 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
     _save();
   }
 
-  void _exit() {
+  /// Leaving with answers but not sent asks: save and continue later, or discard (E32).
+  Future<void> _exit() async {
     if (_editing) {
       setState(() => _editing = false);
       return;
     }
     if (sent == null && _answered > 0) {
-      _save();
-      showToast(context, 'Draft saved', sub: '$_answered of ${qs.length} answered · finish by ${w.due}', kind: ToastKind.info);
+      final keep = await ckAskLeave(context);
+      if (keep == null || !mounted) return;
+      if (keep) {
+        _save();
+        showToast(context, 'Draft saved', sub: '$_answered of ${qs.length} answered · finish by ${w.due}', kind: ToastKind.info);
+      } else {
+        await c.saveDraft(w.week, null);
+        if (!mounted) return;
+        showToast(context, 'Check-in discarded', kind: ToastKind.info);
+      }
     }
-    context.go('/checkins');
+    if (mounted) context.go('/checkins');
   }
 
   Future<void> _send() async {
@@ -236,7 +244,7 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
             title: _editing ? 'Edit weekly check-in' : 'Weekly check-in',
             sub: 'Week ${w.week} · due ${w.due}',
             onBack: _exit,
-            backLabel: _editing ? 'Cancel' : 'Save and exit',
+            backLabel: _editing ? 'Cancel' : 'Back',
           ),
           if (sent == null || _editing)
             Column(
@@ -248,7 +256,12 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
               ],
             ),
         ],
-        children: sent != null && !_editing ? [_done()] : [for (final (i, q) in _shown.indexed) _card(i, q), _sendBtn()],
+        children: sent != null && !_editing
+            ? [_done()]
+            : !w.open
+            // Only from its due day (E23).
+            ? [ckInfo('Your weekly check-in opens ${w.due}. You can fill it that day and the 2 days after.', icon: AppIcons.lock)]
+            : [for (final (i, q) in _shown.indexed) _card(i, q), _sendBtn()],
       );
     },
   );
@@ -354,50 +367,7 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
       return [CkScale(labels: q.labels, value: q.scaleOf(v), onPick: (n) => _set(q, n), lg: true)];
     }
     if (q.isChoice || q.type == 'multiple') {
-      final multi = q.type == 'multiple';
-      final sel = multi ? [...((v as List?) ?? const [])] : [if (v != null) q.type == 'yes_no' ? ((v as bool) ? 'Yes' : 'No') : v];
-      if (q.compact) {
-        // many short options: small chips in rows (chosen from the question)
-        void tap(String o) {
-          if (multi) {
-            sel.contains(o) ? sel.remove(o) : sel.add(o);
-            _set(q, sel.isEmpty ? null : sel);
-          } else {
-            _set(q, q.type == 'yes_no' ? o == 'Yes' : o);
-          }
-        }
-
-        final other = _other(q, sel, multi);
-        return [
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            for (final o in q.options) _Chip(o, on: sel.contains(o), onTap: () => tap(o)),
-            if (other.isNotEmpty) other.first,
-          ]),
-          ...other.skip(1),
-        ];
-      }
-      return [
-        Column(
-          spacing: 8,
-          children: [
-            for (final o in q.options)
-              _Opt(
-                o,
-                sub: q.subOf(o),
-                on: sel.contains(o),
-                onTap: () {
-                  if (multi) {
-                    sel.contains(o) ? sel.remove(o) : sel.add(o);
-                    _set(q, sel.isEmpty ? null : sel);
-                  } else {
-                    _set(q, q.type == 'yes_no' ? o == 'Yes' : o);
-                  }
-                },
-              ),
-            ..._other(q, sel, multi),
-          ],
-        ),
-      ];
+      return [CkChoice(q: q, value: v, onChanged: (x) => _set(q, x))];
     }
     if (q.type == 'photo') return _photosQ();
     if (q.type == 'measures') return _measuresQ(q);
@@ -426,7 +396,6 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
 
   // ─────────────────────────────── Body measurements (photo weeks, D-24)
 
-  static const _startCm = {'neck': 34.0, 'chest': 90.0, 'abdomen': 85.0, 'waist': 80.0, 'hips': 98.0, 'bicep_l': 29.0, 'bicep_r': 29.0, 'thigh_l': 55.0, 'thigh_r': 55.0, 'calf_l': 36.0, 'calf_r': 36.0, 'body_fat': 25.0};
 
   /// Every row starts at the last value; only the ones changed are sent, and they also land on Progress.
   List<Widget> _measuresQ(CkQ q) {
@@ -453,8 +422,6 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
     final last = (m['last'] as num?)?.toDouble();
     final lastOn = m['last_date'] == null ? null : DateTime.tryParse('${m['last_date']}');
     final on = got.containsKey(k);
-    final inch = unit == 'in';
-    final v = (got[k] as num?)?.toDouble() ?? last ?? (inch ? ((_startCm[k] ?? 50) / 2.54).roundToDouble() : (_startCm[k] ?? 50));
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(border: first ? null : const Border(top: BorderSide(color: AppColors.line))),
@@ -462,27 +429,14 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
             Text('${m['label']}${m['required'] == true ? ' *' : ''}', style: AppText.s(13.5, W.w7, color: on ? AppColors.text : AppColors.text2)),
-            Hover(
-              onTap: on ? () => put(k, null) : null,
-              builder: (_, h, _) => Text(
-                on ? (h ? 'Tap to skip this one' : 'Will be saved') : (last == null ? 'Not measured yet' : 'Last ${pxAmt(last, unit)}${lastOn == null ? '' : ' · ${pxDm(lastOn)}'}'),
-                style: AppText.s(12, W.w4, color: on ? AppColors.okText : AppColors.muted),
-              ),
+            Text(
+              on ? 'Will be saved' : (last == null ? 'Not measured yet' : 'Last ${pxAmt(last, unit)}${lastOn == null ? '' : ' · ${pxDm(lastOn)}'}'),
+              style: AppText.s(12, W.w4, color: on ? AppColors.okText : AppColors.muted),
             ),
           ]),
         ),
-        Opacity(
-          opacity: on ? 1 : .6,
-          child: NumStepper(
-            value: v,
-            onChanged: (n) => put(k, n),
-            label: (n) => pxAmt(n, unit),
-            step: .5,
-            min: unit == '%' ? 3 : (inch ? 4 : 10),
-            max: unit == '%' ? 70 : (inch ? 118 : 300),
-            name: '${m['label']}',
-          ),
-        ),
+        // A plain number box (E29); empty = not measured this week.
+        MeasureField(value: (got[k] as num?)?.toDouble(), hint: last, unit: unit, name: '${m['label']}', onChanged: (n) => put(k, n)),
       ]),
     );
   }
@@ -505,30 +459,6 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
   }
 
   /// Other on a choice question the coach allows it on: her own words, saved as "Other: …" (Probid 2026-10-31).
-  List<Widget> _other(CkQ q, List<Object?> sel, bool multi) {
-    if (!q.allowOther) return const [];
-    bool isOther(Object? x) => '$x'.toLowerCase().startsWith('other:');
-    final on = sel.any(isOther);
-    final t = _others[q.id] ??= TextEditingController(text: '${sel.firstWhere(isOther, orElse: () => '')}'.replaceFirst(RegExp(r'^[Oo]ther:\s*'), ''));
-    String mine() => 'Other: ${t.text.trim()}';
-    return [
-      (q.compact ? _Chip.new : _Opt.new)('Other', on: on, onTap: () {
-        if (multi) {
-          on ? sel.removeWhere(isOther) : sel.add(mine());
-          _set(q, sel.isEmpty ? null : sel);
-        } else {
-          _set(q, on ? null : mine());
-        }
-      }),
-      if (on)
-        CkInput(
-          controller: t,
-          hint: 'Type your answer',
-          onChanged: () => _set(q, multi ? [...sel.where((x) => !isOther(x)), mine()] : mine()),
-        ),
-    ];
-  }
-
   // ─────────────────────────────── Photos
 
   List<Widget> _photosQ() {
@@ -767,76 +697,3 @@ Widget chSmall(String label, VoidCallback onTap) => Hover(
     child: Text(label, style: AppText.s(13, W.w7)),
   ),
 );
-
-/// `dr-opt sm`: a radio row.
-class _Opt extends StatelessWidget {
-  const _Opt(this.label, {this.sub, required this.on, required this.onTap});
-  final String label;
-  final String? sub;
-  final bool on;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => Semantics(
-    button: true,
-    selected: on,
-    child: Hover(
-      onTap: onTap,
-      builder: (_, h, _) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: on ? AppColors.pickBg : AppColors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: on ? AppColors.accent : (h ? AppColors.lineHover : AppColors.line2)),
-          boxShadow: on ? const [BoxShadow(color: AppColors.accentSoft, spreadRadius: 3)] : null,
-        ),
-        child: Row(
-          spacing: 12,
-          children: [
-            Container(
-              width: 18,
-              height: 18,
-              decoration: BoxDecoration(
-                color: AppColors.white,
-                shape: BoxShape.circle,
-                border: Border.all(color: on ? AppColors.accent : AppColors.line2, width: on ? 5 : 1.5),
-              ),
-            ),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                Text(label, style: AppText.s(13.5, W.w7)),
-                if (sub != null && sub!.isNotEmpty) Text(sub!, style: AppText.s(12, W.w5, color: AppColors.muted)),
-              ]),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
-
-/// A short option of a long list: a small round chip.
-class _Chip extends StatelessWidget {
-  const _Chip(this.label, {required this.on, required this.onTap});
-  final String label;
-  final bool on;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => Semantics(
-    button: true,
-    selected: on,
-    child: Hover(
-      onTap: onTap,
-      builder: (_, h, _) => Container(
-        height: 36,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: on ? AppColors.pickBg : AppColors.white,
-          borderRadius: BorderRadius.circular(99),
-          border: Border.all(color: on ? AppColors.accent : (h ? AppColors.lineHover : AppColors.line2)),
-        ),
-        child: Text(label, style: AppText.s(13, W.w7, color: on ? AppColors.accentText : AppColors.text2)),
-      ),
-    ),
-  );
-}

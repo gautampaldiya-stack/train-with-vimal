@@ -73,7 +73,7 @@ def own_weekly(client):
 
 
 def master_weekly():
-    return Form.objects.filter(type="weekly", status="published").prefetch_related("questions").first()
+    return _live_form("weekly")
 
 
 def master_of(form):
@@ -780,3 +780,9 @@ class ClientFormDuplicateView(APIView):
         activity_log(f"sent a new form to {client.full_name}", "checkin", actor=request.user, target=client,
                      target_label=copy.name, client=client)
         return Response({"key": key}, status=201)
+
+
+def _live_form(form_type):
+    from apps.checkins.library import live_form
+
+    return live_form(form_type)

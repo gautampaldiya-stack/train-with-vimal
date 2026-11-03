@@ -99,6 +99,30 @@ class CaIconBtn extends StatelessWidget {
   }
 }
 
+/// The back button of a sub-page (Probid 2026-11-03): a plain ← arrow, no box. 40 px tap target, a soft round
+/// shade on hover / press only. One widget for every sub-page.
+class CaBackBtn extends StatelessWidget {
+  const CaBackBtn({super.key, required this.onTap, this.tooltip = 'Back'});
+  final VoidCallback? onTap;
+  final String tooltip;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        label: tooltip,
+        button: true,
+        child: Hover(
+          onTap: onTap == null ? null : () => OpenGuard.tap() ? onTap!() : null,
+          builder: (_, h, _) => Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: h ? AppColors.outlineHover : null, shape: BoxShape.circle),
+            child: Transform.flip(flipX: true, child: const AppIcon(AppIcons.arrowRight, size: 22, color: AppColors.text, stroke: 2)),
+          ),
+        ),
+      );
+}
+
 /// `wl-lnk`: blue bold text link.
 class CaLink extends StatelessWidget {
   const CaLink(this.label, {super.key, required this.onTap, this.size = 13.5, this.color = AppColors.accentText, this.weight = W.w7});

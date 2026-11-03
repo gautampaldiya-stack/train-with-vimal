@@ -102,6 +102,14 @@ def test_checkin_measurement_answer_lands_on_progress(client_user, fresh_measure
 
     weekly = Form.objects.get(name="Weekly check-in")
     q = Question.objects.create(form=weekly, order=99, text="Waist (cm)", type="number", metric="waist")
+    from apps.accounts.models import User
+    from apps.checkins import schedule
+    from apps.checkins.models import FormSchedule
+
+    riya = User.objects.get(email="riya@example.com")
+    if not schedule.current(riya)["open"]:  # the weekly check-in is sent only while open (E23)
+        FormSchedule.objects.create(client=riya, form=weekly, repeat="week", weekday=timezone.localdate().weekday(),
+                                    time="18:00")
     f = client_user.get("/api/v1/me/checkins/").json()["weekly"]["form"]
     answers = {}
     for x in f["questions"]:
@@ -110,7 +118,8 @@ def test_checkin_measurement_answer_lands_on_progress(client_user, fresh_measure
     answers[q.id] = 77.5
     r = client_user.post("/api/v1/me/submissions/", {"form": f["id"], "answers": answers}, format="json")
     assert r.status_code == 201, r.content
-    assert Measurement.objects.get(client__email="riya@example.com", date=timezone.localdate()).values["waist"] == 77.5
+    # stored on the check-in's due date (or this period's entry)
+    assert Measurement.objects.filter(client=riya).order_by("-date").first().values["waist"] == 77.5
 
 
 def test_a_photo_can_be_changed_only_on_the_day_it_was_added(client_user):

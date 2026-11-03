@@ -228,7 +228,7 @@ class _GuidePage extends StatelessWidget {
       padding: web ? const EdgeInsets.symmetric(horizontal: 20, vertical: 14) : const EdgeInsets.fromLTRB(16, 8, 16, 10),
       decoration: web ? const BoxDecoration(color: AppColors.white, border: Border(bottom: BorderSide(color: AppColors.line))) : null,
       child: Row(spacing: 10, children: [
-        if (!web) CaIconBtn(AppIcons.chevronLeft, onTap: close, tooltip: 'Back'),
+        if (!web) CaBackBtn(onTap: close, tooltip: 'Back'),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('Exercise guide', style: AppText.s(14, W.w8)),

@@ -5,10 +5,14 @@ import 'package:flutter/material.dart';
 
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
+import '../../../core/widgets/button.dart';
 import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
+import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/photo_viewer.dart';
+import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/tooltip.dart';
+import 'checkins_model.dart';
 
 /// Pieces of the Check-ins boards (`ck-*`), shared by the list, the two forms and the sheet.
 
@@ -405,7 +409,7 @@ class CkTop extends StatelessWidget {
       child: Row(
         spacing: 10,
         children: [
-          CaIconBtn(AppIcons.chevronLeft, tooltip: backLabel, onTap: onBack),
+          CaBackBtn(tooltip: backLabel, onTap: onBack),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -462,77 +466,86 @@ class CkDone extends StatelessWidget {
   final List<(String, String)> photos;
   final Widget buttons;
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
-    decoration: BoxDecoration(
-      color: AppColors.white,
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: AppColors.line),
-    ),
-    child: Column(
-      spacing: 6,
+  Widget build(BuildContext context) {
+    Widget sec(String t) => Padding(
+      padding: const EdgeInsets.only(top: 4, left: 2),
+      child: Text(t.toUpperCase(), style: AppText.s(11.5, W.w8, color: AppColors.muted, ls: 0.5)),
+    );
+    Widget box(Widget child) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
+      child: child,
+    );
+    final skipped = {'', '—', 'Skipped'};
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: 10,
       children: [
+        // Sent: tick, title and when, in one soft green card.
         Container(
-          width: 52,
-          height: 52,
-          margin: const EdgeInsets.only(bottom: 4),
-          alignment: Alignment.center,
-          decoration: const BoxDecoration(color: AppColors.okSolid, shape: BoxShape.circle),
-          child: const AppIcon(AppIcons.check, size: 26, color: AppColors.white, stroke: 2.6),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(color: AppColors.okBg, borderRadius: BorderRadius.circular(14)),
+          child: Row(
+            spacing: 12,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(color: AppColors.okSolid, shape: BoxShape.circle),
+                child: const AppIcon(AppIcons.check, size: 20, color: AppColors.white, stroke: 2.6),
+              ),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+                  Text(title, style: AppText.s(16, W.w8, color: AppColors.okText)),
+                  Text(sub, style: AppText.s(12.5, W.w5, color: AppColors.okText)),
+                ]),
+              ),
+            ],
+          ),
         ),
-        Text(title, textAlign: TextAlign.center, style: AppText.s(18, W.w8)),
-        Text(
-          sub,
-          textAlign: TextAlign.center,
-          style: AppText.s(12.5, W.w4, color: AppColors.muted),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(top: 6, bottom: 8),
-          child: Column(
+        // Every question with its answer: the question in grey, the answer under it (E: finish page).
+        if (rows.isNotEmpty) ...[
+          sec('Your answers'),
+          box(Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               for (final (i, (k, v)) in rows.indexed)
                 Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  decoration: BoxDecoration(
-                    border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line)),
+                  padding: const EdgeInsets.symmetric(vertical: 11),
+                  decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line))),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: 10,
+                    children: [
+                      SizedBox(
+                        width: 22,
+                        child: Text('${i + 1}.', style: AppText.s(12.5, W.w7, color: AppColors.muted, h: 1.4)),
+                      ),
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 3, children: [
+                          Text(k, style: AppText.s(12.5, W.w6, color: AppColors.muted, h: 1.4)),
+                          Text(
+                            skipped.contains(v) ? 'Skipped' : v,
+                            style: skipped.contains(v) ? AppText.s(13.5, W.w5, color: AppColors.muted) : AppText.s(14, W.w7, h: 1.4),
+                          ),
+                        ]),
+                      ),
+                    ],
                   ),
-                  child: k.length > 16
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          spacing: 2,
-                          children: [
-                            Text(k, style: AppText.s(12, W.w6, color: AppColors.muted)),
-                            Text(v, style: AppText.s(13, W.w7)),
-                          ],
-                        )
-                      : Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          spacing: 12,
-                          children: [
-                            Text(k, style: AppText.s(13, W.w6, color: AppColors.muted)),
-                            Expanded(
-                              child: Text(v, textAlign: TextAlign.right, style: AppText.s(13, W.w7)),
-                            ),
-                          ],
-                        ),
-                ),
-              if (photos.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.only(top: 10),
-                  alignment: Alignment.centerLeft,
-                  decoration: const BoxDecoration(
-                    border: Border(top: BorderSide(color: AppColors.line)),
-                  ),
-                  child: photoThumbs(photos),
                 ),
             ],
-          ),
-        ),
+          )),
+        ],
+        if (photos.isNotEmpty) ...[
+          sec('Photos'),
+          box(Padding(padding: const EdgeInsets.symmetric(vertical: 12), child: Align(alignment: Alignment.centerLeft, child: photoThumbs(photos)))),
+        ],
+        const SizedBox(height: 2),
         buttons,
       ],
-    ),
-  );
+    );
+  }
 }
 
 /// A photo answer kept as a data URL (works offline, goes through the outbox).
@@ -580,3 +593,172 @@ class _Dash extends CustomPainter {
   @override
   bool shouldRepaint(_Dash old) => old.color != color;
 }
+
+/// A choice answer (single, dropdown, yes / no, multiple): option boxes, or small chips for 5+ short options, and
+/// "Other" with a text box when the coach allows it (stored as "Other: …"). One widget for the daily and weekly
+/// check-ins and the coach's forms, so every type answers the same way.
+class CkChoice extends StatefulWidget {
+  const CkChoice({super.key, required this.q, required this.value, required this.onChanged});
+  final CkQ q;
+  final Object? value;
+  final ValueChanged<Object?> onChanged;
+  @override
+  State<CkChoice> createState() => _CkChoiceState();
+}
+
+class _CkChoiceState extends State<CkChoice> {
+  static bool _isOther(Object? x) => '$x'.toLowerCase().startsWith('other:');
+  late final _t = TextEditingController(text: '${_sel.firstWhere(_isOther, orElse: () => '')}'.replaceFirst(RegExp(r'^[Oo]ther:\s*'), ''));
+
+  CkQ get q => widget.q;
+  bool get _multi => q.type == 'multiple';
+  List<Object?> get _sel {
+    final v = widget.value;
+    if (_multi) return [...((v as List?) ?? const [])];
+    if (v == null) return [];
+    return [q.type == 'yes_no' ? (v == true ? 'Yes' : 'No') : v];
+  }
+
+  @override
+  void dispose() {
+    _t.dispose();
+    super.dispose();
+  }
+
+  void _tap(String o) {
+    final sel = _sel;
+    if (_multi) {
+      sel.contains(o) ? sel.remove(o) : sel.add(o);
+      widget.onChanged(sel.isEmpty ? null : sel);
+    } else {
+      widget.onChanged(q.type == 'yes_no' ? o == 'Yes' : o);
+    }
+  }
+
+  String get _mine => 'Other: ${_t.text.trim()}';
+
+  void _tapOther(bool on) {
+    final sel = _sel;
+    if (_multi) {
+      on ? sel.removeWhere(_isOther) : sel.add(_mine);
+      widget.onChanged(sel.isEmpty ? null : sel);
+    } else {
+      widget.onChanged(on ? null : _mine);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sel = _sel;
+    final other = q.allowOther && q.type != 'yes_no';
+    final otherOn = sel.any(_isOther);
+    final box = otherOn
+        ? CkInput(
+            controller: _t,
+            hint: 'Type your answer',
+            onChanged: () => widget.onChanged(_multi ? [..._sel.where((x) => !_isOther(x)), _mine] : _mine),
+          )
+        : null;
+    if (q.compact) {
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          for (final o in q.options) CkPickChip(o, on: sel.contains(o), onTap: () => _tap(o)),
+          if (other) CkPickChip('Other', on: otherOn, onTap: () => _tapOther(otherOn)),
+        ]),
+        ?box,
+      ]);
+    }
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
+      for (final o in q.options) CkOpt(o, sub: q.subOf(o), on: sel.contains(o), onTap: () => _tap(o)),
+      if (other) CkOpt('Other', on: otherOn, onTap: () => _tapOther(otherOn)),
+      ?box,
+    ]);
+  }
+}
+
+/// `dr-opt`: a radio row (an option of a choice question).
+class CkOpt extends StatelessWidget {
+  const CkOpt(this.label, {super.key, this.sub, required this.on, required this.onTap});
+  final String label;
+  final String? sub;
+  final bool on;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    selected: on,
+    child: Hover(
+      onTap: onTap,
+      builder: (_, h, _) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: on ? AppColors.pickBg : AppColors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: on ? AppColors.accent : (h ? AppColors.lineHover : AppColors.line2)),
+          boxShadow: on ? const [BoxShadow(color: AppColors.accentSoft, spreadRadius: 3)] : null,
+        ),
+        child: Row(
+          spacing: 12,
+          children: [
+            Container(
+              width: 18,
+              height: 18,
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                shape: BoxShape.circle,
+                border: Border.all(color: on ? AppColors.accent : AppColors.line2, width: on ? 5 : 1.5),
+              ),
+            ),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+                Text(label, style: AppText.s(13.5, W.w7)),
+                if (sub != null && sub!.isNotEmpty) Text(sub!, style: AppText.s(12, W.w5, color: AppColors.muted)),
+              ]),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+/// A short option of a long list: a small round chip.
+class CkPickChip extends StatelessWidget {
+  const CkPickChip(this.label, {super.key, required this.on, required this.onTap});
+  final String label;
+  final bool on;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    selected: on,
+    child: Hover(
+      onTap: onTap,
+      builder: (_, h, _) => Container(
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: on ? AppColors.pickBg : AppColors.white,
+          borderRadius: BorderRadius.circular(99),
+          border: Border.all(color: on ? AppColors.accent : (h ? AppColors.lineHover : AppColors.line2)),
+        ),
+        child: Text(label, style: AppText.s(13, W.w7, color: on ? AppColors.accentText : AppColors.text2)),
+      ),
+    ),
+  );
+}
+
+/// Leaving a check-in that is not finished (E32): true = save and continue later, false = discard, null = stay
+/// (closed by tapping outside).
+Future<bool?> ckAskLeave(BuildContext context) => showAppModal<bool>(
+  context,
+  title: 'You have not finished this check-in',
+  body: 'Save and continue later, or discard?',
+  icon: AppIcons.clipboard,
+  actions: (ctx) {
+    final discard = AppButton('Discard', kind: BtnKind.danger, onPressed: () => Navigator.of(ctx).pop(false), expand: ctx.isPhone);
+    final save = AppButton('Save and continue later', kind: BtnKind.primary, onPressed: () => Navigator.of(ctx).pop(true), expand: ctx.isPhone);
+    return ctx.isPhone ? [Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [save, discard])] : [discard, save];
+  },
+);

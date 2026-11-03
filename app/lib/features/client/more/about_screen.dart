@@ -128,7 +128,7 @@ class _ClientAboutScreenState extends State<ClientAboutScreen> {
   // ─────────────────────────────── Parts
 
   Widget _head() => Row(spacing: 10, children: [
-        CaIconBtn(AppIcons.chevronLeft, tooltip: 'Back to More', onTap: () => context.go('/more')),
+        CaBackBtn(tooltip: 'Back to More', onTap: () => context.go('/more')),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
             Text('About', style: AppText.s(21, W.w8, h: 1.2)),

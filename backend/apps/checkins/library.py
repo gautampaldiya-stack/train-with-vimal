@@ -21,13 +21,22 @@ Q_FIELDS = ("text", "type", "options", "scale_labels", "allow_other", "suggestio
             "metric")
 
 
+def live_form(form_type):
+    """The library form the client app uses for the weekly or daily check-in: the newest published one.
+    Picked by when it was made, never by `updated_at`: the builder's autosave of a draft touches `updated_at`, and
+    with two published daily forms that silently swapped which one clients got (duplicate questions, a check-in
+    that vanished; WORK-TRACKER E30)."""
+    return (Form.objects.filter(type=form_type, status=Form.Status.PUBLISHED).order_by("-created_at", "-id")
+            .prefetch_related("questions").first())
+
+
 def live_ids():
     """{"onboarding" | "weekly" | "daily": id of the form the client app uses now}."""
     from apps.clients.onboarding import questionnaire
 
     out = {}
     for t in ("weekly", "daily"):
-        f = Form.objects.filter(type=t, status="published").only("id").first()
+        f = live_form(t)
         if f:
             out[t] = f.id
     q = questionnaire()

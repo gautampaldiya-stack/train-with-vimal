@@ -241,7 +241,7 @@ CELERY_BEAT_SCHEDULE = {
     # client reminders (each checks its own 15-minute window)
     "workout-reminders": {"task": _R + "workout_reminders", "schedule": crontab(minute="*/15")},
     "meal-reminders": {"task": _R + "meal_reminders", "schedule": crontab(minute="*/15")},
-    "checkin-reminders": {"task": _R + "checkin_reminders", "schedule": crontab(minute=0, hour=9)},
+    "checkin-reminders": {"task": _R + "checkin_reminders", "schedule": crontab(minute=0, hour="10,14,19")},
     "habit-reminders": {"task": _R + "habit_reminders", "schedule": crontab(minute=0, hour=20)},
     "water-reminders": {"task": _R + "water_reminders", "schedule": crontab(minute=0, hour="10-20/2")},
     "supplement-reminders": {"task": _R + "supplement_reminders", "schedule": crontab(minute=0, hour="8,12,21,22")},

@@ -34,7 +34,7 @@ class AuthTop extends StatelessWidget {
         if (lead != null)
           Expanded(child: Align(alignment: Alignment.centerLeft, child: lead!))
         else ...[
-          if (onBack != null) CaIconBtn(AppIcons.chevronLeft, onTap: onBack, tooltip: 'Back'),
+          if (onBack != null) CaBackBtn(onTap: onBack, tooltip: 'Back'),
           const Spacer(),
         ],
         if (help) CaLink('Help', size: 13, onTap: () => showSupportSheet(context)),

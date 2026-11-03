@@ -162,9 +162,16 @@ def test_daily_sent_has_its_answers_for_edit(client_user):
             answers[str(q["id"])] = 3
         elif q["options"]:
             answers[str(q["id"])] = q["options"][0]
-    r = client_user.post("/api/v1/me/submissions/", {"form": f["id"], "answers": answers}, format="json")
+    # the card's day: yesterday while it is still open (E27), else today
+    r = client_user.post("/api/v1/me/submissions/", {"form": f["id"], "answers": answers, "date": d["daily"]["date"]},
+                         format="json")
     assert r.status_code == 201, r.content
-    sent = _page(client_user, tab="daily")["daily"]["sent"]
+    page = _page(client_user, tab="daily")
+    # sent for yesterday, the card moves on to today; the answers are on the sent check-in
+    sent = page["daily"]["sent"] if page["daily"]["date"] == d["daily"]["date"] else \
+        client_user.get(f"/api/v1/me/submissions/{r.json()['id']}/").json()
+    if "answers" in sent and isinstance(sent["answers"], list):
+        sent = {"answers": {str(a["question"]): a["value"] for a in sent["answers"] if a.get("value") is not None}}
     assert sent["answers"] == {k: v for k, v in answers.items()}
 
 
@@ -252,3 +259,83 @@ def test_sent_form_shows_its_photos_to_the_client(client_user, admin):
     d = client_user.get(f"/api/v1/me/forms/{req.id}/").json()
     assert [p["label"] for p in d["submission"]["photos"]] == ["Front", "Side", "Back"]
     assert all("/media/answers/" in p["image"] for p in d["submission"]["photos"])
+
+
+def test_daily_form_does_not_swap_when_another_published_form_is_edited(client_user, admin):
+    """E30: two published daily forms; the builder's autosave on the older one must not make it the live one."""
+    from apps.checkins.library import live_form, save_builder
+    from apps.checkins.models import Form, Question
+
+    old = live_form("daily")
+    new = Form.objects.create(name="Evening check-in", type="daily", status="published")
+    Question.objects.create(form=new, order=0, text="Steps today", type="number")
+    assert live_form("daily").id == new.id
+    save_builder(old, [{"id": q.id, "text": q.text, "type": q.type} for q in old.questions.all()])  # autosave
+    d = client_user.get("/api/v1/me/checkins/").json()
+    assert d["daily"]["form"]["id"] == str(new.id)
+    assert [q["text"] for q in d["daily"]["form"]["questions"]] == ["Steps today"]
+
+
+def test_daily_accepts_multiple_choice_and_other(client_user):
+    """E30: a multiple choice (list) and an "Other: …" answer go through on the daily check-in."""
+    from apps.checkins.library import live_form
+    from apps.checkins.models import Question
+
+    f = live_form("daily")
+    m = Question.objects.create(form=f, order=20, text="Ate today", type="multiple", options=["Eggs", "Rice"],
+                                allow_other=True)
+    s = Question.objects.create(form=f, order=21, text="Trained", type="single", options=["Gym", "Home"],
+                                allow_other=True)
+    d = client_user.get("/api/v1/me/checkins/").json()["daily"]["form"]
+    answers = {}
+    for q in d["questions"]:
+        if q["type"] == "number":
+            answers[str(q["id"])] = 70.2
+        elif q["type"] == "scale":
+            answers[str(q["id"])] = 3
+        elif q["type"] in ("single", "dropdown") and q["options"]:
+            answers[str(q["id"])] = q["options"][0]
+    answers[str(m.id)] = ["Eggs", "Other: Paneer"]
+    answers[str(s.id)] = "Other: Walk"
+    r = client_user.post("/api/v1/me/submissions/", {"form": d["id"], "answers": answers}, format="json")
+    assert r.status_code == 201, r.content
+
+
+def test_weekly_opens_on_its_schedule_day_for_three_days(client_user):
+    """E23: the weekly check-in comes from the client's schedule, opens on its day and stays open 2 more days."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from apps.accounts.models import User
+    from apps.checkins import schedule
+    from apps.checkins.models import Form, FormSchedule
+
+    riya = User.objects.get(email="riya@example.com")
+    today = timezone.localdate()
+    weekly = Form.objects.filter(type="weekly").first()
+    # due tomorrow: locked today
+    FormSchedule.objects.create(client=riya, form=weekly, repeat="week", weekday=(today.weekday() + 1) % 7, time="09:00")
+    cur = schedule.current(riya, today)
+    assert cur["due"] == today + timedelta(days=1) and not cur["open"]
+    d = client_user.get("/api/v1/me/checkins/").json()["weekly"]
+    assert d["open"] is False
+    r = client_user.post("/api/v1/me/submissions/", {"form": d["form"]["id"], "answers": {}}, format="json")
+    assert r.status_code == 400 and "opens on" in r.json()["error"]["message"]
+    # two days after the due day it is still open, the day after that it is not
+    assert schedule.current(riya, today + timedelta(days=3))["open"]
+    nxt = schedule.current(riya, today + timedelta(days=4))
+    assert not nxt["open"] and nxt["due"] == today + timedelta(days=8)
+
+
+def test_daily_is_open_today_and_tomorrow_only(client_user):
+    """E27: a day's daily check-in can be sent that day or the next, not later."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    f = client_user.get("/api/v1/me/checkins/").json()["daily"]["form"]
+    today = timezone.localdate()
+    old = client_user.post("/api/v1/me/submissions/", {"form": f["id"], "answers": {},
+                                                       "date": (today - timedelta(days=2)).isoformat()}, format="json")
+    assert old.status_code == 400

@@ -522,16 +522,47 @@ Future<void> showHistoryDay(BuildContext context, PxDay day) {
 // ─────────────────────────────── Log measurements
 
 class _Lm extends ChangeNotifier {
-  _Lm(this.day, this.values);
+  _Lm(this.day);
   DateTime day;
-  final Map<String, double> values; // what each stepper shows (last value to start)
-  final touched = <String>{}; // only these are saved
-  void set(String k, double v) {
-    values[k] = v;
-    touched.add(k);
+  final values = <String, double>{}; // only what was typed is saved
+  Set<String> get touched => values.keys.toSet();
+  void set(String k, double? v) {
+    v == null ? values.remove(k) : values[k] = v;
     notifyListeners();
   }
+}
 
+/// One measurement's past logs, newest first: date, value and the change from the log before (E29).
+Future<void> showMeasureHistory(BuildContext context, String label, String unit, List<(DateTime, double)> logs) {
+  final rows = [...logs]..sort((a, b) => b.$1.compareTo(a.$1));
+  return showAppSheet(
+    context,
+    title: label,
+    sub: rows.isEmpty ? 'Not measured yet' : '${rows.length} ${rows.length == 1 ? 'log' : 'logs'}',
+    webWidth: 460,
+    builder: (_) => rows.isEmpty
+        ? fdCap('Log it once and it shows up here.')
+        : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            for (final (i, (day, v)) in rows.indexed)
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line))),
+                child: Row(spacing: 10, children: [
+                  Expanded(child: Text(pxWdm(day), style: AppText.s(13, W.w6, color: AppColors.text2))),
+                  Text(pxAmt(v, unit), style: AppText.s(13.5, W.w8)),
+                  SizedBox(
+                    width: 70,
+                    child: Builder(builder: (_) {
+                      if (i == rows.length - 1) return Text('First', textAlign: TextAlign.right, style: AppText.s(12, W.w6, color: AppColors.muted));
+                      final ch = ((v - rows[i + 1].$2) * 10).round() / 10;
+                      final t = ch == 0 ? '±0' : '${ch > 0 ? '+' : '−'}${pxAmt(ch.abs(), unit)}';
+                      return Text(t, textAlign: TextAlign.right, style: AppText.s(12, W.w7, color: ch == 0 ? AppColors.muted : (ch < 0 ? AppColors.okText : AppColors.amberText)));
+                    }),
+                  ),
+                ]),
+              ),
+          ]),
+  );
 }
 
 /// Which entry this log goes to: "This period's entry · Wed, 14 Oct" (changes it) or "New entry · today".
@@ -586,8 +617,7 @@ Future<void> showLogMeasures(BuildContext context, ProgressController c) {
   for (final m in d?.measures ?? const <PxMeasure>[]) {
     m.v.forEach((k, v) => lastOf[k] = (v, m.date));
   }
-  const start = {'neck': 34.0, 'chest': 90.0, 'abdomen': 85.0, 'waist': 80.0, 'hips': 98.0, 'bicep_l': 29.0, 'bicep_r': 29.0, 'thigh_l': 55.0, 'thigh_r': 55.0, 'calf_l': 36.0, 'calf_r': 36.0, 'body_fat': 25.0};
-  final s = _Lm(today, {for (final m in metrics) for (final k in m.keys) k: lastOf[k]?.$1 ?? start[k] ?? 50});
+  final s = _Lm(today);
   // One entry per period (Gautam 2026-10-16): no date to pick. This period's entry, or a new one for today.
   final entry = d?.measureEntry;
   if (entry != null) s.day = entry;
@@ -595,7 +625,7 @@ Future<void> showLogMeasures(BuildContext context, ProgressController c) {
 
   Future<void> save(BuildContext ctx) async {
     if (s.touched.isEmpty) {
-      showToast(ctx, 'Change a number first', sub: 'Tap − / + or the number to type it', kind: ToastKind.warn);
+      showToast(ctx, 'Type a number first', sub: 'Fill only what you measured', kind: ToastKind.warn);
       return;
     }
     final day = s.day;
@@ -625,7 +655,7 @@ Future<void> showLogMeasures(BuildContext context, ProgressController c) {
   return showAppSheet(
     context,
     title: 'Log measurements',
-    sub: 'Relaxed, tape snug but not tight. Change only what you measured.',
+    sub: 'Relaxed, tape snug but not tight. Fill only what you measured.',
     webWidth: 500,
     listen: s,
     footerStretch: true,
@@ -639,29 +669,27 @@ Future<void> showLogMeasures(BuildContext context, ProgressController c) {
             for (final k in m.keys)
               Row(spacing: 10, children: [
                 Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                    Text(m.pair ? '${m.label.replaceAll(' L · R', '')} · ${side(k)}' : m.label,
-                        style: AppText.s(13.5, W.w7, color: s.touched.contains(k) ? AppColors.text : AppColors.text2)),
-                    Text(
-                      s.touched.contains(k)
-                          ? 'Will be saved'
-                          : (lastOf[k] == null ? 'Not measured yet' : 'Last ${pxAmt(lastOf[k]!.$1, m.unit)} · ${pxDm(lastOf[k]!.$2)}'),
-                      style: AppText.s(12, W.w4, color: s.touched.contains(k) ? AppColors.okText : AppColors.muted),
+                  // Tap the name: every past log of this one (date, value, change).
+                  child: Hover(
+                    onTap: () => showMeasureHistory(
+                      context,
+                      m.pair ? '${m.label.replaceAll(' L · R', '')} · ${side(k)}' : m.label,
+                      m.unit,
+                      [for (final x in d?.measures ?? const <PxMeasure>[]) if (x.v[k] != null) (x.date, x.v[k]!)],
                     ),
-                  ]),
-                ),
-                Opacity(
-                  opacity: s.touched.contains(k) ? 1 : .6,
-                  child: NumStepper(
-                    value: s.values[k]!,
-                    onChanged: (v) => s.set(k, v),
-                    label: (v) => pxAmt(v, m.unit),
-                    step: .5,
-                    min: m.unit == '%' ? 3 : 10,
-                    max: m.unit == '%' ? 70 : 300,
-                    name: m.label,
+                    builder: (_, h, _) => Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+                      Text(m.pair ? '${m.label.replaceAll(' L · R', '')} · ${side(k)}' : m.label,
+                          style: AppText.s(13.5, W.w7, color: s.touched.contains(k) || h ? AppColors.text : AppColors.text2)),
+                      Text(
+                        s.touched.contains(k)
+                            ? 'Will be saved'
+                            : (lastOf[k] == null ? 'Not measured yet' : 'Last ${pxAmt(lastOf[k]!.$1, m.unit)} · ${pxDm(lastOf[k]!.$2)} · history'),
+                        style: AppText.s(12, W.w4, color: s.touched.contains(k) ? AppColors.okText : AppColors.muted),
+                      ),
+                    ]),
                   ),
                 ),
+                MeasureField(hint: lastOf[k]?.$1, unit: m.unit, name: m.label, onChanged: (v) => s.set(k, v)),
               ]),
           ]),
         ),

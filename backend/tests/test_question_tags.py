@@ -32,6 +32,7 @@ def test_a_checkin_can_be_edited_only_on_the_day_it_was_sent(client_user):
     form = Form.objects.filter(type="weekly", status="published").first()
     old = Submission.objects.create(form=form, form_type="weekly", client=riya,
                                     date=timezone.localdate() - timedelta(days=1))
+    Submission.objects.filter(id=old.id).update(created_at=timezone.now() - timedelta(days=1))  # sent yesterday
     r = client_user.patch(f"/api/v1/me/submissions/{old.id}/", {"answers": {}}, format="json")
     assert r.status_code == 400 and "only on the day" in r.json()["error"]["message"]
 

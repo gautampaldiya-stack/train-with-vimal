@@ -19,7 +19,8 @@ def test_account_page_has_profile_coach_plan_goal_and_settings(client_user):
     d = r.json()
     assert d["profile"]["name"] == "Riya Sharma" and d["profile"]["initials"] == "RS"
     assert d["coach"]["first_name"] == "Aman"
-    assert d["checkin"]["weekday"] == 6 and d["checkin"]["next"] >= timezone.localdate().isoformat()
+    # the open one (its due day and 2 days after) or the coming one
+    assert d["checkin"]["weekday"] == 6 and d["checkin"]["next"] >= (timezone.localdate() - timedelta(days=2)).isoformat()
     assert d["program"]["weeks"] and d["program"]["week"] <= d["program"]["weeks"]
     assert d["goal"]["title"] == "lose fat" and d["goal"]["goal_kg"] == 62.0 and 0 <= d["goal"]["pct"] <= 100
     assert d["stats"]["lost_kg"] > 0 and d["stats"]["checkins_sent"] >= 1
@@ -134,8 +135,10 @@ def test_report_a_problem_reaches_the_admin(client_user):
 
 
 def test_photos_come_every_n_weeks_with_the_weekly_checkin(client_user):
+    from apps.checkins import schedule
+
     riya = User.objects.get(email="riya@example.com")
-    today = timezone.localdate()
+    today = schedule.current(riya)["due"]  # the check-in on the page: the open one, or the coming one
     monday = today - timedelta(days=today.weekday())
     PhotoSet.objects.filter(client=riya, date__gte=monday - timedelta(days=7)).delete()
     last = PhotoSet.objects.filter(client=riya, photos__isnull=False).order_by("-date").first()
@@ -189,8 +192,16 @@ def test_photo_week_checkin_asks_measurements_and_saves_them_to_progress(client_
     riya = User.objects.get(email="riya@example.com")
     riya.client_profile.photo_every_weeks = 1
     riya.client_profile.save()
-    today = timezone.localdate()
+    from apps.checkins import schedule
     from apps.checkins.models import Submission
+
+    cur = schedule.current(riya)
+    if not cur["open"]:  # can be sent only while open (E23): make today its due day
+        from apps.checkins.models import FormSchedule, Form
+        FormSchedule.objects.create(client=riya, form=Form.objects.filter(type="weekly").first(), repeat="week",
+                                    weekday=timezone.localdate().weekday(), time="18:00")
+        cur = schedule.current(riya)
+    today = cur["due"]
     Submission.objects.filter(client=riya, form_type="weekly", date__gte=today - timedelta(days=today.weekday())).delete()
     # The demo's entry from this period makes the step go away (one entry per period); start without it.
     Measurement.objects.filter(client=riya, date__gte=today - timedelta(days=today.weekday() + 7)).delete()

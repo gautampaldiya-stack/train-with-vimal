@@ -173,7 +173,7 @@ class _SetupScreenState extends State<SetupScreen> {
       ],
       children: [
         Row(spacing: 10, children: [
-          CaIconBtn(AppIcons.chevronLeft, onTap: _back, tooltip: 'Back'),
+          CaBackBtn(onTap: _back, tooltip: 'Back'),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
               Text('STEP ${step + 1} OF ${SetupState.count}', style: AppText.s(11, W.w8, color: AppColors.accentText, ls: 0.88)),

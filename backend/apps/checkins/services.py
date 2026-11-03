@@ -139,8 +139,14 @@ def _metric_value(q, v):
     return v
 
 
-def _sunday(d):
-    return d + timedelta(days=6 - d.weekday())
+def _sunday(d, client=None):
+    """The weekly check-in day on or after `d`: the client's schedule day (E29: photos, weight and measurements
+    are due with the weekly check-in), Sunday without a client."""
+    if client is None:
+        return d + timedelta(days=6 - d.weekday())
+    from .schedule import due_on_or_after
+
+    return due_on_or_after(client, d)
 
 
 def photo_week(client, day):
@@ -152,16 +158,16 @@ def photo_week(client, day):
     if last is None:
         return True
     n = client.client_profile.photo_every_weeks or 1
-    return _sunday(day) >= _sunday(last + timedelta(weeks=n))
+    return _sunday(day, client) >= _sunday(last + timedelta(weeks=n), client)
 
 
 def next_photos_due(client, today=None):
-    """The Sunday the next photo set is due (Progress "Next set due", Photos page)."""
+    """The day the next photo set is due (Progress "Next set due", Photos page): a weekly check-in day."""
     today = today or timezone.localdate()
     last = (PhotoSet.objects.filter(client=client, photos__isnull=False, date__lte=today)
             .order_by("-date").values_list("date", flat=True).first())
     n = client.client_profile.photo_every_weeks or 1
-    return _sunday(max(last + timedelta(weeks=n), today) if last else today)
+    return _sunday(max(last + timedelta(weeks=n), today) if last else today, client)
 
 
 def measure_entry(client, day=None):
@@ -176,11 +182,12 @@ def measure_entry(client, day=None):
 
 
 def next_measure_due(client, today=None):
-    """The Sunday the next measurements are due: N weeks after the current entry's week, else this Sunday."""
+    """The day the next measurements are due, with the weekly check-in: N weeks after the current entry's week,
+    else this week's check-in day."""
     today = today or timezone.localdate()
     open_ = measure_entry(client, today)
     n = client.client_profile.photo_every_weeks or 1
-    return _sunday(_monday(open_.date) + timedelta(weeks=n)) if open_ else _sunday(today)
+    return _sunday(_monday(open_.date) + timedelta(weeks=n), client) if open_ else _sunday(today, client)
 
 
 def _monday(d):
@@ -218,7 +225,7 @@ def submit(client, form, answers, files=None, *, request_obj=None, submission=No
         has_photo = bool(files.get(str(q.id)))
         keep_photo = submission is not None and q.type == QuestionType.PHOTO and \
             submission.answers.filter(question=q).exclude(photo="").exists()
-        skip = no_photos and q.type in (QuestionType.PHOTO, QuestionType.MEASURES)
+        skip = (no_photos or form.type == "daily") and q.type in (QuestionType.PHOTO, QuestionType.MEASURES)
         if q.required and v is None and not has_photo and not keep_photo and not skip:
             raise ValidationError({str(q.id): ["This question needs an answer."]})
         cleaned[q.id] = v

@@ -121,22 +121,27 @@ def meal_reminders():
 # ---------------------------------------------------------------- check-ins
 @shared_task
 def checkin_reminders():
-    """Weekly check-in due today (a week after the last one), at 9 am."""
+    """Weekly check-in not sent while it is open (its due day and the 2 days after, from the client's schedule):
+    at 10 am, 2 pm and 7 pm each of those days (Probid 2026-11-03, E23). After that it is Missed."""
+    from apps.checkins import schedule
     from apps.checkins.models import Submission
 
     local = _local_now()
-    if not (local.hour == 9 and local.minute < 15):
+    if local.hour not in schedule.REMIND_HOURS or local.minute >= 15:
         return 0
     today = local.date()
     sent = 0
     for c in _active_clients():
         if not _prefs(c).checkin:
             continue
-        last = Submission.objects.filter(client=c, form_type="weekly").order_by("-date").first()
-        start = c.client_profile.start_date or c.date_joined.date()
-        due = (last.date + timedelta(days=7)) if last else start + timedelta(days=7)
-        if due == today and once(c, "checkin", due, today):
-            send_template(c, "checkin-reminder", data={"route": "/checkins"})
+        cur = schedule.current(c, today)
+        if not cur["open"]:
+            continue
+        done = Submission.objects.filter(client=c, form_type="weekly",
+                                         date__range=(cur["due"] - timedelta(days=schedule.OPEN_DAYS), cur["closes"])
+                                         ).exists()
+        if not done and once(c, "checkin", f"{cur['due']}-{local.hour}", today):
+            send_template(c, "checkin-reminder", data={"route": "/checkins/weekly"})
             sent += 1
     return sent
 

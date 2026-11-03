@@ -347,17 +347,7 @@ class _ClientFormScreenState extends State<ClientFormScreen> {
         ),
       ];
     }
-    if (q.isChoice) {
-      final cur = v == null ? null : (q.type == 'yes_no' ? ((v as bool) ? 'Yes' : 'No') : '$v');
-      return [
-        Column(
-          spacing: 8,
-          children: [
-            for (final o in q.options) _Opt(o, on: cur == o, onTap: () => _set(q, q.type == 'yes_no' ? o == 'Yes' : o)),
-          ],
-        ),
-      ];
-    }
+    if (q.isChoice) return [CkChoice(q: q, value: v, onChanged: (x) => _set(q, x))];
     if (q.type == 'photo') return _photosQ(q);
     final t = _texts[q.id] ??= TextEditingController(text: '${v ?? ''}');
     void changed() {
@@ -604,46 +594,6 @@ class _ClientFormScreenState extends State<ClientFormScreen> {
       buttons: CaButton('Back to check-ins', onPressed: () => context.go('/checkins')),
     );
   }
-}
-
-/// `dr-opt sm`: a radio row.
-class _Opt extends StatelessWidget {
-  const _Opt(this.label, {required this.on, required this.onTap});
-  final String label;
-  final bool on;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => Semantics(
-    button: true,
-    selected: on,
-    child: Hover(
-      onTap: onTap,
-      builder: (_, h, _) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: on ? AppColors.pickBg : AppColors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: on ? AppColors.accent : (h ? AppColors.lineHover : AppColors.line2)),
-          boxShadow: on ? const [BoxShadow(color: AppColors.accentSoft, spreadRadius: 3)] : null,
-        ),
-        child: Row(
-          spacing: 12,
-          children: [
-            Container(
-              width: 18,
-              height: 18,
-              decoration: BoxDecoration(
-                color: AppColors.white,
-                shape: BoxShape.circle,
-                border: Border.all(color: on ? AppColors.accent : AppColors.line2, width: on ? 5 : 1.5),
-              ),
-            ),
-            Expanded(child: Text(label, style: AppText.s(13.5, W.w7))),
-          ],
-        ),
-      ),
-    ),
-  );
 }
 
 /// `fl-off` with `fl-cb`: a checkbox row (pick all that apply).

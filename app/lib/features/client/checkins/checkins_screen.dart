@@ -176,7 +176,7 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
       children: [
         Text('Check-ins', style: AppText.s(web ? 26 : 22, W.w8, ls: web ? -0.26 : -0.22, h: 1.2)),
         CutText(
-          d.sub,
+          web ? d.sub : d.subShort,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: AppText.s(12, W.w6, color: AppColors.muted),
@@ -187,7 +187,7 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
     return Row(
       spacing: 10,
       children: [
-        CaIconBtn(AppIcons.chevronLeft, tooltip: 'Back to More', onTap: () => context.go('/more')),
+        CaBackBtn(tooltip: 'Back to More', onTap: () => context.go('/more')),
         Expanded(child: title),
       ],
     );
@@ -221,13 +221,22 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
           lead: const ChIcon(AppIcons.sun, tone: ChTone.blue),
           title: 'Daily check-in',
           sub: s == null
-              ? 'Today, ${dayShortNoYear(today).replaceFirst(',', '')} · 30 seconds'
-              : 'Today · sent at ${s.sentAt == null ? '—' : clock(s.sentAt!)}',
-          action: s == null ? hkPill('Due today', bg: AppColors.infoBg, fg: AppColors.infoText) : hkPill('Sent', bg: AppColors.okBg, fg: AppColors.okText),
+              ? '${d.daily.isYesterday ? 'Yesterday' : 'Today'}, ${dayShortNoYear(today).replaceFirst(',', '')}${d.daily.isYesterday ? ' · open until tonight' : ''}'
+              : '${d.daily.isYesterday ? 'Yesterday' : 'Today'} · sent at ${s.sentAt == null ? '—' : clock(s.sentAt!)}',
+          action: s == null
+              ? (d.daily.isYesterday
+                  ? hkPill('Still open', bg: AppColors.amberBg, fg: AppColors.amberText)
+                  : hkPill('Due today', bg: AppColors.infoBg, fg: AppColors.infoText))
+              : hkPill('Sent', bg: AppColors.okBg, fg: AppColors.okText),
         ),
         if (s == null) ...[
-          Text(_dailyWhat(f), style: AppText.s(12.5, W.w4, color: AppColors.muted, h: 1.45)),
-          CaButton('Start daily check-in', icon: AppIcons.play, onPressed: () => context.go('/checkins/daily')),
+          Text(
+            d.daily.isYesterday
+                ? 'Log yesterday\'s data (${dayShortNoYear(today)}): how you slept last night and how the day went. ${_dailyWhat(f)}.'
+                : '${_dailyWhat(f)}. You can also fill it tomorrow morning, after you know how you slept.',
+            style: AppText.s(12.5, W.w4, color: AppColors.muted, h: 1.45),
+          ),
+          CaButton(d.daily.isYesterday ? 'Fill yesterday\'s check-in' : 'Start daily check-in', icon: AppIcons.play, onPressed: () => context.go('/checkins/daily')),
         ] else ...[
           ChNote(
             icon: AppIcons.checkCircle,
@@ -251,12 +260,18 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
     );
   }
 
-  /// "Weight, sleep, energy, mood, hunger and soreness. Takes about 30 seconds."
+  /// "6 questions · takes about 30 seconds": what it asks, without listing the questions on the card (E23).
   String _dailyWhat(CkForm f) {
-    const names = {'weight': 'weight', 'sleep_hours': 'sleep'};
-    final n = [for (final q in f.questions) names[q.metric] ?? q.text.toLowerCase()];
-    final list = n.length < 2 ? n.join() : '${n.sublist(0, n.length - 1).join(', ')} and ${n.last}';
-    return '${list[0].toUpperCase()}${list.substring(1)}. Takes about 30 seconds.';
+    final n = f.questions.where((q) => q.type != 'photo' && q.type != 'measures').length;
+    return '$n ${n == 1 ? 'question' : 'questions'} from ${c.data!.coachFirst} · takes about ${_takes(n)}';
+  }
+
+  /// About 5 seconds a question on the daily, 15 on the weekly.
+  String _takes(int n, {int each = 5}) {
+    final s = n * each;
+    if (s <= 45) return '30 seconds';
+    final m = (s / 60).round();
+    return m <= 1 ? 'a minute' : '$m minutes';
   }
 
   // ─────────────────────────────── Weekly card
@@ -281,13 +296,23 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
         ChHead(
           lead: const ChIcon(AppIcons.clipboard, tone: ChTone.amber),
           title: 'Weekly check-in · week ${w.week}',
-          sub: s == null ? 'Due ${w.due} · ${now.isAfter(w.dueAt) ? 'you can still send it' : 'you can fill it in early'}' : sentSub(),
+          sub: s == null
+              ? (!w.open
+                  ? 'Opens ${w.due}'
+                  : (w.late ? 'Was due ${w.due} · open until ${dayShort(w.closes)}' : 'Due today, ${clock(w.dueAt)} · open until ${dayShort(w.closes)}'))
+              : sentSub(),
           action: s == null
-              ? hkPill(now.isAfter(w.dueAt) ? 'Late' : (dueToday ? 'Due today' : 'Due ${dayName(w.dueAt)}'), bg: AppColors.amberBg, fg: AppColors.amberText)
+              ? (!w.open
+                  ? hkPill('Opens ${dayName(w.dueAt)}', bg: AppColors.sub, fg: AppColors.text2)
+                  : hkPill(w.late ? 'Still open' : (dueToday ? 'Due today' : 'Open'), bg: AppColors.amberBg, fg: AppColors.amberText))
               : hkPill('Sent', bg: AppColors.okBg, fg: AppColors.okText),
         ),
         if (s == null) ...[
-          Wrap(spacing: 5, runSpacing: 5, children: [for (final q in f.questions) _chip(q.chip)]),
+          // No question chips on the card (E28): only how long it takes.
+          Text(
+            '${f.questions.length} ${f.questions.length == 1 ? 'question' : 'questions'} · takes about ${_takes(f.questions.length, each: 15)}',
+            style: AppText.s(12.5, W.w4, color: AppColors.muted, h: 1.45),
+          ),
           if (answered > 0)
             Row(
               spacing: 10,
@@ -296,11 +321,15 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
                 Text('Draft · $answered of ${f.questions.length} answered', style: AppText.s(12, W.w7, color: AppColors.muted)),
               ],
             ),
+          // Only on its due day and the 2 days after (E23).
           CaButton(
-            answered > 0 ? 'Continue check-in' : 'Start weekly check-in',
+            !w.open ? 'Opens ${dayName(w.dueAt)}' : (answered > 0 ? 'Continue check-in' : 'Start weekly check-in'),
             kind: answered > 0 ? CaBtnKind.pri : CaBtnKind.dark,
-            icon: AppIcons.play,
-            onPressed: () => context.go('/checkins/weekly'),
+            icon: w.open ? AppIcons.play : AppIcons.lock,
+            dimmed: !w.open,
+            onPressed: !w.open
+                ? () => showToast(context, 'Not open yet', sub: 'Your weekly check-in opens ${w.due}', kind: ToastKind.info)
+                : () => context.go('/checkins/weekly'),
           ),
         ] else ...[
           ChNote(
@@ -484,14 +513,13 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
             ConstrainedBox(
               constraints: BoxConstraints(maxHeight: maxH),
               child: Stack(children: [
-                Scrollbar(
-                  controller: _list,
-                  thumbVisibility: true,
+                // No scrollbar (E24): the fade and "Scroll for older" show there is more.
+                ScrollConfiguration(
+                  behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
                   child: ListView.builder(
                 controller: _list,
                 shrinkWrap: true,
-                // room on the right for the scrollbar, so it never covers the Missed / Replied badges and arrows
-                padding: const EdgeInsets.only(right: 12),
+                padding: EdgeInsets.zero,
                 itemCount: rows.length + (c.hasMore ? 1 : 0),
                 itemBuilder: (_, i) => i < rows.length
                     ? _row(d, i, rows[i])
@@ -715,7 +743,7 @@ class _PastBodyState extends State<_PastBody> {
   void initState() {
     super.initState();
     final id = widget.row.id;
-    if ((widget.weekly || widget.row.photos > 0) && id != null) {
+    if (id != null && !widget.row.missed) {
       _detail = widget.c.cachedDetail(id);
       if (_detail == null) {
         widget.c.detail(id).then((j) {
@@ -734,15 +762,15 @@ class _PastBodyState extends State<_PastBody> {
       if (!r.missed) kids.add(HkCells(r.weekCells));
     } else if (!r.missed) {
       final f = d.daily.form;
-      String lab(String m) => f?.byMetric(m)?.show(r.metrics[m], short: true) ?? '—';
-      kids.add(
-        HkCells([
-          (r.metrics['sleep_hours'] is num ? hrs(r.metrics['sleep_hours'] as num) : '—', 'Sleep'),
-          (lab('energy'), 'Energy'),
-          (lab('mood'), 'Mood'),
-          (r.stepsText, 'Steps'),
-        ]),
-      );
+      String? lab(String m) => f?.byMetric(m)?.show(r.metrics[m], short: true);
+      // Only the numbers this day has (the coach may not ask sleep or energy).
+      final cells = [
+        if (r.metrics['sleep_hours'] is num) (hrs(r.metrics['sleep_hours'] as num), 'Sleep'),
+        if (lab('energy') != null) (lab('energy')!, 'Energy'),
+        if (lab('mood') != null) (lab('mood')!, 'Mood'),
+        if (r.steps != null) (r.stepsText, 'Steps'),
+      ];
+      if (cells.length >= 2) kids.add(HkCells(cells));
     }
     if (r.reply.isNotEmpty) {
       final when = r.reviewedAt;
@@ -799,23 +827,21 @@ class _PastBodyState extends State<_PastBody> {
         ),
       );
     }
+    // Every answer, in the coach's own words, label left and answer right (E24).
     final qa = <(String, String)>[];
-    if (widget.weekly && !r.missed) {
+    if (!r.missed) {
       final ans = (_detail?['answers'] as List? ?? []).cast<Map<String, dynamic>>();
-      final f = d.weekly.form;
-      final seen = <int>{};
+      final f = widget.weekly ? d.weekly.form : d.daily.form;
       for (final a in ans) {
         final qid = (a['question'] as num?)?.toInt();
         final q0 = f?.questions.where((x) => x.id == qid).firstOrNull;
         if (qid == null || a['photo'] != null && '${a['photo']}'.isNotEmpty || q0?.type == 'photo' || a['question_type'] == 'photo') continue;
-        seen.add(qid);
-        final q =
-            f?.questions.where((x) => x.id == qid).firstOrNull ??
-            CkQ({'id': qid, 'text': a['question_text'], 'type': a['question_type'], 'metric': a['metric']});
+        final q = q0 ?? CkQ({'id': qid, 'text': a['question_text'], 'type': a['question_type'], 'metric': a['metric']});
         qa.add((q.text, q.show(a['value']) ?? '—'));
       }
-
-      if (_detail == null) {
+      final note = '${r.metrics['note'] ?? ''}';
+      if (note.isNotEmpty) qa.add(('Note', note));
+      if (_detail == null && r.id != null) {
         kids.add(
           const Padding(
             padding: EdgeInsets.all(12),
@@ -825,40 +851,35 @@ class _PastBodyState extends State<_PastBody> {
           ),
         );
       }
-    } else if (!r.missed) {
-      final f = d.daily.form;
-      String lab(String m) => f?.byMetric(m)?.show(r.metrics[m], short: true) ?? '—';
-      qa.addAll([
-        ('Hunger', lab('hunger')),
-        ('Soreness', lab('soreness')),
-        ('Water', r.waterText),
-        ('Morning weight', r.weight == null ? '—' : kg(r.weight!)),
-        ('Note', '${r.metrics['note'] ?? ''}'.isEmpty ? '—' : '${r.metrics['note']}'),
-      ]);
     }
     if (qa.isNotEmpty) {
-      kids.add(
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (final (i, (q, a)) in qa.indexed)
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line)),
+      kids.addAll([
+        hkSec('Your answers'),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.line)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (final (i, (q, a)) in qa.indexed)
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 9),
+                  decoration: BoxDecoration(
+                    border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: 12,
+                    children: [
+                      Expanded(flex: 5, child: Text(q, style: AppText.s(12.5, W.w6, color: AppColors.muted, h: 1.35))),
+                      Expanded(flex: 6, child: Text(a, textAlign: TextAlign.right, style: AppText.s(13.5, W.w7, h: 1.35))),
+                    ],
+                  ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  spacing: 1,
-                  children: [
-                    Text(q, style: AppText.s(11.5, W.w6, color: AppColors.muted)),
-                    Text(a, style: AppText.s(13.5, W.w7)),
-                  ],
-                ),
-              ),
-          ],
+            ],
+          ),
         ),
-      );
+      ]);
     }
     final photos = [
       for (final p in (_detail?['photos'] as List? ?? []).cast<Map<String, dynamic>>()) ('${p['label'] ?? p['pose'] ?? 'Photo'}', '${p['image'] ?? ''}'),

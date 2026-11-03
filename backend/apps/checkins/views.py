@@ -438,13 +438,25 @@ class MySubmissionViewSet(mixins.RetrieveModelMixin, mixins.CreateModelMixin, mi
         else:
             form = get_object_or_404(Form, id=request.data.get("form"), status="published",
                                      type__in=["weekly", "daily"])
-        if form.type == "daily" and Submission.objects.filter(
-                client=u, form_type="daily", date=request.data.get("date") or timezone.localdate()).exists():
-            raise serializers.ValidationError("You sent today's check-in. Use Edit answers to change it.")
-        answers, files = self._payload(request)
-        from apps.common.utils import sync_day
+        from apps.common.utils import dfmt, sync_day
 
-        day = sync_day(request.data.get("date"), back_days=2)
+        from . import schedule
+
+        if form.type == "daily":
+            # A day's daily check-in stays open until the end of the next day (E27).
+            day = sync_day(request.data.get("date"), back_days=1)
+            if Submission.objects.filter(client=u, form_type="daily", date=day).exists():
+                raise serializers.ValidationError("You sent this day's check-in. Use Edit answers to change it.")
+        elif form.type == "weekly" and req is None:
+            # Only from its due day, for the open window; stored on its due date (E23).
+            cur = schedule.current(u)
+            if not cur["open"]:
+                raise serializers.ValidationError(
+                    f"Your weekly check-in opens on {dfmt(cur['due'], '%a, %-d %b')}.")
+            day = cur["due"]
+        else:
+            day = sync_day(request.data.get("date"), back_days=2)
+        answers, files = self._payload(request)
         sub = services.submit(u, form, answers, files, request_obj=req, note=request.data.get("note", "") or "",
                               day=day)
         if request.data.get("logged_at"):  # sent from the outbox later: keep the time it was filled in
@@ -457,8 +469,9 @@ class MySubmissionViewSet(mixins.RetrieveModelMixin, mixins.CreateModelMixin, mi
 
     def partial_update(self, request, pk=None):
         sub = get_object_or_404(self.get_queryset(), pk=pk)
-        # Daily and weekly check-ins can be changed only on the day they were sent (Probid, 2026-10-31).
-        if sub.date != timezone.localdate():
+        # Daily and weekly check-ins can be changed only on the day they were sent (Probid, 2026-10-31). The day
+        # sent, not `date`: a weekly one is stored on its due date and a daily one may be yesterday's.
+        if timezone.localtime(sub.created_at).date() != timezone.localdate():
             raise serializers.ValidationError("A check-in can be changed only on the day it was sent.")
         answers, files = self._payload(request)
         note = request.data.get("note", (sub.metrics or {}).get("note", "")) or ""
