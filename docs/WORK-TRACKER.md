@@ -84,6 +84,8 @@ Is thread me Probid ki 31 Oct wali list ka kaam chal raha hai:
 - ✅ Log food: search ke neeche "Try: paneer · dal · roti · rajma" chips hata diye.
 - ✅ Log food: Create custom food save karne par crash ("TextEditingController used after being disposed") fix; sheet poori band hone ke baad hi fields free hote hain.
 - ✅ "Preview this meal": har food ka kcal ab ek seedh me right side (pehle har row me alag jagah).
+- ✅ Water history naya design: upar halka blue summary (avg a day / X of Y days on target / this week); har hafta bina grey card ke, patle gol bars (blue, target par green), dotted target line, value sirf jis din paani piya, aaj ka din highlight; header "This week · 2–8 Nov" + "avg 1.75 L · 0 of 2 days"; purane hafte band, tap karke khulte; neeche key (3 L target / below target / target reached).
+- ✅ Other time sheet: "Use this time" sirf tab chalta hai jab time poora aur sahi ho (ghanta 1–12, minute 00–59, aage ka nahi); warna button off.
 
 Rule (Probid 3 Nov): aise chhote naye changes bhi yahan likhne hain, chahe REMAINING list me na hon.
 

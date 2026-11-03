@@ -651,8 +651,12 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     final now = DateTime.now();
     final name = TextEditingController(text: _at != null ? meal : '');
     final at = ValueNotifier<DateTime>(_at ?? now.subtract(Duration(minutes: now.minute % 5)));
+    final valid = ValueNotifier<bool>(true);
     final dayStart = DateTime(now.year, now.month, now.day);
-    void set(DateTime t) => at.value = t.isAfter(DateTime.now()) ? DateTime.now() : (t.isBefore(dayStart) ? dayStart : t);
+    void set(DateTime t) {
+      valid.value = true; // a quick pick refills the boxes
+      at.value = t.isAfter(DateTime.now()) ? DateTime.now() : (t.isBefore(dayStart) ? dayStart : t);
+    }
     Widget quick(String l, int ago) {
       final t = now.subtract(Duration(minutes: ago));
       final on = (at.value.difference(t).inMinutes).abs() < 1;
@@ -661,8 +665,8 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
 
     showAppSheet(
       context,
-      listen: at,
-      owns: [name, at],
+      listen: Listenable.merge([at, valid]),
+      owns: [name, at, valid],
       title: 'Other time',
       sub: 'Ate outside your meal times? It goes straight to your food log at this time, marked off-plan.',
       webWidth: 440,
@@ -670,7 +674,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
       builder: (_) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
         CaField(label: 'Name', controller: name, hint: 'e.g. Evening chai', autofocus: true, action: TextInputAction.done),
         Text('Time', style: AppText.s(13, W.w6)),
-        FdTimeInput(value: at.value, onChanged: (t) => at.value = t),
+        FdTimeInput(value: at.value, onChanged: (t) => at.value = t, onValid: (v) => valid.value = v),
         if (at.value.isAfter(DateTime.now()))
           Text('That time has not come yet. Pick a time up to now.', textAlign: TextAlign.center, style: AppText.s(12.5, W.w6, color: AppColors.badText)),
         Wrap(alignment: WrapAlignment.center, spacing: 6, runSpacing: 6, children: [
@@ -685,11 +689,8 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
         Row(spacing: 8, children: [
           Expanded(child: CaButton('Cancel', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop())),
           Expanded(
-            child: CaButton('Use this time', icon: AppIcons.check, dimmed: at.value.isAfter(DateTime.now()), onPressed: () {
-              if (at.value.isAfter(DateTime.now())) {
-                showToast(context, 'Pick a time up to now', sub: 'Other time is for food you already ate today', kind: ToastKind.warn);
-                return;
-              }
+            // on only for a full, real time that is not later than now (Probid 2026-11-03)
+            child: CaButton('Use this time', icon: AppIcons.check, onPressed: !valid.value || at.value.isAfter(DateTime.now()) ? null : () {
               Navigator.of(ctx).pop();
               final n = name.text.trim();
               setState(() {

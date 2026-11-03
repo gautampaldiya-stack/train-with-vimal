@@ -393,9 +393,12 @@ Widget fdBtn(String label, VoidCallback onTap, {AppIconData? icon, CaBtnKind kin
 /// Other time: the time eaten as hour : minute boxes (1–12 and 00–59) and an AM / PM switch, no stepper (B11, Probid).
 /// Calls [onChanged] only with a valid time on [value]'s day; owns its text boxes, so nothing is disposed early.
 class FdTimeInput extends StatefulWidget {
-  const FdTimeInput({super.key, required this.value, required this.onChanged});
+  const FdTimeInput({super.key, required this.value, required this.onChanged, this.onValid});
   final DateTime value;
   final ValueChanged<DateTime> onChanged;
+
+  /// false while a box is empty or out of range, so the sheet can turn its button off.
+  final ValueChanged<bool>? onValid;
 
   @override
   State<FdTimeInput> createState() => _FdTimeInputState();
@@ -452,6 +455,7 @@ class _FdTimeInputState extends State<FdTimeInput> {
         ? 'Hour is 1 to 12'
         : (m != null && m > 59 ? 'Minutes are 00 to 59' : null));
     final t = _parsed();
+    widget.onValid?.call(t != null);
     if (t != null && t != widget.value) widget.onChanged(t);
   }
 
@@ -460,6 +464,7 @@ class _FdTimeInputState extends State<FdTimeInput> {
     if (_hf.hasFocus || _mf.hasFocus) return;
     if (_parsed() == null) {
       setState(() => _show(widget.value));
+      widget.onValid?.call(true);
     } else if (_m.text.length == 1) {
       _m.text = _m.text.padLeft(2, '0');
     }
