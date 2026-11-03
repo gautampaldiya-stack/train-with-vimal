@@ -20,6 +20,7 @@ import '../progress/progress_parts.dart';
 import 'home_model.dart';
 import 'home_parts.dart';
 import 'home_sheets.dart';
+import '../water/water.dart';
 import '../../../core/widgets/tooltip.dart';
 
 /// Client Home (boards `ClientHome` phone and `ClientHomeWeb`). Phone: one column of cards over
@@ -879,61 +880,20 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
 
   // ─────────────────────────────── Water
 
-  void _water(int delta) {
+  /// Water (card and habit row): the same sheet as the Food page, the day's total (Probid 2026-11-03).
+  void _logWater() {
     final d = c.data!;
-    final ml = d.waterMl, goal = d.waterGoal;
-    if (delta < 0 && ml <= 0) {
-      showToast(context, 'Nothing to remove', sub: 'No water logged yet', kind: ToastKind.info);
-      return;
-    }
-    final now = (ml + delta).clamp(0, 10000);
-    final left = goal - now, g = (left / 250).ceil();
-    c.addWater(delta);
-    if (delta > 0 && ml < goal && now >= goal) {
-      showToast(context, 'Water goal complete!', sub: '${litres(now)} today', kind: ToastKind.star);
-    } else if (delta > 0 && now > 5000) {
-      showToast(context, '${litres(now)} today, that is plenty', sub: 'Slow down: too much water at once is not good for you', kind: ToastKind.warn);
-    } else if (left > 0) {
-      showToast(context, delta > 0 ? '${litres(left)} to go' : 'Removed 250 ml · ${litres(now)} logged',
-          sub: '${glasses(g)} more', kind: delta > 0 ? ToastKind.water : ToastKind.info);
-    } else {
-      showToast(context, '${litres(now)} today', sub: 'Goal complete', kind: ToastKind.water);
-    }
+    showWaterSheet(context, when: 'today', goal: d.waterGoal, current: d.waterMl, save: c.setWater);
   }
 
-  Widget _waterCard(HomeData d) {
-    final ml = d.waterMl, goal = d.waterGoal;
-    final gl = (ml / 250).round(), leftG = ((goal - ml) / 250).ceil().clamp(0, 999);
-    final bars = (goal / 250).round().clamp(4, 20);
-    return ChCard(children: [
-      ChHead(
-        lead: const ChIcon(AppIcons.water, tone: ChTone.warm),
-        title: 'Water',
-        sub: ml >= goal ? 'Goal complete · nice work' : '${litres(goal - ml)} to go · ${glasses(leftG)} more',
-      ),
-      Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, spacing: 6, children: [
-        Text(litres(ml), style: AppText.s(30, W.w8, ls: -0.6)),
-        Flexible(child: Text('/ ${litres(goal)} · ${glasses(gl)}', style: AppText.s(13, W.w6, color: AppColors.muted))),
-      ]),
-      Pull(
-        top: 4,
-        child: Row(spacing: 5, children: [
-          for (var i = 0; i < bars; i++)
-            Expanded(
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                height: 8,
-                decoration: BoxDecoration(color: i < gl ? AppColors.warm : AppColors.barTrack, borderRadius: BorderRadius.circular(8)),
-              ),
-            ),
-        ]),
-      ),
-      Row(spacing: 8, children: [
-        chSm('−250 ml', () => _water(-250)),
-        chSm('+250 ml · 1 glass', () => _water(250), kind: CaBtnKind.dark),
-      ]),
-    ]);
-  }
+  // The same card as the Food page (one shared widget); no water habit = "not assigned".
+  Widget _waterCard(HomeData d) => WaterCard(
+        assigned: d.habits.any((h) => h.isWater),
+        ml: d.waterMl,
+        goal: d.waterGoal,
+        onLog: _logWater,
+        onHistory: () => showWaterHistorySheet(context),
+      );
 
   // ─────────────────────────────── Food
 
@@ -1062,7 +1022,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     final met = h.ratio >= 1;
     final unit = h.unit.isEmpty ? '' : ' ${h.unit}';
     final (String line, String btn, VoidCallback tap) = h.isWater
-        ? ('${litres(d.waterMl)} of ${litres(h.unit == 'ml' ? h.target : h.target * 250)} today', 'Log water', () => showHomeWaterSheet(context, c))
+        ? ('${litres(d.waterMl)} of ${litres(h.unit == 'ml' ? h.target : h.target * 250)} today', 'Log water', _logWater)
         : h.isSleep
             ? ('Last night ${hoursMin(h.value)}', 'Change', () => showSleepSheet(context, c, h))
             : h.counter

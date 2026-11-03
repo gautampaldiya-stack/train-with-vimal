@@ -11,6 +11,7 @@ import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/overlays.dart';
 import '../home/home_model.dart' show dayShort, hoursMin, inNum;
 import '../home/home_parts.dart';
+import '../home/home_sheets.dart' show parseSleep;
 import 'habits_model.dart';
 import '../../../core/widgets/tooltip.dart';
 
@@ -34,7 +35,15 @@ Future<void> showStepsSheet(BuildContext context, HabitsController c, Habit h) {
     builder: (_) => ValueListenableBuilder(
       valueListenable: v,
       builder: (_, n, _) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
-        ChBigStepper(value: inNum(n), label: h.unit.isEmpty ? 'done' : h.unit, onMinus: () => v.value = (n - step).clamp(0, 200000), onPlus: () => v.value = (n + step).clamp(0, 200000)),
+        ChBigStepper(
+          value: inNum(n),
+          label: '${h.unit.isEmpty ? 'done' : h.unit} · tap the number to type it',
+          onMinus: () => v.value = (n - step).clamp(0, 200000),
+          onPlus: () => v.value = (n + step).clamp(0, 200000),
+          editText: () => '${v.value}',
+          parse: (t) => int.tryParse(t.replaceAll(RegExp(r'[^0-9]'), ''))?.clamp(0, 200000),
+          onTyped: (x) => v.value = x,
+        ),
         ChQuick(items: [for (final q in quick) ('+${inNum(q)}', q)], onPick: (q) => v.value = (n + q).clamp(0, 200000)),
         Padding(padding: const EdgeInsets.only(top: 6), child: ChBar(h.target > 0 ? n / h.target : 0, color: AppColors.okSolid, height: 8)),
         Text(n >= h.target ? 'Goal reached' : '${inNum(h.target - n)}$unit to go', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
@@ -74,7 +83,13 @@ Future<void> showSleepLog(BuildContext context, HabitsController c, Habit h) {
           label: n >= goal ? 'Goal met' : '${hoursMin(goal - n)} short of ${hoursMin(goal)}',
           onMinus: () => v.value = (n - 15).clamp(0, 900),
           onPlus: () => v.value = (n + 15).clamp(0, 900),
+          editText: () => '${v.value ~/ 60}:${(v.value % 60).toString().padLeft(2, '0')}',
+          typeHint: 'h:mm',
+          decimal: true,
+          parse: parseSleep,
+          onTyped: (x) => v.value = x,
         ),
+        Text('Tap the time to type it, e.g. 7:30', textAlign: TextAlign.center, style: AppText.s(11.5, W.w5, color: AppColors.muted)),
         ChQuick(items: [for (final m in [360, 390, 420, 450, 480]) ('${m % 60 == 0 ? m ~/ 60 : (m / 60).toStringAsFixed(1)} h', m)], onPick: (m) => v.value = m, isOn: (m) => m == n),
       ]),
     ),

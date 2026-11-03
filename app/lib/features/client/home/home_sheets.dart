@@ -6,7 +6,6 @@ import '../../../core/theme/theme.dart';
 import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/overlays.dart';
-import '../food/food_parts.dart' show NumStepper;
 import 'home_model.dart';
 import 'home_parts.dart';
 import '../../../core/widgets/tooltip.dart';
@@ -248,58 +247,4 @@ int? parseSleep(String t) {
     v = (h * 60).round();
   }
   return v <= 900 ? v : null;
-}
-
-/// Water from Home (habit row): the same sheet as the Food page water card, the day's total in ml.
-Future<void> showHomeWaterSheet(BuildContext context, HomeController c) {
-  final d = c.data!;
-  final goal = d.waterGoal;
-  final v = ValueNotifier(d.waterMl.toDouble());
-  return showAppSheet(
-    context,
-    listen: v,
-    owns: [v],
-    title: 'Water · today',
-    sub: 'Target ${litres(goal)} · set by your coach',
-    webWidth: 420,
-    footerStretch: true,
-    builder: (_) {
-      final n = v.value.round();
-      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
-        NumStepper(
-          value: v.value,
-          step: 250,
-          min: 0,
-          max: 10000,
-          big: true,
-          decimals: false,
-          name: 'Water in ml',
-          label: (x) => '${inNum(x.round())} ml',
-          onChanged: (x) => v.value = x,
-        ),
-        Text(n >= goal ? 'Goal complete · ${glasses((n / 250).round())}' : '${litres(goal - n)} to go · ${glasses(((goal - n) / 250).ceil())} more',
-            textAlign: TextAlign.center, style: AppText.s(12.5, W.w6, color: AppColors.muted)),
-        Text('One glass = 250 ml. Tap the amount to type it.', textAlign: TextAlign.center, style: AppText.s(11.5, W.w5, color: AppColors.muted)),
-      ]);
-    },
-    footer: (ctx) => [
-      Row(spacing: 8, children: [
-        Expanded(child: CaButton('Cancel', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop())),
-        Expanded(
-          child: CaButton('Save', icon: AppIcons.check, onPressed: () {
-            final was = d.waterMl, now = v.value.round();
-            Navigator.of(ctx).pop();
-            if (now == was) return;
-            c.setWater(now);
-            if (now >= goal && was < goal) {
-              showToast(context, 'Water goal complete!', sub: '${litres(now)} today', kind: ToastKind.star);
-            } else {
-              showToast(context, '${litres(now)} logged', sub: now >= goal ? 'Goal complete' : '${litres(goal - now)} to go', kind: ToastKind.water,
-                  action: 'Undo', onAction: () => c.setWater(was));
-            }
-          }),
-        ),
-      ]),
-    ],
-  );
 }

@@ -108,6 +108,15 @@ class HabitsController extends ChangeNotifier {
     _send('me/food-log/water/', {'ml': ml});
   }
 
+  /// Water sheet: the day's total in ml (like the Food page).
+  void setWater(Habit h, int total) {
+    final now = total.clamp(0, 10000);
+    h.value = h.unit == 'ml' ? now : (now / 250).round();
+    h.logged = true;
+    h.done = h.target > 0 && h.value >= h.target;
+    _send('me/food-log/water/', {'total': now});
+  }
+
   void setTaken(Supp s, bool taken) {
     if (s.taken == taken) return;
     s.taken = taken;

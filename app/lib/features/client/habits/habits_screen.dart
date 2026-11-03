@@ -8,10 +8,11 @@ import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
-import '../home/home_model.dart' show clock, dayShort, litres;
+import '../home/home_model.dart' show clock, dayShort;
 import '../home/home_parts.dart';
 import 'habits_model.dart';
 import 'habits_sheets.dart';
+import '../water/water.dart';
 import '../../../core/widgets/tooltip.dart';
 
 /// Habits & supplements (boards `ClientHabits` phone and `ClientHabitsWeb`). Day: the week strip,
@@ -244,7 +245,7 @@ class _ClientHabitsScreenState extends State<ClientHabitsScreen> {
 
   void _log(HabitsData d, Habit h) {
     if (d.isFuture) return _later(d);
-    if (h.isWater) return _water(d, h, 250);
+    if (h.isWater) return _logWater(d, h);
     if (h.isSleep) {
       showSleepLog(context, c, h);
     } else if (h.counter) {
@@ -254,9 +255,17 @@ class _ClientHabitsScreenState extends State<ClientHabitsScreen> {
     }
   }
 
-  void _tick(HabitsData d, Habit h) {
+  /// A tick habit asks Yes / No first, both ways (Probid 2026-11-03, same as Home).
+  Future<void> _tick(HabitsData d, Habit h) async {
     if (d.isFuture) return _later(d);
     final was = h.done;
+    final ok = await confirmAction(context,
+        title: was ? 'Mark ${h.name} as not done?' : 'Did you do ${h.name} ${onDay(d)}?',
+        body: was ? 'It goes back to Not done ${onDay(d)}.' : 'It is marked done ${onDay(d)}. Your coach sees it.',
+        confirm: was ? 'Yes, not done' : 'Yes, done',
+        cancel: 'No',
+        icon: was ? AppIcons.close : AppIcons.check);
+    if (!ok || !mounted) return;
     c.setDone(h, !was);
     showToast(context, was ? '${h.name} un-ticked' : '${h.name} done',
         sub: was ? 'Not done ${onDay(d)}' : (d.isToday ? 'Nice, keep it going' : 'Logged for ${dayShort(d.date)}'),
@@ -265,23 +274,15 @@ class _ClientHabitsScreenState extends State<ClientHabitsScreen> {
         onAction: () => c.setDone(h, was));
   }
 
-  void _water(HabitsData d, Habit h, int delta) {
+  /// Water: the same sheet as the Food page and Home (the day's total); today and yesterday only, like the server.
+  void _logWater(HabitsData d, Habit h) {
     if (d.isFuture) return _later(d);
-    final cur = h.ml, goal = h.goalMl, on = onDay(d);
-    if (delta < 0 && cur <= 0) {
-      showToast(context, 'Nothing to remove', sub: 'No water logged $on', kind: ToastKind.info);
+    final yesterday = DateUtils.isSameDay(d.date, DateTime.now().subtract(const Duration(days: 1)));
+    if (!d.isToday && !yesterday) {
+      showToast(context, 'Water can be logged for today and yesterday only', sub: 'Like meals: today and yesterday', kind: ToastKind.info);
       return;
     }
-    final now = (cur + delta).clamp(0, 10000);
-    c.addWater(h, delta);
-    void undo() => c.addWater(h, -delta);
-    if (delta > 0 && cur < goal && now >= goal) {
-      showToast(context, 'Water goal complete!', sub: '${litres(now)} $on', kind: ToastKind.star, action: 'Undo', onAction: undo);
-    } else if (delta > 0) {
-      showToast(context, '+250 ml · ${litres(now)} $on', sub: now >= goal ? 'Goal complete' : '${litres(goal - now)} to go', kind: ToastKind.water, action: 'Undo', onAction: undo);
-    } else {
-      showToast(context, 'Removed 250 ml', sub: '${litres(now)} logged $on', kind: ToastKind.del, action: 'Undo', onAction: undo);
-    }
+    showWaterSheet(context, when: d.isToday ? 'today' : dayShort(d.date), goal: h.goalMl, current: h.ml, save: (ml) => c.setWater(h, ml));
   }
 
   void _details(HabitsData d, Habit h) => showHabitDetails(context, c, h, log: () {
@@ -296,10 +297,11 @@ class _ClientHabitsScreenState extends State<ClientHabitsScreen> {
     final (icon, tone) = _look(h);
     final met = h.done && !d.isFuture;
     final miss = d.isPast && !h.done;
-    final line = d.isFuture
-        ? 'Goal ${h.goal}'
-        : !h.logged
-            ? 'Not logged yet · goal ${h.goal}'
+    // one short line that fits a phone (Probid 2026-11-03): the goal until something is logged, then the progress
+    final line = !h.counter
+        ? (h.done && !d.isFuture ? 'Done ${onDay(d)}' : 'Yes / no · tick it when done')
+        : d.isFuture || !h.logged
+            ? 'Goal ${h.goal}'
             : h.of;
     final todayDot = d.isToday;
     final dots = [
@@ -307,10 +309,7 @@ class _ClientHabitsScreenState extends State<ClientHabitsScreen> {
     ];
     final Widget action;
     if (h.isWater) {
-      action = Row(mainAxisSize: MainAxisSize.min, spacing: 4, children: [
-        CaIconBtn(AppIcons.minus, size: 32, tooltip: 'Remove 250 ml', onTap: () => _water(d, h, -250)),
-        CaButton('250 ml', small: true, expand: false, kind: CaBtnKind.dark, icon: AppIcons.plus, onPressed: () => _water(d, h, 250)),
-      ]);
+      action = chSm('Log water', () => _logWater(d, h));
     } else if (!h.counter) {
       action = _tickBtn(done: h.done, label: 'Tick ${h.name}', onTap: () => _tick(d, h));
     } else {
@@ -341,8 +340,9 @@ class _ClientHabitsScreenState extends State<ClientHabitsScreen> {
         Row(spacing: 10, children: [
           Expanded(child: Align(alignment: Alignment.centerLeft, child: HkDots(dots))),
           Row(mainAxisSize: MainAxisSize.min, spacing: 3, children: [
-            const AppIcon(AppIcons.flame, size: 14, color: AppColors.streak),
-            Text(h.streak > 0 ? '${h.streak} ${h.streak == 1 ? 'day' : 'days'} streak' : 'No streak yet', style: AppText.s(12, W.w7, color: AppColors.streak)),
+            AppIcon(AppIcons.flame, size: 14, color: h.streak > 0 ? AppColors.streak : AppColors.muted),
+            Text(h.streak > 0 ? '${h.streak} ${h.streak == 1 ? 'day' : 'days'} streak' : 'No streak yet',
+                style: AppText.s(12, W.w7, color: h.streak > 0 ? AppColors.streak : AppColors.muted)),
           ]),
           _more(() => _details(d, h)),
         ]),
@@ -417,8 +417,16 @@ class _ClientHabitsScreenState extends State<ClientHabitsScreen> {
 
   // ─────────────────────────────── Day: supplements
 
-  void _take(HabitsData d, Supp s, bool taken) {
+  /// Supplements ask Yes / No first, both ways (Probid 2026-11-03, same as Home).
+  Future<void> _take(HabitsData d, Supp s, bool taken) async {
     if (d.isFuture) return _later(d);
+    final ok = await confirmAction(context,
+        title: taken ? 'Did you take ${s.name}${d.isToday ? '' : ' on ${dayShort(d.date)}'}?' : 'Mark ${s.name} as not taken?',
+        body: s.line,
+        confirm: taken ? 'Yes, taken' : 'Yes, not taken',
+        cancel: 'No',
+        icon: taken ? AppIcons.pill : AppIcons.close);
+    if (!ok || !mounted) return;
     c.setTaken(s, taken);
     final st = s.stock;
     if (taken) {
@@ -562,13 +570,21 @@ class _ClientHabitsScreenState extends State<ClientHabitsScreen> {
     final w = d.week;
     final coach = d.habits.map((h) => h.setBy).followedBy(d.supps.map((s) => s.by)).whereType<String>().firstOrNull?.split(' ').first ?? 'Your coach';
     final summary = ChCard(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), gap: 8, children: [
-      HkCells([
-        ('${w.habitsPct}%', 'Habits done'),
-        if (d.supps.isNotEmpty) ('${w.suppsPct}%', 'Supplements taken'),
-        if (w.best != null) ('${w.best!.days} ${w.best!.days == 1 ? 'day' : 'days'}', '${w.best!.name} streak'),
-      ], big: two),
+      // the two week numbers with their colour and a thin bar, the best streak beside them (Probid 2026-11-03 polish)
+      Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 8, children: [
+        _weekCell('${w.habitsDone} of ${w.habitsDue}', 'Habits done', w.habitsPct, big: two),
+        if (d.supps.isNotEmpty) _weekCell('${w.suppsTaken} of ${w.suppsDue}', 'Supplements taken', w.suppsPct, big: two),
+      ]),
+      if (w.best != null)
+        Row(spacing: 6, children: [
+          const AppIcon(AppIcons.flame, size: 14, color: AppColors.streak),
+          Flexible(
+            child: Text('Best streak: ${w.best!.name} · ${w.best!.days} ${w.best!.days == 1 ? 'day' : 'days'}',
+                style: AppText.s(12.5, W.w7, color: AppColors.streak)),
+          ),
+        ]),
       Text(
-        '${w.range} · ${w.habitsDone} of ${w.habitsDue} habits${d.supps.isEmpty ? '' : ' and ${w.suppsTaken} of ${w.suppsDue} supplements'} so far. $coach sees this in your profile.',
+        '${w.range} so far. $coach sees this in your profile.',
         style: AppText.s(12.5, W.w4, color: AppColors.muted, h: 1.45),
       ),
     ]);
@@ -623,6 +639,24 @@ class _ClientHabitsScreenState extends State<ClientHabitsScreen> {
         ?supps,
       ],
     ];
+  }
+
+  Widget _weekCell(String count, String label, int pct, {required bool big}) {
+    final tone = pct >= 80 ? AppColors.okSolid : (pct >= 50 ? AppColors.amberSolid : (pct > 0 ? AppColors.badText : AppColors.muted));
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+        decoration: BoxDecoration(color: AppColors.cellBg, borderRadius: BorderRadius.circular(10)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 4, children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, spacing: 6, children: [
+            Text('$pct%', style: AppText.s(big ? 18 : 16, W.w8, color: pct > 0 ? tone : AppColors.text)),
+            Flexible(child: CutText(count, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w6, color: AppColors.muted))),
+          ]),
+          Text(label, style: AppText.s(11, W.w6, color: AppColors.muted, h: 1.3)),
+          ChBar(pct / 100, color: tone, height: 4),
+        ]),
+      ),
+    );
   }
 
   Widget _grid(

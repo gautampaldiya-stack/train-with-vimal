@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:twv/core/widgets/overlays.dart';
 import 'package:twv/features/client/food/food_parts.dart';
-import 'package:twv/features/client/food/food_screen.dart' show WaterHistory;
+import 'package:twv/features/client/water/water.dart' show WaterHistory;
 
 void main() {
   testWidgets('a sheet\'s own controller is disposed only after it closes (custom food crash)', (t) async {
@@ -50,7 +50,7 @@ void main() {
   });
 
   testWidgets('Water history fits a phone and folds older weeks', (t) async {
-    t.view.physicalSize = const Size(360, 900);
+    t.view.physicalSize = const Size(360, 1400);
     t.view.devicePixelRatio = 1;
     addTearDown(t.view.reset);
     Map wk(String start, List<int> ml, {int fut = 0}) => {
@@ -75,9 +75,11 @@ void main() {
       ),
     ));
     expect(t.takeException(), isNull);
-    expect(find.text('This week'), findsNothing); // inside a Text.rich
+    expect(find.text('2.0'), findsOneWidget); // this week's chart is open
+    expect(find.text('3.5'), findsNothing); // last week is folded (dots only)
+    await t.tap(find.textContaining('26 Oct'));
+    await t.pump();
     expect(find.text('3.5'), findsOneWidget);
-    expect(find.text('1.8'), findsOneWidget); // only last week's chart is open
     await t.tap(find.textContaining('19–25 Oct'));
     await t.pump();
     expect(find.text('1.8'), findsNWidgets(2));
