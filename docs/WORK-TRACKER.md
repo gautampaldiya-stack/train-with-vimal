@@ -88,45 +88,23 @@ Probid ka rule (2 Nov): abhi screenshot nahi lena, mobile par try nahi karna. Si
 
 ## 🔧 REMAINING
 
-### A. Nutrition (Train page)
+### A. Nutrition (Train page) — ✅ sab ho gaya (3 Nov), Probid ka test baaki
 
-1. ⬜ Bottom navbar tab hidden rahe jab koi bhi bottom sheet khula ho.
-2. ⬜ Today's calories sheet
-   * "Left" 1958 kcal dikhata hai aur "Still ahead" 1960 kcal, 2 kcal ka farak. Karan dhundho aur saari values accurate karo.
-   * Saaf define karo ki "Left" aur "Still ahead" har ek kya dikhata hai. Baaki saari values bhi check karo.
-   * "Got it" button hatao agar zaroorat nahi.
-   * Target calorie calculation fix karo.
-3. ◐ Edit portion (meal level) *(photos 4 tak aur thumbnails D-83 se; neeche ke baaki points check/fix baaki)*
-   * Khulne par meal ke saare foods ek sheet me. Yahan decimals save nahi hote, jabki single-food edit chalta hai. Root cause dhundho aur fix karo.
-   * Photo card: ek hi card jisme "+1, +2…" se aur images add hon (alag add-more card nahi), change/remove options jaisa style.
-   * Card me images chhote thumbnails me, image count ke saath. Tap = view.
-   * Ek image remove karne par confirmation ("Delete this image?").
-   * Images upar 3-dot menu ke paas nahi aani chahiye. Neeche rakho.
-   * Meal log hone ke baad change/remove options gayab.
-   * Meal log hone ke baad images dikhti rahein, theek se (thumbnails + count, tap = preview). Sirf change/remove/add options jaayein.
-4. ⬜ Ek food ya poora meal skip karne par confirmation poochna.
-5. ◐ Off-plan (bahar ka) food *(2 Nov: ek-line rows, Ate it, Edit portion, Not eaten — commit `4095a7d`. Baaki neeche)*
-   * ⬜ Today's calories card me rangeen segments: assigned food, off-plan food, skipped food.
-   * ◐ Off-plan foods meal ki bottom sheet me normal foods jaise, "Off-plan" tag ke saath. *(rows ban gaye, tag check karna)*
-   * ✅ Off-plan portion edit aur entry delete, plan foods jaisa.
-   * ⬜ Log Food page se add kiya off-plan food auto-log nahi hoga. Client baad me "Ate it" mark karega. *(check karna)*
-   * ⬜ Meal card top aur bottom sheet: saaf calculations aur details, overflow nahi, header ya lines bade nahi.
-6. ⬜ Mark as eaten confirmation batata hai kya log hoga: existing foods, naye add kiye foods, images ki ginti.
-7. ⬜ Logged meal preview
-   * "Logged / Undo" ke paas "Preview this meal" button, saaf details ke saath.
-   * Logged meal ke foods tappable nahi.
-   * Preview me meal ki images bhi, saaf layout me.
-   * Preview me "Edit portion" option. Sheet khulti hai saare foods ke saath, neeche buttons "Edit & Log" aur "Cancel".
-8. ⬜ Yesterday logging
-   * Client sirf kal ka chhoota hua meal log kar sakta hai (week strip me kal select karo, phir log).
-   * Week strip horizontally scroll ho ke pichla hafta dikhaye. Agar aaj week ka pehla din hai (jaise Monday), pichle hafte ke aakhri 2 din dikhao.
-9. ⬜ "This week's" card: sahi details aur accurate data. Agar aaj week ka pehla din hai to pichle 2 din dikhao.
-10. ⬜ Water card
-    * Water habit assign nahi hai (aur client ke liye default nahi) to card disabled ya "Water habit is not assigned to you yet".
-    * "-/+" buttons ki jagah ek button jo bottom sheet kholta hai. Sheet me "-" aur "+" aur beech me value. Value tap = numeric text field.
-    * Upar right me 3-dot menu: "History" (current week aur pichle weeks).
-    * Card text me din ka water intake saaf.
-    * Water target admin set karta hai, client edit nahi karta. *(dhyaan: Decisions)*
+1. ✅ Bottom navbar tab hidden rahe jab koi bhi bottom sheet khula ho.
+2. ✅ Today's calories sheet: Left / Still ahead ek hi tarah round (1958 = 1958), har line ka matlab sheet me likha, "Got it" hataya, target coach ka.
+3. ✅ Edit portion (meal level): decimal type karte hi save (pehle sirf blur par), photo delete par "Delete this image?", logged meal ki photos foods ke neeche (thumbnails + count, tap = view), log ke baad change/remove options gayab.
+4. ✅ Ek food ya poora meal skip karne par confirmation.
+5. ✅ Off-plan (bahar ka) food
+   * ✅ Today's calories card me rangeen bar: Plan, Off-plan, Skipped.
+   * ✅ Off-plan foods meal me normal foods jaise, "Off-plan" tag ke saath.
+   * ✅ Off-plan portion edit aur entry delete.
+   * ✅ Log Food se aaj ke unlogged meal me add kiya food auto-log nahi hota ("pending", gina nahi jaata). "Ate it" (Did you eat this? ke saath) ya meal ka Mark as eaten se gina jaata hai. Gina hua food "Not logged yet" se wapas. "Ate something else" (Other time) aur pichle din wala seedha gina jaata hai.
+   * ✅ Meal card: extra foods ka +kcal sirf gine hue foods ka.
+6. ✅ Mark as eaten confirmation: Will be logged / Already logged / Added outside the plan, aur photos.
+7. ✅ Logged meal preview: "Preview this meal" (Logged · Undo ke saath), foods tap nahi hote, preview me foods, totals, photos, "Edit portion" → sheet me "Edit & Log" aur "Cancel".
+8. ✅ Yesterday logging: week strip me pichhla hafta (swipe), Monday ko last Sat-Sun dikhte hain. Kal ka chhoota meal "Log this meal for yesterday". Usse purane din sirf dekh sakte hain.
+9. ✅ "This week" card: Monday ko last Sat-Sun bhi (halke), average sirf is hafte ka, chune din par kcal, protein aur meals logged.
+10. ✅ Water card: water habit nahi to "Water habit is not assigned to you yet" (log bhi nahi hota). "Log water" button → sheet (− / ml / +, value tap karke type). 3-dot → History (is hafta + pichhle 3). Us din ka water saaf, target coach ka (habit target, warna plan), client edit nahi karta.
 
 ### B. Log Food page
 

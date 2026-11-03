@@ -321,6 +321,9 @@ def mark_eaten(client, meal, day, photo=None):
     if items and all(state.items.get(str(it.id)) == "skipped" for it in items):  # all skipped one by one: eat all
         state.items = {str(it.id): "eaten" for it in items}
     _write_entries(client, day, meal, state, items)
+    # foods she added to this meal from Log food count now too
+    FoodLogEntry.everything.filter(client=client, date=day, meal_name=meal.name, other_time=False,
+                                   pending=True).update(pending=False)
     state.status = MealDayState.Status.LOGGED
     state.option = opt
     state.logged_at = timezone.now()
@@ -334,6 +337,10 @@ def unmark(client, meal, day):
     state = MealDayState.objects.filter(client=client, date=day, meal=meal).first()
     if state:
         _plan_entries(client, day, meal).delete()
+        # foods added to it from Log food wait again for Ate it / Mark as eaten
+        FoodLogEntry.everything.filter(client=client, date=day, meal_name=meal.name, other_time=False,
+                                       meal_item__isnull=True).exclude(source=FoodLogEntry.Source.PLAN, meal_id=meal.id) \
+            .update(pending=True)
         state.status = ""
         state.items = {}
         state.logged_at = None
@@ -409,6 +416,23 @@ def _check_macros(name, kcal, protein, carbs, fat):
 
 def log_food(client, *, meal_name, food=None, quantity=1, unit=None, name="", kcal=None, protein=0, carbs=0,
              fat=0, day=None, off_plan=False, reason="", other_time=False):
+    e = _log_food(client, meal_name=meal_name, food=food, quantity=quantity, unit=unit, name=name, kcal=kcal,
+                  protein=protein, carbs=carbs, fat=fat, day=day, off_plan=off_plan, reason=reason,
+                  other_time=other_time)
+    # Added today to a planned meal that is not logged yet: it waits for Ate it / Mark as eaten (Probid A5).
+    # A past day is filled in after the fact, so it counts at once.
+    if not other_time and e.date == timezone.localdate():
+        mp = _active_plan(client, e.date)
+        meal = next((m for m in meals_on(mp.followed, e.date.weekday()) if m.name == meal_name), None) if mp else None
+        if meal is not None and not MealDayState.objects.filter(client=client, date=e.date, meal=meal,
+                                                                 status=MealDayState.Status.LOGGED).exists():
+            e.pending = True
+            e.save(update_fields=["pending"])
+    return e
+
+
+def _log_food(client, *, meal_name, food=None, quantity=1, unit=None, name="", kcal=None, protein=0, carbs=0,
+              fat=0, day=None, off_plan=False, reason="", other_time=False):
     """[off_plan]: the client ticked "Off-plan meal" (party, eating out), so the entry is marked for the coach.
     [other_time]: eaten outside the meal times ("Other time" in Add to); always off-plan, kept out of meal cards."""
     day = day or timezone.localdate()
@@ -488,7 +512,7 @@ def copy_yesterday(client, day=None):
 def undo_copy(client, ids, meals, day=None):
     """Undo of Copy yesterday: removes those entries and un-logs the plan meals the copy logged."""
     day = day or timezone.localdate()
-    n, _ = FoodLogEntry.objects.filter(client=client, date=day, id__in=ids).delete()
+    n, _ = FoodLogEntry.everything.filter(client=client, date=day, id__in=ids).delete()
     for st in MealDayState.objects.filter(client=client, date=day, meal_id__in=meals,
                                           status=MealDayState.Status.LOGGED):
         if not FoodLogEntry.objects.filter(client=client, date=day, meal_id=st.meal_id,
@@ -541,10 +565,53 @@ def totals(client, day):
     return nutrition_totals(FoodLogEntry.objects.filter(client=client, date=day))
 
 
-def add_water(client, ml, day=None):
+def water_habit(client, day):
+    """The client's water habit on [day] (their own target on top), or None: no water habit, no water card (A10)."""
+    from apps.habits.models import HabitAssignment
+
+    a = (HabitAssignment.objects.filter(client=client, active=True, start_date__lte=day, habit__icon="water",
+                                        habit__deleted_at__isnull=True).select_related("habit").first())
+    return a.eff if a else None
+
+
+def water_goal(h, plan=None):
+    """The day's water target in ml, set by the coach: the habit's target (ml, or glasses × 250), else the meal
+    plan's water, else 3 L. The client never edits it (Probid decision)."""
+    if h is not None and h.target:
+        return h.target if h.unit.strip().lower() == "ml" else h.target * 250
+    return plan.water_ml if plan and plan.water_ml else 3000
+
+
+def water_card(client, day, ml, plan=None):
+    h = water_habit(client, day)
+    return {"ml": ml, "goal_ml": water_goal(h, plan), "assigned": h is not None}
+
+
+def water_history(client, weeks=4, today=None):
+    """Water card → History: this week and the [weeks]-1 before it, Monday first, each day's ml (A10)."""
+    today = today or timezone.localdate()
+    monday = today - timedelta(days=today.weekday())
+    start = monday - timedelta(weeks=weeks - 1)
+    logs = dict(WaterLog.objects.filter(client=client, date__range=(start, today)).values_list("date", "ml"))
+    mp = _active_plan(client, today)
+    goal = water_goal(water_habit(client, today), mp.followed if mp else None)
+    out = []
+    for w in range(weeks):
+        mon = monday - timedelta(weeks=w)
+        days = [{"date": mon + timedelta(days=i), "ml": logs.get(mon + timedelta(days=i), 0),
+                 "future": mon + timedelta(days=i) > today} for i in range(7)]
+        past = [d for d in days if not d["future"]]
+        out.append({"start": mon, "days": days, "total_ml": sum(d["ml"] for d in past),
+                    "avg_ml": round(sum(d["ml"] for d in past) / len(past)) if past else 0,
+                    "goal_days": sum(1 for d in past if d["ml"] >= goal)})
+    return {"goal_ml": goal, "weeks": out}
+
+
+def add_water(client, ml, day=None, total=None):
+    """Adds [ml] (can be negative) to the day's water, or sets it to [total] (the sheet's typed value)."""
     day = day or timezone.localdate()
     w, _ = WaterLog.objects.get_or_create(client=client, date=day)
-    w.ml = max(0, min(10000, w.ml + int(ml)))
+    w.ml = max(0, min(10000, int(total) if total is not None else w.ml + int(ml)))
     w.save(update_fields=["ml", "updated_at"])
     sync_water_habit(client, day, w.ml)
     return w
@@ -617,7 +684,8 @@ def day_view(client, day, request=None):
     plan = mp.followed if mp else None
     states = {s.meal_id: s for s in MealDayState.objects.filter(client=client, date=day).select_related("option")
               .prefetch_related("more_photos")}
-    entries = list(FoodLogEntry.objects.filter(client=client, date=day).order_by("logged_at"))
+    listed = list(FoodLogEntry.everything.filter(client=client, date=day).order_by("logged_at"))
+    entries = [e for e in listed if not e.pending]  # totals: eaten food only
     meals = []
     planned_rows = []  # every planned food of the day at its planned portion (no swap): the day's target
     next_marked = False
@@ -656,6 +724,7 @@ def day_view(client, day, request=None):
                                   and float(st.portions[str(it.id)]) != float(it.quantity))
                 items.append({"item": it.id, "food": e.food_id, "name": e.name, "quantity": float(e.quantity),
                               "unit": e.unit_name, "grams": float(e.grams), "kcal": show_kcal(e.kcal),
+                              "kcal_exact": round(float(e.kcal), 2),  # sums round once (Still ahead vs Left)
                               "protein": show_g(e.protein), "carbs": show_g(e.carbs), "fat": show_g(e.fat),
                               "swapped_from": e.swapped_from, "swaps": len(swaps.item_swaps(it)),
                               "planned_quantity": planned,
@@ -688,20 +757,27 @@ def day_view(client, day, request=None):
     still_ahead = show_kcal(sum(m["_kcal"] for m in meals if m["pill"] in ("next", "planned", "to_log")))
     for m in meals:
         del m["_kcal"]
-    water = WaterLog.objects.filter(client=client, date=today).first()
+    water = WaterLog.objects.filter(client=client, date=day).first()
     monday = day - timedelta(days=day.weekday())
+    this_monday = today - timedelta(days=today.weekday())
+    # This week's card: on the week's first day (Monday) it also shows the last 2 days of last week (Probid A9).
+    first = monday - timedelta(days=2) if monday == this_monday == today else monday
+    # The week strip: last week and this week, so yesterday is there on a Monday too (Probid A8).
+    lo, hi = min(first, this_monday - timedelta(days=7)), max(monday, this_monday) + timedelta(days=6)
     week = []
     per_day = [meals_on(plan, i).count() if plan else 0 for i in range(7)]
     logged = {}
-    for d, n in (MealDayState.objects.filter(client=client, date__range=(monday, monday + timedelta(days=6)),
-                                             status=MealDayState.Status.LOGGED)
+    for d, n in (MealDayState.objects.filter(client=client, date__range=(lo, hi), status=MealDayState.Status.LOGGED)
                  .values_list("date").annotate(n=Count("id"))):
         logged[d] = n
-    for i in range(7):
-        d = monday + timedelta(days=i)
-        n_meals = per_day[i]
+    for i in range((monday + timedelta(days=6) - first).days + 1):
+        d = first + timedelta(days=i)
+        n_meals = per_day[d.weekday()]
         week.append({"date": d, **_shown(totals(client, d)), "meals_logged": logged.get(d, 0), "meals": n_meals,
-                     "done": n_meals > 0 and logged.get(d, 0) >= n_meals})
+                     "done": n_meals > 0 and logged.get(d, 0) >= n_meals, "last_week": d < monday})
+    strip = [{"date": this_monday + timedelta(days=i), "done": per_day[(this_monday + timedelta(days=i)).weekday()] > 0
+              and logged.get(this_monday + timedelta(days=i), 0) >= per_day[(this_monday + timedelta(days=i)).weekday()]}
+             for i in range(-7, 7)]
     photos = {m["id"]: m["photo"] for m in meals if m.get("photo")}
     coach = getattr(getattr(client, "client_profile", None), "trainer", None)
     return {
@@ -722,9 +798,10 @@ def day_view(client, day, request=None):
                  "carbs": show_g(e.carbs), "fat": show_g(e.fat), "source": e.source, "food": e.food_id,
                  "grams": float(e.grams) if e.grams is not None else None, "reason": e.reason,
                  "photo": photos.get(e.meal_id) if e.source == "plan" else None,
-                 "swapped_from": e.swapped_from, "other_time": e.other_time} for e in entries],
-        "water": {"ml": water.ml if water else 0, "goal_ml": plan.water_ml if plan else 3000},
+                 "swapped_from": e.swapped_from, "other_time": e.other_time, "pending": e.pending} for e in listed],
+        "water": water_card(client, day, water.ml if water else 0, plan),
         "week": week,
+        "strip": strip,
     }
 
 
@@ -816,7 +893,7 @@ def _move_days(client, maps, weekday=None):
         st.option_id = om.get(st.option_id) if st.option_id else None
         st.portions, st.swaps = _rekey(st.portions, im), _rekey(st.swaps, im)
         st.save(update_fields=["meal", "option", "portions", "swaps", "updated_at"])
-    for e in FoodLogEntry.objects.filter(client=client, date__gte=today, meal_id__in=list(mm)):
+    for e in FoodLogEntry.everything.filter(client=client, date__gte=today, meal_id__in=list(mm)):
         if weekday is None or e.date.weekday() == weekday:
             e.meal_id = mm[e.meal_id]
             e.save(update_fields=["meal", "updated_at"])
@@ -837,7 +914,7 @@ def _carry_by_name(client, old_meals, plan):
         was = st.meal_id
         st.meal_id, st.option_id, st.portions, st.swaps = new, None, {}, {}
         st.save(update_fields=["meal", "option", "portions", "swaps", "updated_at"])
-        FoodLogEntry.objects.filter(client=client, date=st.date, meal_id=was).update(meal_id=new)
+        FoodLogEntry.everything.filter(client=client, date=st.date, meal_id=was).update(meal_id=new)
 
 
 def _translate(meals_data, maps):

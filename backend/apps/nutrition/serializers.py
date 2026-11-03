@@ -340,9 +340,9 @@ class FoodLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = FoodLogEntry
         fields = ["id", "date", "logged_at", "meal_name", "meal", "food", "name", "quantity", "unit_name", "grams",
-                  "kcal", "protein", "carbs", "fat", "source", "swapped_from", "reason", "other_time"]
+                  "kcal", "protein", "carbs", "fat", "source", "swapped_from", "reason", "other_time", "pending"]
         read_only_fields = ["date", "logged_at", "name", "kcal", "protein", "carbs", "fat", "grams", "source",
-                            "swapped_from", "other_time"]
+                            "swapped_from", "other_time", "pending"]
 
     def to_representation(self, obj):
         """Stored unrounded; shown as whole kcal and 1-decimal grams (calc.show_kcal / show_g)."""

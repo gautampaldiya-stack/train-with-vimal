@@ -91,6 +91,7 @@ class FoodController extends ChangeNotifier {
 
   void pick(DateTime d) {
     _day = DateUtils0.same(d, today) ? null : d;
+    weekSel = null;
     notifyListeners();
     load();
   }
@@ -169,6 +170,22 @@ class FoodController extends ChangeNotifier {
     }
   }
 
+  /// The water sheet's value: the day's total, not a step.
+  Future<void> setWater(int total) async {
+    final d = data!;
+    d.j['water'] = {...(d.j['water'] as Map? ?? {}), 'ml': total.clamp(0, 10000)};
+    notifyListeners();
+    try {
+      await Services.outbox.enqueue('POST', 'me/food-log/water/', {'total': total, 'date': ymd(d.date)}, tag: 'food:day:water');
+    } on ApiError {
+      await load();
+      rethrow;
+    }
+  }
+
+  /// Water card → History: this week and the [weeks]-1 before it.
+  Future<Map<String, dynamic>> waterHistory({int weeks = 4}) => Services.api.get<Map<String, dynamic>>('me/food-log/water-history/?weeks=$weeks');
+
   /// Removes one food-log entry (Delete entry). Returns it, for Undo.
   Future<FEntry?> deleteEntry(FEntry e) async {
     data!.log.remove(e);
@@ -186,6 +203,13 @@ class FoodController extends ChangeNotifier {
   /// Edit portion on a food added outside the plan: its new amount in its own unit.
   Future<void> editEntry(FEntry e, double q) async {
     await Services.outbox.enqueue('PATCH', 'me/food-log/${e.id}/', {'quantity': q}, tag: 'food:day:entry');
+    await load();
+  }
+
+  /// Ate it on a food added outside the plan: it counts from now (A5).
+  /// [ate] false: Not logged yet, back to waiting for Ate it / Mark as eaten.
+  Future<void> ateEntry(FEntry e, {bool ate = true}) async {
+    await Services.outbox.enqueue('PATCH', 'me/food-log/${e.id}/', {'pending': !ate}, tag: 'food:day:entry');
     await load();
   }
 
@@ -256,6 +280,12 @@ class FoodDay {
 
   DateTime get date => DateTime.tryParse('${j['date']}') ?? DateTime.now();
   bool get isToday => j['today'] == true;
+
+  /// Yesterday: a missed meal can still be logged (Probid A8); older days only read.
+  bool get isYesterday => DateUtils0.same(date, DateUtils0.dateOnly(DateTime.now()).subtract(const Duration(days: 1)));
+
+  /// The week strip's days: last week and this week (Probid A8), each with done (all meals logged).
+  List<Map<String, dynamic>> get strip => [for (final w in (j['strip'] as List? ?? [])) (w as Map).cast<String, dynamic>()];
   String get coach => '${j['coach'] ?? ''}'.isEmpty ? 'your coach' : '${j['coach']}';
   Map<String, dynamic>? get plan => j['plan'] as Map<String, dynamic>?;
   bool get hasPlan => plan != null;
@@ -301,6 +331,9 @@ class FoodDay {
 
   int get waterMl => _n((j['water'] as Map?)?['ml']).round();
   int get waterGoal => _n((j['water'] as Map?)?['goal_ml']).round().clamp(250, 10000);
+
+  /// The coach gave a water habit (A10); without one the card only says so.
+  bool get waterAssigned => (j['water'] as Map?)?['assigned'] != false;
 
   /// Recomputes the log rows of plan meals after a local change (eat / undo / skip before the server answers):
   /// [changed] gets one row for every food marked eaten; other meals only get rows when logged without any.
@@ -430,6 +463,8 @@ class FItem {
   String get unit => '${j['unit'] ?? 'g'}';
   double get grams => _n(j['grams']);
   int get kcal => _n(j['kcal']).round();
+  /// Unrounded kcal, for sums that are rounded once (2 foods of 155.4 = 311, not 310).
+  double get kcalExact => j['kcal_exact'] == null ? _n(j['kcal']) : _n(j['kcal_exact']);
   double get protein => _n(j['protein']);
   double get carbs => _n(j['carbs']);
   double get fat => _n(j['fat']);
@@ -466,6 +501,9 @@ class FEntry {
   double get fat => _n(j['fat']);
   String get source => '${j['source']}';
   bool get fromPlan => source == 'plan';
+
+  /// Added to a planned meal that is not logged yet: it waits for Ate it / the meal's Mark as eaten (A5).
+  bool get pending => j['pending'] == true;
 
   /// Log food → Add to → Other time: eaten outside the meal times; [mealName] is the name the client gave.
   bool get otherTime => j['other_time'] == true;

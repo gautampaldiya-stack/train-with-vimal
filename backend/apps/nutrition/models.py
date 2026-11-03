@@ -255,6 +255,13 @@ class MealPhoto(models.Model):
         ordering = ["created_at", "id"]
 
 
+class EatenManager(models.Manager):
+    """Only what counts: a food added to a meal and not marked "Ate it" yet (`pending`) is left out of every total."""
+
+    def get_queryset(self):
+        return super().get_queryset().filter(pending=False)
+
+
 class FoodLogEntry(TimeStampedModel):
     """Everything eaten, one row per food. Big table: always read by (client, date)."""
 
@@ -287,10 +294,17 @@ class FoodLogEntry(TimeStampedModel):
     # Log food → Add to → Other time: eaten outside the meal times, so it sits in the food log at its own time
     # under its own name (meal_name) and never inside a meal card. Always off-plan.
     other_time = models.BooleanField(default=False)
+    # Added from Log food to a planned meal not logged yet: shown in the meal, not counted until she taps Ate it or
+    # marks the meal as eaten (Probid 2026-11-03, A5).
+    pending = models.BooleanField(default=False)
+
+    objects = EatenManager()  # totals everywhere count only eaten food
+    everything = models.Manager()  # with the pending ones: the day's list, edit, delete, Ate it
 
     class Meta:
         ordering = ["logged_at"]
         indexes = [models.Index(fields=["client", "date"])]
+        base_manager_name = "everything"
 
 
 class WaterLog(models.Model):

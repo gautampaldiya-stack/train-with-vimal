@@ -96,6 +96,12 @@ class _NumStepperState extends State<NumStepper> {
               inputFormatters: inputRules(TextInputType.numberWithOptions(decimal: widget.decimals)),
               cursorColor: AppColors.accent,
               onSubmitted: (_) => _commit(),
+              // Every keystroke goes up too: tapping Save while still typing kept the old amount, because the box
+              // only sent its number when it lost focus (decimals "not saved" in Edit portions, Probid A3).
+              onChanged: (t) {
+                final v = double.tryParse(t.replaceAll(',', '.').replaceAll(RegExp(r'[^0-9.]'), ''));
+                if (v != null && v > 0) widget.onChanged(v.clamp(widget.min, widget.max).toDouble());
+              },
               decoration: InputDecoration(
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),

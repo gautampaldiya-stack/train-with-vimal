@@ -796,7 +796,7 @@ class MyFoodLogViewSet(mixins.CreateModelMixin, mixins.DestroyModelMixin, viewse
     serializer_class = FoodLogSerializer
 
     def get_queryset(self):
-        return FoodLogEntry.objects.filter(client=self.request.user)
+        return FoodLogEntry.everything.filter(client=self.request.user)
 
     @extend_schema(request=LogFoodSerializer)
     def create(self, request):
@@ -827,6 +827,20 @@ class MyFoodLogViewSet(mixins.CreateModelMixin, mixins.DestroyModelMixin, viewse
             raise serializers.ValidationError("You can only change today's log.")
         if e.meal_item_id and e.source == FoodLogEntry.Source.PLAN:
             raise serializers.ValidationError("Change a planned food with Edit portions.")
+        if request.data.get("pending") is False and "quantity" not in request.data:  # Ate it: it counts from now
+            e.pending = False
+            e.save(update_fields=["pending"])
+            activity_log(f"ate {e.name}", "meal", actor=request.user, client=request.user, target_label=e.name,
+                         meta={"note": f"{e.name}, {show_kcal(e.kcal)} kcal"})
+            return Response(FoodLogSerializer(e).data)
+        if request.data.get("pending") is True and "quantity" not in request.data:
+            # Not logged yet: back to waiting, only while its meal is not logged (an Other time food is always eaten)
+            if e.other_time or MealDayState.objects.filter(client=request.user, date=e.date, meal__name=e.meal_name,
+                                                            status=MealDayState.Status.LOGGED).exists():
+                raise serializers.ValidationError("This food is logged with its meal. Un-log the meal first.")
+            e.pending = True
+            e.save(update_fields=["pending"])
+            return Response(FoodLogSerializer(e).data)
         try:
             q = Decimal(str(request.data.get("quantity")))
         except (ArithmeticError, ValueError, TypeError):
@@ -869,14 +883,31 @@ class MyFoodLogViewSet(mixins.CreateModelMixin, mixins.DestroyModelMixin, viewse
 
     @action(detail=False, methods=["post"])
     def water(self, request):
+        """{"ml": ±n} adds to the day's water; {"total": n} sets it (the water sheet's typed value)."""
+        day = sync_day(request.data.get("date"))
+        if services.water_habit(request.user, day) is None:
+            raise serializers.ValidationError("Water habit is not assigned to you yet.")
+        total = request.data.get("total")
         try:
-            ml = int(request.data.get("ml", 250))
+            ml = int(request.data.get("ml", 250)) if total is None else 0
+            total = None if total is None else int(total)
         except (TypeError, ValueError):
             raise serializers.ValidationError({"ml": ["Send a number of ml."]})
         if abs(ml) > 2000:
             raise serializers.ValidationError({"ml": ["Up to 2 L at a time."]})
-        w = services.add_water(request.user, ml, day=sync_day(request.data.get("date")))
+        if total is not None and not 0 <= total <= 10000:
+            raise serializers.ValidationError({"total": ["Between 0 and 10 L."]})
+        w = services.add_water(request.user, ml, day=day, total=total)
         return Response({"ml": w.ml})
+
+    @action(detail=False, methods=["get"], url_path="water-history")
+    def water_history(self, request):
+        """Water card → History: this week and the weeks before (?weeks=, up to 12)."""
+        try:
+            weeks = max(1, min(12, int(request.query_params.get("weeks", 4))))
+        except ValueError:
+            weeks = 4
+        return Response(services.water_history(request.user, weeks))
 
 
 class MyFoodSearchViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, viewsets.GenericViewSet):

@@ -1,3 +1,6 @@
+from datetime import timedelta
+
+import pytest
 import base64
 
 from django.utils import timezone
@@ -17,7 +20,7 @@ def _day(c, **q):
 
 def test_food_day_has_week_done_and_meal_macros(client_user):
     d = _day(client_user)
-    assert len(d["week"]) == 7 and all("done" in w and "meals_logged" in w for w in d["week"])
+    assert len(d["week"]) in (7, 9) and len(d["strip"]) == 14 and all("done" in w and "meals_logged" in w for w in d["week"])
     m = d["meals"][0]
     assert {"protein", "carbs", "fat", "photo"} <= set(m)
 
@@ -49,7 +52,7 @@ def test_off_plan_entry_keeps_its_reason_and_undo_by_unit_name(client_user):
                                                   "unit_name": unit.name, "off_plan": True, "reason": "Party"},
                          format="json")
     assert r.status_code == 201, r.content
-    e = FoodLogEntry.objects.get(id=r.json()["id"])
+    e = FoodLogEntry.everything.get(id=r.json()["id"])
     assert e.source == "off_plan" and e.reason == "Party" and e.unit_name == unit.name
     r = client_user.post("/api/v1/me/food-log/", {"meal_name": "Snack", "kcal": 200, "off_plan": True,
                                                   "reason": "Ate out"}, format="json")
@@ -134,3 +137,51 @@ def test_edit_portion_of_a_food_outside_the_plan(client_user):
     assert float(x["quantity"]) == 3 and x["unit_name"] == unit.name
     assert abs(x["kcal"] - e["kcal"] * 1.5) <= 1 and abs(float(x["grams"]) - float(e["grams"]) * 1.5) < .1
     assert client_user.patch(f"/api/v1/me/food-log/{e['id']}/", {"quantity": 0}, format="json").status_code == 400
+
+
+def test_food_added_to_an_open_meal_waits_for_ate_it(client_user):
+    """Probid 2026-11-03 (A5): a food added from Log food to a meal not logged yet is not counted until Ate it or
+    Mark as eaten."""
+    import datetime
+
+    from apps.nutrition.models import Meal
+
+    m = next(x for x in _day(client_user)["meals"] if x["pill"] not in ("logged", "skipped"))
+    Meal.objects.filter(id=m["id"]).update(time=datetime.time(0, 30))  # open now, whatever the hour
+    food = Food.objects.filter(units__isnull=False, kcal__gt=0).first()
+    before = _day(client_user)["macros"]["kcal"]
+    r = client_user.post("/api/v1/me/food-log/", {"meal_name": m["name"], "food": str(food.id), "quantity": 1,
+                                                  "unit": food.units.first().id}, format="json")
+    assert r.status_code == 201, r.content
+    e = r.json()
+    d = _day(client_user)
+    assert next(x for x in d["log"] if x["id"] == e["id"])["pending"] is True
+    assert d["macros"]["kcal"] == before  # not counted yet
+    r = client_user.patch(f"/api/v1/me/food-log/{e['id']}/", {"pending": False}, format="json")
+    assert r.status_code == 200 and r.json()["pending"] is False
+    assert _day(client_user)["macros"]["kcal"] > before
+
+
+@pytest.mark.django_db
+def test_water_card_needs_the_water_habit_and_shows_its_history(client_user):
+    """A10: the water card follows the coach's water habit (its target, not the client's), a typed total sets
+    the day, History lists this week and the ones before; no water habit = no logging."""
+    from apps.habits.models import HabitAssignment
+    from apps.nutrition.models import WaterLog
+
+    today = timezone.localdate()
+    w = client_user.get(f"/api/v1/me/food/?date={today}").json()["water"]
+    assert w["assigned"] is True and w["goal_ml"] == 3000  # 12 glasses
+    r = client_user.post("/api/v1/me/food-log/water/", {"total": 1750, "date": today.isoformat()}, format="json")
+    assert r.status_code == 200 and r.json()["ml"] == 1750
+    yday = today - timedelta(days=1)
+    WaterLog.objects.update_or_create(client__email="riya@example.com", date=yday, defaults={
+        "ml": 500, "client": WaterLog.objects.get(client__email="riya@example.com", date=today).client})
+    assert client_user.get(f"/api/v1/me/food/?date={yday}").json()["water"]["ml"] == 500  # that day's, not today's
+    h = client_user.get("/api/v1/me/food-log/water-history/?weeks=2").json()
+    assert len(h["weeks"]) == 2 and len(h["weeks"][0]["days"]) == 7
+    assert next(d for d in h["weeks"][0]["days"] if d["date"] == today.isoformat())["ml"] == 1750
+    HabitAssignment.objects.filter(client__email="riya@example.com", habit__icon="water").update(active=False)
+    assert client_user.get(f"/api/v1/me/food/?date={today}").json()["water"]["assigned"] is False
+    r = client_user.post("/api/v1/me/food-log/water/", {"ml": 250}, format="json")
+    assert r.status_code == 400 and "not assigned" in r.json()["error"]["message"]

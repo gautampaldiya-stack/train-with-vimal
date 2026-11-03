@@ -60,6 +60,7 @@ class _AppShellState extends State<AppShell> {
     });
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadCounts()); // not during build: it notifies the badges
     hideBottomBar.addListener(_barChanged);
+    ToastHost.sheets.addListener(_barChanged); // any bottom sheet open hides the tabs (Probid 2026-11-03, A1)
     // A change saved offline that the server refused later: say so, it is not kept (before it went silently).
     _refused = Services.outbox.results.where((r) => r.late && r.error != null && !r.error!.offline).listen((r) {
       if (mounted) showToast(context, 'A change you made offline was not saved', sub: r.error!.message, kind: ToastKind.err);
@@ -75,6 +76,7 @@ class _AppShellState extends State<AppShell> {
   @override
   void dispose() {
     hideBottomBar.removeListener(_barChanged);
+    ToastHost.sheets.removeListener(_barChanged);
     _refused?.cancel();
     super.dispose();
   }
@@ -140,7 +142,7 @@ class _AppShellState extends State<AppShell> {
     final isClient = me.role == Role.client;
     if (context.isPhone) {
       // Client: the bottom bar only on the main tabs; sub-pages and the workout logger have their own back button.
-      final bar = (!isClient || AppBack.isTab(widget.location, me.role)) && !hideBottomBar.value;
+      final bar = (!isClient || AppBack.isTab(widget.location, me.role)) && !hideBottomBar.value && ToastHost.sheets.value == 0;
       // Toasts sit 10 above the bar, measured (it grows with the phone's bottom inset); the host adds that inset
       // itself, so it is taken off here. Before, a fixed 75 left a gap that changed from phone to phone.
       final inset = MediaQuery.paddingOf(context).bottom;

@@ -131,7 +131,9 @@ Future<void> showCaloriesSheet(BuildContext context, FoodController c) {
   final t = d.target, e = d.eaten, p = d.planned;
   final future = d.date.isAfter(c.today);
   final left = t[0] - e[0], over = left < 0;
-  final ahead = d.meals.where((m) => m.open).fold(0, (a, m) => a + m.items.where((i) => i.state.isEmpty).fold(0, (b, i) => b + i.kcal));
+  // the foods of today's open meals not logged or skipped yet, summed unrounded and rounded once, so with nothing
+  // eaten it equals Left (it read 1,960 against 1,958 from per-food rounding, Probid 2026-11-03)
+  final ahead = d.meals.where((m) => m.open).fold(0.0, (a, m) => a + m.items.where((i) => i.state.isEmpty).fold(0.0, (b, i) => b + i.kcalExact)).round();
   String g(double v, double tg) => '${v.round()} / ${tg.round()} g';
   final rows = future
       ? [('Planned', '${inNum(p[0])} kcal'), ('Protein', g(p[1], t[1])), ('Carbs', g(p[2], t[2])), ('Fat', g(p[3], t[3]))]
@@ -151,9 +153,12 @@ Future<void> showCaloriesSheet(BuildContext context, FoodController c) {
     footerStretch: true,
     builder: (_) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
       fdKv(rows),
-      fdCap('Workout calories are not added back. Your plan already accounts for training.'),
+      // what each line means (Probid 2026-11-03, A2)
+      if (!future && d.isToday)
+        fdCap('Left: your target minus what you ate. Still ahead: the foods in today’s meals you have not logged or skipped yet. '
+            'They match until you skip a food, add one off the plan or change a portion.'),
+      fdCap('Target: the foods your coach put in today’s plan. Workout calories are not added back.'),
     ]),
-    footer: (ctx) => [CaButton('Got it', onPressed: () => Navigator.of(ctx).pop())],
   );
 }
 
@@ -184,15 +189,7 @@ Future<void> showMealMenu(
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         if (swap) FdMenuItem(first: true, icon: AppIcons.swap, title: 'Swap a food', sub: 'Similar macros, different dish', onTap: () => go(onSwap)),
         FdMenuItem(first: !swap, icon: AppIcons.edit, title: 'Edit portions', sub: 'Change grams, pieces or katori', onTap: () => go(onEdit)),
-        if (m.logged && m.photos.length < fdMaxPhotos)
-          FdMenuItem(
-            icon: AppIcons.camera,
-            title: m.photo == null ? 'Add a photo' : 'Add another photo',
-            sub: m.photo == null ? 'A picture of what you ate' : '${m.photos.length} of $fdMaxPhotos photos added',
-            onTap: () => go(onPhoto),
-          ),
-        if (m.logged && m.photo != null)
-          FdMenuItem(icon: AppIcons.trash, title: m.photos.length > 1 ? 'Remove photos' : 'Remove photo', sub: 'The meal stays logged', danger: true, onTap: () => go(onRemovePhoto)),
+        // A logged meal keeps its photos as they are: no add / change / remove after logging (Probid A3).
         FdMenuItem(icon: AppIcons.search, title: 'Log something different', sub: 'Ate outside the plan? No stress', onTap: () => go(() => context.go('/food/log?meal=${Uri.encodeComponent(m.name)}'))),
         if (!m.skipped) FdMenuItem(icon: AppIcons.close, title: 'Skip meal', sub: 'It will not count towards today', danger: true, onTap: () => go(onSkip)),
       ]);
@@ -405,7 +402,8 @@ class _SwapOpt extends StatelessWidget {
 
 double portionStep(FItem it) => it.unit == 'g' ? 10 : (it.quantity != it.quantity.roundToDouble() || it.unit.contains('roti') ? .5 : 1);
 
-Future<void> showPortionsSheet(BuildContext context, FoodController c, FMeal m) {
+/// [logged]: opened from a logged meal's preview (A7): the button reads Edit & Log and the meal stays logged.
+Future<void> showPortionsSheet(BuildContext context, FoodController c, FMeal m, {bool logged = false}) {
   final q = ValueNotifier<Map<int, double>>({for (final i in m.items) i.item: i.quantity});
   List<double> now() {
     final t = [0.0, 0.0, 0.0, 0.0];
@@ -481,14 +479,14 @@ Future<void> showPortionsSheet(BuildContext context, FoodController c, FMeal m) 
       Row(spacing: 8, children: [
         Expanded(child: CaButton('Cancel', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop())),
         Expanded(
-          child: CaButton('Save portions', onPressed: () async {
+          child: CaButton(logged ? 'Edit & Log' : 'Save portions', onPressed: () async {
             final before = {for (final i in m.items) '${i.item}': i.quantity};
             final n = now();
             Navigator.of(ctx).pop();
             try {
               await c.meal(m, 'portions', {'portions': {for (final e in q.value.entries) '${e.key}': e.value}});
               if (!context.mounted) return;
-              showToast(context, '${m.name} portions saved', sub: 'Now ${inNum(n[0])} kcal · ${n[1].round()} g protein', kind: ToastKind.ok, action: 'Undo', onAction: () {
+              showToast(context, logged ? '${m.name} updated' : '${m.name} portions saved', sub: 'Now ${inNum(n[0])} kcal · ${n[1].round()} g protein', kind: ToastKind.ok, action: 'Undo', onAction: () {
                 final again = c.data?.meals.where((x) => x.id == m.id).firstOrNull;
                 if (again != null) c.meal(again, 'portions', {'portions': before}).catchError((_) {});
               });

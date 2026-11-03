@@ -264,7 +264,8 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `me/food-log/<pk>/` | PATCH, DELETE | MyFoodLogViewSet | PATCH `{quantity}`: Edit portion on a food outside the plan (scales what was logged) |
 | `me/food-log/copy-yesterday/` | POST | MyFoodLogViewSet |  |
 | `me/food-log/undo-copy/` | POST | MyFoodLogViewSet |  |
-| `me/food-log/water/` | POST | MyFoodLogViewSet |  |
+| `me/food-log/water/` | POST | MyFoodLogViewSet | `{"ml": ±n}` adds, `{"total": n}` sets the day; 400 without a water habit |
+| `me/food-log/water-history/` | GET | MyFoodLogViewSet | `?weeks=` (1–12): `goal_ml`, weeks of days `{date, ml, future}`, `avg_ml`, `goal_days` |
 | `me/food/` | GET | MyFoodView | Food tab (combined meal plan + nutrition): GET ?date=YYYY-MM-DD. |
 | `me/food/items/<int:item_id>/swaps/` | GET | MySwapOptionsView | Swap sheet for one planned food: approved swaps with match % and matched grams. |
 | `me/food/meals/<int:meal_id>/<str:op>/` | POST | MyMealActionView | POST /me/food/meals/<meal_id>/<op>/  op = eat / unlog / skip / unskip / item (`item`, `action` eat·skip·reset) / portions / swap / option / photo (replace or null) / photo_add (one more, max 4). Each meal carries `eaten` totals and `photos`; each food `state` and `edited` (D-83). Each meal also has `assigned` (planned totals) and `opens_at`; before `opens_at` (time − `MEAL_OPEN_BEFORE_MINUTES`, default 30) every op but unlog / unskip / photo is refused; the day target is the assigned foods' total (D-86) |

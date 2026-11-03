@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -42,6 +43,7 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
   @override
   void dispose() {
     c.dispose();
+    _stripCtl?.dispose();
     super.dispose();
   }
 
@@ -181,22 +183,40 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
     context.go(meal == null ? '/food/log' : '/food/log?meal=${Uri.encodeComponent(meal)}');
   }
 
+  /// Last week and this week side by side, scrolled to this week; on a Monday it starts at last Saturday, so
+  /// yesterday and the day before show (Probid A8). Swipe right for the rest of last week.
   Widget _strip(FoodDay d, {required bool web}) {
-    final monday = d.date.subtract(Duration(days: d.date.weekday - 1));
+    final monday = DateUtils0.dateOnly(c.today.subtract(Duration(days: c.today.weekday - 1)));
     final narrow = MediaQuery.sizeOf(context).width < 1180;
+    final pad = web ? 5.0 : 8.0;
     return Container(
-      padding: web ? const EdgeInsets.all(5) : const EdgeInsets.all(8),
+      padding: EdgeInsets.all(pad),
       decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
-      child: Row(spacing: 4, children: [
-        for (var i = 0; i < 7; i++)
-          Expanded(child: _day(d, DateUtils0.dateOnly(monday.add(Duration(days: i))), web: web, narrow: narrow)),
-      ]),
+      child: LayoutBuilder(builder: (_, b) {
+        final w = b.maxWidth / 7;
+        final start = c.today.weekday == 1 ? 5 : 7;
+        return SizedBox(
+          height: web ? 48 : 72,
+          child: ListView.builder(
+            controller: _stripCtl ??= ScrollController(initialScrollOffset: w * start),
+            scrollDirection: Axis.horizontal,
+            itemExtent: w,
+            itemCount: 14,
+            itemBuilder: (_, i) => Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: _day(d, monday.add(Duration(days: i - 7)), web: web, narrow: narrow),
+            ),
+          ),
+        );
+      }),
     );
   }
 
+  ScrollController? _stripCtl;
+
   Widget _day(FoodDay d, DateTime day, {required bool web, required bool narrow}) {
     final on = DateUtils0.same(day, d.date), real = DateUtils0.same(day, c.today), future = day.isAfter(c.today);
-    final w = d.week.where((x) => DateUtils0.same(DateTime.parse('${x['date']}'), day)).firstOrNull;
+    final w = [...d.strip, ...d.week].where((x) => DateUtils0.same(DateTime.parse('${x['date']}'), day)).firstOrNull;
     final done = w?['done'] == true;
     final size = web && !narrow ? 18.0 : (web ? 16.0 : 18.0);
     final Widget mark;
@@ -297,11 +317,54 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
                 ]),
               ),
             ]),
+            if (!future) _split(d),
             fdCap(cap),
           ]),
         ),
       ),
     );
+  }
+
+  /// Where today's calories come from, as one bar against the target: plan foods eaten (blue), food outside the plan
+  /// (amber), plan foods skipped (grey, they did not count), and what is still open (Probid A5).
+  Widget _split(FoodDay d) {
+    var plan = 0.0, skip = 0.0;
+    for (final m in d.meals) {
+      for (final i in m.items) {
+        if (i.state == 'skipped' || m.skipped) {
+          skip += i.kcalExact;
+        } else if (i.state == 'eaten' || (m.logged && i.state.isEmpty)) {
+          plan += i.kcalExact;
+        }
+      }
+    }
+    final off = d.log.where((e) => !e.pending && !(e.fromPlan && e.meal != null)).fold(0.0, (a, e) => a + e.kcal);
+    if (plan + off + skip <= 0) return const SizedBox.shrink();
+    final tg = d.target[0] > 0 ? d.target[0] : plan + off + skip;
+    final total = math.max(tg, plan + off + skip);
+    final rest = math.max(0.0, total - plan - off - skip);
+    final parts = [(plan, AppColors.accent), (off, AppColors.amberSolid), (skip, AppColors.line2), (rest, AppColors.sub)];
+    Widget key(Color c, String l, double v) => Row(mainAxisSize: MainAxisSize.min, spacing: 5, children: [
+          Container(width: 8, height: 8, decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(2))),
+          Text('$l ${inNum(v.round())}', style: AppText.s(11.5, W.w6, color: AppColors.text2)),
+        ]);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
+      ClipRRect(
+        borderRadius: BorderRadius.circular(99),
+        child: SizedBox(
+          height: 8,
+          child: Row(children: [
+            for (final (v, col) in parts)
+              if (v > 0) Expanded(flex: math.max(1, (v / total * 1000).round()), child: ColoredBox(color: col)),
+          ]),
+        ),
+      ),
+      Wrap(spacing: 12, runSpacing: 4, children: [
+        key(AppColors.accent, 'Plan', plan),
+        if (off > 0) key(AppColors.amberSolid, 'Off-plan', off),
+        if (skip > 0) key(AppColors.line2, 'Skipped', skip),
+      ]),
+    ]);
   }
 
   // ─────────────────────────────── This week (`nv-wk`)
@@ -310,7 +373,10 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
     final tg = d.target[0];
     final wk = d.week;
     final kc = [for (final w in wk) ((w['kcal'] as num?) ?? 0).toDouble()];
+    // On a Monday the card starts with last Saturday and Sunday (Probid A9); the average is this week's only.
+    final last = [for (final w in wk) w['last_week'] == true];
     final logged = [for (var i = 0; i < wk.length; i++) if (kc[i] > 0) i];
+    final mine = [for (final i in logged) if (!last[i]) i];
     var top = tg;
     for (final i in logged) {
       if (kc[i] > top) top = kc[i];
@@ -321,8 +387,9 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
     if (wk.isEmpty) return const SizedBox.shrink();
     final sd = DateTime.parse('${wk[sel]['date']}');
     final sp = ((wk[sel]['protein'] as num?) ?? 0).round();
-    final avgK = logged.isEmpty ? 0 : logged.fold(0.0, (a, i) => a + kc[i]) / logged.length;
-    final avgP = logged.isEmpty ? 0 : logged.fold(0.0, (a, i) => a + ((wk[i]['protein'] as num?) ?? 0)) / logged.length;
+    final avgK = mine.isEmpty ? 0 : mine.fold(0.0, (a, i) => a + kc[i]) / mine.length;
+    final avgP = mine.isEmpty ? 0 : mine.fold(0.0, (a, i) => a + ((wk[i]['protein'] as num?) ?? 0)) / mine.length;
+    final sm = (wk[sel]['meals'] as num?)?.toInt() ?? 0, sl = (wk[sel]['meals_logged'] as num?)?.toInt() ?? 0;
     return ChCard(gap: 10, children: [
       Row(children: [
         Expanded(child: Text('This week', style: AppText.s(15, W.w8))),
@@ -351,7 +418,7 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
                           : today
                           ? AppColors.wkToday
                           : AppColors.wkBar;
-                      return Column(spacing: 4, children: [
+                      return Opacity(opacity: last[i] && !on ? .55 : 1, child: Column(spacing: 4, children: [
                         Expanded(
                           child: Container(
                             width: double.infinity,
@@ -377,7 +444,7 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
                             style: AppText.s(11, W.w7, color: on ? AppColors.text : (today ? AppColors.accentText : AppColors.muted)),
                           ),
                         ),
-                      ]);
+                      ]));
                     },
                   ),
                 ),
@@ -398,57 +465,57 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(color: AppColors.nextBg, borderRadius: BorderRadius.circular(10)),
         child: Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, spacing: 8, children: [
-          Expanded(child: Text('${fdDay(sd)}${sel == todayAt ? ' · today' : ''}', style: AppText.s(12.5, W.w8))),
-          Text(
-            kc[sel] > 0 ? '${inNum(kc[sel])} kcal · $sp g protein' : (sel == todayAt ? 'Nothing logged yet today' : 'Not logged yet'),
-            style: AppText.s(12.5, W.w6, color: AppColors.text2),
+          Expanded(child: Text('${fdDay(sd)}${sel == todayAt ? ' · today' : last[sel] ? ' · last week' : ''}', style: AppText.s(12.5, W.w8))),
+          Flexible(
+            child: Text(
+              kc[sel] > 0
+                  ? '${inNum(kc[sel])} kcal · $sp g protein${sm > 0 ? ' · $sl/$sm meals' : ''}'
+                  : sd.isAfter(c.today)
+                  ? 'Coming up'
+                  : (sel == todayAt ? 'Nothing logged yet today' : 'Nothing logged'),
+              textAlign: TextAlign.right,
+              style: AppText.s(12.5, W.w6, color: AppColors.text2),
+            ),
           ),
         ]),
       ),
-      fdCap(logged.isEmpty
-          ? 'Nothing logged this week yet'
-          : 'Average ${inNum(avgK)} kcal · ${avgP.round()} g protein on ${logged.length} logged ${logged.length == 1 ? 'day' : 'days'}'),
+      fdCap('${mine.isEmpty ? 'Nothing logged this week yet' : 'This week: average ${inNum(avgK)} kcal · ${avgP.round()} g protein on ${mine.length} logged ${mine.length == 1 ? 'day' : 'days'}'}'
+          '${last.contains(true) ? ' · first 2 bars are last Sat and Sun' : ''}'),
     ]);
   }
 
   // ─────────────────────────────── Water
 
-  void _water(int delta) {
-    final d = c.data!;
-    if (_future(d)) {
-      showToast(context, 'You can log water on ${fdDay(d.date)}', sub: 'Only today and earlier days can be logged', kind: ToastKind.info);
-      return;
-    }
-    final ml = d.waterMl, goal = d.waterGoal;
-    if (delta < 0 && ml <= 0) {
-      showToast(context, 'Nothing to remove', sub: 'No water logged yet', kind: ToastKind.info);
-      return;
-    }
-    final now = (ml + delta).clamp(0, 10000);
-    final left = goal - now, g = (left / 250).ceil();
-    c.water(delta);
-    if (delta > 0 && ml < goal && now >= goal) {
-      showToast(context, 'Water goal complete!', sub: '${litres(now)} ${d.isToday ? 'today' : 'on ${fdDay(d.date)}'}', kind: ToastKind.star);
-    } else if (left > 0) {
-      showToast(context, delta > 0 ? '${litres(left)} to go' : 'Removed 250 ml · ${litres(now)} logged', sub: '${glasses(g)} more', kind: delta > 0 ? ToastKind.water : ToastKind.info);
-    } else {
-      showToast(context, '${litres(now)} ${d.isToday ? 'today' : 'on ${fdDay(d.date)}'}', sub: 'Goal complete', kind: ToastKind.water);
-    }
-  }
-
   Widget _waterCard(FoodDay d) {
+    // No water habit from the coach: the card only says so (Probid A10).
+    if (!d.waterAssigned) {
+      return ChCard(children: [
+        ChHead(
+          lead: const ChIcon(AppIcons.water, tone: ChTone.warm),
+          title: 'Water',
+          sub: 'Water habit is not assigned to you yet',
+        ),
+        fdCap('Your coach sets your water target. Ask them in your check-in if you want to track water.'),
+      ]);
+    }
     final ml = d.waterMl, goal = d.waterGoal;
     final gl = (ml / 250).round(), leftG = ((goal - ml) / 250).ceil().clamp(0, 999);
     final bars = (goal / 250).round().clamp(4, 20);
+    final when = d.isToday ? 'today' : 'on ${fdDay(d.date)}';
     return ChCard(children: [
       ChHead(
         lead: const ChIcon(AppIcons.water, tone: ChTone.warm),
         title: 'Water',
-        sub: ml >= goal ? 'Goal complete · nice work' : '${litres(goal - ml)} to go · ${glasses(leftG)} more',
+        sub: ml >= goal ? 'Goal complete $when · nice work' : '${litres(goal - ml)} to go $when · ${glasses(leftG)} more',
+        action: Builder(
+          builder: (bc) => CaIconBtn(AppIcons.dots, tooltip: 'Water options', onTap: () => showAppMenu(bc, width: 240, [
+            MenuEntry('History', icon: AppIcons.calendar, onTap: _waterHistory),
+          ])),
+        ),
       ),
       Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, spacing: 6, children: [
         Text(litres(ml), style: AppText.s(30, W.w8, ls: -0.6)),
-        Flexible(child: Text('/ ${litres(goal)} · ${glasses(gl)}', style: AppText.s(13, W.w6, color: AppColors.muted))),
+        Flexible(child: Text('drunk $when · target ${litres(goal)} (${glasses((goal / 250).round())})', style: AppText.s(13, W.w6, color: AppColors.muted))),
       ]),
       Pull(
         top: 4,
@@ -463,11 +530,127 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
             ),
         ]),
       ),
-      Row(spacing: 8, children: [
-        chSm('−250 ml', () => _water(-250)),
-        chSm('+250 ml · 1 glass', () => _water(250), kind: CaBtnKind.dark),
-      ]),
+      Row(children: [Expanded(child: chSm('Log water', () => _waterSheet(d), kind: CaBtnKind.dark))]),
     ]);
+  }
+
+  /// One sheet for water (A10): − / the day's amount / +, a tap on the amount types it, Save sets the day.
+  void _waterSheet(FoodDay d) {
+    if (_future(d)) {
+      showToast(context, 'You can log water on ${fdDay(d.date)}', sub: 'Only today and earlier days can be logged', kind: ToastKind.info);
+      return;
+    }
+    final v = ValueNotifier(d.waterMl.toDouble());
+    final goal = d.waterGoal;
+    showAppSheet(
+      context,
+      listen: v,
+      title: 'Water · ${d.isToday ? 'today' : fdDay(d.date)}',
+      sub: 'Target ${litres(goal)} · set by your coach',
+      webWidth: 420,
+      footerStretch: true,
+      builder: (_) {
+        final n = v.value.round();
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
+          NumStepper(
+            value: v.value,
+            step: 250,
+            min: 0,
+            max: 10000,
+            big: true,
+            decimals: false,
+            name: 'Water in ml',
+            label: (x) => '${inNum(x.round())} ml',
+            onChanged: (x) => v.value = x,
+          ),
+          Text(n >= goal ? 'Goal complete · ${glasses((n / 250).round())}' : '${litres(goal - n)} to go · ${glasses(((goal - n) / 250).ceil())} more',
+              textAlign: TextAlign.center, style: AppText.s(12.5, W.w6, color: AppColors.muted)),
+          fdCap('One glass = 250 ml. Tap the amount to type it.'),
+        ]);
+      },
+      footer: (ctx) => [
+        Row(spacing: 8, children: [
+          Expanded(child: CaButton('Cancel', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop())),
+          Expanded(
+            child: CaButton('Save', icon: AppIcons.check, onPressed: () async {
+              final was = d.waterMl, now = v.value.round();
+              Navigator.of(ctx).pop();
+              if (now == was) return;
+              try {
+                await c.setWater(now);
+                if (!mounted) return;
+                if (now >= goal && was < goal) {
+                  showToast(context, 'Water goal complete!', sub: '${litres(now)} ${d.isToday ? 'today' : 'on ${fdDay(d.date)}'}', kind: ToastKind.star);
+                } else {
+                  showToast(context, '${litres(now)} logged', sub: now >= goal ? 'Goal complete' : '${litres(goal - now)} to go', kind: ToastKind.water,
+                      action: 'Undo', onAction: () => c.setWater(was).catchError((_) {}));
+                }
+              } on ApiError catch (e) {
+                if (mounted) fdError(context, e);
+              }
+            }),
+          ),
+        ]),
+      ],
+    );
+  }
+
+  /// Water card → History: this week and the 3 before, each day's water against the target.
+  Future<void> _waterHistory() async {
+    final Map<String, dynamic> h;
+    try {
+      h = await c.waterHistory();
+    } on ApiError catch (e) {
+      if (mounted) fdError(context, e);
+      return;
+    }
+    if (!mounted) return;
+    final goal = (h['goal_ml'] as num?)?.toInt() ?? 3000;
+    final weeks = (h['weeks'] as List? ?? []).cast<Map>();
+    showAppSheet(
+      context,
+      title: 'Water history',
+      sub: 'Target ${litres(goal)} a day',
+      webWidth: 460,
+      builder: (_) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [
+        for (final (wi, w) in weeks.indexed)
+          Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
+            Row(children: [
+              Expanded(
+                child: Text(wi == 0 ? 'THIS WEEK' : wi == 1 ? 'LAST WEEK' : 'WEEK OF ${fdDay(DateTime.parse('${w['start']}')).toUpperCase()}',
+                    style: AppText.s(10.5, W.w8, color: AppColors.muted, ls: .5)),
+              ),
+              Text('avg ${litres((w['avg_ml'] as num? ?? 0).toInt())} · ${w['goal_days']} goal ${w['goal_days'] == 1 ? 'day' : 'days'}',
+                  style: AppText.s(11.5, W.w6, color: AppColors.text2)),
+            ]),
+            Row(spacing: 6, crossAxisAlignment: CrossAxisAlignment.end, children: [
+              for (final dd in (w['days'] as List).cast<Map>())
+                Expanded(
+                  child: Builder(builder: (_) {
+                    final v = (dd['ml'] as num? ?? 0).toInt();
+                    final fut = dd['future'] == true;
+                    final day = DateTime.parse('${dd['date']}');
+                    return Column(spacing: 4, children: [
+                      Container(
+                        height: 48,
+                        alignment: Alignment.bottomCenter,
+                        decoration: BoxDecoration(color: AppColors.barTrack, borderRadius: BorderRadius.circular(6)),
+                        child: FractionallySizedBox(
+                          heightFactor: fut ? 0 : (v / goal).clamp(0.0, 1.0),
+                          widthFactor: 1,
+                          child: Container(decoration: BoxDecoration(color: v >= goal ? AppColors.okSolid : AppColors.warm, borderRadius: BorderRadius.circular(6))),
+                        ),
+                      ),
+                      Text(fdWd[day.weekday - 1].substring(0, 1), style: AppText.s(11, W.w7, color: AppColors.muted)),
+                      Text(fut ? '–' : v == 0 ? '0' : (v / 1000).toStringAsFixed(1), style: AppText.s(10.5, W.w6, color: AppColors.text2)),
+                    ]);
+                  }),
+                ),
+            ]),
+          ]),
+        fdCap('Litres a day. Green = target reached.'),
+      ]),
+    );
   }
 
   // ─────────────────────────────── Tabs and lists
@@ -544,7 +727,6 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
               Text(line, style: AppText.s(12, W.w6, color: AppColors.muted)),
             ]),
           ),
-          if (m.logged && m.photo != null) FdPhoto(m.photo!, name: m.name, all: m.photos),
           fdPill(pill),
           if (today) CaIconBtn(AppIcons.dots, tooltip: 'Meal options', onTap: () => lock ? _lockedToast(m) : _menu(m)),
         ]),
@@ -553,6 +735,12 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
         ]),
         ..._extras(d, m),
         if (today && m.open && _photos[m.id] != null) _photoBar(m),
+        // a logged meal's photos under its foods, not up by the menu: thumbnails, the count, tap = view (Probid A3)
+        if (m.logged && m.photos.isNotEmpty)
+          Row(spacing: 8, children: [
+            for (final p in m.photos) FdPhoto(p, name: m.name, size: 44),
+            Expanded(child: Text('${m.photos.length} ${m.photos.length == 1 ? 'photo' : 'photos'}', style: AppText.s(12, W.w6, color: AppColors.muted))),
+          ]),
         // Before 30 min ahead of the meal nothing can be logged, skipped or changed (Probid 2026-10-30).
         if (lock)
           _lockedBar(m)
@@ -568,10 +756,17 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
                     ),
             ),
           ])
-        else if (today && m.logged)
-          _doneBtn(m)
+        else if (m.logged)
+          // A logged meal: its foods are not tapped any more, Preview shows it all (Probid A7).
+          Row(spacing: 8, children: [
+            Expanded(child: fdBtn('Preview this meal', () => _preview(d, m), icon: AppIcons.eye)),
+            if (today) Expanded(child: _doneBtn(m)),
+          ])
         else if (today && m.skipped)
-          fdBtn('I ate it', () => _eatAfterAll(m), icon: AppIcons.check),
+          fdBtn('I ate it', () => _eatAfterAll(m), icon: AppIcons.check)
+        else if (d.isYesterday && !m.logged)
+          // Yesterday's missed meal can still be logged; older days only read (Probid A8).
+          fdBtn('Log this meal for yesterday', () => _eat(m), icon: AppIcons.check, kind: CaBtnKind.dark),
       ]),
     );
     return dim ? Opacity(opacity: .75, child: card) : card;
@@ -609,7 +804,7 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
     return Semantics(
       button: true,
       label: '${it.name}. ${switch (it.state) { 'eaten' => 'Eaten', 'skipped' => 'Skipped', _ => 'Not logged yet' }}',
-      child: Hover(onTap: () => _itemMenu(d, m, it, swaps: swaps), builder: (_, h, _) => Opacity(opacity: h ? .8 : 1, child: row)),
+      child: m.logged ? row : Hover(onTap: () => _itemMenu(d, m, it, swaps: swaps), builder: (_, h, _) => Opacity(opacity: h ? .8 : 1, child: row)),
     );
   }
 
@@ -688,7 +883,14 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
         if (it.state != 'eaten') (AppIcons.check, 'Ate this', 'Counts ${inNum(it.kcal)} kcal today', false, () async {
           if (await _didEat(it.name, '${it.amount} · ${inNum(it.kcal)} kcal will count today.')) await _item(m, it, 'eat');
         }),
-        if (it.state != 'skipped') (AppIcons.close, 'Skip this food', 'It will not count today', true, () => _item(m, it, 'skip')),
+        if (it.state != 'skipped')
+          (AppIcons.close, 'Skip this food', 'It will not count today', true, () async {
+            // asks first (Probid 2026-11-03, A4)
+            if (await confirmAction(context,
+                title: 'Skip ${it.name}?', body: '${it.amount} · ${inNum(it.kcal)} kcal will not count today. You can log it again later.', confirm: 'Skip food', danger: true, icon: AppIcons.close)) {
+              await _item(m, it, 'skip');
+            }
+          }),
         if (it.state.isNotEmpty)
           (AppIcons.undo, 'Not logged yet', 'Take it off today’s log', false, () async {
             // taking an eaten food off asks first, like any change to a logged food (Probid 2026-10-30)
@@ -776,6 +978,77 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
     ),
   );
 
+  /// A logged meal at a glance (Probid A7): what was eaten, skipped and added, the totals, its photos, then
+  /// Edit portion (the portions sheet, Edit & Log keeps it logged).
+  void _preview(FoodDay d, FMeal m) {
+    final xs = d.log.where((e) => e.mealName == m.name && !e.otherTime && !(e.fromPlan && e.meal != null)).toList();
+    final ate = m.eaten;
+    final extra = xs.fold(0.0, (a, e) => a + e.at(e.quantity)[0]);
+    Widget row(String name, String amt, int kcal, {String? pill, bool off = false, bool strike = false, int i = 0}) => Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line))),
+          child: Row(spacing: 8, children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Flexible(child: CutText(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
+                  if (off) fdTag('Off-plan', amber: true),
+                ]),
+                CutText(amt, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
+              ]),
+            ),
+            if (pill != null) fdPill(pill, small: true),
+            Text('${inNum(kcal)} kcal',
+                style: AppText.s(12, W.w7, color: AppColors.text2).copyWith(decoration: strike ? TextDecoration.lineThrough : null)),
+          ]),
+        );
+    Widget head(String t) => Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(t.toUpperCase(), style: AppText.s(10.5, W.w8, color: AppColors.muted, ls: .5)),
+        );
+    showAppSheet(
+      context,
+      title: m.name,
+      sub: '${m.loggedAt != null ? 'Logged ${fdClock(m.loggedAt!)} · ' : ''}${mealTime(m.timeRaw)}',
+      webWidth: 480,
+      footerStretch: true,
+      builder: (_) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
+        fdTotal(mline(ate[0] + extra, ate[1] + xs.fold(0.0, (a, e) => a + e.protein), ate[2] + xs.fold(0.0, (a, e) => a + e.carbs), ate[3] + xs.fold(0.0, (a, e) => a + e.fat)),
+            'Plan ${inNum(m.assignedKcal)} kcal'),
+        Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          head('From your plan'),
+          for (final (i, it) in m.items.indexed)
+            row(it.name, '${it.amount}${it.swappedFrom.isNotEmpty ? ' · swapped from ${it.swappedFrom}' : ''}${it.edited ? ' · edited' : ''}', it.kcal,
+                pill: it.state == 'skipped' ? 'Skipped' : 'Eaten', strike: it.state == 'skipped', i: i),
+        ]),
+        if (xs.isNotEmpty)
+          Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            head('Added outside the plan'),
+            for (final (i, e) in xs.indexed)
+              row(e.name, '${e.amount}${e.reason.isEmpty ? '' : ' · ${e.reason}'}', e.kcal, pill: 'Eaten', off: e.source == 'off_plan', i: i),
+          ]),
+        if (m.photos.isNotEmpty)
+          Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
+            head('${m.photos.length} ${m.photos.length == 1 ? 'photo' : 'photos'}'),
+            Wrap(spacing: 8, runSpacing: 8, children: [for (final p in m.photos) FdPhoto(p, name: m.name, size: m.photos.length == 1 ? 120 : 72)]),
+          ]),
+      ]),
+      footer: d.isToday
+          ? (ctx) => [
+                Row(spacing: 8, children: [
+                  Expanded(child: CaButton('Close', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop())),
+                  Expanded(
+                    child: CaButton('Edit portion', icon: AppIcons.edit, onPressed: () {
+                      Navigator.of(ctx).pop();
+                      showPortionsSheet(context, c, m, logged: true);
+                    }),
+                  ),
+                ]),
+              ]
+          : null,
+    );
+  }
+
   // ─────────────────────────────── Meal actions
 
   /// "Mark as eaten ▾": with a photo of the meal (optional) or without.
@@ -801,10 +1074,15 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
   /// Under the foods while photos wait: each photo with its own remove, Add photo (up to 4).
   Widget _photoBar(FMeal m) {
     final ps = _photos[m.id]!;
-    void drop(int i) => setState(() {
-      final left = [...ps]..removeAt(i);
-      left.isEmpty ? _photos.remove(m.id) : _photos[m.id] = left;
-    });
+    Future<void> drop(int i) async {
+      // asks first (Probid A3)
+      if (!await confirmAction(context, title: 'Delete this image?', body: 'It comes off ${m.name}. You can add another one.', confirm: 'Delete', danger: true, icon: AppIcons.trash)) return;
+      if (!mounted) return;
+      setState(() {
+        final left = [...ps]..removeAt(i);
+        left.isEmpty ? _photos.remove(m.id) : _photos[m.id] = left;
+      });
+    }
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(color: AppColors.nextBg, borderRadius: BorderRadius.circular(10)),
@@ -856,7 +1134,7 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
         child: Row(spacing: 6, children: [
           Text('ALSO LOGGED · OUTSIDE THE PLAN', style: AppText.s(10.5, W.w8, color: AppColors.amberText, ls: .5)),
           Expanded(child: Container(height: 1, color: AppColors.line)),
-          Text('+${inNum(xs.fold(0, (a, e) => a + e.kcal))} kcal', style: AppText.s(11.5, W.w7, color: AppColors.amberText)),
+          Text('+${inNum(xs.where((e) => !e.pending).fold(0, (a, e) => a + e.kcal))} kcal', style: AppText.s(11.5, W.w7, color: AppColors.amberText)),
         ]),
       ),
       // One line a food, like the plan's own foods (Probid 2026-10-31): name, amount, Eaten, kcal.
@@ -864,9 +1142,9 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
         for (final (i, e) in xs.indexed)
           Semantics(
             button: true,
-            label: '${e.name}. Eaten',
+            label: '${e.name}. ${e.pending ? 'Not logged yet' : 'Eaten'}',
             child: Hover(
-              onTap: () => _entryMenu(d, e),
+              onTap: m.logged ? null : () => _entryMenu(d, e),
               builder: (_, h, _) => Opacity(
                 opacity: h ? .8 : 1,
                 child: Container(
@@ -882,8 +1160,8 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
                         CutText('${e.amount}${e.reason.isEmpty ? '' : ' · ${e.reason}'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
                       ]),
                     ),
-                    fdPill('Eaten', small: true),
-                    Text('${inNum(e.kcal)} kcal', style: AppText.s(12, W.w7, color: AppColors.text2)),
+                    if (!e.pending) fdPill('Eaten', small: true),
+                    Text('${inNum(e.kcal)} kcal', style: AppText.s(12, W.w7, color: e.pending ? AppColors.muted : AppColors.text2)),
                   ]),
                 ),
               ),
@@ -949,11 +1227,20 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
             ]),
           if (d.isToday && !changed)
             Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              FdMenuItem(first: true, icon: AppIcons.check, title: 'Ate it', sub: 'Counts ${inNum(e.kcal)} kcal today', onTap: () {
-                Navigator.of(ctx).pop();
-                showToast(context, '${e.name} is logged as eaten', sub: '${inNum(e.kcal)} kcal counts today', kind: ToastKind.ok);
-              }),
+              if (e.pending)
+                FdMenuItem(first: true, icon: AppIcons.check, title: 'Ate it', sub: 'Counts ${inNum(e.kcal)} kcal today', onTap: () => go(() async {
+                  if (!await _didEat(e.name, '${inNum(e.kcal)} kcal will count today.', rows: [('Will be logged', [(e.name, e.amount, e.kcal)])])) return;
+                  await c.ateEntry(e);
+                  if (mounted) showToast(context, '${e.name} is logged as eaten', sub: '${inNum(e.kcal)} kcal counts today', kind: ToastKind.ok);
+                }))
+              else if (!e.otherTime && !(d.meals.where((x) => x.name == e.mealName).firstOrNull?.logged ?? false))
+                // counted already, its meal not logged: back to waiting, like a planned food's Not logged yet
+                FdMenuItem(first: true, icon: AppIcons.undo, title: 'Not logged yet', sub: 'Stops counting ${inNum(e.kcal)} kcal · log it later', onTap: () => go(() async {
+                  await c.ateEntry(e, ate: false);
+                  if (mounted) showToast(context, '${e.name} not logged yet', sub: '${inNum(e.kcal)} kcal off today', kind: ToastKind.info);
+                })),
               FdMenuItem(
+                first: !e.pending && (e.otherTime || (d.meals.where((x) => x.name == e.mealName).firstOrNull?.logged ?? false)),
                 icon: AppIcons.plus,
                 title: 'Log more to ${e.mealName}',
                 sub: 'Search and add another food',
@@ -985,18 +1272,37 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
 
   /// "Did you eat this?" before anything is logged as eaten (a food, a meal, a meal with its photo). Shows the photo
   /// when there is one (Probid 2026-10-30).
-  Future<bool> _didEat(String what, String line, {String? photo}) async {
+  /// [rows]: what will be logged, one line a food (name, amount, kcal) with a heading each group; [photos]: the
+  /// pictures going with it (Probid 2026-11-03, A6).
+  Future<bool> _didEat(String what, String line, {String? photo, List<(String, List<(String, String, int)>)> rows = const [], List<String> photos = const []}) async {
+    final pics = photos.isNotEmpty ? photos : [?photo];
     final ok = await showAppModal<bool>(
       context,
       title: 'Did you eat this?',
       body: '$what · $line',
       icon: AppIcons.check,
-      content: photo == null
+      content: rows.isEmpty && pics.isEmpty
           ? null
-          : (_) => Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Center(child: FdPhoto(photo, name: what, size: 160)),
-            ),
+          : (_) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
+              for (final (head, foods) in rows)
+                if (foods.isNotEmpty)
+                  Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    Text(head.toUpperCase(), style: AppText.s(10.5, W.w8, color: AppColors.muted, ls: .5)),
+                    for (final (i, (n, amt, k)) in foods.indexed)
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line))),
+                        child: Row(spacing: 8, children: [
+                          Expanded(child: CutText('$n · $amt', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6))),
+                          Text('${inNum(k)} kcal', style: AppText.s(12, W.w7, color: AppColors.text2)),
+                        ]),
+                      ),
+                  ]),
+              if (pics.isNotEmpty) ...[
+                Text('${pics.length} ${pics.length == 1 ? 'PHOTO' : 'PHOTOS'}', style: AppText.s(10.5, W.w8, color: AppColors.muted, ls: .5)),
+                Wrap(spacing: 8, runSpacing: 8, children: [for (final p in pics) FdPhoto(p, name: what, size: pics.length == 1 ? 120 : 64)]),
+              ],
+            ]),
       // Phone sheet: the two buttons side by side, not stacked (Probid 2026-10-30).
       actions: (ctx) => ctx.isPhone
           ? [
@@ -1018,9 +1324,17 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
     // what this tap adds: the foods not decided yet (a fully skipped meal: all of them, "I ate it")
     final allSkipped = m.items.every((i) => i.state == 'skipped');
     final adds = m.items.where((i) => allSkipped || i.state.isEmpty).toList();
-    final kcal = adds.fold(0, (a, i) => a + i.kcal);
-    final prot = adds.fold(0.0, (a, i) => a + i.protein);
-    if (!await _didEat(m.name, '${inNum(kcal)} kcal will count today.', photo: photo) || !mounted) return;
+    final d0 = c.data!;
+    final extras = d0.log.where((e) => e.mealName == m.name && !e.otherTime && !(e.fromPlan && e.meal != null)).toList();
+    final waiting = extras.where((e) => e.pending).toList();
+    final kcal = adds.fold(0, (a, i) => a + i.kcal) + waiting.fold(0, (a, e) => a + e.kcal);
+    final prot = adds.fold(0.0, (a, i) => a + i.protein) + waiting.fold(0.0, (a, e) => a + e.protein);
+    final rows = [
+      ('Will be logged', [for (final i in adds) (i.name, i.amount, i.kcal), for (final e in waiting) (e.name, e.amount, e.kcal)]),
+      ('Already logged', [for (final i in m.items) if (i.state == 'eaten' && !adds.contains(i)) (i.name, i.amount, i.kcal)]),
+      ('Added outside the plan · already counted', [for (final e in extras) if (!e.pending) (e.name, e.amount, e.kcal)]),
+    ];
+    if (!await _didEat(m.name, '${inNum(kcal)} kcal will count ${d0.isToday ? 'today' : 'for ${fdDay(d0.date)}'}.', rows: rows, photos: photos ?? const []) || !mounted) return;
     final d = c.data!;
     final t = d.target;
     final nt = d.eaten[0] + kcal, np = d.eaten[1] + prot;
@@ -1028,7 +1342,9 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
     try {
       setState(() => _photos.remove(m.id));
       final f = c.meal(m, 'eat', {if (photos != null && photos.isNotEmpty) 'photos': photos});
-      if (all) {
+      if (!d.isToday) {
+        showToast(context, '${m.name} logged for ${fdDay(d.date)}', sub: '${inNum(kcal)} kcal · ${prot.round()} g protein', kind: ToastKind.ok, action: 'Undo', onAction: () => _undoEat(m.id));
+      } else if (all) {
         showToast(context, 'All meals logged for today',
             sub: '${inNum(nt)} kcal${t[0] > 0 && nt > t[0] ? ' · ${inNum(nt - t[0])} kcal over' : ''} · ${np.round()} g protein', kind: ToastKind.star, action: 'Undo', onAction: () => _undoEat(m.id));
       } else {
@@ -1075,6 +1391,15 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
     onPhoto: () => _changePhoto(m),
     onRemovePhoto: () => _removePhoto(m),
     onSkip: () async {
+      // asks first, with what it leaves out (Probid 2026-11-03, A4)
+      final left = m.items.where((i) => i.state != 'skipped').toList();
+      final ok = await confirmAction(context,
+          title: 'Skip ${m.name}?',
+          body: '${left.length} ${left.length == 1 ? 'food' : 'foods'} · ${inNum(left.fold(0, (a, i) => a + i.kcal))} kcal will not count today. You can still log it later with I ate it.',
+          confirm: 'Skip meal',
+          danger: true,
+          icon: AppIcons.close);
+      if (!ok || !mounted) return;
       try {
         final f = c.meal(m, 'skip');
         showToast(context, '${m.name} skipped', sub: 'Try to get your protein in the next meal', kind: ToastKind.warn, action: 'Undo', onAction: () {
