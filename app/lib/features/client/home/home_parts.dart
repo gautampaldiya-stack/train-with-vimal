@@ -225,8 +225,12 @@ class ChAvatar extends StatelessWidget {
 
 /// `ch-ring`: kcal ring, black arc on a grey track.
 class ChRing extends StatelessWidget {
-  const ChRing({super.key, required this.ratio, required this.value, required this.label, this.color = AppColors.text, this.valueColor, this.size = 92, this.valueSize = 18});
+  const ChRing({super.key, required this.ratio, required this.value, required this.label, this.color = AppColors.text, this.valueColor, this.size = 92, this.valueSize = 18, this.parts = const []});
   final double ratio;
+
+  /// Coloured parts of the arc, one after another (the Food ring: plan food, then food outside the plan). Their
+  /// ratios add up to [ratio]; empty = one arc in [color].
+  final List<(double, Color)> parts;
   final String value, label;
   final Color color;
   final Color? valueColor;
@@ -240,7 +244,7 @@ class ChRing extends StatelessWidget {
             child: TweenAnimationBuilder<double>(
               tween: Tween(end: ratio.clamp(0.0, 1.0)),
               duration: const Duration(milliseconds: 300),
-              builder: (_, v, _) => CustomPaint(painter: _RingPainter(v, color)),
+              builder: (_, v, _) => CustomPaint(painter: _RingPainter(v, color, parts)),
             ),
           ),
           Column(mainAxisSize: MainAxisSize.min, children: [
@@ -252,9 +256,10 @@ class ChRing extends StatelessWidget {
 }
 
 class _RingPainter extends CustomPainter {
-  _RingPainter(this.ratio, this.color);
+  _RingPainter(this.ratio, this.color, [this.parts = const []]);
   final double ratio;
   final Color color;
+  final List<(double, Color)> parts;
   @override
   void paint(Canvas canvas, Size size) {
     final k = size.width / 80;
@@ -265,11 +270,25 @@ class _RingPainter extends CustomPainter {
       ..strokeWidth = 8 * k
       ..strokeCap = StrokeCap.round;
     canvas.drawCircle(c, r, p..color = AppColors.barTrack);
-    if (ratio > 0) canvas.drawArc(Rect.fromCircle(center: c, radius: r), -math.pi / 2, 2 * math.pi * ratio, false, p..color = color);
+    if (ratio <= 0) return;
+    final rect = Rect.fromCircle(center: c, radius: r);
+    if (parts.isEmpty) {
+      canvas.drawArc(rect, -math.pi / 2, 2 * math.pi * ratio, false, p..color = color);
+      return;
+    }
+    // each part in turn, up to the animated [ratio]; a flat cap between parts so the colours meet cleanly
+    var at = 0.0;
+    for (final (i, (v, col)) in parts.indexed) {
+      final len = math.min(v, ratio - at);
+      if (len <= 0) break;
+      p.strokeCap = i == 0 || i == parts.length - 1 ? StrokeCap.round : StrokeCap.butt;
+      canvas.drawArc(rect, -math.pi / 2 + 2 * math.pi * at, 2 * math.pi * len, false, p..color = col);
+      at += len;
+    }
   }
 
   @override
-  bool shouldRepaint(_RingPainter old) => old.ratio != ratio || old.color != color;
+  bool shouldRepaint(_RingPainter old) => old.ratio != ratio || old.color != color || old.parts != parts;
 }
 
 /// Dashed 16px circle (`.ch-d.rest .ch-dm`).

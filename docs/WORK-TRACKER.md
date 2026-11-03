@@ -48,7 +48,43 @@ Is thread me Probid ki 31 Oct wali list ka kaam chal raha hai:
 - ✅ Log food list card: header (All foods / Recent / My foods + count), sab rows ek height, card ke kinare tak scroll.
 - ✅ Meal photos: card ke header se photo hataya (neeche photo bar me hai), har photo par "+1" badge hataya.
 - ✅ Swap sheet: planned food coach ki unit me ("1 cup"), pehle grams se pehli fit unit ("8 tbsp") ban jaati thi.
-- ✅ Log food "Add to Snack" error (3 Nov, screenshot): Snack 4:30 pm se pehle band tha, app generic "highlighted fields" dikhata tha. Ab band meal kabhi default target nahi banta, Add par "Snack opens at 4:30 pm" aata hai aur chune foods bache rehte hain; har error toast me server ka asli reason. *(commit baaki: agle commit ke saath)*
+- ✅ Log food "Add to Snack" error (3 Nov, screenshot): Snack 4:30 pm se pehle band tha, app generic "highlighted fields" dikhata tha. Ab band meal kabhi default target nahi banta, Add par "Snack opens at 4:30 pm" aata hai aur chune foods bache rehte hain; har error toast me server ka asli reason. *(commit `5d7c57a`)*
+
+### 3 Nov feedback (phone screenshot, 12:52)
+- ✅ Water card: "Log water" button normal size (poori width nahi).
+- ✅ Meal photos: koi bhi photo kholo to wahin se next / previous (swipe + teer), card, preview, photo bar aur "Did you eat" me.
+- ✅ Today's calories sheet: Eaten / Left / Still ahead / Target / Protein / Carbs / Fat, ek row me 2, koi box nahi, beech me patli vertical line aur rows ke beech line; har value ke saath ek line ka matlab.
+- ✅ This week card: chune din ki line ek hi line me (wrap/overflow nahi, chhoti ho jaati hai); neeche "This week" bold ke saath avg.
+- ✅ Toast + bottom sheet: toast sheet ke asli top (screen par jahan sheet hai) ke theek upar, sheet ke title/buttons par nahi.
+- ✅ Kal ka meal: aaj jaise saare options (photo ke saath Mark as eaten, Edit portions, meal menu, Log something different / Ate something else kal ke din me).
+- ✅ Off-plan food add karte hi Eaten (Probid ne chuna 3 Nov): pending / "Ate it" / "Not logged yet" hata diya (migration 0011 field hatata hai).
+- ✅ Water bhi meals jaisa: sirf aaj aur kal log hota hai, baaki din sirf dekhne ke liye (app + server).
+- ✅ Week card ka naam chune din ke hafte se: "This week" / "Last week" / "Week of 19 Oct"; neeche avg wali line me bhi wahi naam.
+- ✅ Today's calories ring me rang: plan ka khana neela, off-plan amber (pehle sirf ek rang).
+
+- ✅ Mark as eaten (phone): sheet me meal ka naam, kitne foods aur kcal, phir 2 saaf options (photo ke saath / bina photo, har ek ki line). "Did you eat this?" me har group apne rang me (Will be logged neela, Already logged hara, Added outside the plan amber), bold heading + kcal, neeche bold Meal total.
+- ✅ App icon: safed background par TWV logo (neela gola), pehle poora neela tha (Android adaptive icon regenerate).
+
+- ✅ Edit portions (logged meal): sheet seedha khulti hai; "Change what is logged?" sirf Save par aur tabhi jab kuch badla ho (pehle kholte hi poochta tha).
+
+- ✅ Water card: 3-dot ki jagah History (ghadi) icon, tap = seedha History. History: upar is hafte ka saar (avg/din, goal days, kul), phir har hafta alag card me (naam + tareekh), har din ka bar, upar litre, target pe hara, aaj ka din neela.
+
+- ✅ "Did you eat this?": har food ke neeche protein · carbs · fat, aur Meal total (hamesha) me kcal ke saath kul protein · carbs · fat.
+
+- ✅ Today's calories sheet me halka rang: har value ke aage rang ka dot (ring/bars jaisa), Eaten neela, Left hara (Over amber), Eaten aur Protein/Carbs/Fat ke neeche patla rangeen bar.
+
+- ✅ "Preview this meal" behtar: upar bada kcal (plan se +/-), Protein · Carbs · Fat dividers ke saath; phir rangeen groups (Eaten from your plan hara, Skipped grey, Added outside the plan amber) har food ke macros ke saath; photos; Edit portion kal ke meal par bhi.
+
+- ✅ "Swapped from …" ab apni alag line me (meal card aur preview), Edited badge ke paas kat ke "…" nahi hota.
+
+- ✅ Ek tap = ek kaam (poore app me): koi bhi sheet, modal, menu ya photo viewer 2 baar tap par 2 baar nahi khulta; buttons aur icon buttons double tap par ek hi baar chalte hain. Steppers (+/−) pehle jaise baar baar chalte hain. Rule docs/rules me.
+
+- ✅ Log food: logged meal (jaise Breakfast) me food add karne se pehle confirm "Breakfast is already logged — Add 2 foods to it? +268 kcal" (Other time par nahi).
+
+- ✅ Log food: search ke neeche "Try: paneer · dal · roti · rajma" chips hata diye.
+- ✅ Log food: Create custom food save karne par crash ("TextEditingController used after being disposed") fix; sheet poori band hone ke baad hi fields free hote hain.
+
+Rule (Probid 3 Nov): aise chhote naye changes bhi yahan likhne hain, chahe REMAINING list me na hon.
 
 Probid ka rule (2 Nov): abhi screenshot nahi lena, mobile par try nahi karna. Sirf code, `flutter analyze` aur backend tests; test Probid karenge.
 
@@ -99,7 +135,7 @@ Probid ka rule (2 Nov): abhi screenshot nahi lena, mobile par try nahi karna. Si
    * ✅ Today's calories card me rangeen bar: Plan, Off-plan, Skipped.
    * ✅ Off-plan foods meal me normal foods jaise, "Off-plan" tag ke saath.
    * ✅ Off-plan portion edit aur entry delete.
-   * ✅ Log Food se aaj ke unlogged meal me add kiya food auto-log nahi hota ("pending", gina nahi jaata). "Ate it" (Did you eat this? ke saath) ya meal ka Mark as eaten se gina jaata hai. Gina hua food "Not logged yet" se wapas. "Ate something else" (Other time) aur pichle din wala seedha gina jaata hai.
+   * ✅ Badla (3 Nov, Probid): Log Food se add kiya food turant Eaten aur gina jaata hai (client wahi add karti hai jo kha chuki). Pehle wala "pending / Ate it" hata diya.
    * ✅ Meal card: extra foods ka +kcal sirf gine hue foods ka.
 6. ✅ Mark as eaten confirmation: Will be logged / Already logged / Added outside the plan, aur photos.
 7. ✅ Logged meal preview: "Preview this meal" (Logged · Undo ke saath), foods tap nahi hote, preview me foods, totals, photos, "Edit portion" → sheet me "Edit & Log" aur "Cancel".
@@ -417,6 +453,13 @@ Probid ka rule (2 Nov): abhi screenshot nahi lena, mobile par try nahi karna. Si
    * Edit portion.
    * Rows meal ke andar ke foods jaisi line-wise list (stacked cards nahi). *(`4095a7d`)*
 3. ✅ Photos: Mark as eaten se pehle client ek ke baad ek kai images same card me add kar sake (4 tak, har ek remove ho sakti hai). *(push ho gaya)*
+
+### T. History page (Probid 3 Nov, sabse last me)
+
+1. ⬜ History page par har cheez ka saaf sheet preview. Tap karne par bottom sheet me poori detail (jaise Food ka "Preview this meal"):
+   * Meals: foods, portions, macros, photos.
+   * Workout: exercises, sets, volume, time.
+   * Supplements aur habits: kya kiya, kab, kitna.
 
 ---
 

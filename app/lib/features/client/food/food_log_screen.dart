@@ -24,11 +24,14 @@ import 'food_sheets.dart' show fdError;
 /// foods and yours, + adds one to the picked meal at once (through the outbox, so it works offline). Quick add
 /// takes just the numbers; Create custom food saves one to My foods. Every number can be typed.
 class FoodLogScreen extends StatefulWidget {
-  const FoodLogScreen({super.key, this.meal, this.at});
+  const FoodLogScreen({super.key, this.meal, this.at, this.date});
   final String? meal;
 
   /// "Other time" (`?meal=Evening chai&at=16:30`): eaten outside the meal times.
   final String? at;
+
+  /// `?date=` yesterday: foods go to yesterday's meals (Probid 2026-11-03). Anything else = today.
+  final String? date;
   @override
   State<FoodLogScreen> createState() => _FoodLogScreenState();
 }
@@ -112,6 +115,8 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
       _at = t.isAfter(n) ? n : t;
       _meal = (widget.meal ?? '').trim().isEmpty ? 'Other time' : widget.meal;
     }
+    final on = DateTime.tryParse(widget.date ?? '');
+    if (on != null && DateUtils0.same(on, day.today.subtract(const Duration(days: 1)))) day.startOn(on);
     day.addListener(_onDay);
     day.start();
     _search();
@@ -256,7 +261,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
       'meal_name': m,
       'off_plan': _offNow,
       'reason': _offNow ? _why : '',
-      'date': ymd(day.today),
+      'date': ymd(day.day),
       if (at != null) ...{'other_time': true, 'logged_at': at.toUtc().toIso8601String()},
       ...body,
     };
@@ -309,6 +314,16 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
       // every meal still locked: say when, keep the picked foods
       showToast(context, '$m ${_mealOf(m)!.opensLine.toLowerCase()}', sub: 'Your foods stay picked. Add them then, or pick Other time.', kind: ToastKind.info);
       return;
+    }
+    // a meal already logged: ask before adding to it (Probid 2026-11-03)
+    if (_at == null && (_mealOf(m)?.logged ?? false)) {
+      final n = picks.length, k = picks.fold(0, (a, x) => a + x.kcal);
+      final ok = await confirmAction(context,
+          title: '$m is already logged',
+          body: 'Add ${n == 1 ? picks.first.name : '$n foods'} to it? +${inNum(k)} kcal will count${DateUtils0.same(day.day, day.today) ? ' today' : ''}.',
+          confirm: 'Add to $m',
+          icon: AppIcons.plus);
+      if (!ok || !mounted) return;
     }
     final done = <FEntry>[];
     try {
@@ -376,7 +391,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     }
     if (toast && mounted) {
       showToast(context, '${e.name} removed', sub: 'Taken out of ${e.mealName}', kind: ToastKind.del, action: 'Undo', onAction: () {
-        Services.outbox.enqueue('POST', 'me/food-log/', {...e.again(), 'date': ymd(day.today)}, tag: 'food:log:add').then((_) => day.load(), onError: (_) {});
+        Services.outbox.enqueue('POST', 'me/food-log/', {...e.again(), 'date': ymd(day.day)}, tag: 'food:log:add').then((_) => day.load(), onError: (_) {});
       });
     }
     await day.load();
@@ -524,7 +539,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     Padding(padding: const EdgeInsets.only(top: 2), child: CaIconBtn(AppIcons.chevronLeft, tooltip: 'Back to meal plan', onTap: _leave)),
     Expanded(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Log food', style: AppText.s(12, W.w6, color: AppColors.muted)),
+        Text(DateUtils0.same(day.day, day.today) ? 'Log food' : 'Log food · yesterday, ${fdDay(day.day)}', style: AppText.s(12, W.w6, color: AppColors.muted)),
         Builder(
           builder: (bc) => Semantics(
             button: true,
@@ -745,14 +760,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
           if (q.isNotEmpty) CaIconBtn(AppIcons.close, tooltip: 'Clear search', onTap: () => _setQuery('')),
         ]),
       ),
-      if (q.isEmpty)
-        Pull(
-          top: 4,
-          child: Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 6, runSpacing: 6, children: [
-            Text('Try', style: AppText.s(12, W.w6, color: AppColors.muted)),
-            for (final t in const ['paneer', 'dal', 'roti', 'rajma']) FdChip(t, height: 26, onTap: () => _setQuery(t)),
-          ]),
-        ),
+      // no "Try" suggestion chips under the search (Probid 2026-11-03)
       TwoTabs(
         labels: const ['All', 'Recent', 'My foods'],
         index: const ['All', 'Recent', 'My foods'].indexOf(_tab),
@@ -1168,8 +1176,16 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
         ]),
       ],
     ).whenComplete(() {
-      name.dispose();
-      serving.dispose();
+      // The sheet's future completes when the route pops, before its exit
+      // animation ends; _search() rebuilds the closing sheet meanwhile. So the
+      // fields are freed only after the sheet has fully left the screen.
+      Future<void>.delayed(const Duration(seconds: 1), () {
+        name.dispose();
+        serving.dispose();
+        v.dispose();
+        err.dispose();
+        busy.dispose();
+      });
     });
   }
 }

@@ -42,6 +42,9 @@ class FoodController extends ChangeNotifier {
   int _seq = 0;
 
   DateTime get day => _day ?? today;
+
+  /// Opens on [d] instead of today (Log food for yesterday), before [start].
+  void startOn(DateTime d) => _day = DateUtils0.dateOnly(d);
   DateTime get today => DateUtils0.dateOnly(DateTime.now());
 
   @override
@@ -203,13 +206,6 @@ class FoodController extends ChangeNotifier {
   /// Edit portion on a food added outside the plan: its new amount in its own unit.
   Future<void> editEntry(FEntry e, double q) async {
     await Services.outbox.enqueue('PATCH', 'me/food-log/${e.id}/', {'quantity': q}, tag: 'food:day:entry');
-    await load();
-  }
-
-  /// Ate it on a food added outside the plan: it counts from now (A5).
-  /// [ate] false: Not logged yet, back to waiting for Ate it / Mark as eaten.
-  Future<void> ateEntry(FEntry e, {bool ate = true}) async {
-    await Services.outbox.enqueue('PATCH', 'me/food-log/${e.id}/', {'pending': !ate}, tag: 'food:day:entry');
     await load();
   }
 
@@ -501,9 +497,6 @@ class FEntry {
   double get fat => _n(j['fat']);
   String get source => '${j['source']}';
   bool get fromPlan => source == 'plan';
-
-  /// Added to a planned meal that is not logged yet: it waits for Ate it / the meal's Mark as eaten (A5).
-  bool get pending => j['pending'] == true;
 
   /// Log food → Add to → Other time: eaten outside the meal times; [mealName] is the name the client gave.
   bool get otherTime => j['other_time'] == true;

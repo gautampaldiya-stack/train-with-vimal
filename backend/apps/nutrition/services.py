@@ -321,9 +321,6 @@ def mark_eaten(client, meal, day, photo=None):
     if items and all(state.items.get(str(it.id)) == "skipped" for it in items):  # all skipped one by one: eat all
         state.items = {str(it.id): "eaten" for it in items}
     _write_entries(client, day, meal, state, items)
-    # foods she added to this meal from Log food count now too
-    FoodLogEntry.everything.filter(client=client, date=day, meal_name=meal.name, other_time=False,
-                                   pending=True).update(pending=False)
     state.status = MealDayState.Status.LOGGED
     state.option = opt
     state.logged_at = timezone.now()
@@ -337,10 +334,6 @@ def unmark(client, meal, day):
     state = MealDayState.objects.filter(client=client, date=day, meal=meal).first()
     if state:
         _plan_entries(client, day, meal).delete()
-        # foods added to it from Log food wait again for Ate it / Mark as eaten
-        FoodLogEntry.everything.filter(client=client, date=day, meal_name=meal.name, other_time=False,
-                                       meal_item__isnull=True).exclude(source=FoodLogEntry.Source.PLAN, meal_id=meal.id) \
-            .update(pending=True)
         state.status = ""
         state.items = {}
         state.logged_at = None
@@ -415,23 +408,6 @@ def _check_macros(name, kcal, protein, carbs, fat):
 
 
 def log_food(client, *, meal_name, food=None, quantity=1, unit=None, name="", kcal=None, protein=0, carbs=0,
-             fat=0, day=None, off_plan=False, reason="", other_time=False):
-    e = _log_food(client, meal_name=meal_name, food=food, quantity=quantity, unit=unit, name=name, kcal=kcal,
-                  protein=protein, carbs=carbs, fat=fat, day=day, off_plan=off_plan, reason=reason,
-                  other_time=other_time)
-    # Added today to a planned meal that is not logged yet: it waits for Ate it / Mark as eaten (Probid A5).
-    # A past day is filled in after the fact, so it counts at once.
-    if not other_time and e.date == timezone.localdate():
-        mp = _active_plan(client, e.date)
-        meal = next((m for m in meals_on(mp.followed, e.date.weekday()) if m.name == meal_name), None) if mp else None
-        if meal is not None and not MealDayState.objects.filter(client=client, date=e.date, meal=meal,
-                                                                 status=MealDayState.Status.LOGGED).exists():
-            e.pending = True
-            e.save(update_fields=["pending"])
-    return e
-
-
-def _log_food(client, *, meal_name, food=None, quantity=1, unit=None, name="", kcal=None, protein=0, carbs=0,
               fat=0, day=None, off_plan=False, reason="", other_time=False):
     """[off_plan]: the client ticked "Off-plan meal" (party, eating out), so the entry is marked for the coach.
     [other_time]: eaten outside the meal times ("Other time" in Add to); always off-plan, kept out of meal cards."""
@@ -512,7 +488,7 @@ def copy_yesterday(client, day=None):
 def undo_copy(client, ids, meals, day=None):
     """Undo of Copy yesterday: removes those entries and un-logs the plan meals the copy logged."""
     day = day or timezone.localdate()
-    n, _ = FoodLogEntry.everything.filter(client=client, date=day, id__in=ids).delete()
+    n, _ = FoodLogEntry.objects.filter(client=client, date=day, id__in=ids).delete()
     for st in MealDayState.objects.filter(client=client, date=day, meal_id__in=meals,
                                           status=MealDayState.Status.LOGGED):
         if not FoodLogEntry.objects.filter(client=client, date=day, meal_id=st.meal_id,
@@ -684,8 +660,7 @@ def day_view(client, day, request=None):
     plan = mp.followed if mp else None
     states = {s.meal_id: s for s in MealDayState.objects.filter(client=client, date=day).select_related("option")
               .prefetch_related("more_photos")}
-    listed = list(FoodLogEntry.everything.filter(client=client, date=day).order_by("logged_at"))
-    entries = [e for e in listed if not e.pending]  # totals: eaten food only
+    entries = list(FoodLogEntry.objects.filter(client=client, date=day).order_by("logged_at"))
     meals = []
     planned_rows = []  # every planned food of the day at its planned portion (no swap): the day's target
     next_marked = False
@@ -798,7 +773,7 @@ def day_view(client, day, request=None):
                  "carbs": show_g(e.carbs), "fat": show_g(e.fat), "source": e.source, "food": e.food_id,
                  "grams": float(e.grams) if e.grams is not None else None, "reason": e.reason,
                  "photo": photos.get(e.meal_id) if e.source == "plan" else None,
-                 "swapped_from": e.swapped_from, "other_time": e.other_time, "pending": e.pending} for e in listed],
+                 "swapped_from": e.swapped_from, "other_time": e.other_time} for e in entries],
         "water": water_card(client, day, water.ml if water else 0, plan),
         "week": week,
         "strip": strip,
@@ -893,7 +868,7 @@ def _move_days(client, maps, weekday=None):
         st.option_id = om.get(st.option_id) if st.option_id else None
         st.portions, st.swaps = _rekey(st.portions, im), _rekey(st.swaps, im)
         st.save(update_fields=["meal", "option", "portions", "swaps", "updated_at"])
-    for e in FoodLogEntry.everything.filter(client=client, date__gte=today, meal_id__in=list(mm)):
+    for e in FoodLogEntry.objects.filter(client=client, date__gte=today, meal_id__in=list(mm)):
         if weekday is None or e.date.weekday() == weekday:
             e.meal_id = mm[e.meal_id]
             e.save(update_fields=["meal", "updated_at"])
@@ -914,7 +889,7 @@ def _carry_by_name(client, old_meals, plan):
         was = st.meal_id
         st.meal_id, st.option_id, st.portions, st.swaps = new, None, {}, {}
         st.save(update_fields=["meal", "option", "portions", "swaps", "updated_at"])
-        FoodLogEntry.everything.filter(client=client, date=st.date, meal_id=was).update(meal_id=new)
+        FoodLogEntry.objects.filter(client=client, date=st.date, meal_id=was).update(meal_id=new)
 
 
 def _translate(meals_data, maps):

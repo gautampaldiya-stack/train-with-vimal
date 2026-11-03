@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -57,10 +58,13 @@ Future<String?> pickMealPhoto(BuildContext context, String meal) async {
 /// A square meal photo that opens full size. With [all] (a meal's photos, up to 4) it shows "+N" for the others
 /// and the viewer pages through every one.
 class FdPhoto extends StatelessWidget {
-  const FdPhoto(this.src, {super.key, required this.name, this.size = 34, this.all = const []});
+  const FdPhoto(this.src, {super.key, required this.name, this.size = 34, this.all = const [], this.group = const []});
   final String src, name;
   final double size;
   final List<String> all;
+
+  /// The photos it sits with (no badge): the viewer opens on this one and swipes to the others (Probid 2026-11-03).
+  final List<String> group;
   @override
   Widget build(BuildContext context) {
     final img = photoImage(src);
@@ -69,7 +73,10 @@ class FdPhoto extends StatelessWidget {
       button: true,
       label: more > 0 ? 'Open $name photos, ${all.length}' : 'Open $name photo',
       child: Hover(
-        onTap: () => showPhotoViewer(context, [for (final p in all.isEmpty ? [src] : all) (name, p)], 0),
+        onTap: () {
+          final list = group.isNotEmpty ? group : (all.isEmpty ? [src] : all);
+          showPhotoViewer(context, [for (final p in list) (name, p)], group.isNotEmpty ? math.max(0, group.indexOf(src)) : 0);
+        },
         builder: (_, h, _) => Container(
           width: size,
           height: size,
@@ -136,29 +143,84 @@ Future<void> showCaloriesSheet(BuildContext context, FoodController c) {
   // eaten it equals Left (it read 1,960 against 1,958 from per-food rounding, Probid 2026-11-03)
   final ahead = d.meals.where((m) => m.open).fold(0.0, (a, m) => a + m.items.where((i) => i.state.isEmpty).fold(0.0, (b, i) => b + i.kcalExact)).round();
   String g(double v, double tg) => '${v.round()} / ${tg.round()} g';
-  final rows = future
-      ? [('Planned', '${inNum(p[0])} kcal'), ('Protein', g(p[1], t[1])), ('Carbs', g(p[2], t[2])), ('Fat', g(p[3], t[3]))]
-      : [
-          ('Eaten', '${inNum(e[0])} kcal'),
-          (d.isToday ? (over ? 'Over' : 'Left') : 'Against target', '${inNum(left.abs())} kcal${d.isToday ? '' : (over ? ' over' : ' under')}'),
-          ('Still ahead', d.isToday ? '${inNum(ahead)} kcal' : '—'),
-          ('Protein', g(e[1], t[1])),
-          ('Carbs', g(e[2], t[2])),
-          ('Fat', g(e[3], t[3])),
-        ];
+  // Two tiles a row (Probid 2026-11-03): name, the number, one short line on what it means.
+  double r(double v, double tg) => tg > 0 ? (v / tg).clamp(0.0, 1.0) : 0;
+  // (name, value, one-line meaning, colour of its dot / bar, value colour, bar ratio or null) — a little colour,
+  // matching the card's ring and bars (Probid 2026-11-03)
+  final tiles = <(String, String, String, Color, Color, double?)>[
+    if (future) ...[
+      ('Planned', '${inNum(p[0])} kcal', 'Foods in this day’s plan', AppColors.accent, AppColors.accentText, r(p[0], t[0])),
+      ('Target', '${inNum(t[0])} kcal', 'Set by ${d.coach}', AppColors.line2, AppColors.text, null),
+      ('Protein', g(p[1], t[1]), 'Planned / target', AppColors.accent, AppColors.text, r(p[1], t[1])),
+      ('Carbs', g(p[2], t[2]), 'Planned / target', AppColors.nvCarbs, AppColors.text, r(p[2], t[2])),
+      ('Fat', g(p[3], t[3]), 'Planned / target', AppColors.nvFat, AppColors.text, r(p[3], t[3])),
+    ] else ...[
+      ('Eaten', '${inNum(e[0])} kcal', 'Everything logged ${d.isToday ? 'today' : 'that day'}', AppColors.accent, AppColors.accentText, r(e[0], t[0])),
+      over
+          ? ('Over', '${inNum(left.abs())} kcal', 'Eaten above your target', AppColors.amberSolid, AppColors.amberText, null)
+          : (d.isToday ? 'Left' : 'Under', '${inNum(left.abs())} kcal', 'Target minus eaten', AppColors.okSolid, AppColors.okText, null),
+      if (d.isToday) ('Still ahead', '${inNum(ahead)} kcal', 'Planned foods not logged or skipped yet', AppColors.warm, AppColors.text, null),
+      ('Target', '${inNum(t[0])} kcal', 'Set by ${d.coach}', AppColors.line2, AppColors.text, null),
+      ('Protein', g(e[1], t[1]), 'Eaten / target', AppColors.accent, AppColors.text, r(e[1], t[1])),
+      ('Carbs', g(e[2], t[2]), 'Eaten / target', AppColors.nvCarbs, AppColors.text, r(e[2], t[2])),
+      ('Fat', g(e[3], t[3]), 'Eaten / target', AppColors.nvFat, AppColors.text, r(e[3], t[3])),
+    ],
+  ];
+  // no boxes (Probid 2026-11-03): plain cells, a line between the two of a row and between rows
+  Widget tile((String, String, String, Color, Color, double?) x) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+          Row(spacing: 6, children: [
+            Container(width: 8, height: 8, decoration: BoxDecoration(color: x.$4, shape: BoxShape.circle)),
+            Text(x.$1.toUpperCase(), style: AppText.s(10.5, W.w8, color: AppColors.muted, ls: .5)),
+          ]),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(x.$2, maxLines: 1, style: AppText.s(17, W.w8, color: x.$5)),
+          ),
+          if (x.$6 != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(99),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 4,
+                  child: Stack(children: [
+                    const Positioned.fill(child: ColoredBox(color: AppColors.barTrack)),
+                    FractionallySizedBox(widthFactor: x.$6!, heightFactor: 1, child: ColoredBox(color: x.$4)),
+                  ]),
+                ),
+              ),
+            ),
+          Text(x.$3, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w5, color: AppColors.muted)),
+        ]),
+      );
   return showAppSheet(
     context,
     title: calHead(d, c.today),
     sub: 'Target ${inNum(t[0])} kcal · set by ${d.coach}',
-    webWidth: 440,
+    webWidth: 460,
     footerStretch: true,
-    builder: (_) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
-      fdKv(rows),
-      // what each line means (Probid 2026-11-03, A2)
+    builder: (_) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
+      Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        for (var i = 0; i < tiles.length; i += 2)
+          Container(
+            decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line))),
+            child: IntrinsicHeight(
+              child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Expanded(child: tile(tiles[i])),
+                const Padding(padding: EdgeInsets.symmetric(vertical: 10), child: VerticalDivider(width: 21, thickness: 1, color: AppColors.line)),
+                Expanded(child: i + 1 < tiles.length ? tile(tiles[i + 1]) : const SizedBox.shrink()),
+              ]),
+            ),
+          ),
+      ]),
+      // what the numbers mean, in plain words (Probid A2, 2026-11-03)
       if (!future && d.isToday)
-        fdCap('Left: your target minus what you ate. Still ahead: the foods in today’s meals you have not logged or skipped yet. '
-            'They match until you skip a food, add one off the plan or change a portion.'),
-      fdCap('Target: the foods your coach put in today’s plan. Workout calories are not added back.'),
+        fdCap('Left and Still ahead are the same until you skip a food, add a food outside the plan or change a portion.'),
+      fdCap('Your target comes from the plan your coach set. Calories burned in workouts are not added back.'),
     ]),
   );
 }
@@ -191,7 +253,7 @@ Future<void> showMealMenu(
         if (swap) FdMenuItem(first: true, icon: AppIcons.swap, title: 'Swap a food', sub: 'Similar macros, different dish', onTap: () => go(onSwap)),
         FdMenuItem(first: !swap, icon: AppIcons.edit, title: 'Edit portions', sub: 'Change grams, pieces or katori', onTap: () => go(onEdit)),
         // A logged meal keeps its photos as they are: no add / change / remove after logging (Probid A3).
-        FdMenuItem(icon: AppIcons.search, title: 'Log something different', sub: 'Ate outside the plan? No stress', onTap: () => go(() => context.go('/food/log?meal=${Uri.encodeComponent(m.name)}'))),
+        FdMenuItem(icon: AppIcons.search, title: 'Log something different', sub: 'Ate outside the plan? No stress', onTap: () => go(() => context.go('/food/log?meal=${Uri.encodeComponent(m.name)}${c.data!.isYesterday ? '&date=${ymd(c.data!.date)}' : ''}'))),
         if (!m.skipped) FdMenuItem(icon: AppIcons.close, title: 'Skip meal', sub: 'It will not count towards today', danger: true, onTap: () => go(onSkip)),
       ]);
     },
@@ -483,6 +545,20 @@ Future<void> showPortionsSheet(BuildContext context, FoodController c, FMeal m, 
           child: CaButton(logged ? 'Edit & Log' : 'Save portions', onPressed: () async {
             final before = {for (final i in m.items) '${i.item}': i.quantity};
             final n = now();
+            final changed = m.items.any((i) => q.value[i.item] != i.quantity);
+            if (!changed) {
+              Navigator.of(ctx).pop();
+              return;
+            }
+            // a logged food changes what counts: ask at Save, not when the sheet opens (Probid 2026-11-03)
+            if (m.anyEaten) {
+              final ok = await confirmAction(ctx,
+                  title: 'Change what is logged?',
+                  body: '${m.name} is logged. It will count ${inNum(n[0])} kcal instead of ${inNum(m.kcal)} kcal.',
+                  confirm: 'Change it',
+                  icon: AppIcons.edit);
+              if (!ok || !ctx.mounted) return;
+            }
             Navigator.of(ctx).pop();
             try {
               await c.meal(m, 'portions', {'portions': {for (final e in q.value.entries) '${e.key}': e.value}});

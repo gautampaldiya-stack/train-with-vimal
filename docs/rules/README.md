@@ -14,6 +14,7 @@
 5. Validate on the server even if the app already validated.
 6. Writes from the client app send an `Idempotency-Key`.
 7. Keep docs in sync in the same commit (`docs/changes.md` for anything that changes a decision).
+- One tap = one action (Probid 2026-11-03). `showAppSheet` / `showAppModal` / `showAppDrawer` / `showAppMenu` / `showPhotoViewer` ignore a second open within 450 ms (`OpenGuard`), and `CaButton` / `CaIconBtn` ignore a second tap within 400 ms. Only steppers (+/−) and similar repeat on purpose; new open helpers must call `OpenGuard.pass()`.
 
 ## Git
 1. Daily work on `working`. Merge to `develop` for testing. `main` = production.

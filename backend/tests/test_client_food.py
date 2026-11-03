@@ -52,7 +52,7 @@ def test_off_plan_entry_keeps_its_reason_and_undo_by_unit_name(client_user):
                                                   "unit_name": unit.name, "off_plan": True, "reason": "Party"},
                          format="json")
     assert r.status_code == 201, r.content
-    e = FoodLogEntry.everything.get(id=r.json()["id"])
+    e = FoodLogEntry.objects.get(id=r.json()["id"])
     assert e.source == "off_plan" and e.reason == "Party" and e.unit_name == unit.name
     r = client_user.post("/api/v1/me/food-log/", {"meal_name": "Snack", "kcal": 200, "off_plan": True,
                                                   "reason": "Ate out"}, format="json")
@@ -139,29 +139,6 @@ def test_edit_portion_of_a_food_outside_the_plan(client_user):
     assert client_user.patch(f"/api/v1/me/food-log/{e['id']}/", {"quantity": 0}, format="json").status_code == 400
 
 
-def test_food_added_to_an_open_meal_waits_for_ate_it(client_user):
-    """Probid 2026-11-03 (A5): a food added from Log food to a meal not logged yet is not counted until Ate it or
-    Mark as eaten."""
-    import datetime
-
-    from apps.nutrition.models import Meal
-
-    m = next(x for x in _day(client_user)["meals"] if x["pill"] not in ("logged", "skipped"))
-    Meal.objects.filter(id=m["id"]).update(time=datetime.time(0, 30))  # open now, whatever the hour
-    food = Food.objects.filter(units__isnull=False, kcal__gt=0).first()
-    before = _day(client_user)["macros"]["kcal"]
-    r = client_user.post("/api/v1/me/food-log/", {"meal_name": m["name"], "food": str(food.id), "quantity": 1,
-                                                  "unit": food.units.first().id}, format="json")
-    assert r.status_code == 201, r.content
-    e = r.json()
-    d = _day(client_user)
-    assert next(x for x in d["log"] if x["id"] == e["id"])["pending"] is True
-    assert d["macros"]["kcal"] == before  # not counted yet
-    r = client_user.patch(f"/api/v1/me/food-log/{e['id']}/", {"pending": False}, format="json")
-    assert r.status_code == 200 and r.json()["pending"] is False
-    assert _day(client_user)["macros"]["kcal"] > before
-
-
 @pytest.mark.django_db
 def test_water_card_needs_the_water_habit_and_shows_its_history(client_user):
     """A10: the water card follows the coach's water habit (its target, not the client's), a typed total sets
@@ -181,6 +158,8 @@ def test_water_card_needs_the_water_habit_and_shows_its_history(client_user):
     h = client_user.get("/api/v1/me/food-log/water-history/?weeks=2").json()
     assert len(h["weeks"]) == 2 and len(h["weeks"][0]["days"]) == 7
     assert next(d for d in h["weeks"][0]["days"] if d["date"] == today.isoformat())["ml"] == 1750
+    old = (today - timedelta(days=2)).isoformat()  # like meals: today and yesterday only
+    assert client_user.post("/api/v1/me/food-log/water/", {"ml": 250, "date": old}, format="json").status_code == 400
     HabitAssignment.objects.filter(client__email="riya@example.com", habit__icon="water").update(active=False)
     assert client_user.get(f"/api/v1/me/food/?date={today}").json()["water"]["assigned"] is False
     r = client_user.post("/api/v1/me/food-log/water/", {"ml": 250}, format="json")

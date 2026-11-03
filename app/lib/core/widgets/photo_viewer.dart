@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+
+import 'overlays.dart' show OpenGuard;
 import 'package:flutter/services.dart';
 
 import '../icons/app_icons.dart';
@@ -87,13 +89,16 @@ Widget photoThumbs(List<(String, String)> photos, {double size = 56}) => Wrap(
 );
 
 /// Full-size photos on a dark screen: swipe or use the arrows, pinch to zoom, Esc or × to close.
-Future<void> showPhotoViewer(BuildContext context, List<(String, String)> photos, int start) => showGeneralDialog(
+Future<void> showPhotoViewer(BuildContext context, List<(String, String)> photos, int start) async {
+  if (!OpenGuard.pass()) return; // one tap, one viewer
+  await showGeneralDialog(
   context: context,
   barrierDismissible: true,
   barrierLabel: 'Close',
   barrierColor: AppColors.viewerBg,
   pageBuilder: (ctx, _, _) => _Viewer(photos: photos, start: start),
 );
+}
 
 class _Viewer extends StatefulWidget {
   const _Viewer({required this.photos, required this.start});

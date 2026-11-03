@@ -34,9 +34,46 @@ class MenuEntry {
   final String? end;
 }
 
+/// One tap opens one sheet, dialog, menu or photo viewer (Probid 2026-11-03: two taps on Water history stacked
+/// two sheets). A second open within [_gap] of the last one is ignored; sheets opened on purpose from another sheet
+/// come later than that.
+class OpenGuard {
+  static DateTime? _last;
+  static bool _skipNext = false;
+  static const _gap = Duration(milliseconds: 450);
+
+  /// True when this open may go ahead.
+  static bool pass() {
+    if (_skipNext) {
+      _skipNext = false;
+      return true;
+    }
+    final now = DateTime.now();
+    if (_last != null && now.difference(_last!) < _gap) return false;
+    _last = now;
+    return true;
+  }
+
+  /// The next [pass] is the same open (showAppModal on a phone opens a sheet).
+  static void same() => _skipNext = true;
+
+  /// One tap of a button: false for a second tap right after the first (double tap).
+  static DateTime? _tap;
+  static bool tap() {
+    final now = DateTime.now();
+    if (_tap != null && now.difference(_tap!) < const Duration(milliseconds: 400)) return false;
+    _tap = now;
+    return true;
+  }
+}
+
 /// Opens `.menu` anchored under [anchor]: white, radius 12, padding 6, items 34 high, picked item has a tick.
 Future<void> showAppMenu(BuildContext anchor, List<MenuEntry> entries, {double width = 200, bool alignRight = true}) async {
-  if (anchor.isPhone) return showActionSheet(anchor, entries);
+  if (!OpenGuard.pass()) return;
+  if (anchor.isPhone) {
+    OpenGuard.same();
+    return showActionSheet(anchor, entries);
+  }
   final box = anchor.findRenderObject() as RenderBox;
   final overlay = Overlay.of(anchor, rootOverlay: true).context.findRenderObject() as RenderBox;
   final topLeft = box.localToGlobal(Offset.zero, ancestor: overlay);
@@ -196,7 +233,9 @@ Future<T?> showAppModal<T>(
   List<Widget> Function(BuildContext)? actions,
   Widget? lead,
 }) {
+  if (!OpenGuard.pass()) return Future.value(null);
   if (context.isPhone) {
+    OpenGuard.same();
     return showAppSheet<T>(context, title: title, sub: body, builder: content ?? (_) => const SizedBox.shrink(), footer: actions);
   }
   return showGeneralDialog<T>(
@@ -292,7 +331,9 @@ Future<T?> showAppDrawer<T>(
 }) {
   // [fixedBody]: the body does not scroll as a whole. It gets a bounded height, so a builder can keep a
   // header (search, tabs) fixed and scroll only its list (`Expanded(ListView)`), as `.pb-pk` boards do.
+  if (!OpenGuard.pass()) return Future.value(null);
   if (context.isPhone) {
+    OpenGuard.same();
     return showAppSheet<T>(context, title: title, sub: sub, builder: builder, footer: footer, tall: true, fixedBody: fixedBody);
   }
   return showGeneralDialog<T>(
@@ -365,6 +406,7 @@ Future<T?> showAppSheet<T>(
   String Function()? subOf,
   bool fixedBody = false,
 }) {
+  if (!OpenGuard.pass()) return Future.value(null);
   // A sheet whose content moves (Newer / Older) passes [listen] and reads its title from [titleOf] / [subOf].
   Widget header(BuildContext ctx) {
     final t = titleOf?.call() ?? title, s = subOf?.call() ?? sub;
@@ -788,15 +830,25 @@ class SheetMeasure extends SingleChildRenderObjectWidget {
 }
 
 class _SheetMeasureBox extends RenderProxyBox {
+  bool _queued = false;
+
+  /// From the screen's bottom edge to the sheet's top, read where it really is on screen after each paint, not its
+  /// height: a sheet opened inside a page sits above that page's tab bar, and it slides while opening (Probid
+  /// 2026-11-03: the toast landed on the sheet's title and buttons).
   @override
-  void performLayout() {
-    super.performLayout();
-    final h = size.height;
-    if (h != ToastHost.sheetH.value) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (owner != null) ToastHost.sheetH.value = h;
-      });
-    }
+  void paint(PaintingContext context, Offset offset) {
+    super.paint(context, offset);
+    if (_queued) return;
+    _queued = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _queued = false;
+      if (owner == null || !attached || !hasSize) return;
+      final view = WidgetsBinding.instance.platformDispatcher.views.first;
+      final screenH = view.physicalSize.height / view.devicePixelRatio;
+      final top = localToGlobal(Offset.zero).dy;
+      final h = math.max(size.height, screenH - top);
+      if ((h - ToastHost.sheetH.value).abs() > .5) ToastHost.sheetH.value = h;
+    });
   }
 }
 

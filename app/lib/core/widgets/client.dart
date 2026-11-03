@@ -6,6 +6,7 @@ import '../icons/app_icons.dart';
 import '../theme/theme.dart';
 import '../util/input_rules.dart';
 import 'hover.dart';
+import 'overlays.dart' show OpenGuard;
 import 'tooltip.dart';
 
 /// Client-app components (the `ca-*`, `fd-*`, `wl-*` classes on the client boards).
@@ -43,7 +44,8 @@ class CaButton extends StatelessWidget {
     return Opacity(
       opacity: dimmed || onPressed == null ? 0.55 : 1,
       child: Hover(
-        onTap: loading ? null : onPressed,
+        // a double tap acts once (Probid 2026-11-03)
+        onTap: loading || onPressed == null ? null : () => OpenGuard.tap() ? onPressed!() : null,
         builder: (_, hov, _) {
           final fg = pri ? AppColors.white : AppColors.text;
           return Container(
@@ -84,7 +86,7 @@ class CaIconBtn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final b = Hover(
-      onTap: onTap,
+      onTap: onTap == null ? null : () => OpenGuard.tap() ? onTap!() : null,
       builder: (_, h, _) => Container(
         width: size,
         height: size,
