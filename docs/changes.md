@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-11-03 · Log food — Other time with hour : minute boxes; sheets own their text boxes
+- **Pehle:** Other time sheet me time − / + stepper se (15 min) badalta tha. Create custom food sheet apne text box `.whenComplete` me dispose karti thi, isliye Save/Cancel ke baad laal error. Upar ki added-food list me rows alag height ki, kcal line ke beech me. Back-press confirm ke buttons bade.
+- **Ab:** Other time: ghanta (1–12) : minute (00–59) ke 2 box aur AM/PM switch, Now / 30 min ago chips; aage ka time nahi chalta. `showAppSheet(owns: [...])`: sheet ke controllers sheet ka route hatne ke baad hi dispose hote hain. Added list: same height rows, kcal right side, chhota remove, group heading me ginti + kcal. Back-press confirm ke buttons small. Preview this meal me kcal right side ek seedh me.
+- **Kyun:** Probid, WORK-TRACKER section B (11, 12, 13) aur 3 Nov screenshot.
+- **Updated:** app/lib/core/widgets/overlays.dart, food/food_log_screen.dart, food/food_parts.dart, food/food_screen.dart, app/test/food_sheets_test.dart, docs/WORK-TRACKER.md
+
 ### 2026-11-03 · Food page polish (phone feedback)
 - **Pehle:** Log water button poori width; meal photo kholne par baaki photos tak nahi ja sakte the; calories sheet ek lambi list; week card ki din wali line wrap ho jaati thi; sheet khuli ho to toast sheet ke title par aa jaata tha (sheet tab bar ke upar thi, toast height se naapta tha); kal ke meal par sirf "Log this meal for yesterday".
 - **Ab:** Water button normal size. Photo viewer meal ki saari photos me next/prev. Calories sheet 2-column tiles. Week card din ki line ek line me, "This week" bold. Toast sheet ka screen par asli top naapta hai. Kal ke missed meal par aaj jaise saare options; Log food `?date=` se kal me add karta hai.

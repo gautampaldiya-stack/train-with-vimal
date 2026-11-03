@@ -83,6 +83,7 @@ Is thread me Probid ki 31 Oct wali list ka kaam chal raha hai:
 
 - ✅ Log food: search ke neeche "Try: paneer · dal · roti · rajma" chips hata diye.
 - ✅ Log food: Create custom food save karne par crash ("TextEditingController used after being disposed") fix; sheet poori band hone ke baad hi fields free hote hain.
+- ✅ "Preview this meal": har food ka kcal ab ek seedh me right side (pehle har row me alag jagah).
 
 Rule (Probid 3 Nov): aise chhote naye changes bhi yahan likhne hain, chahe REMAINING list me na hon.
 
@@ -143,11 +144,11 @@ Probid ka rule (2 Nov): abhi screenshot nahi lena, mobile par try nahi karna. Si
 9. ✅ "This week" card: Monday ko last Sat-Sun bhi (halke), average sirf is hafte ka, chune din par kcal, protein aur meals logged.
 10. ✅ Water card: water habit nahi to "Water habit is not assigned to you yet" (log bhi nahi hota). "Log water" button → sheet (− / ml / +, value tap karke type). 3-dot → History (is hafta + pichhle 3). Us din ka water saaf, target coach ka (habit target, warna plan), client edit nahi karta.
 
-### B. Log Food page
+### B. Log Food page — ✅ sab ho gaya (3 Nov), Probid ka test baaki
 
-11. ⬜ "Other" time sheet: stepper hatao. 2 fields (hr : min) sahi range ke saath, aur AM/PM toggle.
-12. ⬜ Create custom food: bottom sheet me Cancel dabane par error. Root cause dhundho aur fix karo.
-13. ◐ Food list UI: list aur upar ki added-food list behtar karo. Saare items same height, theek se arranged. Back-press confirmation me buttons chhote. *(crash fix `04f8c8c`; 3 Nov: list card header, same-height rows, scrollbar ✅; upar ki added-food list aur back-press buttons baaki)*
+11. ✅ "Other" time sheet: stepper hata diya. Ghanta (1–12) : minute (00–59) ke 2 box, AM/PM switch; galat number par laal line, aage ka time ho to "Use this time" nahi chalta. Now / 30 min ago chips rakhe.
+12. ✅ Create custom food: Cancel/Save par error. Wajah: sheet ke text box sheet band hote hi dispose ho jaate the, jabki band hone ka animation chal raha hota tha. Ab sheet apne box khud rakhti hai (`showAppSheet(owns: …)`) aur sheet poori hatne ke baad hi free karti hai. Other time sheet bhi isi tarah. Widget test `test/food_sheets_test.dart`.
+13. ✅ Food list UI: list aur upar ki added-food list behtar karo. Saare items same height, theek se arranged. Back-press confirmation me buttons chhote. *(crash fix `04f8c8c`; 3 Nov: list card header, same-height rows, scrollbar ✅; upar ki added-food list ✅: har row same height, naam + amount/protein, kcal right side ek column me, chhota remove button, group heading me ginti aur kcal; back-press confirm ke buttons chhote ✅)*
 
 ### C. Home page
 

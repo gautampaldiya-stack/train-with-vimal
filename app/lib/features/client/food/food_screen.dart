@@ -1086,9 +1086,14 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
                   // name (and its tag) on one line, the amount and "swapped from" on their own line so nothing is cut
                   // off next to Edited (Probid 2026-11-03)
                   Row(spacing: 8, children: [
-                    Flexible(child: Text(n, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w7))),
-                    if (tag != null) fdTag(tag, amber: tag == 'Off-plan'),
-                    const Spacer(),
+                    // name + tag take the free width, so every kcal sits flush right (a Flexible beside a Spacer
+                    // split the space and the kcal drifted per row, Probid 2026-11-03)
+                    Expanded(
+                      child: Row(spacing: 8, children: [
+                        Flexible(child: Text(n, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w7))),
+                        if (tag != null) fdTag(tag, amber: tag == 'Off-plan'),
+                      ]),
+                    ),
                     Text('${inNum(k)} kcal',
                         style: AppText.s(12.5, W.w7, color: AppColors.text2).copyWith(decoration: strike ? TextDecoration.lineThrough : null)),
                   ]),

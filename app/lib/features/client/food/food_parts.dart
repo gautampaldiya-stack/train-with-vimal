@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
@@ -388,3 +389,157 @@ Widget fdTotal(String left, String right) => Container(
 /// A small outline button (`ca-btn out sm`) that fills its space.
 Widget fdBtn(String label, VoidCallback onTap, {AppIconData? icon, CaBtnKind kind = CaBtnKind.out, AppIconData? trailing}) =>
     CaButton(label, kind: kind, small: true, icon: icon, trailingIcon: trailing, onPressed: onTap);
+
+/// Other time: the time eaten as hour : minute boxes (1–12 and 00–59) and an AM / PM switch, no stepper (B11, Probid).
+/// Calls [onChanged] only with a valid time on [value]'s day; owns its text boxes, so nothing is disposed early.
+class FdTimeInput extends StatefulWidget {
+  const FdTimeInput({super.key, required this.value, required this.onChanged});
+  final DateTime value;
+  final ValueChanged<DateTime> onChanged;
+
+  @override
+  State<FdTimeInput> createState() => _FdTimeInputState();
+}
+
+class _FdTimeInputState extends State<FdTimeInput> {
+  late final _h = TextEditingController(), _m = TextEditingController();
+  final _hf = FocusNode(), _mf = FocusNode();
+  bool _pm = false;
+  String? _err;
+
+  @override
+  void initState() {
+    super.initState();
+    _show(widget.value);
+    _hf.addListener(_blur);
+    _mf.addListener(_blur);
+  }
+
+  @override
+  void didUpdateWidget(FdTimeInput old) {
+    super.didUpdateWidget(old);
+    // a quick pick (Now, 30 min ago) changed the time: show it, unless it is what the boxes already say
+    if (widget.value != _parsed()) _show(widget.value);
+  }
+
+  @override
+  void dispose() {
+    _h.dispose();
+    _m.dispose();
+    _hf.dispose();
+    _mf.dispose();
+    super.dispose();
+  }
+
+  void _show(DateTime t) {
+    final h = t.hour % 12;
+    _h.text = '${h == 0 ? 12 : h}';
+    _m.text = t.minute.toString().padLeft(2, '0');
+    _pm = t.hour >= 12;
+    _err = null;
+  }
+
+  DateTime? _parsed() {
+    final h = int.tryParse(_h.text), m = int.tryParse(_m.text);
+    if (h == null || m == null || h < 1 || h > 12 || m > 59) return null;
+    final v = widget.value;
+    return DateTime(v.year, v.month, v.day, h % 12 + (_pm ? 12 : 0), m);
+  }
+
+  void _changed() {
+    final h = int.tryParse(_h.text), m = int.tryParse(_m.text);
+    setState(() => _err = h != null && (h < 1 || h > 12)
+        ? 'Hour is 1 to 12'
+        : (m != null && m > 59 ? 'Minutes are 00 to 59' : null));
+    final t = _parsed();
+    if (t != null && t != widget.value) widget.onChanged(t);
+  }
+
+  // leaving a box: an empty or wrong one goes back to the last good time, minutes show two digits
+  void _blur() {
+    if (_hf.hasFocus || _mf.hasFocus) return;
+    if (_parsed() == null) {
+      setState(() => _show(widget.value));
+    } else if (_m.text.length == 1) {
+      _m.text = _m.text.padLeft(2, '0');
+    }
+  }
+
+  Widget _box(TextEditingController c, FocusNode f, String label, {ValueChanged<String>? onFull}) => SizedBox(
+        width: 68,
+        child: ListenableBuilder(
+          listenable: f,
+          builder: (context, _) => Container(
+            height: 52,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _err != null ? AppColors.badText : (f.hasFocus ? AppColors.accent : AppColors.line2)),
+              boxShadow: f.hasFocus ? const [BoxShadow(color: AppColors.accentSoft, spreadRadius: 3)] : null,
+            ),
+            child: Semantics(
+              label: label,
+              child: TextField(
+                controller: c,
+                focusNode: f,
+                textAlign: TextAlign.center,
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.next,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(2)],
+                onTap: () => c.selection = TextSelection(baseOffset: 0, extentOffset: c.text.length),
+                onChanged: (v) {
+                  _changed();
+                  if (v.length == 2) onFull?.call(v);
+                },
+                cursorColor: AppColors.accent,
+                style: AppText.s(24, W.w8, tabular: true),
+                decoration: InputDecoration.collapsed(hintText: label == 'Hour' ? 'hh' : 'mm', hintStyle: AppText.s(24, W.w6, color: AppColors.muted)),
+              ),
+            ),
+          ),
+        ),
+      );
+
+  Widget _ampm() => Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(12)),
+        child: Column(mainAxisSize: MainAxisSize.min, spacing: 4, children: [
+          for (final pm in [false, true])
+            Semantics(
+              button: true,
+              selected: _pm == pm,
+              child: Hover(
+                onTap: () {
+                  if (_pm == pm) return;
+                  setState(() => _pm = pm);
+                  _changed();
+                },
+                builder: (_, h, _) => Container(
+                  width: 52,
+                  height: 20,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: _pm == pm ? AppColors.white : null,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: _pm == pm ? const [BoxShadow(color: AppColors.line, spreadRadius: 1)] : null,
+                  ),
+                  child: Text(pm ? 'PM' : 'AM', style: AppText.s(12, W.w8, color: _pm == pm ? AppColors.accentText : AppColors.muted)),
+                ),
+              ),
+            ),
+        ]),
+      );
+
+  @override
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
+        Row(mainAxisAlignment: MainAxisAlignment.center, spacing: 8, children: [
+          _box(_h, _hf, 'Hour', onFull: (_) => _mf.requestFocus()),
+          Text(':', style: AppText.s(24, W.w8)),
+          _box(_m, _mf, 'Minute'),
+          const SizedBox(width: 4),
+          _ampm(),
+        ]),
+        if (_err != null) Text(_err!, textAlign: TextAlign.center, style: AppText.s(12.5, W.w6, color: AppColors.badText)),
+      ]);
+}

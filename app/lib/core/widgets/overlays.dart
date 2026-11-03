@@ -405,6 +405,7 @@ Future<T?> showAppSheet<T>(
   String Function()? titleOf,
   String Function()? subOf,
   bool fixedBody = false,
+  List<ChangeNotifier> owns = const [],
 }) {
   if (!OpenGuard.pass()) return Future.value(null);
   // A sheet whose content moves (Newer / Older) passes [listen] and reads its title from [titleOf] / [subOf].
@@ -446,7 +447,10 @@ Future<T?> showAppSheet<T>(
         SizedBox(height: 18 + (phone ? MediaQuery.paddingOf(ctx).bottom : 0)),
       ]);
 
-  Widget body(BuildContext ctx, {required bool phone}) => listen == null ? content(ctx, phone: phone) : ListenableBuilder(listenable: listen, builder: (ctx, _) => content(ctx, phone: phone));
+  Widget body(BuildContext ctx, {required bool phone}) {
+    final b = listen == null ? content(ctx, phone: phone) : ListenableBuilder(listenable: listen, builder: (ctx, _) => content(ctx, phone: phone));
+    return owns.isEmpty ? b : SheetOwns(owns: owns, child: b);
+  }
 
   if (context.isPhone) {
     return trackSheet(showModalBottomSheet<T>(
@@ -854,6 +858,30 @@ class _SheetMeasureBox extends RenderProxyBox {
 
 void showToast(BuildContext context, String title, {String? sub, ToastKind kind = ToastKind.staff, String? action, VoidCallback? onAction, AppIconData? icon}) {
   ToastHost._instance?.show(_ToastData(kind, title, sub, action, onAction, icon));
+}
+
+/// Disposes the sheet's own controllers / notifiers ([showAppSheet] `owns:`) when the sheet's route is removed,
+/// i.e. after its close animation. Disposing in `.whenComplete` is too early: the future completes on pop, while the
+/// closing sheet can still rebuild (a TextField on a disposed controller crashed Create custom food, 2026-11-03).
+class SheetOwns extends StatefulWidget {
+  const SheetOwns({super.key, required this.owns, required this.child});
+  final List<ChangeNotifier> owns;
+  final Widget child;
+  @override
+  State<SheetOwns> createState() => _SheetOwnsState();
+}
+
+class _SheetOwnsState extends State<SheetOwns> {
+  @override
+  void dispose() {
+    for (final o in widget.owns) {
+      o.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 /// Pop returns before the exit animation ends and the closing sheet still reads its text fields, so their

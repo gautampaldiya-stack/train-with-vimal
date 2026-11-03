@@ -361,10 +361,10 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
       title: 'Add ${n == 1 ? _sel.first.name : '$n selected foods'} to $m?',
       sub: 'You picked ${n == 1 ? 'it' : 'them'} but did not add ${n == 1 ? 'it' : 'them'} yet · +${inNum(_sel.fold(0, (a, x) => a + x.kcal))} kcal',
       builder: (ctx) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
-        CaButton('Add to $m', icon: AppIcons.check, onPressed: () => Navigator.of(ctx).pop('add')),
+        CaButton('Add to $m', small: true, icon: AppIcons.check, onPressed: () => Navigator.of(ctx).pop('add')),
         Row(spacing: 8, children: [
-          Expanded(child: CaButton('Cancel', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop())),
-          Expanded(child: CaButton('Discard', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop('discard'))),
+          Expanded(child: CaButton('Cancel', small: true, kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop())),
+          Expanded(child: CaButton('Discard', small: true, kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop('discard'))),
         ]),
       ]),
     );
@@ -407,7 +407,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
       _sel.removeWhere((x) => x.food == f.id);
       _sel.add(_Sel(
         name: f.name,
-        line: '$amt · ${inNum(m[0])} kcal · ${m[1].round()} g P',
+        line: '$amt · ${m[1].round()} g protein',
         kcal: m[0].round(),
         food: f.id,
         body: {'food': f.id, 'quantity': q, if (u != null) 'unit': u.id, 'name': f.name, '_kcal': m[0].round(), '_protein': m[1], 'unit_name': u?.name ?? 'g'},
@@ -437,7 +437,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     setState(() {
       _sel.add(_Sel(
         name: 'Quick add',
-        line: '${inNum(v[0])} kcal · ${v[1].round()} g P',
+        line: 'Your numbers · ${v[1].round()} g protein',
         kcal: v[0].round(),
         body: {'name': 'Quick add', 'kcal': v[0].round(), 'protein': v[1], 'carbs': v[2], 'fat': v[3]},
       ));
@@ -662,6 +662,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     showAppSheet(
       context,
       listen: at,
+      owns: [name, at],
       title: 'Other time',
       sub: 'Ate outside your meal times? It goes straight to your food log at this time, marked off-plan.',
       webWidth: 440,
@@ -669,11 +670,9 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
       builder: (_) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
         CaField(label: 'Name', controller: name, hint: 'e.g. Evening chai', autofocus: true, action: TextInputAction.done),
         Text('Time', style: AppText.s(13, W.w6)),
-        Row(mainAxisAlignment: MainAxisAlignment.center, spacing: 18, children: [
-          CaIconBtn(AppIcons.minus, tooltip: '15 minutes earlier', onTap: () => set(at.value.subtract(const Duration(minutes: 15)))),
-          SizedBox(width: 120, child: Text(fdClock(at.value), textAlign: TextAlign.center, style: AppText.s(26, W.w8))),
-          CaIconBtn(AppIcons.plus, tooltip: '15 minutes later', onTap: () => set(at.value.add(const Duration(minutes: 15)))),
-        ]),
+        FdTimeInput(value: at.value, onChanged: (t) => at.value = t),
+        if (at.value.isAfter(DateTime.now()))
+          Text('That time has not come yet. Pick a time up to now.', textAlign: TextAlign.center, style: AppText.s(12.5, W.w6, color: AppColors.badText)),
         Wrap(alignment: WrapAlignment.center, spacing: 6, runSpacing: 6, children: [
           quick('Now', 0),
           quick('30 min ago', 30),
@@ -686,7 +685,11 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
         Row(spacing: 8, children: [
           Expanded(child: CaButton('Cancel', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop())),
           Expanded(
-            child: CaButton('Use this time', icon: AppIcons.check, onPressed: () {
+            child: CaButton('Use this time', icon: AppIcons.check, dimmed: at.value.isAfter(DateTime.now()), onPressed: () {
+              if (at.value.isAfter(DateTime.now())) {
+                showToast(context, 'Pick a time up to now', sub: 'Other time is for food you already ate today', kind: ToastKind.warn);
+                return;
+              }
               Navigator.of(ctx).pop();
               final n = name.text.trim();
               setState(() {
@@ -928,22 +931,9 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
         if (add.isNotEmpty) Text('+${inNum(k)} kcal', style: AppText.s(14, W.w8, color: AppColors.accentText)),
       ]),
       if (_sel.isNotEmpty) ...[
-        Text('SELECTED · NOT ADDED YET', style: AppText.s(11, W.w7, color: AppColors.muted, ls: .55)),
+        _addedHead('Picked · not added yet', _sel.length, _sel.fold(0, (a, x) => a + x.kcal), AppColors.accentText),
         Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          for (final x in _sel)
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
-              child: Row(spacing: 8, children: [
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    CutText(x.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7)),
-                    Text(x.line, style: AppText.s(12, W.w4, color: AppColors.muted)),
-                  ]),
-                ),
-                CaIconBtn(AppIcons.close, tooltip: 'Remove', onTap: () => setState(() => _sel.remove(x))),
-              ]),
-            ),
+          for (final x in _sel) _addedRow(x.name, x.line, x.kcal, () => setState(() => _sel.remove(x)), picked: true),
         ]),
         if (!context.isPhone) _addBtn(),
       ],
@@ -953,33 +943,46 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
           child: Text('Nothing added yet. Tap + on a food below.', textAlign: TextAlign.center, style: AppText.s(13, W.w4, color: AppColors.muted)),
         )
       else if (add.isNotEmpty) ...[
-        if (_sel.isNotEmpty) Text('ADDED', style: AppText.s(11, W.w7, color: AppColors.muted, ls: .55)),
+        if (_sel.isNotEmpty) _addedHead('Added to $m', add.length, k, AppColors.okText),
         Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           for (final e in add)
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
-              child: Row(spacing: 8, children: [
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Row(children: [
-                      Flexible(child: CutText(e.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
-                      if (e.source == 'off_plan') fdTag('Off-plan', amber: true),
-                    ]),
-                    Text(
-                      '${e.amount} · ${inNum(e.kcal)} kcal · ${e.protein.round()} g P${e.reason.isEmpty ? '' : ' · ${e.reason}'}',
-                      style: AppText.s(12, W.w4, color: AppColors.muted),
-                    ),
-                  ]),
-                ),
-                CaIconBtn(AppIcons.close, tooltip: 'Remove', onTap: () => _remove(e)),
-              ]),
-            ),
+            _addedRow(e.name, '${e.amount} · ${e.protein.round()} g protein${e.reason.isEmpty ? '' : ' · ${e.reason}'}', e.kcal, () => _remove(e),
+                offPlan: e.source == 'off_plan'),
         ]),
         if (_sel.isEmpty) CaButton('Done · back to meal plan', onPressed: () => context.go('/food')),
       ],
     ]);
   }
+
+  /// Heading of a group in the added card: name, how many, their kcal.
+  Widget _addedHead(String t, int n, int kcal, Color ink) => Padding(
+        padding: const EdgeInsets.only(top: 2),
+        child: Row(spacing: 8, children: [
+          Expanded(child: Text('${t.toUpperCase()} · $n', style: AppText.s(11, W.w8, color: ink, ls: .55))),
+          Text('${inNum(kcal)} kcal', style: AppText.s(11.5, W.w8, color: ink)),
+        ]),
+      );
+
+  /// One food in the added card (Probid B13): every row the same height, name (and Off-plan) over the amount
+  /// and protein, kcal in one column on the right, a small remove button.
+  Widget _addedRow(String name, String sub, int kcal, VoidCallback remove, {bool offPlan = false, bool picked = false}) => Container(
+        constraints: const BoxConstraints(minHeight: 54),
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
+        child: Row(spacing: 10, children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, spacing: 2, children: [
+              Row(spacing: 6, children: [
+                Flexible(child: CutText(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
+                if (offPlan) fdTag('Off-plan', amber: true),
+              ]),
+              CutText(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
+            ]),
+          ),
+          Text('${inNum(kcal)} kcal', style: AppText.s(13, W.w8, tabular: true, color: picked ? AppColors.accentText : AppColors.text)),
+          CaIconBtn(AppIcons.close, size: 30, tooltip: 'Remove', onTap: remove),
+        ]),
+      );
 
   // ─────────────────────────────── Can't find the exact food?
 
@@ -1122,6 +1125,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     showAppSheet(
       context,
       listen: Listenable.merge([v, err, busy]),
+      owns: [name, serving, v, err, busy],
       title: 'Create custom food',
       sub: 'Saved to My foods, only you see it',
       webWidth: 480,
@@ -1175,18 +1179,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
           ),
         ]),
       ],
-    ).whenComplete(() {
-      // The sheet's future completes when the route pops, before its exit
-      // animation ends; _search() rebuilds the closing sheet meanwhile. So the
-      // fields are freed only after the sheet has fully left the screen.
-      Future<void>.delayed(const Duration(seconds: 1), () {
-        name.dispose();
-        serving.dispose();
-        v.dispose();
-        err.dispose();
-        busy.dispose();
-      });
-    });
+    );
   }
 }
 
