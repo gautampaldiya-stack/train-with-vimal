@@ -545,7 +545,6 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
             ]),
           ),
           if (m.logged && m.photo != null) FdPhoto(m.photo!, name: m.name, all: m.photos),
-          if (today && m.open && _photos[m.id] != null) FdPhoto(_photos[m.id]!.first, name: m.name, all: _photos[m.id]!),
           fdPill(pill),
           if (today) CaIconBtn(AppIcons.dots, tooltip: 'Meal options', onTap: () => lock ? _lockedToast(m) : _menu(m)),
         ]),
@@ -822,7 +821,7 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
         Wrap(spacing: 8, runSpacing: 8, children: [
           for (final (i, p) in ps.indexed)
             Stack(clipBehavior: Clip.none, children: [
-              FdPhoto(p, name: m.name, size: 48, all: ps),
+              FdPhoto(p, name: m.name, size: 48), // each its own photo: no "+1" badge (Probid 2026-11-03)
               Positioned(
                 top: -6,
                 right: -6,

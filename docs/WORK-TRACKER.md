@@ -46,6 +46,7 @@ Is thread me Probid ki 31 Oct wali list ka kaam chal raha hai:
 ## 3 Nov
 - ✅ Scrollbar: patla, gol thumb, grey track nahi; list ke apne right gutter me (food list, past check-ins), rows / + buttons ke upar nahi.
 - ✅ Log food list card: header (All foods / Recent / My foods + count), sab rows ek height, card ke kinare tak scroll.
+- ✅ Meal photos: card ke header se photo hataya (neeche photo bar me hai), har photo par "+1" badge hataya.
 - ✅ Swap sheet: planned food coach ki unit me ("1 cup"), pehle grams se pehli fit unit ("8 tbsp") ban jaati thi.
 
 Probid ka rule (2 Nov): abhi screenshot nahi lena, mobile par try nahi karna. Sirf code, `flutter analyze` aur backend tests; test Probid karenge.
