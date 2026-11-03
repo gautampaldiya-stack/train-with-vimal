@@ -490,7 +490,8 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
                   child: ListView.builder(
                 controller: _list,
                 shrinkWrap: true,
-                padding: EdgeInsets.zero,
+                // room on the right for the scrollbar, so it never covers the Missed / Replied badges and arrows
+                padding: const EdgeInsets.only(right: 12),
                 itemCount: rows.length + (c.hasMore ? 1 : 0),
                 itemBuilder: (_, i) => i < rows.length
                     ? _row(d, i, rows[i])

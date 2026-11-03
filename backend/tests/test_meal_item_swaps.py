@@ -129,3 +129,17 @@ def test_swap_options_and_add_unit(trainer):
     assert FoodUnit.objects.filter(food=food, name="1 big bowl").exists()
     r = trainer.post(f"/api/v1/foods/{food.id}/units/", {"name": "1 big bowl", "grams": "200"}, format="json")
     assert r.status_code == 400
+
+
+def test_swap_sheet_shows_the_planned_amount_in_the_coach_unit(client_user):
+    """Probid 2026-11-03: the meal shows Oats "1 cup"; the swap sheet said "8 tbsp" (the first unit 80 g fits)."""
+    from apps.nutrition.models import MealItem
+    from apps.nutrition.swaps import portion_label
+
+    from .test_client_food import _day
+
+    ids = [i["item"] for m in _day(client_user)["meals"] for i in m["items"] if i["unit"] != "g"]
+    it = MealItem.objects.select_related("unit").get(id=ids[0])
+    r = client_user.get(f"/api/v1/me/food/items/{it.id}/swaps/")
+    assert r.status_code == 200, r.content
+    assert r.json()["planned"]["amount"] == portion_label(it.quantity, it.unit)

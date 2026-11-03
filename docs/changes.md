@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-11-03 · Food list card, scrollbars, swap sheet amount
+- **Pehle:** Log food ki list ka scrollbar card ke andar rows aur + buttons ke upar chalta tha; header sirf chhoti grey line. Past check-ins me scrollbar Missed/Replied aur arrow ke upar. Swap sheet me Oats "8 tbsp" (meal me "1 cup").
+- **Ab:** Ek theme-wide patla scrollbar (4 px, gol, track nahi); scroll wali card lists right me 12 ka gutter rakhti hain. Food list card: upar band me title + count, rows 58 high, line sirf rows ke beech. Swap sheet aur Swapped toast server ka amount dikhate hain, planned me coach ki unit (`planned.amount`).
+- **Kyun:** Probid 2026-11-03 screenshots.
+- **Updated:** app/lib/core/theme/theme.dart, client/food/food_log_screen.dart, food_sheets.dart, client/checkins/checkins_screen.dart, backend/apps/nutrition/views.py, tests/test_meal_item_swaps.py
+
 ### 2026-11-02 · Check-ins — builder settings for number, choice, measurements, photos
 - **Pehle:** Number hamesha stepper (0.1), quick pick sirf weight par; choice hamesha bade boxes; measurements sab optional aur cm me; photo slot naam builder se nahi badalte the.
 - **Ab:** Question me `settings`. Number: Stepper ya Field, Min/Max/Step, Quick pick on/off + step (client ke pichhle jawab ke aas-paas 5 chips; weight me last weigh-in). Single/multiple: style coach nahi chunta: question ke hisaab se apne aap (subtitle ya lambe options = bade boxes, 5+ chhote options = chips), option ke saath subtitle ("Option | subtitle"). Measurements: har row cm/in (in wali value cm me save hoti hai) aur Required. Photo: slot naam (max 6). Server min/max aur required rows check karta hai.

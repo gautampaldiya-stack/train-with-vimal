@@ -784,7 +784,9 @@ class MySwapOptionsView(APIView):
         # the item's own swaps (a client's copy has its own), else the food's library swaps
         rows = [{**r["food_detail"], "match": r["match"], "grams": r["grams"], "quantity": r["quantity"],
                  "unit_name": r["unit_name"], "amount": r["amount"]} for r in swaps.resolve(item)]
-        return Response({"planned": {**FoodPickSerializer(item.food).data, "grams": float(grams)},
+        # the amount in the unit the coach gave (1 cup), not the first unit the grams happen to fit (8 tbsp)
+        return Response({"planned": {**FoodPickSerializer(item.food).data, "grams": float(grams),
+                                     "amount": swaps.portion_label(item.quantity, item.unit)},
                          "options": sorted(rows, key=lambda r: -r["match"]),
                          "can_search_any": mp.followed.allow_search_any})
 

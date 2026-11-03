@@ -255,7 +255,9 @@ Future<void> showSwapSheet(BuildContext context, FoodController c, FMeal m, FIte
 
   String line(Map<String, dynamic> f) {
     final x = mac(f);
-    return '${amtGrams(f, f['grams'] as num? ?? 0)} · ${inNum(x[0])} kcal · ${x[1].round()} g P';
+    // the server's label in the coach's own unit when it sends one ("1 cup", "4 slices"); grams-fit only as a fallback
+    final amt = '${f['amount'] ?? ''}'.split(' · ').first;
+    return '${amt.isNotEmpty ? amt : amtGrams(f, f['grams'] as num? ?? 0)} · ${inNum(x[0])} kcal · ${x[1].round()} g P';
   }
 
   return showAppSheet(
@@ -337,7 +339,7 @@ Future<void> showSwapSheet(BuildContext context, FoodController c, FMeal m, FIte
               if (!context.mounted) return;
               if (to != null) {
                 final x = mac(to);
-                showToast(context, 'Swapped: $from → ${to['name']}', sub: '${amtGrams(to, to['grams'] as num? ?? 0)} · ${inNum(x[0])} kcal · today only', kind: ToastKind.ok);
+                showToast(context, 'Swapped: $from → ${to['name']}', sub: '${'${to['amount'] ?? ''}'.split(' · ').first.isNotEmpty ? '${to['amount']}'.split(' · ').first : amtGrams(to, to['grams'] as num? ?? 0)} · ${inNum(x[0])} kcal · today only', kind: ToastKind.ok);
               } else {
                 showToast(context, '$from is back in your ${m.name}', sub: 'Swap removed', kind: ToastKind.info);
               }

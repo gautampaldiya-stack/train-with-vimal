@@ -43,6 +43,11 @@ Is thread me Probid ki 31 Oct wali list ka kaam chal raha hai:
 - ✅ Form builder "New question" modal: Cancel / Add question footer me fixed, modal 680 wide (2 Nov).
 - ✅ Check-in builder ki baaki R settings (R3–R8), Probid OK 2 Nov. Sirf choice option ka icon baaki (R5).
 
+## 3 Nov
+- ✅ Scrollbar: patla, gol thumb, grey track nahi; list ke apne right gutter me (food list, past check-ins), rows / + buttons ke upar nahi.
+- ✅ Log food list card: header (All foods / Recent / My foods + count), sab rows ek height, card ke kinare tak scroll.
+- ✅ Swap sheet: planned food coach ki unit me ("1 cup"), pehle grams se pehli fit unit ("8 tbsp") ban jaati thi.
+
 Probid ka rule (2 Nov): abhi screenshot nahi lena, mobile par try nahi karna. Sirf code, `flutter analyze` aur backend tests; test Probid karenge.
 
 ## Decisions (confirmed)
@@ -126,7 +131,7 @@ Probid ka rule (2 Nov): abhi screenshot nahi lena, mobile par try nahi karna. Si
 
 11. ⬜ "Other" time sheet: stepper hatao. 2 fields (hr : min) sahi range ke saath, aur AM/PM toggle.
 12. ⬜ Create custom food: bottom sheet me Cancel dabane par error. Root cause dhundho aur fix karo.
-13. ◐ Food list UI: list aur upar ki added-food list behtar karo. Saare items same height, theek se arranged. Back-press confirmation me buttons chhote. *(sirf crash `Null is not num` fix hua, `04f8c8c`; UI polish baaki)*
+13. ◐ Food list UI: list aur upar ki added-food list behtar karo. Saare items same height, theek se arranged. Back-press confirmation me buttons chhote. *(crash fix `04f8c8c`; 3 Nov: list card header, same-height rows, scrollbar ✅; upar ki added-food list aur back-press buttons baaki)*
 
 ### C. Home page
 

@@ -796,9 +796,33 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
         else if (showAll && _hasNext && _error == null)
           _more(_loadingMore ? 'Loading…' : 'Show more foods', _loadingMore ? null : () => _search(more: true)),
     ];
-    final head = Padding(padding: const EdgeInsets.fromLTRB(0, 8, 0, 4), child: Text(cnt, style: AppText.s(11.5, W.w7, color: AppColors.muted)));
+    // Header: what the list is, with the count beside it, on a light band with a line under it (Probid 2026-11-03).
+    final title = q.isNotEmpty ? 'Search results' : switch (_tab) { 'Recent' => 'Recent foods', 'My foods' => 'My foods', _ => 'All foods' };
+    final head = Container(
+      padding: const EdgeInsets.fromLTRB(14, 11, 14, 10),
+      decoration: const BoxDecoration(color: AppColors.sub, border: Border(bottom: BorderSide(color: AppColors.line))),
+      child: Row(spacing: 8, children: [
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+            Text(title, style: AppText.s(14, W.w8)),
+            CutText(cnt, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted)),
+          ]),
+        ),
+        if (!_loading && _error == null && _count > 0)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(99), border: Border.all(color: AppColors.line)),
+            child: Text('${_libCount > 0 && q.isEmpty && _tab != 'Recent' && _tab != 'My foods' ? _libCount : _count}', style: AppText.s(11.5, W.w8, color: AppColors.text2)),
+          ),
+      ]),
+    );
+    // Rows sit 14 from the left and 14 from the right; a scrolling list keeps its own 12 gutter for the scrollbar.
+    Widget rowsOf(double right) => Padding(
+      padding: EdgeInsets.fromLTRB(14, 0, right, 0),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: body),
+    );
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
       child: scroll
           ? Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -806,11 +830,11 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
               Flexible(
                 child: SingleChildScrollView(
                   key: PageStorageKey('fl-$_tab'),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: body),
+                  child: rowsOf(14 + 12),
                 ),
               ),
             ])
-          : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [head, ...body]),
+          : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [head, rowsOf(14)]),
     );
   }
 
@@ -825,8 +849,10 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
   );
 
   Widget _foodRow(FdFood f, bool on) => Container(
+    // every row the same height, a line between rows (not above the first: the header has one)
+    constraints: const BoxConstraints(minHeight: 58),
     padding: const EdgeInsets.symmetric(vertical: 8),
-    decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
+    decoration: BoxDecoration(border: identical(f, _foods.firstOrNull) ? null : const Border(top: BorderSide(color: AppColors.line))),
     child: Row(spacing: 10, children: [
       Expanded(
         child: Semantics(
