@@ -89,6 +89,8 @@ Is thread me Probid ki 31 Oct wali list ka kaam chal raha hai:
 - ✅ Habits & supplements page: water "Log water" sheet (sirf aaj/kal), steps/sleep me number tap karke type, tick habit aur supplement (Take / Undo / Took it) par Yes/No confirm — Home jaisa.
 - ✅ Habits page cards (Day): ek chhoti line jo phone par poori dikhe (goal, ya progress; tick habit "Yes / no · tick it when done"), sab buttons ek jaise outline, "No streak yet" grey. Week: upar 2 tiles me rangeen % + "X of Y" + patla bar, best streak alag line.
 - ✅ Water history (2nd round): upar Today / Yesterday tiles (litres / target, bar, tick), chaude bars (column ka ~60%), sirf This week khula, baaki hafte band par har din ka dot + total + avg + days; web par sheet chaudi (560).
+- ✅ Home (phone) status bar: scroll karke blue hero upar chala jaaye to status bar ke peeche page ka rang aur kaale icon (pehle safed icon safed cards par gayab). Trainer Dashboard par bhi same (`HeroStatus`).
+- ✅ Home workout card: "See all" (aur "+ N more · See all") Train page kholta hai, usi din par (`/train?date=`).
 - ✅ Other time sheet: "Now" / "30 min ago" tap ke waqt ki ghadi lete hain (sheet kab khuli usse nahi).
 - ✅ Other time sheet: "Use this time" sirf tab chalta hai jab time poora aur sahi ho (ghanta 1–12, minute 00–59, aage ka nahi); warna button off.
 

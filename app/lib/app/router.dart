@@ -116,7 +116,11 @@ final Map<String, Widget Function(GoRouterState)> screens = {
       _ => const ClientProgressScreen(),
     };
   },
-  '/train': (st) => ClientTrainScreen(discarded: int.tryParse(st.uri.queryParameters['discarded'] ?? '') ?? 0),
+  '/train': (st) => ClientTrainScreen(
+        key: ValueKey(st.uri.toString()),
+        discarded: int.tryParse(st.uri.queryParameters['discarded'] ?? '') ?? 0,
+        date: DateTime.tryParse(st.uri.queryParameters['date'] ?? ''),
+      ),
   '/train/:id': (st) => WorkoutScreen(
         key: ValueKey(st.uri.toString()),
         start: int.tryParse(st.uri.queryParameters['start'] ?? ''),

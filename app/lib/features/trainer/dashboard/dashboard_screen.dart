@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
@@ -9,6 +8,7 @@ import '../../../app/shell/page.dart';
 import '../../../core/api/api_error.dart';
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
+import '../../../core/widgets/hero_status.dart';
 import '../../../core/widgets/avatar.dart';
 import '../../../core/widgets/badge.dart';
 import '../../../core/widgets/button.dart';
@@ -87,12 +87,13 @@ class _TrainerDashboardScreenState extends State<TrainerDashboardScreen> {
       );
 
   /// Phone: the hero runs under the status bar; the stats strip overlaps its bottom edge by 36.
-  Widget _phone(TrainerHome d) => AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle.light,
-        child: RefreshIndicator(
+  Widget _phone(TrainerHome d) => HeroStatus(
+        bg: AppColors.panel,
+        builder: (scroll) => RefreshIndicator(
           onRefresh: c.load,
           color: AppColors.accent,
           child: SingleChildScrollView(
+            controller: scroll,
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.only(bottom: 24),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [

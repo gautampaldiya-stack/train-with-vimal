@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -11,6 +10,7 @@ import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
 import '../../../core/widgets/badge.dart';
 import '../../../core/widgets/client.dart';
+import '../../../core/widgets/hero_status.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
@@ -84,12 +84,14 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
       ? _phoneBody(d)
       : Column(children: [Expanded(child: _phoneBody(d)), _editBar()]);
 
-  Widget _phoneBody(HomeData d) => AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle.light,
-        child: RefreshIndicator(
+  // the status bar turns dark on the page colour once the hero has scrolled away (Probid 2026-11-03)
+  Widget _phoneBody(HomeData d) => HeroStatus(
+        bg: AppColors.caBg,
+        builder: (scroll) => RefreshIndicator(
           onRefresh: c.load,
           color: AppColors.accent,
           child: SingleChildScrollView(
+            controller: scroll,
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.only(bottom: 20),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -809,14 +811,14 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                 Flexible(child: CutText(e.line, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.right, style: AppText.s(12, W.w5, color: AppColors.muted))),
               ]),
             ),
-          if (n > 3)
-            Hover(
-              onTap: () => showWorkoutPreview(context, day),
+          Hover(
+              // See all opens the Train page on that day (Probid 2026-11-03)
+              onTap: () => context.go(today ? '/train' : '/train?date=${DateFormat('yyyy-MM-dd').format(day.date)}'),
               builder: (_, h, _) => Container(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
                 child: Row(spacing: 6, children: [
-                  Text('+ ${n - 3} more · See all', style: AppText.s(12.5, W.w7, color: h ? AppColors.accent : AppColors.accentText)),
+                  Text(n > 3 ? '+ ${n - 3} more · See all' : 'See all in Train', style: AppText.s(12.5, W.w7, color: h ? AppColors.accent : AppColors.accentText)),
                   AppIcon(AppIcons.chevronRight, size: 14, color: AppColors.accentText),
                 ]),
               ),

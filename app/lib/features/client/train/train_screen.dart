@@ -19,7 +19,10 @@ import 'workout_model.dart' show WorkoutController;
 /// Train tab (boards `ClientTrain` phone and `ClientTrainWeb`): the week, today's workout, the
 /// coach's note and the exercise blocks. A running workout shows as a bar (phone) or banner (web).
 class ClientTrainScreen extends StatefulWidget {
-  const ClientTrainScreen({super.key, this.discarded = 0});
+  const ClientTrainScreen({super.key, this.discarded = 0, this.date});
+
+  /// `/train?date=yyyy-mm-dd` (Home workout card → See all): opens on that day.
+  final DateTime? date;
 
   /// Opened right after "Discard workout": shows the "Workout discarded" toast once
   /// (1 = whole workout, 2 = the sets added with "Log more sets").
@@ -36,6 +39,8 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
   @override
   void initState() {
     super.initState();
+    final d = widget.date;
+    if (d != null && !DateUtils.isSameDay(d, DateTime.now())) c.day = d;
     c.start();
     c.addListener(_timer);
     if (widget.discarded > 0) {
