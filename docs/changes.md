@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-11-03 · Progress stats, More rows, notification delete, trainer sheet (D)
+- **Pehle:** Progress ke stat tiles me sirf number (Workouts samajh nahi aata tha). More → Account me Notifications, Notification settings, Units & preferences rows. Notification sheet me Delete. Trainer Details sheet sirf naam + plan rows, photo nahi.
+- **Ab:** Tiles me value + matlab wali line (since start / this week X of Y / heaviest set). Account me sirf Privacy & data, My activity, Help & about (notification settings bell → gear se). Notification delete hata, sirf Mark as unread. Trainer sheet: photo left, naam/since/program/speciality right; neeche About, experience, languages, social, certificates (trainer ki visibility ke hisaab se) aur Your plan.
+- **Kyun:** Probid, WORK-TRACKER D19–D22.
+- **Updated:** app progress_screen, more_screen, more_sheets; backend apps/clients/account.py (coach card), tests/test_client_more.py; docs/WORK-TRACKER.md
+
 ### 2026-11-03 · Weekly adherence = poora plan; Home cards (C)
 - **Pehle:** Home "Weekly adherence" sirf daily check-in ginta tha (Mon→aaj). Coach ka adherence pichhle 7 din ke workouts + meals se. Habit row me water "+250 ml", tick habit / supplement bina confirm. Food card me "Log food" sheet aur Ate it Home se hi log karta tha.
 - **Ab:** Ek rule (`metrics.plan_adherence`): workouts + meals + daily check-in + habits, plan vs kiya, har item barabar; aaj sirf jo due ya done. Home: Mon→ab, 4 part lines. Coach: pichhle 7 poore din, same rule. Habits: water sheet (Food jaisi), steps/sleep type, tick + supplements par Yes/No. Food card: Ate it Food page par us meal tak le jaata hai; naya Up next; Log food hata. Workout card par pehle 3 exercises aur progress.

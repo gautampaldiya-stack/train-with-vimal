@@ -27,6 +27,18 @@ def test_account_page_has_profile_coach_plan_goal_and_settings(client_user):
     assert d["deletion_on"] is None and d["gym"]["name"]
 
 
+def test_account_coach_has_photo_and_only_visible_extras(client_user):
+    coach = User.objects.get(email=client_user.get("/api/v1/me/account/").json()["profile"]["email"]).client_profile.trainer
+    tp = coach.trainer_profile
+    tp.speciality, tp.languages, tp.bio = ["Fat loss"], ["Hindi"], "Coach for 5 years"
+    tp.visibility = {**tp.visibility, "languages": False}
+    tp.save()
+    c = client_user.get("/api/v1/me/account/").json()["coach"]
+    assert "avatar" in c and c["speciality"] == ["Fat loss"] and c["about"] == "Coach for 5 years"
+    assert "languages" not in c and "phone" not in c and "email" not in c
+    assert c["first_name"] == "Aman" and c["initials"]
+
+
 def test_account_page_is_for_clients_only(trainer):
     assert trainer.get("/api/v1/me/account/").status_code == 403
 

@@ -176,10 +176,10 @@ Probid ka rule (2 Nov): abhi screenshot nahi lena, mobile par try nahi karna. Si
 
 ### D. Progress / More / Notifications
 
-19. ⬜ Progress: Workouts stat card (Waist aur Bench best ke beech) samajh nahi aata. Meaningful details dikhao.
-20. ⬜ More, Account section: "Notifications" aur "Notification settings" hatao (bell already notifications kholta hai). Client ke liye "Unit & Preferences" ki zaroorat nahi.
-21. ⬜ Notifications page: delete notification option hatao.
-22. ⬜ More, Trainer details sheet: trainer photo left, details right, extra details neeche.
+19. ✅ Progress: Workouts stat card (Waist aur Bench best ke beech) samajh nahi aata. Meaningful details dikhao. → Har tile me value + ek line: Waist "−X cm since start" (kam hua to hara), Workouts done "This week X of Y", Bench best "Heaviest set so far".
+20. ✅ More, Account section: "Notifications" aur "Notification settings" hatao (bell already notifications kholta hai). Client ke liye "Unit & Preferences" ki zaroorat nahi. → Ab sirf Privacy & data, My activity (phone), Help & about. Notification settings Notifications page ke gear se.
+21. ✅ Notifications page: delete notification option hatao. → Notification sheet me sirf "Mark as unread" aur link button.
+22. ✅ More, Trainer details sheet: trainer photo left, details right, extra details neeche. → Title "Your trainer"; left 84 px photo (na ho to initials), right naam, "Your trainer since", program, speciality chips; neeche About, Works best with, Experience/Languages/social (sirf jo trainer ne 'What clients see' me on kiya), Certificates, phir Your plan rows. Backend account coach payload me photo + public card.
 
 ### E. Check-ins (Client)
 

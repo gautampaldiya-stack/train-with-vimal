@@ -89,13 +89,69 @@ Future<void> showCoachSheet(BuildContext context, MoreController c) {
     if (m != null) ('Meal plan', '${NumberFormat.decimalPattern('en_IN').format(m['kcal'])} kcal · ${m['diet']}'),
     if (p != null) ('Plan ends', dayShort(DateTime.parse('${p['end']}'))),
   ];
+  final co = d.coach ?? const {};
+  final photo = '${co['avatar'] ?? ''}';
+  final specs = [for (final x in (co['speciality'] as List? ?? const [])) '$x'];
+  final langs = [for (final x in (co['languages'] as List? ?? const [])) '$x'];
+  final years = co['experience_years'] as int?;
+  final about = '${co['about'] ?? ''}'.trim(), best = '${co['works_best_with'] ?? ''}'.trim();
+  final since = co['since'] == null ? null : DateTime.tryParse('${co['since']}');
+  final certs = [for (final x in (co['certificates'] as List? ?? const [])) '${x['name']}${'${x['issuer'] ?? ''}'.isEmpty ? '' : ' · ${x['issuer']}'}'];
+  final social = ((co['social'] as Map?) ?? const {}).map((k, v) => MapEntry('$k', '$v'));
+  final (avBg, avFg) = AppColors.avatarFor(d.coachName);
+  Widget chip(String t) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(99)),
+        child: Text(t, style: AppText.s(11.5, W.w7, color: AppColors.text2)),
+      );
+  Widget sect(String head, Widget body) => Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 4, children: [
+        Text(head.toUpperCase(), style: AppText.over),
+        body,
+      ]);
+  final extra = [
+    if (years != null) ('Experience', years == 0 ? 'Less than a year' : '$years ${years == 1 ? 'year' : 'years'}'),
+    if (langs.isNotEmpty) ('Languages', langs.join(', ')),
+    if (co['phone'] != null && '${co['phone']}'.isNotEmpty) ('Mobile', '${co['phone']}'),
+    if (co['email'] != null && '${co['email']}'.isNotEmpty) ('Email', '${co['email']}'),
+    for (final e in social.entries) (switch (e.key) { 'instagram' => 'Instagram', 'youtube' => 'YouTube', 'website' => 'Website', _ => 'Page' }, e.value),
+  ];
   return showAppSheet(
     context,
-    title: d.coachName,
-    sub: 'Your trainer${p == null ? '' : ' · ${p['name']}'}',
+    title: 'Your trainer',
     footerStretch: true,
-    builder: (_) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
-      moKvs(rows, pad: 8),
+    builder: (_) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [
+      // Photo left, who they are right.
+      Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 14, children: [
+        Container(
+          width: 84,
+          height: 84,
+          alignment: Alignment.center,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(color: avBg, borderRadius: BorderRadius.circular(18)),
+          child: photo.isNotEmpty
+              ? Image.network(photo, width: 84, height: 84, fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Text('${co['initials'] ?? ''}', style: AppText.s(26, W.w8, color: avFg)))
+              : Text('${co['initials'] ?? ''}', style: AppText.s(26, W.w8, color: avFg)),
+        ),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 3, children: [
+            Text(d.coachName, style: AppText.s(17, W.w8)),
+            if (since != null) Text('Your trainer since ${moDate(since)}', style: AppText.s(12.5, W.w4, color: AppColors.muted)),
+            if (p != null) Text('${p['name']} · week ${p['week']} of ${p['weeks']}', style: AppText.s(12.5, W.w6, color: AppColors.text2)),
+            if (specs.isNotEmpty) ...[
+              const SizedBox(height: 3),
+              Wrap(spacing: 6, runSpacing: 6, children: [for (final t in specs) chip(t)]),
+            ],
+          ]),
+        ),
+      ]),
+      if (about.isNotEmpty) sect('About', Text(about, style: AppText.s(13.5, W.w4, color: AppColors.text2, h: 1.5))),
+      if (best.isNotEmpty) sect('Works best with', Text(best, style: AppText.s(13.5, W.w4, color: AppColors.text2, h: 1.5))),
+      if (extra.isNotEmpty) moKvs(extra, pad: 8),
+      if (certs.isNotEmpty) sect('Certificates', Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+        for (final t in certs) Text(t, style: AppText.s(13, W.w6)),
+      ])),
+      sect('Your plan', moKvs(rows, pad: 8)),
       moCap('Questions about your plan? Add them to your weekly check-in or ask ${d.coachFirst} at your next session.'),
     ]),
     footer: pxFooter((ctx) => [
@@ -273,29 +329,12 @@ Future<void> showNoticeSheet(BuildContext context, MoreController c, MoNotice n,
       Expanded(child: Text(n.body.isEmpty ? n.title : n.body, style: AppText.s(14, W.w4, h: 1.5))),
     ]),
     footer: (ctx) => [
-      Row(spacing: 8, children: [
-        Expanded(
-          child: CaButton('Mark as unread', kind: CaBtnKind.out, icon: AppIcons.bell, onPressed: () {
-            Navigator.of(ctx).pop();
-            c.markUnread(n);
-            showToast(context, 'Marked as unread', sub: n.title, kind: ToastKind.info);
-          }),
-        ),
-        Expanded(
-          child: _DangerOutline('Delete', icon: AppIcons.trash, onTap: () {
-            Navigator.of(ctx).pop();
-            c.removeNotice(n);
-            var undone = false;
-            showToast(context, 'Notification deleted', sub: n.title, kind: ToastKind.del, action: 'Undo', onAction: () {
-              undone = true;
-              c.restoreNotice(n);
-            });
-            Future.delayed(const Duration(seconds: 7), () {
-              if (!undone) c.deleteNotice(n);
-            });
-          }),
-        ),
-      ]),
+      // no Delete here (Probid D21): a notification can be marked unread, not removed
+      CaButton('Mark as unread', kind: CaBtnKind.out, icon: AppIcons.bell, onPressed: () {
+        Navigator.of(ctx).pop();
+        c.markUnread(n);
+        showToast(context, 'Marked as unread', sub: n.title, kind: ToastKind.info);
+      }),
       if (link != null)
         CaButton(link.$2, trailingIcon: AppIcons.chevronRight, onPressed: () {
           Navigator.of(ctx).pop();

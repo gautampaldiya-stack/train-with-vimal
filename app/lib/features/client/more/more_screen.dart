@@ -255,14 +255,8 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
         ChCard(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2), gap: 0, children: _planRows(d, firstLine: true)),
         moSec('Account'),
         ChCard(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2), gap: 0, children: [
-          MoMenuRow(
-            first: true,
-            icon: AppIcons.bell,
-            title: 'Notifications',
-            sub: d.unread > 0 ? '${d.unread} unread' : 'All caught up',
-            pill: d.unread > 0 ? '${d.unread} new' : null,
-            onTap: () => context.go('/more/notifications'),
-          ),
+          // D20 (Probid): no Notifications row (the bell opens them) and no Notification settings (the gear on the
+          // Notifications page) or Units & preferences here
           ..._settingsRows(d, web: false),
         ]),
         _logOutButton(wide: true),
@@ -401,20 +395,11 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
     ];
   }
 
-  List<Widget> _settingsRows(MoData d, {required bool web}) {
-    final r = d.reminders;
-    final on = moReminderKeys.where((k) => r[k.$1] == true).length;
-    final quiet = r['quiet_on'] == true ? ' · quiet ${minClock(hmsToMin('${r['quiet_from']}'))} – ${minClock(hmsToMin('${r['quiet_to']}'))}' : '';
-    final m = _me;
-    final units = '${m.unitWeight}, ${m.unitLength}, ${m.unitWater == 'oz' ? 'fl oz' : 'litres'} · week starts ${m.weekStart == 'sun' ? 'Sun' : 'Mon'}';
-    return [
-      MoMenuRow(first: web, icon: AppIcons.gear, title: 'Notification settings', sub: '$on of ${moReminderKeys.length} on$quiet', onTap: () => showReminderSheet(context, c)),
-      MoMenuRow(icon: AppIcons.ruler, title: 'Units & preferences', sub: units, onTap: () => showUnitsSheet(context, c)),
-      MoMenuRow(icon: AppIcons.shield, title: 'Privacy & data', sub: 'Who sees your data · download · delete', onTap: () => showPrivacySheet(context, c)),
-      if (!web) MoMenuRow(icon: AppIcons.pulse, title: 'My activity', sub: 'Everything you logged, newest first', onTap: () => context.go('/more/activity')),
-      MoMenuRow(icon: AppIcons.help, title: 'Help & about', sub: 'Questions, report a problem, version', onTap: () => _help()),
-    ];
-  }
+  List<Widget> _settingsRows(MoData d, {required bool web}) => [
+        MoMenuRow(first: true, icon: AppIcons.shield, title: 'Privacy & data', sub: 'Who sees your data · download · delete', onTap: () => showPrivacySheet(context, c)),
+        if (!web) MoMenuRow(icon: AppIcons.pulse, title: 'My activity', sub: 'Everything you logged, newest first', onTap: () => context.go('/more/activity')),
+        MoMenuRow(icon: AppIcons.help, title: 'Help & about', sub: 'Questions, report a problem, version', onTap: () => _help()),
+      ];
 
   Future<void> _help() async {
     final shot = await moCapture(_shot);

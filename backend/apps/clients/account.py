@@ -134,7 +134,9 @@ def account_page(client, request=None):
             "height_cm": _f(cp.height_cm), "since": since,
         },
         "coach": {"name": coach.full_name, "first_name": first, "initials": coach.initials,
-                  "avatar_color": coach.avatar_color, "since": since} if coach else None,
+                  "avatar_color": coach.avatar_color, "since": since,
+                  # Photo and the extras the trainer shows clients ('What clients see'), for the Details sheet.
+                  **_coach_card(coach, request)} if coach else None,
         "next_session": nxt,
         "checkin": {"weekday": 6, "time": WEEKLY_DUE, "next": next_ci, "week": week_number(client, next_ci),
                     "due_this_week": not sent_this_week, "reply": f"{first} replies by Monday evening"},
@@ -454,3 +456,15 @@ def purge_data_exports():
                 default_storage.delete(p)
                 gone += 1
     return gone
+
+
+def _coach_card(coach, request):
+    """The trainer's public card (photo, speciality, experience, about, languages, social...), visibility-checked."""
+    from apps.trainers.serializers import public_trainer_card
+
+    if not hasattr(coach, "trainer_profile"):
+        return {"avatar": request.build_absolute_uri(coach.avatar.url) if (request and coach.avatar) else None}
+    card = public_trainer_card(coach, request)
+    for k in ("id", "full_name", "initials", "avatar_color"):
+        card.pop(k, None)
+    return card

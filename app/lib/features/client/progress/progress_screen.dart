@@ -502,11 +502,16 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
 
   // ─────────────────────────────── Stat tiles
 
+  /// Three tiles, each a value and one line that says what it means (Probid D19: "Workouts" alone was not clear).
   Widget _stats(PxData d) {
-    final waist = d.measures.where((m) => m.v['waist'] != null).lastOrNull?.v['waist'];
+    final ws = d.measures.where((m) => m.v['waist'] != null).toList();
+    final waist = ws.lastOrNull?.v['waist'];
+    final waist0 = ws.length > 1 ? ws.first.v['waist'] : null;
     final lift = d.lifts.where((l) => l.name.toLowerCase().contains('bench')).firstOrNull ?? d.lifts.firstOrNull;
     final liftName = lift == null ? 'Best lift' : (lift.name.toLowerCase().contains('bench') ? 'Bench best' : '${lift.name.split(' ').last} best');
-    Widget tile(String l, String v, VoidCallback onTap) => Expanded(
+    final a = d.adherence, wk = a.weeks.lastOrNull;
+    String signed(num v) => '${v > 0 ? '+' : v < 0 ? '−' : ''}${pxAmt(v.abs().toDouble(), 'cm')}';
+    Widget tile(String l, String v, String sub, VoidCallback onTap, {Color? subInk}) => Expanded(
       child: Semantics(
         button: true,
         child: Hover(
@@ -517,19 +522,33 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
               CutText(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w7, color: AppColors.muted)),
               FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(v, style: AppText.s(18, W.w8))),
+              CutText(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(11, W.w6, color: subInk ?? AppColors.muted, h: 1.3)),
             ]),
           ),
         ),
       ),
     );
-    return Row(spacing: 8, children: [
-      tile('Waist', waist == null ? '—' : pxAmt(waist, 'cm'), () => setState(() {
-        _tab = 'Body';
-        _open = 'waist';
-      })),
-      tile('Workouts', '${d.adherence.done}', () => showWorkoutsSheet(context, d)),
-      tile(liftName, lift == null ? '—' : pxAmt(lift.bestKg, 'kgs'), () => setState(() => _tab = 'Strength')),
-    ]);
+    return IntrinsicHeight(
+      child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
+        tile(
+          'Waist',
+          waist == null ? '—' : pxAmt(waist, 'cm'),
+          waist == null ? 'Not measured yet' : (waist0 == null ? 'First measure' : '${signed(waist - waist0)} since start'),
+          () => setState(() {
+            _tab = 'Body';
+            _open = 'waist';
+          }),
+          subInk: waist != null && waist0 != null && waist < waist0 ? AppColors.okText : null,
+        ),
+        tile(
+          'Workouts done',
+          '${a.done}',
+          wk == null ? (a.planned == 0 ? 'No plan yet' : 'of ${a.planned} planned') : 'This week ${wk.done} of ${wk.planned}',
+          () => showWorkoutsSheet(context, d),
+        ),
+        tile(liftName, lift == null ? '—' : pxAmt(lift.bestKg, 'kgs'), lift == null ? 'No weights logged yet' : 'Heaviest set so far', () => setState(() => _tab = 'Strength')),
+      ]),
+    );
   }
 
   // ─────────────────────────────── Adherence
