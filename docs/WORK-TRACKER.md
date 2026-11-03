@@ -48,6 +48,7 @@ Is thread me Probid ki 31 Oct wali list ka kaam chal raha hai:
 - ✅ Log food list card: header (All foods / Recent / My foods + count), sab rows ek height, card ke kinare tak scroll.
 - ✅ Meal photos: card ke header se photo hataya (neeche photo bar me hai), har photo par "+1" badge hataya.
 - ✅ Swap sheet: planned food coach ki unit me ("1 cup"), pehle grams se pehli fit unit ("8 tbsp") ban jaati thi.
+- ✅ Log food "Add to Snack" error (3 Nov, screenshot): Snack 4:30 pm se pehle band tha, app generic "highlighted fields" dikhata tha. Ab band meal kabhi default target nahi banta, Add par "Snack opens at 4:30 pm" aata hai aur chune foods bache rehte hain; har error toast me server ka asli reason. *(commit baaki: agle commit ke saath)*
 
 Probid ka rule (2 Nov): abhi screenshot nahi lena, mobile par try nahi karna. Sirf code, `flutter analyze` aur backend tests; test Probid karenge.
 

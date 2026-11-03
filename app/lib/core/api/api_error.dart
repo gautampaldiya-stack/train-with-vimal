@@ -11,6 +11,13 @@ class ApiError implements Exception {
 
   String? field(String name) => fields[name]?.isNotEmpty == true ? fields[name]!.first : null;
 
+  /// What to show in a toast: the server's own reason when it only said "check the highlighted fields" but the
+  /// screen has no such field (e.g. `meal`: "Snack opens at 4:30 pm.").
+  String get shown {
+    final first = fields.values.where((v) => v.isNotEmpty).firstOrNull?.first;
+    return code == 'validation_error' && first != null ? first : message;
+  }
+
   factory ApiError.from(Object e) {
     if (e is ApiError) return e;
     if (e is DioException) {

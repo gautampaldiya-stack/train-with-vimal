@@ -22,8 +22,9 @@ import '../../../core/widgets/tooltip.dart';
 
 void fdError(BuildContext context, Object e) {
   if (!context.mounted) return;
-  final m = e is ApiError ? e.message : 'Please try again';
-  showToast(context, 'Could not save this', sub: m, kind: ToastKind.err);
+  final m = e is ApiError ? e.shown : 'Please try again';
+  final closed = e is ApiError && e.field('meal') != null;
+  showToast(context, closed ? 'This meal is not open yet' : 'Could not save this', sub: m, kind: closed ? ToastKind.info : ToastKind.err);
 }
 
 /// A photo of the meal (phone: camera or gallery; web: a file), as a data URL. Null when nothing was picked.

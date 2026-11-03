@@ -151,9 +151,15 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
 
   FMeal? _mealOf(String name) => day.data?.meals.where((m) => m.name == name).firstOrNull;
 
+  bool _isLocked(String name) {
+    final m = _mealOf(name);
+    return m != null && m.open && m.locked;
+  }
+
   String get meal {
     if (_at != null) return _meal ?? 'Other time';
-    if (_meal != null && _mealNames.contains(_meal)) return _meal!;
+    // a meal not open yet (Log more from its card, ?meal=) is never the target: the next open one is (Probid 2026-11-03)
+    if (_meal != null && _mealNames.contains(_meal) && !_isLocked(_meal!)) return _meal!;
     final ms = day.data?.meals ?? const <FMeal>[];
     // the first meal still open and not locked; else the latest one already open (logged), never a locked one
     final open = ms.where((m) => m.open && !m.locked).firstOrNull ?? ms.where((m) => !m.locked).lastOrNull;
@@ -299,6 +305,11 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
   Future<void> _addSelected() async {
     if (_sel.isEmpty) return;
     final m = meal, picks = [..._sel];
+    if (_at == null && _isLocked(m)) {
+      // every meal still locked: say when, keep the picked foods
+      showToast(context, '$m ${_mealOf(m)!.opensLine.toLowerCase()}', sub: 'Your foods stay picked. Add them then, or pick Other time.', kind: ToastKind.info);
+      return;
+    }
     final done = <FEntry>[];
     try {
       for (final x in picks) {
