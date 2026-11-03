@@ -100,19 +100,26 @@ Future<void> showCoachSheet(BuildContext context, MoreController c) {
   final social = ((co['social'] as Map?) ?? const {}).map((k, v) => MapEntry('$k', '$v'));
   final (avBg, avFg) = AppColors.avatarFor(d.coachName);
   Widget chip(String t) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(99)),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+        decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(99)),
         child: Text(t, style: AppText.s(11.5, W.w7, color: AppColors.text2)),
       );
-  Widget sect(String head, Widget body) => Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 4, children: [
-        Text(head.toUpperCase(), style: AppText.over),
-        body,
+  // One section: small grey heading, then a white bordered box.
+  Widget box(String head, List<Widget> body) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
+        moSec(head),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(14)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: body),
+        ),
       ]);
-  final extra = [
-    if (years != null) ('Experience', years == 0 ? 'Less than a year' : '$years ${years == 1 ? 'year' : 'years'}'),
-    if (langs.isNotEmpty) ('Languages', langs.join(', ')),
-    if (co['phone'] != null && '${co['phone']}'.isNotEmpty) ('Mobile', '${co['phone']}'),
-    if (co['email'] != null && '${co['email']}'.isNotEmpty) ('Email', '${co['email']}'),
+  final meta = [
+    if (years != null) years == 0 ? 'New coach' : '$years ${years == 1 ? 'yr' : 'yrs'} experience',
+    if (langs.isNotEmpty) langs.join(', '),
+  ].join(' · ');
+  final contact = [
+    if ('${co['phone'] ?? ''}'.isNotEmpty) ('Mobile', '${co['phone']}'),
+    if ('${co['email'] ?? ''}'.isNotEmpty) ('Email', '${co['email']}'),
     for (final e in social.entries) (switch (e.key) { 'instagram' => 'Instagram', 'youtube' => 'YouTube', 'website' => 'Website', _ => 'Page' }, e.value),
   ];
   return showAppSheet(
@@ -121,37 +128,65 @@ Future<void> showCoachSheet(BuildContext context, MoreController c) {
     footerStretch: true,
     builder: (_) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [
       // Photo left, who they are right.
-      Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 14, children: [
-        Container(
-          width: 84,
-          height: 84,
-          alignment: Alignment.center,
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(color: avBg, borderRadius: BorderRadius.circular(18)),
-          child: photo.isNotEmpty
-              ? Image.network(photo, width: 84, height: 84, fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => Text('${co['initials'] ?? ''}', style: AppText.s(26, W.w8, color: avFg)))
-              : Text('${co['initials'] ?? ''}', style: AppText.s(26, W.w8, color: avFg)),
-        ),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 3, children: [
-            Text(d.coachName, style: AppText.s(17, W.w8)),
-            if (since != null) Text('Your trainer since ${moDate(since)}', style: AppText.s(12.5, W.w4, color: AppColors.muted)),
-            if (p != null) Text('${p['name']} · week ${p['week']} of ${p['weeks']}', style: AppText.s(12.5, W.w6, color: AppColors.text2)),
-            if (specs.isNotEmpty) ...[
-              const SizedBox(height: 3),
-              Wrap(spacing: 6, runSpacing: 6, children: [for (final t in specs) chip(t)]),
-            ],
-          ]),
-        ),
-      ]),
-      if (about.isNotEmpty) sect('About', Text(about, style: AppText.s(13.5, W.w4, color: AppColors.text2, h: 1.5))),
-      if (best.isNotEmpty) sect('Works best with', Text(best, style: AppText.s(13.5, W.w4, color: AppColors.text2, h: 1.5))),
-      if (extra.isNotEmpty) moKvs(extra, pad: 8),
-      if (certs.isNotEmpty) sect('Certificates', Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-        for (final t in certs) Text(t, style: AppText.s(13, W.w6)),
-      ])),
-      sect('Your plan', moKvs(rows, pad: 8)),
+      Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(16)),
+        child: Row(spacing: 14, children: [
+          Container(
+            width: 76,
+            height: 76,
+            alignment: Alignment.center,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(color: avBg, borderRadius: BorderRadius.circular(16)),
+            child: photo.isNotEmpty
+                ? Image.network(photo, width: 76, height: 76, fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Text('${co['initials'] ?? ''}', style: AppText.s(24, W.w8, color: avFg)))
+                : Text('${co['initials'] ?? ''}', style: AppText.s(24, W.w8, color: avFg)),
+          ),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+              Text(d.coachName, style: AppText.s(17, W.w8)),
+              if (since != null) Text('Your trainer since ${moDate(since)}', style: AppText.s(12.5, W.w4, color: AppColors.muted)),
+              if (meta.isNotEmpty) Text(meta, style: AppText.s(12.5, W.w6, color: AppColors.text2)),
+              if (specs.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Wrap(spacing: 6, runSpacing: 6, children: [for (final t in specs) chip(t)]),
+              ],
+            ]),
+          ),
+        ]),
+      ),
+      if (about.isNotEmpty || best.isNotEmpty)
+        box('About', [
+          if (about.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(about, style: AppText.s(13.5, W.w4, color: AppColors.text2, h: 1.5)),
+            ),
+          if (best.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(border: about.isEmpty ? null : const Border(top: BorderSide(color: AppColors.line))),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+                Text('Works best with', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
+                Text(best, style: AppText.s(13.5, W.w7)),
+              ]),
+            ),
+        ]),
+      box('Your plan', [moKvs(rows, pad: 9)]),
+      if (certs.isNotEmpty)
+        box('Certificates', [
+          for (final (i, t) in certs.indexed)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 9),
+              decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line))),
+              child: Row(spacing: 8, children: [
+                const AppIcon(AppIcons.checkCircle, size: 16, color: AppColors.okSolid),
+                Expanded(child: Text(t, style: AppText.s(13, W.w7))),
+              ]),
+            ),
+        ]),
+      if (contact.isNotEmpty) box('Contact', [moKvs(contact, pad: 9)]),
       moCap('Questions about your plan? Add them to your weekly check-in or ask ${d.coachFirst} at your next session.'),
     ]),
     footer: pxFooter((ctx) => [
