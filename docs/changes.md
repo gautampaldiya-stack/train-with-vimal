@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-11-03 · Weekly adherence = poora plan; Home cards (C)
+- **Pehle:** Home "Weekly adherence" sirf daily check-in ginta tha (Mon→aaj). Coach ka adherence pichhle 7 din ke workouts + meals se. Habit row me water "+250 ml", tick habit / supplement bina confirm. Food card me "Log food" sheet aur Ate it Home se hi log karta tha.
+- **Ab:** Ek rule (`metrics.plan_adherence`): workouts + meals + daily check-in + habits, plan vs kiya, har item barabar; aaj sirf jo due ya done. Home: Mon→ab, 4 part lines. Coach: pichhle 7 poore din, same rule. Habits: water sheet (Food jaisi), steps/sleep type, tick + supplements par Yes/No. Food card: Ate it Food page par us meal tak le jaata hai; naya Up next; Log food hata. Workout card par pehle 3 exercises aur progress.
+- **Kyun:** Probid, WORK-TRACKER C14–C18 (option 1 chuna, 3 Nov).
+- **Updated:** backend apps/clients/metrics.py, apps/activity/dashboard.py, tests/test_plan_adherence.py, tests/test_client_home.py; app home_screen/home_model/home_parts/home_sheets, food_screen (meal param), router, overlays (confirmAction cancel label), food_log_screen (Now); docs/WORK-TRACKER.md
+
 ### 2026-11-03 · Log food — Other time with hour : minute boxes; sheets own their text boxes
 - **Pehle:** Other time sheet me time − / + stepper se (15 min) badalta tha. Create custom food sheet apne text box `.whenComplete` me dispose karti thi, isliye Save/Cancel ke baad laal error. Upar ki added-food list me rows alag height ki, kcal line ke beech me. Back-press confirm ke buttons bade.
 - **Ab:** Other time: ghanta (1–12) : minute (00–59) ke 2 box aur AM/PM switch, Now / 30 min ago chips; aage ka time nahi chalta. `showAppSheet(owns: [...])`: sheet ke controllers sheet ka route hatne ke baad hi dispose hote hain. Added list: same height rows, kcal right side, chhota remove, group heading me ginti + kcal. Back-press confirm ke buttons small. Preview this meal me kcal right side ek seedh me.

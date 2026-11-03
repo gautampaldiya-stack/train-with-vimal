@@ -338,14 +338,11 @@ def checkin_today(client, today):
 
 
 def adherence_week(client, today):
-    """Home Weekly adherence: daily check-ins sent Monday to today ("4 of 6 days · 67%")."""
-    from apps.checkins.models import Submission
+    """Home Weekly adherence: Monday to now, workouts + meals + daily check-ins + habits (`plan_adherence`)."""
+    from apps.clients.metrics import plan_adherence
 
     monday = today - timedelta(days=today.weekday())
-    done = (Submission.objects.filter(client=client, form_type="daily", date__range=(monday, today))
-            .values("date").distinct().count())
-    days = today.weekday() + 1
-    return {"done": done, "days": days, "pct": round(100 * done / days)}
+    return plan_adherence(client, monday, today)
 
 
 def progress_summary(client):

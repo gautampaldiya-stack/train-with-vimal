@@ -37,7 +37,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `dashboard/dismiss/` | POST | DismissView | × on a Needs action row. |
 | `dashboard/trainer/` | GET | TrainerDashboardView | Trainer dashboard: stats, Today, Clients who need you, Check-ins to review, This week, bell list. |
 | `dashboard/trainer/activity/` | GET | TrainerActivityView | Next page of the dashboard's Activity card: `?before=<next>` from the previous page. |
-| `me/home/` | GET | ClientHomeView | + `layout`, `checkin_today`, `adherence_week`, `progress_summary` (D-87) |
+| `me/home/` | GET | ClientHomeView | + `layout`, `checkin_today`, `adherence_week` ({pct, done, planned, parts[{key, label, done, planned}]}: workouts + meals + daily check-in + habits, Mon→now), `progress_summary` (D-87) |
 | `me/home/layout/` | PATCH | HomeLayoutView | `{"layout": [card ids]}` saves the Home card order; unknown ids → 400 (D-87) |
 
 ## automations

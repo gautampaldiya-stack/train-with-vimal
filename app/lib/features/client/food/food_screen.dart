@@ -22,7 +22,10 @@ import '../../../core/widgets/tooltip.dart';
 /// water, then My plan (the meals to eat) or the Food log of the picked day. On a wide web page the tabs stay
 /// put and only the meal cards scroll.
 class ClientFoodScreen extends StatefulWidget {
-  const ClientFoodScreen({super.key});
+  const ClientFoodScreen({super.key, this.meal});
+
+  /// `/food?meal=<id>` (Home → Ate it): open today's plan scrolled to this meal (C17).
+  final int? meal;
   @override
   State<ClientFoodScreen> createState() => _ClientFoodScreenState();
 }
@@ -34,10 +37,32 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
   /// Photos picked for a meal not logged yet (up to 4); one Mark as eaten logs it with all of them (Probid 2026-10-31).
   final Map<int, List<String>> _photos = {};
 
+  final Map<int, GlobalKey> _mealKeys = {};
+  int? _flash;
+
   @override
   void initState() {
     super.initState();
+    if (widget.meal != null) {
+      c.tab = 'plan';
+      c.addListener(_goToMeal);
+    }
     c.start();
+  }
+
+  /// Once the day is on screen: scroll to the meal Home asked for and ring it for a moment.
+  void _goToMeal() {
+    if (c.data == null) return;
+    c.removeListener(_goToMeal);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _mealKeys[widget.meal]?.currentContext;
+      if (ctx == null || !mounted) return;
+      Scrollable.ensureVisible(ctx, alignment: .08, duration: const Duration(milliseconds: 350), curve: Curves.easeOutCubic);
+      setState(() => _flash = widget.meal);
+      Future.delayed(const Duration(milliseconds: 1800), () {
+        if (mounted) setState(() => _flash = null);
+      });
+    });
   }
 
   @override
@@ -679,7 +704,7 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
     }
     final next = d.isToday ? d.meals.where((m) => m.open).firstOrNull : null;
     return [
-      for (final m in d.meals) _meal(d, m, next: m == next),
+      for (final m in d.meals) KeyedSubtree(key: _mealKeys.putIfAbsent(m.id, GlobalKey.new), child: _meal(d, m, next: m == next || _flash == m.id)),
       if (d.isToday || d.isYesterday) FdElse(d.isToday ? 'Ate something else' : 'Ate something else yesterday', icon: AppIcons.plus, onTap: _logFood),
     ];
   }

@@ -108,9 +108,16 @@ def test_home_adherence_counts_daily_checkins_this_week(client_user):
         if i != 1:
             Submission.objects.create(form=form, form_type="daily", client=riya, date=monday + timedelta(days=i))
     d = _home(client_user)
-    done, days = today.weekday() + (0 if today.weekday() >= 1 else 1), today.weekday() + 1
-    assert d["adherence_week"] == {"done": done, "days": days, "pct": round(100 * done / days)}
-    assert d["checkin_today"]["status"] == "sent" and d["checkin_today"]["form"] == str(form.id)
+    # Weekly adherence = workouts + meals + daily check-ins + habits (Probid 2026-11-03); the check-in part counts
+    # every day before today, and today once it is sent (it is).
+    a = d["adherence_week"]
+    ch = next(p for p in a["parts"] if p["key"] == "checkins")
+    sent_today = today.weekday() != 1  # the loop skips Tuesday
+    done = today.weekday() + (0 if today.weekday() >= 1 else 1)
+    assert (ch["done"], ch["planned"]) == (done, today.weekday() + sent_today)
+    assert a["done"] == sum(p["done"] for p in a["parts"]) and a["planned"] == sum(p["planned"] for p in a["parts"])
+    assert a["pct"] == round(100 * a["done"] / a["planned"])
+    assert d["checkin_today"]["status"] == ("sent" if sent_today else "pending") and d["checkin_today"]["form"] == str(form.id)
 
 
 def test_home_progress_summary_matches_the_progress_page(client_user):

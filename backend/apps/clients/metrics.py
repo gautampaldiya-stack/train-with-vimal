@@ -1,6 +1,6 @@
 """Numbers shown about a client: adherence, the Last 7 days grid, weight trend.
 
-Adherence (design footnote) = share of planned workouts and meals done in the last N days.
+Adherence = share of planned workouts, meals, daily check-ins and habits done (`plan_adherence`, Probid 2026-11-03).
 """
 from datetime import timedelta
 
@@ -86,24 +86,94 @@ def planned_workout_days(assignment, start, end):
     return out
 
 
-def adherence(client, days=7, end=None):
-    """Percent of planned workouts + meals done in the last `days` days (None if nothing was planned)."""
-    from apps.nutrition.models import MealDayState
+def plan_adherence(client, start, end, now=None):
+    """Adherence (Probid 2026-11-03): what the coach planned against what the client did, `start`..`end`.
+
+    Four parts, every planned item counts the same: workouts (planned non-rest days), meals (planned meals logged),
+    the daily check-in (one a day) and habits (each habit on each day it is due; "times a week" habits count their
+    times). Days after today count nothing; today counts only what is already due (a meal whose time has passed)
+    or already done, so the number does not drop in the morning.
+    Returns {"pct": int | None, "done", "planned", "parts": [{"key", "label", "done", "planned"}]}; pct is None when
+    nothing was planned. Parts with nothing planned are left out."""
+    from apps.checkins.models import Form, Submission
+    from apps.habits.models import Habit, HabitAssignment, HabitLog
+    from apps.nutrition.models import MealDayState, meals_on
     from apps.training.models import WorkoutLog
 
-    end = end or timezone.localdate() - timedelta(days=1)  # today is not over yet
-    start = end - timedelta(days=days - 1)
-    planned_w = planned_workout_days(active_program(client, end), start, end)
-    done_w = WorkoutLog.objects.filter(client=client, status=WorkoutLog.Status.COMPLETED, date__range=(start, end))
-    done_w = min(done_w.values("date").distinct().count(), len(planned_w))
+    now = now or timezone.localtime()
+    today = now.date()
+    end = min(end, today)
+    parts = []
+
+    def days_between(a, b):
+        d = a
+        while d <= b:
+            yield d
+            d += timedelta(days=1)
+
+    # Workouts: planned non-rest days; today's only once it is done.
+    planned_w = set(planned_workout_days(active_program(client, end), start, end))
+    done_w = set(WorkoutLog.objects.filter(client=client, status=WorkoutLog.Status.COMPLETED, date__range=(start, end))
+                 .values_list("date", flat=True)) & planned_w
+    if today in planned_w and today not in done_w:
+        planned_w.discard(today)
+    parts.append(("workouts", "Workouts", len(done_w), len(planned_w)))
+
+    # Meals: each planned meal; today's once its time has passed or it is logged. Logged meals are counted per day
+    # (not by meal id), so a plan copy made later (new meal ids) keeps the days before it.
     mp = active_meal_plan(client, end)
-    planned_m = planned_meals(mp, start, end)
-    done_m = MealDayState.objects.filter(client=client, date__range=(start, end),
-                                         status=MealDayState.Status.LOGGED).count() if mp else 0
-    planned = len(planned_w) + planned_m
-    if not planned:
-        return None
-    return round(100 * (done_w + min(done_m, planned_m)) / planned)
+    planned = done = 0
+    if mp:
+        plan = mp.followed
+        times = {w: list(meals_on(plan, w).values_list("time", flat=True)) for w in range(7)}
+        logged = dict(MealDayState.objects.filter(client=client, date__range=(start, end), status=MealDayState.Status.LOGGED)
+                      .values("date").annotate(n=Count("id")).values_list("date", "n"))
+        for d in days_between(max(start, mp.start_date), end):
+            ts = times[d.weekday()]
+            got = min(logged.get(d, 0), len(ts))
+            due = len(ts) if d < today else max(got, sum(1 for t in ts if t <= now.time()))
+            planned += due
+            done += min(got, due)
+    parts.append(("meals", "Meals", done, planned))
+
+    # Daily check-in: one a day while a daily form is published; today's once it is sent.
+    if Form.objects.filter(type="daily", status="published").exists():
+        first = max(start, client.date_joined.date())
+        sent = set(Submission.objects.filter(client=client, form_type="daily", date__range=(first, end))
+                   .values_list("date", flat=True))
+        days = [d for d in days_between(first, end) if d < today or d in sent]
+        parts.append(("checkins", "Check-ins", len(sent & set(days)), len(days)))
+
+    # Habits: each due day (or the week's times); today's once it is done.
+    planned = done = 0
+    for a in HabitAssignment.objects.filter(client=client, active=True).select_related("habit"):
+        h = a.eff
+        first = max(start, a.start_date)
+        if first > end:
+            continue
+        logs = set(HabitLog.objects.filter(client=client, habit=a.habit, done=True, date__range=(first, end))
+                   .values_list("date", flat=True))
+        if h.frequency == Habit.Frequency.TIMES_WEEK:
+            n = max(1, round((h.times_per_week or 1) * ((end - first).days + 1) / 7))
+            planned += n
+            done += min(len(logs), n)
+            continue
+        for d in days_between(first, end):
+            if h.is_due_on(d) and (d < today or d in logs):
+                planned += 1
+                done += d in logs
+    parts.append(("habits", "Habits", done, planned))
+
+    parts = [{"key": k, "label": l, "done": dn, "planned": pl} for k, l, dn, pl in parts if pl]
+    done, planned = sum(p["done"] for p in parts), sum(p["planned"] for p in parts)
+    return {"pct": round(100 * done / planned) if planned else None, "done": done, "planned": planned, "parts": parts}
+
+
+def adherence(client, days=7, end=None):
+    """Coach-side adherence: the same rule as the client's Home card (`plan_adherence`), over the last `days`
+    full days (today is not over yet). None if nothing was planned."""
+    end = end or timezone.localdate() - timedelta(days=1)
+    return plan_adherence(client, end - timedelta(days=days - 1), end)["pct"]
 
 
 def last_7_days(client, end=None):

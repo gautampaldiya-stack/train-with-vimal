@@ -299,7 +299,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     'checkin': 'Fill today’s daily check-in',
     'food': 'Calories left and the next meal',
     'progress': 'Weight, body fat, muscle, strength',
-    'adherence': 'Check-ins this week in %',
+    'adherence': 'Your plan this week in %',
     'water': 'Glasses today',
     'rest_timer': 'Your rest while working out',
   };
@@ -481,14 +481,30 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
 
   Widget _adherenceCard(HomeData d) {
     final a = d.adherence;
+    final pct = a.pct;
+    Color tone(double r) => r >= .8 ? AppColors.okSolid : (r >= .5 ? AppColors.amberSolid : AppColors.badText);
     return ChCard(children: [
-      ChHead(lead: const ChIcon(AppIcons.checkCircle, tone: ChTone.green), title: 'Weekly adherence', sub: 'Progress of this week till now'),
-      Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, spacing: 8, children: [
-        Text('${a.pct}%', style: AppText.s(28, W.w8, ls: -0.5)),
-        Flexible(child: Text('${a.done} of ${a.days} day${a.days == 1 ? '' : 's'} checked in', style: AppText.s(13, W.w6, color: AppColors.muted))),
-      ]),
-      ChBar(a.days == 0 ? 0 : a.done / a.days, color: AppColors.okSolid),
-      Text('From your daily check-ins, Monday to today', style: AppText.s(11.5, W.w4, color: AppColors.muted)),
+      ChHead(lead: const ChIcon(AppIcons.checkCircle, tone: ChTone.green), title: 'Weekly adherence', sub: 'Your plan this week, Monday to now'),
+      if (pct == null)
+        Text('Nothing planned yet this week. Your coach adds workouts, meals and habits.', style: AppText.s(13, W.w5, color: AppColors.muted))
+      else ...[
+        Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, spacing: 8, children: [
+          Text('$pct%', style: AppText.s(28, W.w8, ls: -0.5, color: tone(pct / 100))),
+          Flexible(child: Text('${a.done} of ${a.planned} done so far', style: AppText.s(13, W.w6, color: AppColors.muted))),
+        ]),
+        ChBar(pct / 100, color: tone(pct / 100)),
+        // one line per part, so she sees where she is behind
+        Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 7, children: [
+          for (final p in a.parts)
+            Row(spacing: 10, children: [
+              SizedBox(width: 78, child: Text(p.label, style: AppText.s(12.5, W.w6, color: AppColors.text2))),
+              Expanded(child: ChBar(p.planned == 0 ? 0 : p.done / p.planned, color: tone(p.planned == 0 ? 0 : p.done / p.planned), height: 5)),
+              SizedBox(width: 44, child: Text('${p.done}/${p.planned}', textAlign: TextAlign.right, style: AppText.s(12.5, W.w7, tabular: true))),
+            ]),
+        ]),
+      ],
+      Text('Today counts what is already due: a meal once its time has passed, a workout or habit once it is done.',
+          style: AppText.s(11.5, W.w4, color: AppColors.muted)),
     ]);
   }
 
@@ -714,7 +730,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     }
     final sel = _day ?? d.todayIndex;
     final day = d.strip[sel < 0 ? 0 : sel];
-    final today = day.today, past = day.date.isBefore(d.date), future = !today && !past;
+    final today = day.today, past = day.date.isBefore(d.date);
     final s = d.session;
     final sessionHere = s != null && DateUtils.isSameDay(s.start, day.date);
     final n = day.exercises.length;
@@ -752,6 +768,61 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     ));
 
     final body = <Widget>[];
+    // C18 (Probid): the day's exercises right on the card (first 3, numbered), "+ N more" opens them all; a started
+    // workout shows how far it is.
+    if (!day.rest && n > 0) {
+      final going = today && !day.done && (day.inProgress || day.exercisesDone > 0);
+      if (going) {
+        body.add(Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 5, children: [
+            Row(children: [
+              Expanded(child: Text('In progress', style: AppText.s(12.5, W.w7, color: AppColors.accentText))),
+              Text('${day.exercisesDone} of $n exercises', style: AppText.s(12.5, W.w7, tabular: true)),
+            ]),
+            ChBar(day.exercisesDone / n, color: AppColors.accent, height: 6),
+          ]),
+        ));
+      }
+      body.add(Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          for (final (i, e) in day.exercises.take(3).indexed)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line))),
+              child: Row(spacing: 10, children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: going && i < day.exercisesDone ? AppColors.okSolid : AppColors.sub,
+                    shape: BoxShape.circle,
+                  ),
+                  child: going && i < day.exercisesDone
+                      ? const AppIcon(AppIcons.check, size: 13, color: AppColors.white, stroke: 2.6)
+                      : Text('${i + 1}', style: AppText.s(11.5, W.w8, color: AppColors.text2)),
+                ),
+                Expanded(child: CutText(e.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
+                Flexible(child: CutText(e.line, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.right, style: AppText.s(12, W.w5, color: AppColors.muted))),
+              ]),
+            ),
+          if (n > 3)
+            Hover(
+              onTap: () => showWorkoutPreview(context, day),
+              builder: (_, h, _) => Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
+                child: Row(spacing: 6, children: [
+                  Text('+ ${n - 3} more · See all', style: AppText.s(12.5, W.w7, color: h ? AppColors.accent : AppColors.accentText)),
+                  AppIcon(AppIcons.chevronRight, size: 14, color: AppColors.accentText),
+                ]),
+              ),
+            ),
+        ]),
+      ));
+    }
     if (day.rest) {
       body.add(Padding(
         padding: const EdgeInsets.only(top: 10),
@@ -794,11 +865,6 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
         padding: const EdgeInsets.only(top: 12),
         child: CaButton(going ? 'Continue workout' : 'Start workout', icon: AppIcons.play,
             onPressed: () => context.go(going ? '/train/workout' : '/train/workout?start=${d.dayId ?? ''}')),
-      ));
-    } else if (future && !day.rest) {
-      body.add(Padding(
-        padding: const EdgeInsets.only(top: 10),
-        child: CaButton('See all exercises', kind: CaBtnKind.out, icon: AppIcons.eye, onPressed: () => showWorkoutPreview(context, day)),
       ));
     }
     return Container(
@@ -871,15 +937,6 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
 
   // ─────────────────────────────── Food
 
-  /// "Ate it" asks first (Phase 3): a meal is logged only on her Yes.
-  Future<void> _eat(HomeMeal m) async {
-    final ok = await confirmAction(context,
-        title: 'Did you eat this?', body: '${m.name} · ${m.foods} · ${inNum(m.kcal)} kcal', confirm: 'Yes, log it', icon: AppIcons.check);
-    if (!ok || !mounted) return;
-    c.setMeal(m, true);
-    showToast(context, '${m.name} logged', sub: '${m.foods} · ${inNum(m.kcal)} kcal', kind: ToastKind.ok, action: 'Undo', onAction: () => c.setMeal(m, false));
-  }
-
   Widget _food(HomeData d) {
     final t = d.target ?? const [0, 0, 0, 0];
     final e = d.eaten;
@@ -890,7 +947,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
         lead: const ChIcon(AppIcons.food, tone: ChTone.green),
         title: 'Food',
         sub: hasPlan ? '${inNum(t[0])} kcal plan${d.goal.isEmpty ? '' : ' · ${d.goal}'}' : 'No meal plan yet',
-        action: chSm('Log food', () => showLogFoodSheet(context, c, _eat), icon: AppIcons.plus),
+        action: chSm('See all', () => context.go('/food')),
       ),
       Row(spacing: 16, children: [
         ChRing(ratio: t[0] > 0 ? e[0] / t[0] : 0, value: inNum((t[0] - e[0]).clamp(0, 99999)), label: 'kcal left'),
@@ -908,27 +965,64 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
           ]),
         ),
       ]),
-      if (next != null)
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(color: AppColors.nextBg, borderRadius: BorderRadius.circular(10)),
-          child: Row(spacing: 10, children: [
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Up next · ${next.name}, ${mealTime(next.time)}', style: AppText.s(12, W.w6, color: AppColors.muted)),
-                Text(next.foods, style: AppText.s(13.5, W.w7)),
-                Text('${inNum(next.kcal)} kcal', style: AppText.s(12, W.w4, color: AppColors.muted)),
-              ]),
-            ),
-            if (next.locked)
-              Text('Opens ${clock(next.opensAt!)}', style: AppText.s(12.5, W.w6, color: AppColors.muted))
-            else
-              chSm('Ate it', () => _eat(next), icon: AppIcons.check),
-          ]),
-        )
+      if (next != null) _upNext(d, next)
       else if (d.meals.isNotEmpty)
         ChNote(icon: AppIcons.checkCircle, bg: AppColors.okBg, fg: AppColors.okText, child: Text('All meals logged for today', style: AppText.s(13.5, W.w7, color: AppColors.okText))),
     ]);
+  }
+
+  /// "Up next" (C17, Probid): the meal, its time (or when it opens), its foods and macros, today's meals as dots,
+  /// and Ate it, which opens the Food page on that meal (no logging from Home).
+  Widget _upNext(HomeData d, HomeMeal m) {
+    final logged = d.meals.where((x) => x.eaten).length;
+    void go() => context.go('/food?meal=${m.id}');
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      decoration: BoxDecoration(color: AppColors.nextBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.line)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
+        Row(spacing: 8, children: [
+          Text('UP NEXT', style: AppText.s(11, W.w8, color: AppColors.accentText, ls: .55)),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(color: m.locked ? AppColors.sub : AppColors.accentSoft, borderRadius: BorderRadius.circular(99)),
+            child: Row(mainAxisSize: MainAxisSize.min, spacing: 4, children: [
+              AppIcon(AppIcons.clock, size: 12, color: m.locked ? AppColors.muted : AppColors.accentText),
+              Text(m.locked ? 'Opens ${clock(m.opensAt!)}' : mealTime(m.time),
+                  style: AppText.s(11.5, W.w7, color: m.locked ? AppColors.muted : AppColors.accentText)),
+            ]),
+          ),
+        ]),
+        Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, spacing: 8, children: [
+          Expanded(child: CutText(m.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(16, W.w8))),
+          Text('${inNum(m.kcal)} kcal', style: AppText.s(14, W.w8)),
+        ]),
+        if (m.foods.isNotEmpty) Text(m.foods, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w5, color: AppColors.text2, h: 1.35)),
+        Text('${m.protein.round()} g protein · ${m.carbs.round()} g carbs · ${m.fat.round()} g fat', style: AppText.s(12, W.w5, color: AppColors.muted)),
+        const SizedBox(height: 2),
+        Row(spacing: 10, children: [
+          // today's meals: green = logged, blue = this one, grey = still to come
+          Expanded(
+            child: Row(spacing: 6, children: [
+              for (final x in d.meals)
+                AppTooltip(
+                  message: '${x.name}${x.eaten ? ' · logged' : x.pill == 'skipped' ? ' · skipped' : ''}',
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: x.eaten ? AppColors.okSolid : (x.id == m.id ? AppColors.accent : AppColors.line2),
+                    ),
+                  ),
+                ),
+              Flexible(child: Text('$logged of ${d.meals.length} logged', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w6, color: AppColors.muted))),
+            ]),
+          ),
+          chSm(m.locked ? 'View meal' : 'Ate it', go, icon: m.locked ? null : AppIcons.check, kind: m.locked ? CaBtnKind.out : CaBtnKind.dark),
+        ]),
+      ]),
+    );
   }
 
   // ─────────────────────────────── Habits
@@ -968,7 +1062,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     final met = h.ratio >= 1;
     final unit = h.unit.isEmpty ? '' : ' ${h.unit}';
     final (String line, String btn, VoidCallback tap) = h.isWater
-        ? ('${litres(d.waterMl)} of ${litres(h.unit == 'ml' ? h.target : h.target * 250)} · from the water card', '+250 ml', () => _water(250))
+        ? ('${litres(d.waterMl)} of ${litres(h.unit == 'ml' ? h.target : h.target * 250)} today', 'Log water', () => showHomeWaterSheet(context, c))
         : h.isSleep
             ? ('Last night ${hoursMin(h.value)}', 'Change', () => showSleepSheet(context, c, h))
             : h.counter
@@ -990,10 +1084,32 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     ]);
   }
 
-  void _tick(HomeHabit h) {
+  /// A tick habit asks Yes / No first (C15, Probid), both ways.
+  Future<void> _tick(HomeHabit h) async {
     final was = h.done;
+    final ok = await confirmAction(context,
+        title: was ? 'Mark ${h.name} as not done?' : 'Did you do ${h.name} today?',
+        body: was ? 'It goes back to Not done yet for today.' : 'It is marked done for today. Your coach sees it.',
+        confirm: was ? 'Yes, not done' : 'Yes, done',
+        cancel: 'No',
+        icon: was ? AppIcons.close : AppIcons.check);
+    if (!ok || !mounted) return;
     c.setHabit(h, done: !was);
     if (!was) showToast(context, '${h.name} done', sub: 'Nice, keep it going', kind: ToastKind.ok, action: 'Undo', onAction: () => c.setHabit(h, done: false));
+  }
+
+  /// Supplements ask the same way (C16).
+  Future<void> _take(HomeSupplement s) async {
+    final was = s.taken;
+    final ok = await confirmAction(context,
+        title: was ? 'Mark ${s.name} as not taken?' : 'Did you take ${s.name}?',
+        body: s.line,
+        confirm: was ? 'Yes, not taken' : 'Yes, taken',
+        cancel: 'No',
+        icon: was ? AppIcons.close : AppIcons.pill);
+    if (!ok || !mounted) return;
+    c.setSupplement(s, !was);
+    if (!was) showToast(context, '${s.name} taken', sub: s.line, kind: ToastKind.ok, action: 'Undo', onAction: () => c.setSupplement(s, false));
   }
 
   // ─────────────────────────────── Supplements
@@ -1031,12 +1147,9 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                       .copyWith(decoration: s.taken ? TextDecoration.lineThrough : null, decorationColor: AppColors.strike)),
             ),
             if (s.taken)
-              const ChOk('Taken')
+              Hover(onTap: () => _take(s), builder: (_, _, _) => const ChOk('Taken'))
             else
-              chSm('Take', () {
-                c.setSupplement(s, true);
-                showToast(context, '${s.name} taken', sub: s.line, kind: ToastKind.ok, action: 'Undo', onAction: () => c.setSupplement(s, false));
-              }),
+              chSm('Take', () => _take(s)),
           ]),
       ]),
     ]);

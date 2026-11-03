@@ -80,6 +80,18 @@ class HomeController extends ChangeNotifier {
     _send('me/food-log/water/', {'ml': ml});
   }
 
+  /// Water sheet: the day's total (ml), like the Food page water card.
+  void setWater(int total) {
+    final d = data!;
+    d.waterMl = total.clamp(0, 10000);
+    for (final h in d.habits.where((h) => h.isWater)) {
+      h.value = h.unit == 'ml' ? d.waterMl : d.waterMl ~/ 250;
+      h.done = h.target > 0 && h.value >= h.target;
+    }
+    changed();
+    _send('me/food-log/water/', {'total': d.waterMl});
+  }
+
   void setMeal(HomeMeal m, bool eaten) {
     final d = data!;
     final sign = eaten ? 1 : -1;
@@ -362,9 +374,19 @@ extension HomeExtras on HomeData {
     return (form: '${c['form']}', sent: c['status'] == 'sent', at: _dateOr(c['sent_at']), questions: _n(c['questions']).toInt(), due: '${c['due'] ?? ''}');
   }
 
-  ({int done, int days, int pct}) get adherence {
+  /// Weekly adherence, Monday to now: workouts, meals, daily check-ins and habits planned vs done (Probid 2026-11-03).
+  /// pct is null when nothing was planned yet.
+  ({int done, int planned, int? pct, List<({String key, String label, int done, int planned})> parts}) get adherence {
     final a = json['adherence_week'] as Map?;
-    return (done: _n(a?['done']).toInt(), days: _n(a?['days'] ?? 1).toInt(), pct: _n(a?['pct']).toInt());
+    return (
+      done: _n(a?['done']).toInt(),
+      planned: _n(a?['planned']).toInt(),
+      pct: a?['pct'] == null ? null : _n(a?['pct']).toInt(),
+      parts: [
+        for (final p in (a?['parts'] as List? ?? []).cast<Map>())
+          (key: '${p['key']}', label: '${p['label']}', done: _n(p['done']).toInt(), planned: _n(p['planned']).toInt()),
+      ],
+    );
   }
 
   /// One Progress tab's numbers (`progress_summary.<key>`: weight, body_fat, muscle, strength); null = no data yet.

@@ -318,24 +318,130 @@ class _DashPainter extends CustomPainter {
 }
 
 /// `ch-big` + `ch-qs`: big number with − / + and quick picks (steps and sleep sheets).
-class ChBigStepper extends StatelessWidget {
-  const ChBigStepper({super.key, required this.value, required this.label, required this.onMinus, required this.onPlus});
+/// Big − value + stepper. With [parse] the value can be tapped and typed (C15, Probid): [editText] fills the box,
+/// every keystroke that [parse]s goes to [onTyped], so Save while typing keeps the typed number.
+class ChBigStepper extends StatefulWidget {
+  const ChBigStepper({
+    super.key,
+    required this.value,
+    required this.label,
+    required this.onMinus,
+    required this.onPlus,
+    this.parse,
+    this.onTyped,
+    this.editText,
+    this.typeHint,
+    this.decimal = false,
+  });
   final String value, label;
   final VoidCallback onMinus, onPlus;
+  final int? Function(String)? parse;
+  final ValueChanged<int>? onTyped;
+  final String Function()? editText;
+  final String? typeHint;
+  final bool decimal;
+
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(spacing: 12, children: [
-          _RoundBtn(AppIcons.minus, 'Less', onMinus),
-          Expanded(
-            child: Column(children: [
-              Text(value, style: AppText.s(34, W.w8, ls: -0.68)),
-              Text(label, style: AppText.s(12.5, W.w6, color: AppColors.muted)),
-            ]),
-          ),
-          _RoundBtn(AppIcons.plus, 'More', onPlus),
-        ]),
-      );
+  State<ChBigStepper> createState() => _ChBigStepperState();
+}
+
+class _ChBigStepperState extends State<ChBigStepper> {
+  final _t = TextEditingController();
+  final _f = FocusNode();
+  bool _typing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _f.addListener(() {
+      if (!_f.hasFocus && _typing) _commit();
+    });
+  }
+
+  @override
+  void dispose() {
+    _t.dispose();
+    _f.dispose();
+    super.dispose();
+  }
+
+  void _edit() {
+    _t.text = widget.editText?.call() ?? widget.value;
+    _t.selection = TextSelection(baseOffset: 0, extentOffset: _t.text.length);
+    setState(() => _typing = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _f.requestFocus());
+  }
+
+  void _take(String t) {
+    final v = widget.parse?.call(t.trim());
+    if (v != null) widget.onTyped?.call(v);
+  }
+
+  void _commit() {
+    _take(_t.text);
+    setState(() => _typing = false);
+  }
+
+  void _step(VoidCallback f) {
+    if (_typing) _commit();
+    f();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final style = AppText.s(34, W.w8, ls: -0.68);
+    final Widget value = _typing
+        ? SizedBox(
+            width: 170,
+            child: TextField(
+              controller: _t,
+              focusNode: _f,
+              textAlign: TextAlign.center,
+              style: style,
+              keyboardType: TextInputType.numberWithOptions(decimal: widget.decimal),
+              cursorColor: AppColors.accent,
+              onChanged: _take,
+              onSubmitted: (_) => _commit(),
+              decoration: InputDecoration(
+                isDense: true,
+                hintText: widget.typeHint,
+                hintStyle: AppText.s(20, W.w6, color: AppColors.muted),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                filled: true,
+                fillColor: AppColors.white,
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.accent)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.accent, width: 1.5)),
+              ),
+            ),
+          )
+        : widget.parse == null
+            ? Text(widget.value, style: style)
+            : Semantics(
+                button: true,
+                label: 'Type the value',
+                child: Hover(
+                  onTap: _edit,
+                  builder: (_, h, _) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    decoration: BoxDecoration(color: h ? AppColors.accentSoft : null, borderRadius: BorderRadius.circular(10)),
+                    child: Text(widget.value, style: style),
+                  ),
+                ),
+              );
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(spacing: 12, children: [
+        _RoundBtn(AppIcons.minus, 'Less', () => _step(widget.onMinus)),
+        Expanded(
+          child: Column(children: [
+            value,
+            Text(widget.label, textAlign: TextAlign.center, style: AppText.s(12.5, W.w6, color: AppColors.muted)),
+          ]),
+        ),
+        _RoundBtn(AppIcons.plus, 'More', () => _step(widget.onPlus)),
+      ]),
+    );
+  }
 }
 
 class _RoundBtn extends StatelessWidget {

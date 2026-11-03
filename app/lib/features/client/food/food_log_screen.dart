@@ -657,10 +657,10 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
       valid.value = true; // a quick pick refills the boxes
       at.value = t.isAfter(DateTime.now()) ? DateTime.now() : (t.isBefore(dayStart) ? dayStart : t);
     }
+    // the clock is read at the tap, not when the sheet opened: "Now" is the real current time (Probid 2026-11-03)
     Widget quick(String l, int ago) {
-      final t = now.subtract(Duration(minutes: ago));
-      final on = (at.value.difference(t).inMinutes).abs() < 1;
-      return FdChip(l, height: 30, on: on, onTap: () => set(t));
+      final on = (at.value.difference(DateTime.now().subtract(Duration(minutes: ago))).inMinutes).abs() < 1;
+      return FdChip(l, height: 30, on: on, onTap: () => set(DateTime.now().subtract(Duration(minutes: ago))));
     }
 
     showAppSheet(

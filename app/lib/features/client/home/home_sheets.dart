@@ -6,6 +6,7 @@ import '../../../core/theme/theme.dart';
 import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/overlays.dart';
+import '../food/food_parts.dart' show NumStepper;
 import 'home_model.dart';
 import 'home_parts.dart';
 import '../../../core/widgets/tooltip.dart';
@@ -151,7 +152,15 @@ Future<void> showCounterSheet(BuildContext context, HomeController c, HomeHabit 
     builder: (_) => ValueListenableBuilder(
       valueListenable: v,
       builder: (_, n, _) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
-        ChBigStepper(value: inNum(n), label: '${h.unit.isEmpty ? 'done' : h.unit} today', onMinus: () => v.value = (n - step).clamp(0, 200000), onPlus: () => v.value = (n + step).clamp(0, 200000)),
+        ChBigStepper(
+          value: inNum(n),
+          label: '${h.unit.isEmpty ? 'done' : h.unit} today · tap the number to type it',
+          onMinus: () => v.value = (n - step).clamp(0, 200000),
+          onPlus: () => v.value = (n + step).clamp(0, 200000),
+          editText: () => '${v.value}',
+          parse: (t) => int.tryParse(t.replaceAll(RegExp(r'[^0-9]'), ''))?.clamp(0, 200000),
+          onTyped: (x) => v.value = x,
+        ),
         ChQuick(items: [for (final q in quick) ('+${inNum(q)}', q)], onPick: (q) => v.value = (n + q).clamp(0, 200000)),
         Padding(padding: const EdgeInsets.only(top: 6), child: ChBar(h.target > 0 ? n / h.target : 0, color: AppColors.okSolid, height: 8)),
         Text(n >= h.target ? 'Goal reached' : '${inNum(h.target - n)}$unit to go', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
@@ -197,7 +206,14 @@ Future<void> showSleepSheet(BuildContext context, HomeController c, HomeHabit h)
           label: n >= goal ? 'Goal met' : '${hoursMin(goal - n)} short of ${hoursMin(goal)}',
           onMinus: () => v.value = (n - 15).clamp(0, 900),
           onPlus: () => v.value = (n + 15).clamp(0, 900),
+          // type "7:30", "7.5" or "7" (hours)
+          editText: () => '${v.value ~/ 60}:${(v.value % 60).toString().padLeft(2, '0')}',
+          typeHint: 'h:mm',
+          decimal: true,
+          parse: parseSleep,
+          onTyped: (x) => v.value = x,
         ),
+        Text('Tap the time to type it, e.g. 7:30', textAlign: TextAlign.center, style: AppText.s(11.5, W.w5, color: AppColors.muted)),
         ChQuick(items: [for (final hr in [5, 6, 7, 8, 9, 10]) ('$hr h', hr * 60)], onPick: (m) => v.value = m, isOn: (m) => m == n),
       ]),
     ),
@@ -213,6 +229,77 @@ Future<void> showSleepSheet(BuildContext context, HomeController c, HomeHabit h)
             action: 'Undo',
             onAction: () => c.setHabit(h, value: before));
       }),
+    ],
+  );
+}
+
+/// Typed sleep (minutes, up to 15 h): "7:30" and "7.30" (two digits after the dot) = 7 h 30 min,
+/// "7.5" = 7 h 30 min, "7" = 7 h.
+int? parseSleep(String t) {
+  final m = RegExp(r'^(\d{1,2})[:.](\d{2})$').firstMatch(t);
+  int? v;
+  if (m != null) {
+    final mm = int.parse(m.group(2)!);
+    if (mm > 59) return null;
+    v = int.parse(m.group(1)!) * 60 + mm;
+  } else {
+    final h = double.tryParse(t.replaceAll(',', '.'));
+    if (h == null || h < 0) return null;
+    v = (h * 60).round();
+  }
+  return v <= 900 ? v : null;
+}
+
+/// Water from Home (habit row): the same sheet as the Food page water card, the day's total in ml.
+Future<void> showHomeWaterSheet(BuildContext context, HomeController c) {
+  final d = c.data!;
+  final goal = d.waterGoal;
+  final v = ValueNotifier(d.waterMl.toDouble());
+  return showAppSheet(
+    context,
+    listen: v,
+    owns: [v],
+    title: 'Water · today',
+    sub: 'Target ${litres(goal)} · set by your coach',
+    webWidth: 420,
+    footerStretch: true,
+    builder: (_) {
+      final n = v.value.round();
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
+        NumStepper(
+          value: v.value,
+          step: 250,
+          min: 0,
+          max: 10000,
+          big: true,
+          decimals: false,
+          name: 'Water in ml',
+          label: (x) => '${inNum(x.round())} ml',
+          onChanged: (x) => v.value = x,
+        ),
+        Text(n >= goal ? 'Goal complete · ${glasses((n / 250).round())}' : '${litres(goal - n)} to go · ${glasses(((goal - n) / 250).ceil())} more',
+            textAlign: TextAlign.center, style: AppText.s(12.5, W.w6, color: AppColors.muted)),
+        Text('One glass = 250 ml. Tap the amount to type it.', textAlign: TextAlign.center, style: AppText.s(11.5, W.w5, color: AppColors.muted)),
+      ]);
+    },
+    footer: (ctx) => [
+      Row(spacing: 8, children: [
+        Expanded(child: CaButton('Cancel', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop())),
+        Expanded(
+          child: CaButton('Save', icon: AppIcons.check, onPressed: () {
+            final was = d.waterMl, now = v.value.round();
+            Navigator.of(ctx).pop();
+            if (now == was) return;
+            c.setWater(now);
+            if (now >= goal && was < goal) {
+              showToast(context, 'Water goal complete!', sub: '${litres(now)} today', kind: ToastKind.star);
+            } else {
+              showToast(context, '${litres(now)} logged', sub: now >= goal ? 'Goal complete' : '${litres(goal - now)} to go', kind: ToastKind.water,
+                  action: 'Undo', onAction: () => c.setWater(was));
+            }
+          }),
+        ),
+      ]),
     ],
   );
 }

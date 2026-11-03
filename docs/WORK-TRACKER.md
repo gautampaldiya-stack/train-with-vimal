@@ -85,6 +85,7 @@ Is thread me Probid ki 31 Oct wali list ka kaam chal raha hai:
 - ✅ Log food: Create custom food save karne par crash ("TextEditingController used after being disposed") fix; sheet poori band hone ke baad hi fields free hote hain.
 - ✅ "Preview this meal": har food ka kcal ab ek seedh me right side (pehle har row me alag jagah).
 - ✅ Water history naya design: upar halka blue summary (avg a day / X of Y days on target / this week); har hafta bina grey card ke, patle gol bars (blue, target par green), dotted target line, value sirf jis din paani piya, aaj ka din highlight; header "This week · 2–8 Nov" + "avg 1.75 L · 0 of 2 days"; purane hafte band, tap karke khulte; neeche key (3 L target / below target / target reached).
+- ✅ Other time sheet: "Now" / "30 min ago" tap ke waqt ki ghadi lete hain (sheet kab khuli usse nahi).
 - ✅ Other time sheet: "Use this time" sirf tab chalta hai jab time poora aur sahi ho (ghanta 1–12, minute 00–59, aage ka nahi); warna button off.
 
 Rule (Probid 3 Nov): aise chhote naye changes bhi yahan likhne hain, chahe REMAINING list me na hon.
@@ -152,20 +153,20 @@ Probid ka rule (2 Nov): abhi screenshot nahi lena, mobile par try nahi karna. Si
 12. ✅ Create custom food: Cancel/Save par error. Wajah: sheet ke text box sheet band hote hi dispose ho jaate the, jabki band hone ka animation chal raha hota tha. Ab sheet apne box khud rakhti hai (`showAppSheet(owns: …)`) aur sheet poori hatne ke baad hi free karti hai. Other time sheet bhi isi tarah. Widget test `test/food_sheets_test.dart`.
 13. ✅ Food list UI: list aur upar ki added-food list behtar karo. Saare items same height, theek se arranged. Back-press confirmation me buttons chhote. *(crash fix `04f8c8c`; 3 Nov: list card header, same-height rows, scrollbar ✅; upar ki added-food list ✅: har row same height, naam + amount/protein, kcal right side ek column me, chhota remove button, group heading me ginti aur kcal; back-press confirm ke buttons chhote ✅)*
 
-### C. Home page
+### C. Home page — ✅ sab ho gaya (3 Nov), Probid ka test baaki
 
-14. ⬜ Weekly Adherence: abhi kaise calculate hota hai aur kaise hona chahiye, samjhao.
-15. ⬜ Habits card
+14. ✅ Weekly Adherence: pehle sirf daily check-in ginta tha (Mon→aaj). Probid ne option 1 chuna (3 Nov): Mon se ab tak workouts + meals + daily check-in + habits, jo plan tha usme se kitna hua, sab barabar weight. Aaj sirf jo due ho chuka (meal ka time nikal gaya) ya ho gaya. Card me bada %, "X of Y done so far" aur 4 lines (Workouts / Meals / Check-ins / Habits). Coach ka adherence bhi isi rule se (pichhle 7 poore din). `metrics.plan_adherence`, test `tests/test_plan_adherence.py`.
+15. ✅ Habits card (Water habit → "Log water" = Food jaisi sheet, total ml type bhi; Steps/counter aur Sleep me number tap karke type, sleep "7:30" / "7.5"; tick habit par Yes/No confirm dono taraf)
     * Habits se logging: har habit ke liye bottom sheet.
     * Water ke liye Nutrition water card jaisi hi sheet.
     * Sleep aur Steps sheets: stepper value tap karke editable text field (manual entry).
     * Tick habits par Yes/No confirmation.
-16. ⬜ Supplements: habits jaisi hi bottom sheet aur confirmation.
-17. ⬜ Food card
+16. ✅ Supplements: Take aur Taken (undo) dono par Yes/No confirm.
+17. ✅ Food card (Ate it → `/food?meal=<id>`, Food page us meal par scroll + thodi der ring; Up next: time/opens chip, naam, kcal, foods, macros, aaj ke meals ke dots "2 of 4 logged"; header me Log food ki jagah See all)
     * "Ate it" tap = Nutrition page khule aur relevant meal par scroll kare (jaise snack time par Snack card).
     * "Up next" section behtar karo.
     * "Log food" button hatao.
-18. ⬜ Workout card: design behtar karo. *(9f2761d me ek button wala card bana, design improve baaki)*
+18. ✅ Workout card: pehle 3 exercises numbered card par hi (naam + sets line), "+ N more · See all", shuru hua workout ho to "X of N exercises" bar aur ho chuke par hara tick; future din ka alag See all button hata diya.
 
 ### D. Progress / More / Notifications
 

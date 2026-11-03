@@ -282,7 +282,7 @@ Future<T?> showAppModal<T>(
 
 /// Confirm modal with a red or blue main action. Returns true when confirmed.
 Future<bool> confirmAction(BuildContext context,
-    {required String title, String? body, required String confirm, bool danger = false, AppIconData? icon}) async {
+    {required String title, String? body, required String confirm, bool danger = false, AppIconData? icon, String cancel = 'Cancel'}) async {
   final r = await showAppModal<bool>(
     context,
     title: title,
@@ -293,12 +293,12 @@ Future<bool> confirmAction(BuildContext context,
     actions: (ctx) => ctx.isPhone
         ? [
             Row(spacing: 8, children: [
-              Expanded(child: AppButton('Cancel', onPressed: () => Navigator.of(ctx).pop(false), expand: true)),
+              Expanded(child: AppButton(cancel, onPressed: () => Navigator.of(ctx).pop(false), expand: true)),
               Expanded(child: AppButton(confirm, kind: danger ? BtnKind.danger : BtnKind.primary, onPressed: () => Navigator.of(ctx).pop(true), expand: true)),
             ]),
           ]
         : [
-            AppButton('Cancel', onPressed: () => Navigator.of(ctx).pop(false)),
+            AppButton(cancel, onPressed: () => Navigator.of(ctx).pop(false)),
             AppButton(confirm, kind: danger ? BtnKind.danger : BtnKind.primary, onPressed: () => Navigator.of(ctx).pop(true)),
           ],
   );
