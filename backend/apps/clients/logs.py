@@ -29,8 +29,20 @@ def page_of(rows, params, size=LOG_PAGE_SIZE):
 
 
 def client_start(client):
+    """The first day the logs count (Probid 2026-11-04): never before the client was active. A sign-up counts from
+    the day it was approved (a later plan start date moves it on); a client added by the team from their start
+    date, else the day they were added. Before that nothing was assigned, so nothing shows as "Not sent" / "Missed"."""
+    from django.utils import timezone as tz
+
+    from .models import Approval
+
     cp = client.client_profile
-    return cp.start_date or client.date_joined.date()
+    ok = (Approval.objects.filter(client=client, status=Approval.Status.APPROVED, decided_at__isnull=False)
+          .order_by("-decided_at").values_list("decided_at", flat=True).first())
+    if ok is None:  # added by the team: their start date (it can be set back for an existing client)
+        return cp.start_date or tz.localtime(client.date_joined).date()
+    active = tz.localtime(ok).date()
+    return max(cp.start_date or active, active)
 
 
 def days_desc(start, end, client=None):

@@ -22,19 +22,32 @@ import '../../../core/widgets/tooltip.dart';
 /// Progress photos (`/progress/photos`) and Compare (`/progress/compare?a=&b=&pose=`).
 
 /// Page frame: phone padding, or the web column (max 1080) on the light page.
-Widget pxPage(BuildContext context, List<Widget> children, {Widget? bottom, ScrollController? scroll}) {
+/// The first [fixed] children (the back link + title by default) stay at the top; the rest scrolls (Probid).
+Widget pxPage(BuildContext context, List<Widget> children, {Widget? bottom, ScrollController? scroll, int fixed = 2}) {
   final phone = context.isPhone;
-  final body = SingleChildScrollView(
+  final gap = phone ? 12.0 : 16.0;
+  Widget column(List<Widget> w) => Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1080),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: gap, children: w),
+        ),
+      );
+  final n = fixed.clamp(0, children.length);
+  final scrollView = SingleChildScrollView(
     controller: scroll,
-    padding: phone ? const EdgeInsets.fromLTRB(16, 6, 16, 20) : const EdgeInsets.fromLTRB(32, 32, 32, 72),
-    child: Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1080),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: phone ? 12 : 16, children: children),
-      ),
-    ),
+    padding: phone ? EdgeInsets.fromLTRB(16, n > 0 ? 4 : 6, 16, 20) : EdgeInsets.fromLTRB(32, n > 0 ? 4 : 32, 32, 72),
+    child: column(children.sublist(n)),
   );
+  final body = n == 0
+      ? scrollView
+      : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Padding(
+            padding: phone ? const EdgeInsets.fromLTRB(16, 6, 16, 8) : const EdgeInsets.fromLTRB(32, 32, 32, 12),
+            child: column(children.sublist(0, n)),
+          ),
+          Expanded(child: scrollView),
+        ]);
   final page = bottom == null
       ? body
       : Column(children: [
@@ -160,11 +173,11 @@ class _ProgressHistoryScreenState extends State<ProgressHistoryScreen> {
         ),
       ];
       if (h.loading && h.days.isEmpty || h.error != null && h.days.isEmpty) {
-        return pxPage(context, [...head, SizedBox(height: 240, child: pxLoading(h.loading ? null : h.error, h.load, 'your history'))]);
+        return pxPage(context, fixed: head.length, [...head, SizedBox(height: 240, child: pxLoading(h.loading ? null : h.error, h.load, 'your history'))]);
       }
       final sum = _summary();
       final days = _days();
-      if (!web) return pxPage(context, [...head, sum, ...days]);
+      if (!web) return pxPage(context, fixed: head.length, [...head, sum, ...days]);
       // Web: the top (title, range tabs, chips) and the summary on the right stay put; only the day list
       // scrolls (Gautam 2026-10-16).
       return CaWeb(
@@ -266,13 +279,11 @@ class _ProgressHistoryScreenState extends State<ProgressHistoryScreen> {
                   textAlign: TextAlign.center, style: AppText.s(12.5, W.w4, color: AppColors.muted)),
             ),
           ),
-          if (h.range != '3months' || h.type != null)
+          // No "Try 3 months" any more (Probid 2026-11-04); only a way back to every type.
+          if (h.type != null)
             Padding(
               padding: const EdgeInsets.only(top: 6),
-              child: Row(spacing: 8, children: [
-                if (h.range != '3months') Expanded(child: CaButton('Try 3 months', kind: CaBtnKind.out, small: true, onPressed: () => h.setRange('3months'))),
-                if (h.type != null) Expanded(child: CaButton('Show all types', kind: CaBtnKind.out, small: true, onPressed: () => h.setType(null))),
-              ]),
+              child: CaButton('Show all types', kind: CaBtnKind.out, small: true, onPressed: () => h.setType(null)),
             ),
         ]),
       ];

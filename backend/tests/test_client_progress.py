@@ -14,7 +14,12 @@ def test_progress_page_has_goal_measurements_lifts_and_photos(client_user):
     assert d["next_measure"]["date"] >= timezone.localdate().isoformat()
     assert d["lifts"] and {"best", "started", "ups", "series", "note"} <= set(d["lifts"][0])
     a = d["adherence"]
-    assert a["program"] and len(a["weeks"]) == 6 and a["done"] <= a["planned"]
+    assert a["program"] and 1 <= len(a["weeks"]) <= 8 and a["done"] <= a["planned"]
+    # weekly bars from the week the plans started, the Home card's calculation (Probid 2026-11-04)
+    from datetime import date, timedelta
+    since = date.fromisoformat(str(a["plan_since"])[:10])
+    assert date.fromisoformat(str(a["weeks"][0]["start"])[:10]) >= since - timedelta(days=since.weekday())
+    assert a["overall"]["parts"] and all(w["parts"] is not None for w in a["weeks"])
     sets = d["photo_sets"]
     assert sets[0]["label"] == "Start photos" and len(sets[0]["photos"]) == 3
     assert any(len(s["photos"]) == 2 for s in sets)  # week 2 has no Back photo

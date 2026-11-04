@@ -318,7 +318,7 @@ def home_week(client, today, pa):
 
 
 # Client Home cards that "Edit home" can order or remove (D-87). Habits, Supplements and Coming up stay fixed.
-HOME_CARDS = ["workout", "checkin", "food", "progress", "adherence", "water", "rest_timer"]
+HOME_CARDS = ["workout", "checkin", "food", "progress", "adherence", "water", "habits", "coming", "supps", "rest_timer"]
 
 
 def home_layout(cp):

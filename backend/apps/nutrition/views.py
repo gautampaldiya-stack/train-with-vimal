@@ -949,3 +949,16 @@ class MyFoodSearchViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, viewse
 
     def perform_create(self, serializer):
         serializer.save(source=Food.Source.CLIENT, owner_client=self.request.user, created_by=self.request.user)
+
+    # My foods → press a food → Delete (Probid 2026-11-04). Only the client's own foods; it is hidden, not removed,
+    # so Undo brings it back, and food-log entries keep their own copy (name, kcal, macros), so past days stay.
+    def destroy(self, request, pk=None):
+        food = get_object_or_404(Food.objects.filter(owner_client=request.user), pk=pk)
+        food.soft_delete()
+        return Response(status=204)
+
+    @action(detail=True, methods=["post"])
+    def restore(self, request, pk=None):
+        food = get_object_or_404(Food.all_objects.filter(owner_client=request.user, deleted_at__isnull=False), pk=pk)
+        food.restore()
+        return Response(FoodPickSerializer(food).data)

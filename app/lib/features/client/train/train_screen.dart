@@ -118,14 +118,15 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
   Widget _phone(TrainData d) {
     final live = d.live;
     return Stack(children: [
-      RefreshIndicator(
+      CaPinned(
+        head: _top(d),
+        body: RefreshIndicator(
         onRefresh: c.load,
         color: AppColors.accent,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(16, 6, 16, live == null ? 20 : 84),
+          padding: EdgeInsets.fromLTRB(16, 4, 16, live == null ? 20 : 84),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-            _top(d),
             if (d.strip.isNotEmpty) _week(d, web: false),
             _today(d),
             ?_note(d, web: false),
@@ -133,18 +134,22 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
           ]),
         ),
       ),
+      ),
       if (live != null) Positioned(left: 0, right: 0, bottom: 0, child: _liveBar(d, live)),
     ]);
   }
 
   Widget _web(TrainData d) => CaWeb(
         web: true,
-        child: RefreshIndicator(
+        child: CaPinned(
+        web: true,
+        head: _top(d),
+        body: RefreshIndicator(
           onRefresh: c.load,
           color: AppColors.accent,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(32, 32, 32, 72),
+            padding: const EdgeInsets.fromLTRB(32, 4, 32, 72),
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 1080),
@@ -153,7 +158,6 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
                   final left = [for (final b in d.blocks) _block(d, b)];
                   final right = [_today(d), ?_note(d, web: true)];
                   return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 18, children: [
-                    _top(d),
                     if (d.live != null) _liveBanner(d, d.live!),
                     if (d.strip.isNotEmpty) _week(d, web: (box.maxWidth - 10) / 7 >= 92),
                     // A rest day (no exercises) has nothing on the left: the day card takes the full width.
@@ -170,7 +174,7 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
             ),
           ),
         ),
-      );
+      ));
 
   // ─────────────────────────────── Header
 

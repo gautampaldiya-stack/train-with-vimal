@@ -64,33 +64,37 @@ class _ClientLibraryScreenState extends State<ClientLibraryScreen> {
 
   // ─────────────────────────────── Layouts
 
-  Widget _phone() => RefreshIndicator(
+  Widget _phone() => CaPinned(
+      head: Row(spacing: 10, children: [
+        CaBackBtn(tooltip: 'Back to More', onTap: () => context.go('/more')),
+        Expanded(child: _title()),
+      ]),
+      body: RefreshIndicator(
         onRefresh: c.load,
         color: AppColors.accent,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-            Row(spacing: 10, children: [
-              CaBackBtn(tooltip: 'Back to More', onTap: () => context.go('/more')),
-              Expanded(child: _title()),
-            ]),
             _progress(),
             ..._search(),
             _filters(phone: true),
             _list(),
           ]),
         ),
-      );
+      ));
 
   Widget _web() => CaWeb(
         web: true,
-        child: RefreshIndicator(
+        child: CaPinned(
+        web: true,
+        head: _title(),
+        body: RefreshIndicator(
           onRefresh: c.load,
           color: AppColors.accent,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(32, 32, 32, 72),
+            padding: const EdgeInsets.fromLTRB(32, 4, 32, 72),
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 1080),
@@ -105,7 +109,6 @@ class _ClientLibraryScreenState extends State<ClientLibraryScreen> {
                     _grid(cols),
                   ]);
                   return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 18, children: [
-                    _title(),
                     if (side)
                       Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 20, children: [
                         Expanded(child: left),
@@ -122,7 +125,7 @@ class _ClientLibraryScreenState extends State<ClientLibraryScreen> {
             ),
           ),
         ),
-      );
+      ));
 
   // ─────────────────────────────── Parts
 

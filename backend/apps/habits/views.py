@@ -643,7 +643,8 @@ def staff_log(client, kind, params):
                 return f"{lg.value:,} {h.unit}".strip()
 
             cols.append((str(h.id), h.name,
-                         lambda d, h=h, a=a: d >= a.start_date and h.is_due_on(d),
+                         lambda d, h=h, a=a: d >= max(a.start_date, timezone.localtime(a.created_at).date())
+                         and h.is_due_on(d),
                          lambda d, h=h: logs.get((h.id, d)),
                          lambda lg: bool(lg and lg.done), sub, lambda lg: _clock(lg.updated_at) if lg else ""))
     else:
@@ -655,7 +656,8 @@ def staff_log(client, kind, params):
                 line = " · ".join(x for x in (it.dose, it.get_timing_display().lower() if it.timing != "any" else "")
                                   if x)
                 cols.append((str(it.id), it.name,
-                             lambda d, it=it, sa=sa: d >= sa.start_date and (not it.days or d.weekday() in it.days),
+                             lambda d, it=it, sa=sa: d >= max(sa.start_date, timezone.localtime(sa.created_at).date())
+                             and (not it.days or d.weekday() in it.days),
                              lambda d, it=it, took=took: took.get((it.id, d)),
                              lambda lg: lg is not None, lambda lg, line=line: line,
                              lambda lg: _clock(lg.taken_at) if lg else ""))

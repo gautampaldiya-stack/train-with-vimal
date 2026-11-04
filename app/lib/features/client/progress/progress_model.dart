@@ -134,11 +134,23 @@ class PxWeek {
     : start = _d(j['start']),
       done = (j['done'] as num?)?.toInt() ?? 0,
       planned = (j['planned'] as num?)?.toInt() ?? 0,
-      pct = (j['pct'] as num?)?.toInt();
+      pct = (j['pct'] as num?)?.toInt(),
+      itemsDone = (j['items_done'] as num?)?.toInt() ?? 0,
+      itemsPlanned = (j['items_planned'] as num?)?.toInt() ?? 0,
+      parts = pxParts(j['parts']);
   final DateTime start;
-  final int done, planned;
+
+  /// [done] / [planned]: workouts of the week (Workouts done tile); [itemsDone] / [itemsPlanned]: everything the
+  /// plans asked for that week (the Home card's calculation).
+  final int done, planned, itemsDone, itemsPlanned;
   final int? pct;
+  final List<({String label, int done, int planned})> parts;
 }
+
+List<({String label, int done, int planned})> pxParts(Object? l) => [
+  for (final p in (l as List? ?? const []).cast<Map>())
+    (label: '${p['label']}', done: (p['done'] as num?)?.toInt() ?? 0, planned: (p['planned'] as num?)?.toInt() ?? 0),
+];
 
 class PxAdherence {
   PxAdherence(Map<String, dynamic> j)
@@ -148,7 +160,14 @@ class PxAdherence {
       planned = (j['planned'] as num?)?.toInt() ?? 0,
       missed = [for (final d in (j['missed'] as List? ?? const [])) _d(d)],
       today = '${j['today'] ?? ''}',
-      weeks = [for (final w in (j['weeks'] as List? ?? const [])) PxWeek((w as Map).cast<String, dynamic>())];
+      weeks = [for (final w in (j['weeks'] as List? ?? const [])) PxWeek((w as Map).cast<String, dynamic>())],
+      planSince = j['plan_since'] == null ? null : _d(j['plan_since']),
+      overallPct = ((j['overall'] as Map?)?['pct'] as num?)?.toInt(),
+      overallParts = pxParts((j['overall'] as Map?)?['parts']);
+  /// The first day of the plans (null = nothing assigned yet) and adherence since then, all plans together.
+  final DateTime? planSince;
+  final int? overallPct;
+  final List<({String label, int done, int planned})> overallParts;
   final String? program;
   final DateTime? since;
   final int done, planned;

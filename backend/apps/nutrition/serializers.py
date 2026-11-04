@@ -176,15 +176,22 @@ class MealItemSerializer(serializers.ModelSerializer):
     1 katori · 150 g", or "not in the master"; null when it is the same."""
 
     id = serializers.IntegerField(required=False)
+    # A food deleted from the library stays in the plans that use it, so saving such a plan must still accept it.
+    food = serializers.PrimaryKeyRelatedField(queryset=Food.all_objects.all())
     food_detail = FoodPickSerializer(source="food", read_only=True)
     grams = serializers.DecimalField(max_digits=9, decimal_places=2, read_only=True)
     macros = serializers.SerializerMethodField()
     swaps = SwapInSerializer(many=True, required=False, write_only=True)
     was = serializers.SerializerMethodField()
+    # The plan builder marks it: "Deleted from Foods" (Probid 2026-11-04).
+    food_deleted = serializers.SerializerMethodField()
 
     class Meta:
         model = MealItem
-        fields = ["id", "food", "food_detail", "quantity", "unit", "grams", "macros", "swaps", "was"]
+        fields = ["id", "food", "food_detail", "quantity", "unit", "grams", "macros", "swaps", "was", "food_deleted"]
+
+    def get_food_deleted(self, obj):
+        return obj.food.deleted_at is not None
 
     def get_macros(self, obj):
         return obj.macros()

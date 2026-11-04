@@ -26,8 +26,9 @@ def _due_at(sunday):
 
 
 def _start(client):
-    cp = client.client_profile
-    return cp.start_date or client.date_joined.date()
+    from apps.clients.logs import client_start
+
+    return client_start(client)
 
 
 def _chip(q):

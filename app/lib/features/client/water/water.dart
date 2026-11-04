@@ -75,36 +75,66 @@ class WaterCard extends StatelessWidget {
   }
 }
 
-/// "Log water": − / the day's total in ml / + (250 a glass), a tap on the amount types it; Save calls [save] with the
-/// new total and shows the toast (Undo saves the old total). [when] is "today" or a day name.
+/// The unit the client last picked in the Log water sheet (L or ml); the server always stores ml.
+bool waterInLitres = false;
+
+/// "Log water": a L / ml switch, then − / the day's total / + (250 ml a glass, 0.25 L in litres), a tap on the amount
+/// types it; Save calls [save] with the new total in ml and shows the toast (Undo saves the old total).
+/// [when] is "today" or a day name.
 Future<void> showWaterSheet(BuildContext context, {required String when, required int goal, required int current, required void Function(int ml) save}) {
   final v = ValueNotifier(current.toDouble());
+  final unitL = ValueNotifier(waterInLitres);
   final on = when == 'today' ? 'today' : 'on $when';
+  String lit(double l) => l == l.roundToDouble() ? l.toStringAsFixed(0) : l.toStringAsFixed(2).replaceFirst(RegExp(r'0$'), '');
   return showAppSheet(
     context,
-    listen: v,
-    owns: [v],
+    listen: Listenable.merge([v, unitL]),
+    owns: [v, unitL],
     title: 'Water · $when',
     sub: 'Target ${litres(goal)} · set by your coach',
     webWidth: 420,
     footerStretch: true,
     builder: (_) {
       final n = v.value.round();
+      final inL = unitL.value;
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
-        NumStepper(
-          value: v.value,
-          step: 250,
-          min: 0,
-          max: 10000,
-          big: true,
-          decimals: false,
-          name: 'Water in ml',
-          label: (x) => '${inNum(x.round())} ml',
-          onChanged: (x) => v.value = x,
+        Center(
+          child: WaterUnitSwitch(
+            litres: inL,
+            onPick: (l) {
+              unitL.value = l;
+              waterInLitres = l;
+            },
+          ),
         ),
+        if (inL)
+          NumStepper(
+            key: const ValueKey('water-l'),
+            value: v.value / 1000,
+            step: .25,
+            min: 0,
+            max: 10,
+            big: true,
+            name: 'Water in litres',
+            label: (x) => '${lit(x)} L',
+            onChanged: (x) => v.value = (x * 1000).roundToDouble(),
+          )
+        else
+          NumStepper(
+            key: const ValueKey('water-ml'),
+            value: v.value,
+            step: 250,
+            min: 0,
+            max: 10000,
+            big: true,
+            decimals: false,
+            name: 'Water in ml',
+            label: (x) => '${inNum(x.round())} ml',
+            onChanged: (x) => v.value = x,
+          ),
         Text(n >= goal ? 'Goal complete · ${glasses((n / 250).round())}' : '${litres(goal - n)} to go · ${glasses(((goal - n) / 250).ceil())} more',
             textAlign: TextAlign.center, style: AppText.s(12.5, W.w6, color: AppColors.muted)),
-        Text('One glass = 250 ml. Tap the amount to type it.', textAlign: TextAlign.center, style: AppText.s(12, W.w5, color: AppColors.muted)),
+        Text(inL ? 'One glass = 0.25 L. Tap the amount to type it.' : 'One glass = 250 ml. Tap the amount to type it.', textAlign: TextAlign.center, style: AppText.s(12, W.w5, color: AppColors.muted)),
       ]);
     },
     footer: (ctx) => [
@@ -127,6 +157,47 @@ Future<void> showWaterSheet(BuildContext context, {required String when, require
       ]),
     ],
   );
+}
+
+/// The L / ml switch on the Log water sheet.
+class WaterUnitSwitch extends StatelessWidget {
+  const WaterUnitSwitch({super.key, required this.litres, required this.onPick});
+  final bool litres;
+  final ValueChanged<bool> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget opt(String t, bool l) {
+      final on = litres == l;
+      return Semantics(
+        button: true,
+        selected: on,
+        label: l ? 'Litres' : 'Millilitres',
+        child: Hover(
+          onTap: on ? null : () => onPick(l),
+          builder: (_, _, _) => AnimatedContainer(
+            duration: Motion.of(context, Motion.short),
+            curve: Motion.curve,
+            width: 64,
+            padding: const EdgeInsets.symmetric(vertical: 7),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: on ? AppColors.white : null,
+              borderRadius: BorderRadius.circular(9),
+              boxShadow: on ? const [BoxShadow(color: Color(0x14171717), blurRadius: 2, offset: Offset(0, 1)), BoxShadow(color: AppColors.line, spreadRadius: 1)] : null,
+            ),
+            child: Text(t, style: AppText.s(13, W.w8, color: on ? AppColors.skyMid : AppColors.muted)),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(12)),
+      child: Row(mainAxisSize: MainAxisSize.min, spacing: 4, children: [opt('L', true), opt('ml', false)]),
+    );
+  }
 }
 
 /// Water card → History: this week and the 3 before.
@@ -250,8 +321,6 @@ class _WaterHistoryState extends State<WaterHistory> {
     return SizedBox(
       height: h + 36,
       child: Stack(children: [
-        // the dashed target line behind the bars
-        Positioned(left: 0, right: 0, top: 16 + goalY, child: CustomPaint(size: const Size.fromHeight(1), painter: _Dash(AppColors.okSolid))),
         Positioned(left: 0, right: 0, top: 16 + h, child: Container(height: 1, color: AppColors.line)),
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
           for (final d in days)
@@ -272,8 +341,10 @@ class _WaterHistoryState extends State<WaterHistory> {
                   ),
                   SizedBox(
                     height: h,
-                    child: Align(
+                    child: Container(
+                      width: bw,
                       alignment: Alignment.bottomCenter,
+                      decoration: BoxDecoration(color: fut ? null : AppColors.skySoft.withValues(alpha: .6), borderRadius: BorderRadius.circular(7)),
                       child: v > 0
                           ? Container(
                               width: bw,
@@ -283,7 +354,7 @@ class _WaterHistoryState extends State<WaterHistory> {
                           : Container(
                               width: bw,
                               height: 6,
-                              decoration: BoxDecoration(color: fut ? null : AppColors.sub, borderRadius: BorderRadius.circular(7)),
+                              decoration: BoxDecoration(color: fut ? null : AppColors.skySoft, borderRadius: BorderRadius.circular(7)),
                             ),
                     ),
                   ),
@@ -300,6 +371,8 @@ class _WaterHistoryState extends State<WaterHistory> {
               }),
             ),
         ]),
+        // the dashed target line, drawn over the bar tracks so it stays visible
+        Positioned(left: 0, right: 0, top: 16 + goalY, child: IgnorePointer(child: CustomPaint(size: const Size.fromHeight(1), painter: _Dash(AppColors.okSolid)))),
       ]),
     );
   }
@@ -320,7 +393,12 @@ class _WaterHistoryState extends State<WaterHistory> {
         TextSpan(text: 'avg ${litres((w['avg_ml'] as num? ?? 0).toInt())}', style: AppText.s(12.5, W.w8, color: _water)),
         TextSpan(text: ' · $hit of $n days', style: AppText.s(12, W.w6, color: hit > 0 ? AppColors.okText : AppColors.muted)),
       ])),
-      AppIcon(open ? AppIcons.chevronUp : AppIcons.chevronDown, size: 16, color: AppColors.muted),
+      AnimatedRotation(
+        turns: open ? .5 : 0,
+        duration: Motion.of(context, Motion.short),
+        curve: Motion.curve,
+        child: AppIcon(AppIcons.chevronDown, size: 16, color: open ? AppColors.skyMid : AppColors.muted),
+      ),
     ]);
     // folded: one small dot a day, so each week still shows how it went
     Widget dots() => Row(spacing: 6, children: [
@@ -341,13 +419,28 @@ class _WaterHistoryState extends State<WaterHistory> {
           const SizedBox(width: 2),
           Text('total ${litres((w['total_ml'] as num? ?? 0).toInt())}', style: AppText.s(11.5, W.w6, color: AppColors.muted)),
         ]);
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line))),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
-        Hover(onTap: () => setState(() => open ? _open.remove(i) : _open.add(i)), builder: (_, _, _) => head),
-        if (open) _chart(w) else dots(),
-      ]),
+    // An open week sits on its own light-blue panel with a border, so it stands apart from the folded ones
+    // around it (Probid 2026-11-04: "sab white hai to pata nahi chalta").
+    return Padding(
+      padding: EdgeInsets.only(top: i == 0 ? 0 : 6),
+      child: AnimatedContainer(
+        duration: Motion.of(context, Motion.short),
+        curve: Motion.curve,
+        padding: open ? const EdgeInsets.fromLTRB(12, 12, 12, 8) : const EdgeInsets.fromLTRB(12, 12, 12, 12),
+        decoration: BoxDecoration(
+          color: open ? AppColors.skyFade : AppColors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: open ? AppColors.skySoft : AppColors.line, width: open ? 1.5 : 1),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
+          Hover(onTap: () => setState(() => open ? _open.remove(i) : _open.add(i)), builder: (_, _, _) => head),
+          if (open) ...[
+            Container(height: 1, color: AppColors.skySoft),
+            _chart(w),
+          ] else
+            dots(),
+        ]),
+      ),
     );
   }
 

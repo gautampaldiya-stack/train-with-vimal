@@ -177,13 +177,15 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   Widget _phone(WorkoutController c) {
     final resting = c.rest > 0;
     return Stack(children: [
-      SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 6, 16, 92),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-          _top(c, web: false),
-          _pager(c),
-          _panel(c, web: false),
-        ]),
+      CaPinned(
+        head: _top(c, web: false),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 92),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+            _pager(c),
+            _panel(c, web: false),
+          ]),
+        ),
       ),
       Positioned(left: 0, right: 0, bottom: 0, child: _BarMeasure(onHeight: (h) {
         if (h != _barH && mounted) setState(() => _barH = h);
@@ -193,8 +195,11 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
   Widget _web(WorkoutController c) => CaWeb(
         web: true,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(32, 28, 32, 72),
+        child: CaPinned(
+        web: true,
+        head: _top(c, web: true),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(32, 4, 32, 72),
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 1080),
@@ -206,7 +211,6 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                   if (c.rest > 0) _restBar(c, web: true),
                 ]);
                 return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 16, children: [
-                  _top(c, web: true),
                   if (side)
                     Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 20, children: [
                       SizedBox(width: 280, child: _sideList(c)),
@@ -219,7 +223,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             ),
           ),
         ),
-      );
+      ));
 
   // ─────────────────────────────── Top bar (`cl-top`)
 

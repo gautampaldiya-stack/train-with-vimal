@@ -85,19 +85,19 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
       'activity' => _activityPage(web: false),
       _ => _mainPhone(d),
     };
-    // Notifications and My activity: the header with its tabs / filters stays put, only the list scrolls (Gautam).
-    final fixed = _view == 'notifications' || _view == 'activity' ? 2 : 0;
+    // The page header stays put, only the content scrolls (Probid). Notifications and My activity also keep
+    // their tabs / filters fixed (Gautam).
+    final fixed = _view == 'notifications' || _view == 'activity' ? 2 : 1;
     final list = RefreshIndicator(
       onRefresh: _refresh,
       color: AppColors.accent,
       child: SingleChildScrollView(
         controller: _scroll,
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.fromLTRB(16, fixed > 0 ? 2 : 8, 16, 20),
+        padding: const EdgeInsets.fromLTRB(16, 2, 16, 20),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: children.sublist(fixed)),
       ),
     );
-    if (fixed == 0) return list;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
@@ -172,35 +172,22 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
     if (tab != 0) return _webList(d, tab);
     return CaWeb(
       web: true,
-      child: RefreshIndicator(
+      child: CaPinned(
+        web: true,
+        head: _webTitle(d, tab),
+        body: RefreshIndicator(
         onRefresh: _refresh,
         color: AppColors.accent,
         child: SingleChildScrollView(
           controller: _scroll,
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(32, 32, 32, 72),
+          padding: const EdgeInsets.fromLTRB(32, 4, 32, 72),
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 1080),
               child: LayoutBuilder(builder: (context, box) {
                 final two = box.maxWidth >= 680;
                 return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 18, children: [
-                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('My account', style: AppText.s(26, W.w8, ls: -0.26, h: 1.2)),
-                        Text('${d.name} · client of ${d.coachName}', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
-                      ]),
-                    ),
-                  ]),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: MoTabs(
-                      labels: ['Overview', d.unread > 0 ? 'Notifications · ${d.unread}' : 'Notifications', 'My activity'],
-                      index: tab,
-                      onPick: (i) => context.go(const ['/more', '/more/notifications', '/more/activity'][i]),
-                    ),
-                  ),
                   ...[
                     if (d.deletionOn != null) _deletionBanner(d),
                     if (two)
@@ -218,6 +205,7 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

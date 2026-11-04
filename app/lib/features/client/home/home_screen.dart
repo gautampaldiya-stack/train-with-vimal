@@ -44,14 +44,22 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
   bool _ask = false;
   final _editTop = GlobalKey();
 
+  /// Coming back to the app reloads the day, so a meal logged or skipped elsewhere moves Up next on.
+  /// No timer: Up next changes only when a meal is logged or skipped (Probid 2026-11-04).
+  AppLifecycleListener? _life;
+
   @override
   void initState() {
     super.initState();
     c.start();
+    _life = AppLifecycleListener(onResume: () {
+      if (mounted) c.load();
+    });
   }
 
   @override
   void dispose() {
+    _life?.dispose();
     hideBottomBar.value = false;
     c.dispose();
     super.dispose();
@@ -104,7 +112,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
   Widget _phoneInner(HomeData d) => _edit != null
       ? Column(children: [Expanded(child: _phoneBody(d)), _editBar()])
       : _ask
-          ? Column(children: [Expanded(child: _phoneBody(d)), _askBar(d)])
+          ? Column(children: [Expanded(child: _phoneBody(d)), _slideUp(_askBar(d))])
           : _phoneBody(d);
 
   // the status bar turns dark on the page colour once the hero has scrolled away (Probid 2026-11-03)
@@ -218,10 +226,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
       ? [_editor(d, web: false)]
       : [
           for (final k in d.shownLayout) ?_held(_card(k, d, web: false), d),
-          _habits(d),
-          if (_dueSupps(d).isNotEmpty) _supps(d),
           ?_coach(d),
-          if (d.coming.isNotEmpty) ...[const ChSection('Coming up'), _coming(d)],
         ];
 
   // ─────────────────────────────── Edit home (D-87): the cards in the client's order, drag to move
@@ -235,6 +240,10 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
         'progress' => _progressCard(d),
         'adherence' => _adherenceCard(d),
         'water' => _waterCard(d),
+        // Habits and Coming up are layout cards too: move or remove them in Edit home (Probid 2026-11-04)
+        'habits' => _habits(d),
+        'coming' => d.coming.isEmpty && !editing ? null : _coming(d),
+        'supps' => _dueSupps(d).isEmpty && !editing ? null : _supps(d),
         'rest_timer' => !web ? null : (editing ? _restCard(null) : _liveRest()),
         _ => null,
       };
@@ -266,20 +275,25 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
   /// inside the card work as before. The old "Edit home" button at the bottom of Home is gone (Probid 2026-11-04).
   Widget? _held(Widget? card, HomeData d) => card == null
       ? null
-      : GestureDetector(
-          behavior: HitTestBehavior.deferToChild,
-          onLongPress: () => _askEdit(d),
-          onSecondaryTap: () => _setEdit([...d.layout]),
-          child: card,
-        );
+      : _HeldCard(onLongPress: () => _askEdit(d), onSecondaryTap: () => _setEdit([...d.layout]), child: card);
 
   void _askEdit(HomeData d) {
     if (_edit != null || _ask) return;
-    HapticFeedback.lightImpact();
+    HapticFeedback.mediumImpact();
     if (!context.isPhone) return _setEdit([...d.layout]); // no bottom tabs on the web: straight to Edit home
     setState(() => _ask = true);
     hideBottomBar.value = true;
   }
+
+  /// The Cancel / Edit home bar slides up from the bottom, at the same moment the held card bounces and the phone
+  /// buzzes (Probid 2026-11-04).
+  Widget _slideUp(Widget bar) => TweenAnimationBuilder<double>(
+        tween: Tween(begin: 1, end: 0),
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        builder: (_, t, child) => FractionalTranslation(translation: Offset(0, t), child: child),
+        child: bar,
+      );
 
   void _closeAsk() {
     setState(() => _ask = false);
@@ -354,6 +368,9 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     'progress': (AppIcons.trendUp, ChTone.blue),
     'adherence': (AppIcons.checkCircle, ChTone.green),
     'water': (AppIcons.water, ChTone.warm),
+    'habits': (AppIcons.target, ChTone.amber),
+    'coming': (AppIcons.calendarAlt, ChTone.blue),
+    'supps': (AppIcons.pill, ChTone.purple),
     'rest_timer': (AppIcons.clock, ChTone.blue),
   };
   static const _cardSub = {
@@ -363,6 +380,9 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     'progress': 'Weight, body fat, muscle, strength',
     'adherence': 'Your plan this week in %',
     'water': 'Glasses today',
+    'habits': 'Today’s habits and the week',
+    'coming': 'Next session, check-in and plan dates',
+    'supps': 'Today’s supplements to take',
     'rest_timer': 'Your rest while working out',
   };
 
@@ -464,8 +484,20 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
           // Not its day: the next due date instead of the button.
           : _ciRow(title: 'Weekly check-in', sub: 'Next due $dayTxt', onTap: () => context.go('/checkins')));
     }
+    // Header like every Home card: icon, title and a line on what is left (Probid 2026-11-04).
+    final c0 = d.checkin!;
+    final w0 = c0.weekly;
+    final left = (c0.onboarding != null ? 1 : 0) + (c0.form.isNotEmpty && !c0.sent ? 1 : 0) +
+        (w0 != null && w0['open'] == true && w0['sent'] != true ? 1 : 0);
     return ChCard(gap: 0, children: [
-      Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('Check-ins', style: AppText.s(15, W.w8))),
+      Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: ChHead(
+          lead: const ChIcon(AppIcons.clipboard, tone: ChTone.amber),
+          title: 'Check-ins',
+          sub: left == 0 ? 'All done for now' : '$left to fill · ${d.coachFirst} reads them',
+        ),
+      ),
       for (final (i, r) in rows.indexed)
         Container(
           decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line))),
@@ -621,16 +653,17 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
         ChBar(pct / 100, color: tone(pct / 100)),
         // one line per part, so she sees where she is behind
         Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 7, children: [
-          for (final p in a.parts)
+          // only what the coach planned: a part with nothing planned (0/0) is left out (Probid 2026-11-04)
+          for (final p in a.parts.where((p) => p.planned > 0))
             Row(spacing: 10, children: [
               SizedBox(width: 88, child: Text(p.label, style: AppText.s(12.5, W.w6, color: AppColors.text2))),
               Expanded(child: ChBar(p.planned == 0 ? 0 : p.done / p.planned, color: tone(p.planned == 0 ? 0 : p.done / p.planned), height: 5)),
               SizedBox(width: 44, child: Text('${p.done}/${p.planned}', textAlign: TextAlign.right, style: AppText.s(12.5, W.w7, tabular: true))),
             ]),
         ]),
+        Text('Today counts what is already due: a meal once its time has passed, a workout or habit once it is done.',
+            style: AppText.s(11.5, W.w4, color: AppColors.muted)),
       ],
-      Text('Today counts what is already due: a meal once its time has passed, a workout or habit once it is done.',
-          style: AppText.s(11.5, W.w4, color: AppColors.muted)),
     ]);
   }
 
@@ -673,13 +706,10 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                   final left = [
                     _week(d, web: true),
                     for (final (i, w) in cards.indexed) if (i.isEven) w,
-                    if (d.coming.isNotEmpty) ...[const ChSection('Coming up'), _coming(d)],
                   ];
                   final right = [
                     for (final (i, w) in cards.indexed) if (i.isOdd) w,
-                    _habits(d),
-                    if (_dueSupps(d).isNotEmpty) _supps(d),
-                    ?_coach(d),
+                              ?_coach(d),
                   ];
                   final two = box.maxWidth >= 680;
                   return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 18, children: [
@@ -694,7 +724,6 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                         _week(d, web: true),
                         ...cards,
                         ...right.skip(cards.length ~/ 2),
-                        if (d.coming.isNotEmpty) ...[const ChSection('Coming up'), _coming(d)],
                       ]),
                   ]);
                 }),
@@ -1004,9 +1033,12 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
             onPressed: () => context.go(going ? '/train/workout' : '/train/workout?start=${d.dayId ?? ''}')),
       ));
     }
+    // The border is drawn on top (foregroundDecoration), so the tinted header stays inside the rounded corners
+    // instead of covering them (Probid 2026-11-04).
     return Container(
       clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
+      decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14)),
+      foregroundDecoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         ...kids,
         if (body.isNotEmpty) Padding(padding: const EdgeInsets.fromLTRB(14, 0, 14, 14), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: body)),
@@ -1036,7 +1068,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
   Widget _food(HomeData d) {
     final t = d.target ?? const [0, 0, 0, 0];
     final e = d.eaten;
-    final next = d.meals.where((m) => m.open).firstOrNull;
+    final next = upNextMeal(d.meals);
     final hasPlan = d.target != null && t[0] > 0;
     return ChCard(children: [
       ChHead(
@@ -1307,7 +1339,17 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
         const AppIcon(AppIcons.chevronRight, color: AppColors.chevron),
       ]));
     }
-    return ChCard(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4), gap: 0, children: rows);
+    return ChCard(gap: 4, children: [
+      ChHead(
+        lead: const ChIcon(AppIcons.calendarAlt, tone: ChTone.blue),
+        title: 'Coming up',
+        sub: rows.isEmpty ? 'Nothing planned yet' : '${rows.length} ${rows.length == 1 ? 'thing' : 'things'} in the next days',
+      ),
+      if (rows.isEmpty)
+        Text('Sessions, check-ins and plan dates show here.', style: AppText.s(12.5, W.w4, color: AppColors.muted))
+      else
+        Padding(padding: const EdgeInsets.only(top: 4), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: rows)),
+    ]);
   }
 }
 
@@ -1338,4 +1380,40 @@ class _RestTickerState extends State<_RestTicker> {
 
   @override
   Widget build(BuildContext context) => widget.builder(widget.ends.difference(DateTime.now()).inSeconds);
+}
+
+/// A Home card held down: once the long press is recognised it sinks a little and comes back, the phone gives a
+/// short buzz, and Edit home is offered. Taps and scrolling do not move it (Probid 2026-11-04).
+class _HeldCard extends StatefulWidget {
+  const _HeldCard({required this.child, required this.onLongPress, required this.onSecondaryTap});
+  final Widget child;
+  final VoidCallback onLongPress, onSecondaryTap;
+  @override
+  State<_HeldCard> createState() => _HeldCardState();
+}
+
+class _HeldCardState extends State<_HeldCard> {
+  bool _down = false;
+  void _set(bool v) {
+    if (_down != v && mounted) setState(() => _down = v);
+  }
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        behavior: HitTestBehavior.deferToChild,
+        // A plain tap or a scroll never moves the card (Probid 2026-11-04): only a completed long press gives the
+        // short sink-and-back bounce, with the buzz, as the Edit home bar comes up.
+        onLongPressStart: (_) {
+          _set(true);
+          Future.delayed(const Duration(milliseconds: 140), () => _set(false));
+          widget.onLongPress();
+        },
+        onSecondaryTap: widget.onSecondaryTap,
+        child: AnimatedScale(
+          scale: _down ? .97 : 1,
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOut,
+          child: widget.child,
+        ),
+      );
 }

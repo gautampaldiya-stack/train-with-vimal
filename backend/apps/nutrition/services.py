@@ -777,6 +777,8 @@ def day_view(client, day, request=None):
         "water": water_card(client, day, water.ml if water else 0, plan),
         "week": week,
         "strip": strip,
+        # Log tab → Copy yesterday works only when yesterday has something logged (Probid 2026-11-04)
+        "yesterday_logged": FoodLogEntry.objects.filter(client=client, date=day - timedelta(days=1)).count(),
     }
 
 

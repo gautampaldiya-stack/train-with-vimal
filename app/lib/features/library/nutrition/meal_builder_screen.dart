@@ -988,7 +988,15 @@ class _MealPlanBuilderScreenState extends State<MealPlanBuilderScreen> {
     final on = m.sel == (mi, oi, ii);
     final tile = FoodTile(tone: groupTone('${f['group'] ?? ''}'), size: 30);
     final name = CutText('${f['name'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7));
-    final por = Text(MealItemMath.amount(it), style: AppText.s(12, W.w5, color: AppColors.muted));
+    // A food deleted from the library stays in this plan; the builder says so (Probid 2026-11-04).
+    final gone = it['food_deleted'] == true;
+    final por = Text.rich(
+      TextSpan(children: [
+        TextSpan(text: MealItemMath.amount(it)),
+        if (gone) TextSpan(text: ' · Deleted from Foods', style: AppText.s(12, W.w7, color: AppColors.badText)),
+      ]),
+      style: AppText.s(12, W.w5, color: AppColors.muted),
+    );
     String mac(String k) => '${MealItemMath.m(it, k).round()}';
     final kcal = MealItemMath.m(it, 'kcal').round();
     Widget num(String t, double w) => SizedBox(width: w, child: Text(t, textAlign: TextAlign.right, style: AppText.s(12.5, W.w6, color: AppColors.muted, tabular: true)));

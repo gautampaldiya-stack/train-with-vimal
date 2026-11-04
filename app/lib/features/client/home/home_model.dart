@@ -238,6 +238,10 @@ class HomeMeal {
   bool get open => pill != 'logged' && pill != 'skipped';
 }
 
+/// Home Food card "Up next" (Probid 2026-11-04): the first of today's meals that is not logged or skipped.
+/// It moves on only when that meal is logged or skipped (no clock tick); all done: null.
+HomeMeal? upNextMeal(List<HomeMeal> meals) => meals.where((m) => m.open).firstOrNull;
+
 class HomeHabit {
   HomeHabit(Map<String, dynamic> j)
       : id = '${j['id']}',
@@ -362,6 +366,9 @@ const homeCards = {
   'progress': 'Progress summary',
   'adherence': 'Weekly adherence',
   'water': 'Water',
+  'habits': 'Habits',
+  'coming': 'Coming up',
+  'supps': 'Supplements',
   'rest_timer': 'Rest timer',
 };
 

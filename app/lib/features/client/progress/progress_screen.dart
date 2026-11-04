@@ -7,7 +7,7 @@ import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/tooltip.dart';
-import '../home/home_parts.dart' show ChCard, chSm;
+import '../home/home_parts.dart' show ChBar, ChCard, chSm;
 import 'progress_model.dart';
 import 'progress_parts.dart';
 import 'progress_sheets.dart';
@@ -57,14 +57,15 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
 
   // ─────────────────────────────── Layouts
 
-  Widget _phone(PxData d) => RefreshIndicator(
+  Widget _phone(PxData d) => CaPinned(
+    head: _top(d, web: false),
+    body: RefreshIndicator(
     onRefresh: c.load,
     color: AppColors.accent,
     child: SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 20),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-        _top(d, web: false),
         _goal(d),
         _switch(),
         if (_cmp) _firstVsNow(d),
@@ -74,23 +75,26 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
         _adherence(d),
       ]),
     ),
+    ),
   );
 
   Widget _web(PxData d) => CaWeb(
     web: true,
-    child: LayoutBuilder(builder: (context, page) {
+    child: CaPinned(
+      web: true,
+      head: _top(d, web: true),
+      body: LayoutBuilder(builder: (context, page) {
       final inner = (page.maxWidth - 64).clamp(0.0, 1080.0);
       final two = inner >= 760;
       final left = [_switch(), if (_cmp) _firstVsNow(d), _tabCard(d), _adherence(d)];
       final right = [_goal(d), _photos(d), _stats(d)];
       return SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(32, 32, 32, 72),
+        padding: const EdgeInsets.fromLTRB(32, 4, 32, 72),
         child: Align(
           alignment: Alignment.topCenter,
           child: SizedBox(
             width: inner,
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 16, children: [
-              _top(d, web: true),
               if (two)
                 Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 20, children: [
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: left)),
@@ -103,6 +107,7 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
         ),
       );
     }),
+    ),
   );
 
   Widget _top(PxData d, {required bool web}) => PxTop(
@@ -237,7 +242,11 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
     if (all.isEmpty) {
       return ChCard(children: [
         PxHead('No weigh-ins yet', 'Log your weight in the morning, before eating'),
-        CaButton('Log weight', icon: AppIcons.plus, small: true, onPressed: () => showLogWeight(context, c)),
+        // a small button on the right, not the full width (Probid 2026-11-04)
+        Align(
+          alignment: Alignment.centerRight,
+          child: CaButton('Log weight', icon: AppIcons.plus, small: true, expand: false, onPressed: () => showLogWeight(context, c)),
+        ),
       ]);
     }
     final last = all.last;
@@ -553,20 +562,26 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
 
   // ─────────────────────────────── Adherence
 
+  /// Adherence (Probid 2026-11-04): the Home card's calculation (workouts, meals, check-ins, habits), one bar a week
+  /// from the week the plans started; tap a bar to see that week below. Nothing assigned: one plain line.
   Widget _adherence(PxData d) {
     final a = d.adherence;
     final wk = a.weeks;
-    if (wk.isEmpty) return const SizedBox.shrink();
+    if (a.planSince == null || wk.isEmpty) {
+      return ChCard(children: [
+        PxHead('Adherence', 'Shows once ${d.coach} assigns your plan'),
+      ]);
+    }
+    Color tone(double r) => r >= .8 ? AppColors.okSolid : (r >= .5 ? AppColors.amberSolid : AppColors.badText);
     final sel = (_week ?? wk.length - 1).clamp(0, wk.length - 1);
     final w = wk[sel], thisWeek = sel == wk.length - 1;
     final barH = !context.isPhone ? 80.0 : 64.0;
-    final line = '${thisWeek ? 'This week · ${w.done} of ${w.planned} workouts so far' : 'Week of ${pxDm(w.start)} · ${w.done} of ${w.planned} workouts'}'
-        '${w.pct == null ? '' : ' · ${w.pct}% of the plan followed'}';
+    final end = w.start.add(const Duration(days: 6));
     return ChCard(children: [
       PxHead(
         'Adherence',
-        a.program == null ? 'No workout plan yet' : '${a.program} · ${a.done} of ${a.planned} workouts so far',
-        action: a.avg == null ? null : pxPill('${a.avg}% avg', PxTone.green),
+        'Your plans since ${pxDm(a.planSince!)}',
+        action: a.overallPct == null ? null : pxPill('${a.overallPct}% overall', PxTone.green),
       ),
       Row(crossAxisAlignment: CrossAxisAlignment.end, spacing: 6, children: [
         for (final (i, x) in wk.indexed)
@@ -586,13 +601,17 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
                       constraints: const BoxConstraints(maxWidth: 40),
                       height: barH,
                       clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(8)),
+                      decoration: BoxDecoration(
+                        color: AppColors.sub,
+                        borderRadius: BorderRadius.circular(8),
+                        border: on ? Border.all(color: AppColors.accent, width: 1.5) : null,
+                      ),
                       child: Align(
                         alignment: Alignment.bottomCenter,
                         child: FractionallySizedBox(
                           heightFactor: ((x.pct ?? 0) / 100).clamp(0.0, 1.0),
                           widthFactor: 1,
-                          child: Container(decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(8))),
+                          child: Container(decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(6))),
                         ),
                       ),
                     ),
@@ -603,7 +622,29 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
             ),
           ),
       ]),
-      pxNote(AppIcons.dumbbell, line),
+      // The picked week, like the Home card: big %, then one line per part.
+      Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(12)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
+          Text(thisWeek ? 'This week · ${pxDm(w.start)} – ${pxDm(end)}' : 'Week of ${pxDm(w.start)} – ${pxDm(end)}',
+              style: AppText.s(12.5, W.w7, color: AppColors.text2)),
+          if (w.pct == null)
+            Text('Nothing was planned this week.', style: AppText.s(13, W.w5, color: AppColors.muted))
+          else ...[
+            Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, spacing: 8, children: [
+              Text('${w.pct}%', style: AppText.s(26, W.w8, ls: -0.5, color: tone(w.pct! / 100))),
+              Flexible(child: Text('${w.itemsDone} of ${w.itemsPlanned} done${thisWeek ? ' so far' : ''}', style: AppText.s(13, W.w6, color: AppColors.muted))),
+            ]),
+            for (final p in w.parts.where((p) => p.planned > 0))
+              Row(spacing: 10, children: [
+                SizedBox(width: 82, child: Text(p.label, style: AppText.s(12.5, W.w6, color: AppColors.text2))),
+                Expanded(child: ChBar(p.done / p.planned, color: tone(p.done / p.planned), height: 5)),
+                SizedBox(width: 48, child: Text('${p.done}/${p.planned}', textAlign: TextAlign.right, style: AppText.s(12.5, W.w7, tabular: true))),
+              ]),
+          ],
+        ]),
+      ),
     ]);
   }
 }

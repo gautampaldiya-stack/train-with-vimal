@@ -161,6 +161,12 @@ A13. ✅ Other time sheet na khule: "Your plan is not created yet. You can use t
 A14. ✅ Quick add bhi disabled.
 A15. ✅ Home bina plan: har din "Rest and recover" nahi, "Plan not assigned yet".
 
+A16. ✅ Food Log tab: "Copy yesterday" sirf jab kal kuch log hua ho (warna "Nothing was logged yesterday…"); paas wala Log food button hataya.
+A17. ✅ My foods: apne food par long press (web: right-click) → Delete? confirm → My foods / search se hatta, Undo; jis din log hua wo din waisa hi (entry ki apni copy).
+A18. ✅ Plan builder: library se delete hua food plan me "· Deleted from Foods" (laal) dikhata hai; aisa plan save bhi hota hai (pehle deleted food wala plan save par error deta).
+A19. ✅ Log water sheet: upar L / ml switch; L me 0.25 L ke step, ml me 250 ml; server par ml hi jaata hai. Aakhri chuna unit yaad rehta hai (app khula rehne tak).
+A20. ✅ Water history: khula week alag dikhta hai: halka neela panel + border, chevron ghoomta hai, bars ke peeche halka neela track, target line upar; band weeks alag white boxes.
+
 ### B. Log Food page — ✅ sab ho gaya (3 Nov), Probid ka test baaki
 
 11. ✅ "Other" time sheet: stepper hata diya. Ghanta (1–12) : minute (00–59) ke 2 box, AM/PM switch; galat number par laal line, aage ka time ho to "Use this time" nahi chalta. Now / 30 min ago chips rakhe.
@@ -186,12 +192,28 @@ A15. ✅ Home bina plan: har din "Rest and recover" nahi, "Plan not assigned yet
 C20. ✅ Edit home: kisi bhi Home card par long press → bottom tabs ki jagah bar "Edit home?" Cancel / Edit home (halki vibration). Phone ka back bar band karta hai. Web: long press ya right-click se seedha Edit home. Home ke neeche wala "Edit home" button hata diya.
 C21. ✅ Home Check-ins card: text left, button / Done / date chip right.
 
+C22. ✅ Long press card: long press poora hone par vibrate, aur usi waqt neeche "Edit home?" bar slide hoke upar aata hai + card ka chhota bounce; normal tap / scroll par card nahi hilta.
+C23. ✅ Habits aur Coming up bhi Home layout cards: Edit home me move / remove / Add card. Coming up ka naya card (header + rows, khaali ho to line). Purane saved layouts me dono end me jode (migration clients 0009).
+C24. ✅ Workout card header ka rang rounded corners se bahar nahi (border upar draw).
+C25. ✅ Weekly adherence: kuch planned nahi to empty line; 0/0 wale parts nahi dikhte.
+C26. ✅ Home Check-ins card: baaki cards jaisa header (icon, "Check-ins", subtitle "2 to fill · Aman reads them" / "All done for now").
+C27. ✅ Supplements card bhi Home layout card: move / remove / Add card (migration clients 0010 saved layouts me jodti hai).
+C28. ✅ Home Food card "Up next": aaj ka pehla meal jo log / skip nahi hua; meal log ya skip hote hi agla meal. Koi har-minute check nahi (Probid). App wapas kholne par din reload.
+C29. ✅ Coming up card: Probid ne kaha jaisa hai theek hai (koi badlaav nahi).
+C30. ✅ Client pages ka header scroll nahi hota: title (aur back) upar fixed, sirf content scroll. Check-ins, Progress (+ History / Photos / Compare), Food, Log food, Train, Workout, Habits, Library, More (+ Profile), About. Home ka blue hero waisa hi.
+
 ### D. Progress / More / Notifications
 
 19. ✅ Progress: Workouts stat card (Waist aur Bench best ke beech) samajh nahi aata. Meaningful details dikhao. → Har tile me value + ek line: Waist "−X cm since start" (kam hua to hara), Workouts done "This week X of Y", Bench best "Heaviest set so far".
 20. ✅ More, Account section: "Notifications" aur "Notification settings" hatao (bell already notifications kholta hai). Client ke liye "Unit & Preferences" ki zaroorat nahi. → Ab sirf Privacy & data, My activity (phone), Help & about. Notification settings Notifications page ke gear se.
 21. ✅ Notifications page: delete notification option hatao. → Notification sheet me sirf "Mark as unread" aur link button.
 22. ✅ More, Trainer details sheet: trainer photo left, details right, extra details neeche. → Title "Your trainer"; left 84 px photo (na ho to initials), right naam, "Your trainer since", program, speciality chips; neeche About, Works best with, Experience/Languages/social (sirf jo trainer ne 'What clients see' me on kiya), Certificates, phir Your plan rows. Backend account coach payload me photo + public card. Round 2 (Probid: ache se arrange karo, design normal): upar grey header box (photo 76 px left; naam, since, "X yrs experience · languages", speciality chips right), phir alag white sections About (about + Works best with), Your plan, Certificates (tick ke saath), Contact (mobile/email/social). Har section me label left, value right, same spacing.
+
+#### D · 4 Nov
+D23. ✅ Progress Weight card (khaali): "Log weight" chhota button, right side.
+D24. ✅ History: "No logs in this range" par "Try 3 months" button hataya (sirf "Show all types" jab type chuna ho).
+D25. ✅ Progress Adherence card: Home jaisa hisaab (workouts, meals, check-ins, habits). Bars sirf plan shuru hone wale week se (max 8); plan nahi to sirf "Shows once … assigns your plan". Bar tap → neeche us week ka box: dates, %, "x of y done", har part ki line. Header me overall %.
+E52. ✅ Check-ins page upar ke numbers Goal weight card jaisa: "Your check-ins" + streak pill, teen cells (label, number, line), streak highlight.
 
 ### E. Check-ins (Client)
 
@@ -239,6 +261,7 @@ E47. ✅ Backend tests sab green: test DB har run par naya (`--create-db`; puran
 E48. ✅ Bug: app kholne me bahut time. Root cause: pehli screen se pehle app server se `auth/me/` ka jawab wait karta tha (12–30 s timeout), server slow ho to splash par atka. Ab login wala client phone me saved profile se turant khulta hai, server ka jawab peeche se update karta hai; sirf 401/403 par logout (pehle server error par bhi token mit jaata tha).
 E49. ✅ Bug: onboarding par phone ka back = app band. Root cause: /setup, /setup/checklist, /setup/done app shell ke bahar hain, isliye back ka rule wahan nahi lagta tha. Ab un pages par PopScope: back = pichhla step; pehle step par "Finish setup later?" sheet (X of Y, Continue / Save, do it later); pending client /pending. Test: app/test/back_setup_test.dart.
 E50. ✅ Check-ins page daily card: week strip ke neeche sawalon wali auto line ("N questions… takes about") hata di; form ka Description, warna "A quick look at how today went."
+E51. ✅ Admin/trainer client Logs (Daily, Weekly, Habits, Supplements) aur client ka Check-ins strip: din sirf client active hone se. Sign-up = approve ka din (plan start baad me ho to wo); team ka banaya client = start date / joining. Habit / supplement sirf assign hone ke din se (back-dated start nahi).
 
 ### F. Workout Logger (Strong app design aur layout)
 *(Dhyaan: 28 Oct ka pichla logger kaam (D-75, rest D-79 etc.) rollback me hataya gaya, sirf backup bundle me hai: `/mnt/project-files/backup-oct28/`. Wapas lana ya naya banana Probid decide karega.)*

@@ -18,6 +18,18 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+## 2026-11-04 · Fixed page headers, water unit, Up next, water history week
+- **Pehle:** Client pages ka header content ke saath scroll ho jaata tha. Water sheet sirf ml me. Water history me khula week baaki weeks jaisa white, pehchaan nahi aata. Home "Up next" kabhi purana meal dikhata tha.
+- **Ab:** Header (title, back, upar ke buttons) fixed, sirf content scroll (`CaPinned`, `pxPage(fixed:)`); Home ka hero waisa hi. Water sheet me L / ml switch (server par ml). Khula week halke neele panel + border, ghoomta chevron, tinted bar track. "Up next" = aaj ka pehla meal jo log / skip nahi hua, log / skip par hi badalta hai (koi timer nahi); app wapas kholne par reload.
+- **Kyun:** Probid, 4 Nov list 4.
+- **Updated:** app core/widgets/client.dart, client checkins, progress (+ pages), food, food_log, train, workout, habits, library, more, about, water, home (home_model upNextMeal); app/test/up_next_test.dart; docs/WORK-TRACKER.md
+
+## 2026-11-04 · Logs from the active day, Habits / Coming up as Home cards, My foods delete
+- **Pehle:** Client profile Logs me client ke join / start se pehle ke din bhi "Not sent" / "Missed" (sign-up approve se pehle ke din bhi). Habits aur Coming up Home par fixed. Copy yesterday hamesha, Log food button saath me. Client apna food delete nahi kar sakta tha. Library se delete hua food plan me chupchaap rehta tha, aur aisa plan save karne par error.
+- **Ab:** Logs approve (ya team ke start) ke din se; habit / supplement assign ke din se. Habits aur Coming up Edit home me move / remove. Copy yesterday sirf jab kal kuch log ho. My foods par hold → Delete (Undo, logs safe). Builder me "Deleted from Foods".
+- **Kyun:** Probid, 4 Nov list 3.
+- **Updated:** backend clients/logs.py (client_start), habits/views.py (staff_log), checkins/client_page.py, nutrition/views.py (my foods destroy / restore), serializers.py (food_deleted), services.py (yesterday_logged), activity/dashboard.py (HOME_CARDS), migration clients 0009; tests/test_nov4_list3.py; app home, food, food_log, progress, meal_builder; docs/WORK-TRACKER.md
+
 ### 2026-11-04 · Daily check-in opens on today; form description; onboarding "4 of 12"
 - **Pehle:** Kal ka daily na bheja ho to Check-ins page aur Home kal ka daily dikhate the, strip par aaj tap karne se aaj nahi khulta tha. Form ka koi description nahi. Onboarding "Finish later" sheet me ginti nahi. Home se Check-ins card hata diya to baaki check-in bhi nahi dikhta.
 - **Ab:** Default hamesha aaj; kal sirf strip se. Builder me form Description, client card + form ke upar. Sheet: "You have completed X of Y questions", Continue / Save, do it later. Kuch baaki ho to Check-ins card Home par hamesha.

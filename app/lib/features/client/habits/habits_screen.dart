@@ -65,14 +65,15 @@ class _ClientHabitsScreenState extends State<ClientHabitsScreen> {
 
   // ─────────────────────────────── Layouts
 
-  Widget _phone(HabitsData d) => RefreshIndicator(
+  Widget _phone(HabitsData d) => CaPinned(
+      head: _top(d, web: false),
+      body: RefreshIndicator(
         onRefresh: c.load,
         color: AppColors.accent,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-            _top(d, web: false),
             _tabs(web: false),
             if (!_week) ...[
               _strip(d, web: false),
@@ -83,23 +84,25 @@ class _ClientHabitsScreenState extends State<ClientHabitsScreen> {
               ..._weekView(d, two: false),
           ]),
         ),
-      );
+      ));
 
   Widget _web(HabitsData d) => CaWeb(
         web: true,
-        child: RefreshIndicator(
+        child: CaPinned(
+        web: true,
+        head: _top(d, web: true),
+        body: RefreshIndicator(
           onRefresh: c.load,
           color: AppColors.accent,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(32, 32, 32, 72),
+            padding: const EdgeInsets.fromLTRB(32, 4, 32, 72),
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 1080),
                 child: LayoutBuilder(builder: (context, box) {
                   final two = box.maxWidth >= 720;
                   return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 18, children: [
-                    _top(d, web: true),
                     Align(alignment: Alignment.centerLeft, child: _tabs(web: true)),
                     if (!_week) ...[
                       _strip(d, web: (box.maxWidth - 12) / 7 >= 92),
@@ -121,7 +124,7 @@ class _ClientHabitsScreenState extends State<ClientHabitsScreen> {
             ),
           ),
         ),
-      );
+      ));
 
   Widget _top(HabitsData d, {required bool web}) {
     final title = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

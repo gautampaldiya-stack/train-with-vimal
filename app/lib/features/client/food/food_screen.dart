@@ -115,19 +115,21 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
 
   // ─────────────────────────────── Layouts
 
-  Widget _phone(FoodDay d) => RefreshIndicator(
-    onRefresh: c.load,
-    color: AppColors.accent,
-    child: SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 20),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-        _top(d),
-        _strip(d, web: false),
-        ..._left(d),
-        _tabs(d),
-        ..._list(d),
-      ]),
+  Widget _phone(FoodDay d) => CaPinned(
+    head: _top(d),
+    body: RefreshIndicator(
+      onRefresh: c.load,
+      color: AppColors.accent,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+          _strip(d, web: false),
+          ..._left(d),
+          _tabs(d),
+          ..._list(d),
+        ]),
+      ),
     ),
   );
 
@@ -142,15 +144,25 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
       );
       final strip = _strip(d, web: (inner - 10) / 7 >= 92);
       if (!two) {
-        // Narrow web: one column, the whole page scrolls.
-        return SingleChildScrollView(
-          child: frame(Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 16, children: [
-            _top(d),
-            strip,
-            ..._left(d),
-            _tabs(d),
-            ..._list(d),
-          ])),
+        // Narrow web: one column; the title stays, the rest scrolls.
+        return CaPinned(
+          web: true,
+          head: _top(d),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(32, 4, 32, 72),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: SizedBox(
+                width: inner,
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 16, children: [
+                  strip,
+                  ..._left(d),
+                  _tabs(d),
+                  ..._list(d),
+                ]),
+              ),
+            ),
+          ),
         );
       }
       // Wide web: the top, the strip and the tabs stay; the left column and the meal cards scroll on their own.
@@ -1517,11 +1529,11 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
                 for (final (i, r) in rows.indexed) KeyedSubtree(key: ValueKey(r.meal != null ? 'meal:${r.meal!.id}' : 'entry:${r.entry!.id}'), child: _logRow(d, r, first: i == 0)),
               ]),
       ),
+      // Probid 2026-11-04: no Log food button here; Copy yesterday only when yesterday has something logged.
       if (d.isToday)
-        Row(spacing: 8, children: [
-          Expanded(child: CaButton('Log food', kind: CaBtnKind.dark, icon: AppIcons.plus, onPressed: _logFood)),
-          Expanded(child: CaButton('Copy yesterday', kind: CaBtnKind.out, icon: AppIcons.copy, onPressed: _copy)),
-        ])
+        d.yesterdayLogged > 0
+            ? CaButton('Copy yesterday', kind: CaBtnKind.out, icon: AppIcons.copy, onPressed: _copy)
+            : fdCap('Nothing was logged yesterday, so there is nothing to copy.')
       else
         fdCap('You can only add food to today. Tap Today in the strip above to log.'),
     ];

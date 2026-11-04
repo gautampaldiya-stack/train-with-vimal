@@ -91,9 +91,12 @@ class _ClientAboutScreenState extends State<ClientAboutScreen> {
           textAlign: TextAlign.center, style: AppText.s(11.5, W.w6, color: AppColors.muted)),
     );
     if (phone) {
-      return SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [_head(), ...left, ...right, made]),
+      return CaPinned(
+        head: _head(),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [...left, ...right, made]),
+        ),
       );
     }
     return CaWeb(

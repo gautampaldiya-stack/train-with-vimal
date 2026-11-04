@@ -431,6 +431,37 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     });
   }
 
+  /// My foods → hold a food → Delete. It leaves My foods and search; days it was logged on keep it (each entry has
+  /// its own copy). Undo brings it back.
+  Future<void> _deleteMine(FdFood f) async {
+    final ok = await confirmAction(context,
+        title: 'Delete this food?',
+        body: '${f.name} is removed from My foods. Days you already logged it on stay as they are.',
+        confirm: 'Delete',
+        danger: true,
+        icon: AppIcons.trash);
+    if (!ok || !mounted) return;
+    try {
+      await Services.api.delete('me/foods/${f.id}/');
+      if (!mounted) return;
+      setState(() {
+        _sel.removeWhere((x) => x.food == f.id);
+        _foods.removeWhere((x) => x.id == f.id);
+        _count = (_count - 1).clamp(0, 1 << 30);
+      });
+      showToast(context, 'Food deleted', sub: f.name, kind: ToastKind.ok, action: 'Undo', onAction: () async {
+        try {
+          await Services.api.post('me/foods/${f.id}/restore/', {});
+          if (mounted) _search();
+        } on ApiError catch (e) {
+          if (mounted) fdError(context, e);
+        }
+      });
+    } on ApiError catch (e) {
+      if (mounted) fdError(context, e);
+    }
+  }
+
   void _toggle(FdFood f) {
     if (_blockNoPlan()) return;
     if (_sel.any((x) => x.food == f.id)) {
@@ -488,7 +519,8 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     return CaButton('Add ${_sel.length == 1 ? '1 food' : '${_sel.length} foods'} to $meal · +${inNum(k)} kcal', icon: AppIcons.check, onPressed: _addSelected);
   }
 
-  Widget _phone() => Column(children: [
+  Widget _phone() => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+    Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 8), child: _top()),
     Expanded(child: _phoneScroll()),
     if (_sel.isNotEmpty)
       Container(
@@ -500,11 +532,10 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
 
   Widget _phoneScroll() => SingleChildScrollView(
     keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-    padding: const EdgeInsets.fromLTRB(16, 6, 16, 20),
+    padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
       // What she added and Quick add first, the food list last, so Show all only grows the end of the page
-      // (Probid 2026-10-30).
-      _top(),
+      // (Probid 2026-10-30). The header above stays put.
       _addedCard(),
       _exCard(),
       ..._searchPart(),
@@ -522,13 +553,23 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
         child: Align(alignment: Alignment.topCenter, child: SizedBox(width: inner, child: child)),
       );
       if (!two) {
-        return SingleChildScrollView(
-          child: frame(Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-            _top(),
-            _addedCard(),
-            _exCard(),
-            ..._searchPart(),
-          ])),
+        return CaPinned(
+          web: true,
+          head: _top(),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(32, 4, 32, 72),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: SizedBox(
+                width: inner,
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+                  _addedCard(),
+                  _exCard(),
+                  ..._searchPart(),
+                ]),
+              ),
+            ),
+          ),
         );
       }
       return frame(
@@ -903,13 +944,18 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
           label: 'Pick the amount of ${f.name}',
           child: Hover(
             onTap: () => _portion(f),
-            builder: (_, h, _) => Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+            // the client's own food: hold it (or right-click) to delete it (Probid 2026-11-04)
+            builder: (_, h, _) => GestureDetector(
+              onLongPress: f.mine ? () => _deleteMine(f) : null,
+              onSecondaryTap: f.mine ? () => _deleteMine(f) : null,
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
               Row(children: [
                 Flexible(child: CutText(f.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w7, color: h ? AppColors.accentText : AppColors.text))),
                 if (f.mine) fdTag('Mine'),
               ]),
               Text(f.line, style: AppText.s(12, W.w4, color: AppColors.muted)),
             ]),
+            ),
           ),
         ),
       ),

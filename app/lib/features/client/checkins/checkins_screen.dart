@@ -106,30 +106,36 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
 
   // ─────────────────────────────── Layouts
 
-  Widget _phone(CheckinsData d) => RefreshIndicator(
-    onRefresh: c.load,
-    color: AppColors.accent,
-    child: SingleChildScrollView(
-      controller: _scroll,
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: 12,
-        children: [_top(d, web: false), ?_setup(d), _cells(d), ?_daily(d), ?_weekly(d), ..._forms(d), _history(d)],
+  Widget _phone(CheckinsData d) => CaPinned(
+    head: _top(d, web: false),
+    body: RefreshIndicator(
+      onRefresh: c.load,
+      color: AppColors.accent,
+      child: SingleChildScrollView(
+        controller: _scroll,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 12,
+          children: [?_setup(d), _cells(d), ?_daily(d), ?_weekly(d), ..._forms(d), _history(d)],
+        ),
       ),
     ),
   );
 
   Widget _web(CheckinsData d) => CaWeb(
     web: true,
-    child: RefreshIndicator(
+    child: CaPinned(
+      web: true,
+      head: _top(d, web: true),
+      body: RefreshIndicator(
       onRefresh: c.load,
       color: AppColors.accent,
       child: SingleChildScrollView(
         controller: _scroll,
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(32, 32, 32, 72),
+        padding: const EdgeInsets.fromLTRB(32, 4, 32, 72),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 1080),
@@ -140,7 +146,6 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   spacing: 18,
                   children: [
-                    _top(d, web: true),
                     if (box.maxWidth >= 720)
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -170,6 +175,7 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
           ),
         ),
       ),
+      ),
     ),
   );
 
@@ -196,11 +202,40 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
     );
   }
 
-  Widget _cells(CheckinsData d) => ChCard(
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-    gap: 8,
-    children: [HkCells(d.cells(false), big: !context.isPhone)],
-  );
+  /// The numbers on top, in the Goal weight card's style (Probid 2026-11-04): a title row, then three cells with a
+  /// label, the number and one line under it; the streak is the highlighted one.
+  Widget _cells(CheckinsData d) {
+    final c = d.cells(false);
+    final s = d.streak;
+    Widget cell(String l, String v, String sub, {bool hi = false}) => Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+            decoration: BoxDecoration(color: hi ? AppColors.accentSoft : AppColors.sub, borderRadius: BorderRadius.circular(10)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+              Text(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w7, color: AppColors.muted)),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(v, style: AppText.s(17, W.w8, ls: -.17, color: hi ? AppColors.accentText : AppColors.text)),
+              ),
+              Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w4, color: AppColors.muted)),
+            ]),
+          ),
+        );
+    return ChCard(children: [
+      Row(children: [
+        Expanded(child: Text('Your check-ins', style: AppText.s(15, W.w8))),
+        if (s > 0) hkPill('$s-day streak', bg: AppColors.okBg, fg: AppColors.okText),
+      ]),
+      IntrinsicHeight(
+        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
+          cell('Daily streak', c[0].$1, s == 0 ? 'Send today to start' : 'days in a row', hi: true),
+          cell('Weekly', c[1].$1, 'sent on time'),
+          cell('Weight', c[2].$1, 'last weekly change'),
+        ]),
+      ),
+    ]);
+  }
 
   // ─────────────────────────────── Setup questionnaire not finished (E42)
 

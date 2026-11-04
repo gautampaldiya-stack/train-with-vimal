@@ -73,24 +73,49 @@ def _lifts(client, limit=4):
     return out
 
 
+def plan_start(client, today):
+    """The first day of the client's current plans (workout, meal or habit), never before they were active; None
+    when nothing is assigned yet."""
+    from apps.clients.logs import client_start
+    from apps.habits.models import HabitAssignment
+    from apps.nutrition.models import MealPlanAssignment
+    from apps.training.models import ProgramAssignment
+
+    starts = [d for d in (
+        ProgramAssignment.objects.filter(client=client, status="active", start_date__lte=today)
+        .order_by("start_date").values_list("start_date", flat=True).first(),
+        MealPlanAssignment.objects.filter(client=client, status="active", start_date__lte=today)
+        .order_by("start_date").values_list("start_date", flat=True).first(),
+        HabitAssignment.objects.filter(client=client, active=True, start_date__lte=today)
+        .order_by("start_date").values_list("start_date", flat=True).first(),
+    ) if d is not None]
+    return max(min(starts), client_start(client)) if starts else None
+
+
 def _adherence(client, today):
     from apps.clients.metrics import active_program, program_day_for
 
     from .client_page import _week_counts
 
+    from apps.clients.metrics import plan_adherence
+
     pa = active_program(client, today)
+    # Adherence the same way as the Home card (plan_adherence: workouts, meals, daily check-ins, habits), one bar a
+    # week, only from the week the first plan started (Probid 2026-11-04: nothing before a plan is assigned).
+    first = plan_start(client, today)
     weeks = []
-    for i in range(5, -1, -1):
-        mon = _monday(today) - timedelta(weeks=i)
-        c = _week_counts(client, mon)
-        parts = []
-        if c["workouts_planned"]:
-            parts.append(100 * min(c["workouts_done"], c["workouts_planned"]) / c["workouts_planned"])
-        if c["meals_pct"] is not None:
-            parts.append(c["meals_pct"])
-        weeks.append({"start": mon, "done": c["workouts_done"], "planned": c["workouts_planned"],
-                      "pct": round(sum(parts) / len(parts)) if parts else None})
-    out = {"program": None, "since": None, "done": 0, "planned": 0, "missed": [], "today": "", "weeks": weeks}
+    if first is not None:
+        mon = max(_monday(first), _monday(today) - timedelta(weeks=7))  # up to the last 8 weeks
+        while mon <= today:
+            c = _week_counts(client, mon)
+            a = plan_adherence(client, max(mon, first), min(mon + timedelta(days=6), today))
+            weeks.append({"start": mon, "done": c["workouts_done"], "planned": c["workouts_planned"],
+                          "pct": a["pct"], "items_done": a["done"], "items_planned": a["planned"],
+                          "parts": a["parts"]})
+            mon += timedelta(weeks=1)
+    overall = plan_adherence(client, first, today) if first is not None else None
+    out = {"program": None, "since": None, "done": 0, "planned": 0, "missed": [], "today": "", "weeks": weeks,
+           "plan_since": first, "overall": overall}
     if not pa:
         return out
     from apps.clients.metrics import planned_workout_days

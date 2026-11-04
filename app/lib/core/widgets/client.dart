@@ -21,6 +21,30 @@ class CaWeb extends InheritedWidget {
   bool updateShouldNotify(CaWeb old) => old.web != web;
 }
 
+/// Page with a fixed header: the title row stays at the top and only the content under it scrolls.
+/// Phone: 16 side padding. Web: 32 side padding and the header is centred to [maxWidth] like the content.
+class CaPinned extends StatelessWidget {
+  const CaPinned({super.key, required this.head, required this.body, this.web = false, this.maxWidth = 1080});
+  final Widget head;
+  final Widget body;
+  final bool web;
+  final double maxWidth;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: web ? const EdgeInsets.fromLTRB(32, 32, 32, 14) : const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: web
+                ? Center(child: ConstrainedBox(constraints: BoxConstraints(maxWidth: maxWidth), child: head))
+                : head,
+          ),
+          Expanded(child: body),
+        ],
+      );
+}
+
 enum CaBtnKind { pri, out, dark }
 
 /// `ca-btn`: 44 high, radius 12, 14.5/700 (web: 40, radius 10, 14).

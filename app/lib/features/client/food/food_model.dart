@@ -326,6 +326,8 @@ class FoodDay {
   }
 
   int get waterMl => _n((j['water'] as Map?)?['ml']).round();
+  /// Foods logged yesterday: Copy yesterday is off when there is nothing to copy.
+  int get yesterdayLogged => _n(j['yesterday_logged'] ?? 1).toInt();
   int get waterGoal => _n((j['water'] as Map?)?['goal_ml']).round().clamp(250, 10000);
 
   /// The coach gave a water habit (A10); without one the card only says so.
