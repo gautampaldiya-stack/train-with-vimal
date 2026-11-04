@@ -102,7 +102,11 @@ def test_home_adherence_counts_daily_checkins_this_week(client_user):
     riya = User.objects.get(email="riya@example.com")
     today = timezone.localdate()
     monday = today - timedelta(days=today.weekday())
-    form = Form.objects.filter(type="daily", status="published").first()
+    # Check-ins count from the day she joined; on a freshly seeded test database that is today.
+    User.objects.filter(id=riya.id).update(date_joined=timezone.now() - timedelta(days=30))
+    from apps.checkins.library import live_form
+
+    form = live_form("daily")
     Submission.objects.filter(client=riya, form_type="daily", date__gte=monday).delete()
     for i in range(today.weekday() + 1):
         if i != 1:

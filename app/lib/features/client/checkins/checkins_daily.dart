@@ -274,6 +274,7 @@ class _DailyCheckinState extends State<DailyCheckin> {
   );
 
   List<Widget> _form() => [
+    if (f.description.isNotEmpty) Text(f.description, style: AppText.s(13, W.w5, color: AppColors.text2, h: 1.45)),
     for (final q in qs) _question(q),
     // Editing a sent check-in saves the changes; a new one is sent.
     if (_editing && today?.id != null)

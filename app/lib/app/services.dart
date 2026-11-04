@@ -79,25 +79,48 @@ class Session extends ChangeNotifier {
 
   bool get signedIn => me != null;
 
+  /// Opening the app (Probid 2026-11-04: "open hote time bahut time leta hai"). It used to wait for `auth/me/` before
+  /// the first frame, so a slow network or a sleeping server kept the splash up for up to 12-30 s. Now a signed-in
+  /// person opens at once from the saved profile, and the fresh one follows in the background.
   Future<void> restore() async {
     await Services.tokens.load();
     Services.api.onSignedOut = () => signOut(remote: false);
     if (Services.tokens.access != null) {
-      try {
-        me = Me(await Services.api.get<Map<String, dynamic>>('auth/me/'));
-        await Services.cache.write('me', me!.json);
-      } on ApiError catch (e) {
-        if (e.offline) {
-          final cached = await Services.cache.read('me');
-          if (cached is Map) me = Me(cached.cast<String, dynamic>());
+      final cached = await Services.cache.read('me');
+      if (cached is Map) {
+        me = Me(cached.cast<String, dynamic>());
+        _afterSignIn();
+        ready = true;
+        notifyListeners();
+        unawaited(_refreshOnOpen());
+        return;
+      }
+      await _refreshOnOpen();
+    }
+    if (me != null) _afterSignIn();
+    ready = true;
+    notifyListeners();
+  }
+
+  Future<void> _refreshOnOpen() async {
+    try {
+      final had = me != null;
+      me = Me(await Services.api.get<Map<String, dynamic>>('auth/me/'));
+      await Services.cache.write('me', me!.json);
+      if (had) {
+        _syncRealtime();
+        notifyListeners();
+      }
+    } on ApiError catch (e) {
+      // Offline or a server hiccup: keep the saved profile. Only a refused login signs out.
+      if (e.status == 401 || e.status == 403) {
+        if (me != null) {
+          await signOut(remote: false);
         } else {
           await Services.tokens.clear();
         }
       }
     }
-    if (me != null) _afterSignIn();
-    ready = true;
-    notifyListeners();
   }
 
   /// The API knows android / ios / web. Desktop builds count as web.

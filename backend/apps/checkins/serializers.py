@@ -136,7 +136,7 @@ class FormRowSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Form
-        fields = ["id", "name", "type", "status", "is_parq", "question_count", "sent_by", "built_in", "has_draft",
+        fields = ["id", "name", "description", "type", "status", "is_parq", "question_count", "sent_by", "built_in", "has_draft",
                   "updated_at", "created_at"]
         read_only_fields = ["status", "is_parq"]
 
@@ -153,6 +153,9 @@ class FormRowSerializer(serializers.ModelSerializer):
 
     def get_has_draft(self, obj):
         return obj.draft_questions is not None
+
+    def validate_description(self, v):
+        return " ".join((v or "").split())
 
     def validate_name(self, v):
         v = " ".join(v.split())

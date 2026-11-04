@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/services.dart';
@@ -41,12 +42,17 @@ class _FormBuilderScreenState extends State<FormBuilderScreen> {
   ApiError? error, saveError;
   final name = TextEditingController();
   final _nameFocus = FocusNode();
+  final desc = TextEditingController();
+  final _descFocus = FocusNode();
 
   @override
   void initState() {
     super.initState();
     _nameFocus.addListener(() {
       if (!_nameFocus.hasFocus) _rename();
+    });
+    _descFocus.addListener(() {
+      if (!_descFocus.hasFocus) _saveDesc();
     });
     load();
   }
@@ -55,6 +61,8 @@ class _FormBuilderScreenState extends State<FormBuilderScreen> {
   void dispose() {
     name.dispose();
     _nameFocus.dispose();
+    desc.dispose();
+    _descFocus.dispose();
     super.dispose();
   }
 
@@ -66,6 +74,7 @@ class _FormBuilderScreenState extends State<FormBuilderScreen> {
         f = d;
         qs = [for (final q in (d['questions'] as List? ?? const [])) FmQ(q as Map)];
         name.text = '${d['name']}';
+        desc.text = '${d['description'] ?? ''}';
         error = null;
         loading = false;
       });
@@ -135,6 +144,13 @@ class _FormBuilderScreenState extends State<FormBuilderScreen> {
         name.text = '${f['name']}';
       }
     }
+  }
+
+  /// The form's description: the client sees it on the Daily / Weekly check-in card and on top of the form.
+  void _saveDesc() {
+    final t = desc.text.trim();
+    if (t == '${f['description'] ?? ''}') return;
+    _patch({'description': t});
   }
 
   void _rename() {
@@ -401,6 +417,13 @@ class _FormBuilderScreenState extends State<FormBuilderScreen> {
     final drafted = _pub && f['has_draft'] == true;
     return _side('Form details', end: formBadge(f), children: [
       drField('Name', AppTextField(controller: name, focusNode: _nameFocus, onSubmitted: (_) => _rename())),
+      drField(
+        'Description (optional)',
+        Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
+          AppTextField(controller: desc, focusNode: _descFocus, placeholder: 'What this check-in is for, in one or two lines', maxLines: 3, minLines: 2, formatters: [LengthLimitingTextInputFormatter(300)]),
+          _hint('Clients see it on the check-in card and on top of the form. Empty = nothing is shown.'),
+        ]),
+      ),
       drField(
         'Type',
         AppSelect(kindLabel('${f['type']}'), entries: [

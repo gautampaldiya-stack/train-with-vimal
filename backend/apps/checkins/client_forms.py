@@ -122,7 +122,7 @@ def changes(form):
 
 def _copy(master, client, actor, name=None):
     f = Form.objects.create(name=(name or master.name)[:120], type=master.type, status=Form.Status.CLIENT,
-                            is_parq=master.is_parq, client=client, master=master, created_by=actor)
+                            description=master.description, is_parq=master.is_parq, client=client, master=master, created_by=actor)
     return f
 
 

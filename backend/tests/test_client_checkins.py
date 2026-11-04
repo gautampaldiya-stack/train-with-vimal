@@ -18,7 +18,15 @@ PNG = "data:image/png;base64," + base64.b64encode(bytes.fromhex(
 def photo_week():
     """The demo's last photo set is last week; with photos every week this week asks for them too."""
     ClientProfile.objects.filter(user__email="riya@example.com").update(photo_every_weeks=1)
+
+
+@pytest.fixture
+def photo_week_open(photo_week):
+    """photo_week, with the weekly check-in due (and open) today so it can be sent on any weekday."""
     _open_weekly()
+    # With the check-in moved to today, a set from the last few days would make this an off week.
+    PhotoSet.objects.filter(client__email="riya@example.com", submission__isnull=True,
+                            date__gt=timezone.localdate() - timedelta(days=7)).delete()
 
 
 def _open_weekly():
@@ -106,7 +114,7 @@ def test_undo_is_refused_once_the_coach_has_it(client_user):
     assert r.status_code == 400 and Submission.objects.filter(id=sub.id).exists()
 
 
-def test_send_weekly_with_photos(client_user, photo_week):
+def test_send_weekly_with_photos(client_user, photo_week_open):
     d = _page(client_user)
     f = d["weekly"]["form"]
     answers = {_qid(f, "Body weight (kg)"): 68.2, _qid(f, "How was your week?"): 4,
@@ -140,7 +148,7 @@ def test_checkins_page_is_client_only(trainer):
     assert trainer.get("/api/v1/me/checkins/").status_code == 403
 
 
-def test_photo_question_asks_for_named_photos(client_user, photo_week):
+def test_photo_question_asks_for_named_photos(client_user, photo_week_open):
     from apps.checkins.models import Question
 
     d = _page(client_user)
@@ -236,7 +244,7 @@ def test_review_with_a_reply_tells_the_client(trainer):
     assert Notification.objects.filter(recipient__email="riya@example.com").count() == before + 1
 
 
-def test_form_answers_show_the_photos_to_the_coach(client_user, admin, photo_week):
+def test_form_answers_show_the_photos_to_the_coach(client_user, admin, photo_week_open):
     """Phase 2: the admin's form answers listed photo answers as the word "Photo"; now they carry the pictures."""
     from apps.accounts.models import User
     from apps.checkins.models import Question
@@ -377,3 +385,29 @@ def test_an_old_daily_check_in_cannot_be_edited(client_user):
     old = Submission.objects.create(client=riya, form=f, form_type="daily", date=today - timedelta(days=3))
     r = client_user.patch(f"/api/v1/me/submissions/{old.id}/", {"answers": {}}, format="json")
     assert r.status_code == 400
+
+
+def test_form_description_shows_on_the_client_card(client_user, admin):
+    """Probid 2026-11-04: the builder's Description shows on the client's Daily / Weekly card; empty = nothing."""
+    from apps.checkins.library import live_form
+
+    f = live_form("daily")
+    r = admin.patch(f"/api/v1/forms/{f.id}/", {"description": "  Two minutes,   every morning. "}, format="json")
+    assert r.status_code == 200, r.content
+    assert r.json()["description"] == "Two minutes, every morning."
+    assert _page(client_user)["daily"]["form"]["description"] == "Two minutes, every morning."
+    admin.patch(f"/api/v1/forms/{f.id}/", {"description": ""}, format="json")
+    assert _page(client_user)["daily"]["form"]["description"] == ""
+
+
+def test_check_ins_and_home_open_on_today_even_with_yesterday_unsent(client_user):
+    """Probid 2026-11-04: the daily check-in shows today by default (Check-ins page and Home); yesterday only
+    when it is picked on the strip."""
+    today = timezone.localdate()
+    Submission.objects.filter(client__email="riya@example.com", form_type="daily",
+                              date=today - timedelta(days=1)).delete()
+    d = _page(client_user)["daily"]
+    assert d["date"] == str(today) and d["is_yesterday"] is False
+    assert _page(client_user, day=str(today))["daily"]["date"] == str(today)
+    home = client_user.get("/api/v1/me/home/").json()["checkin_today"]
+    assert home["date"] == str(today) and home["is_yesterday"] is False

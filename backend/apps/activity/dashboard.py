@@ -351,9 +351,8 @@ def checkin_today(client, today):
         if onboarding is None and weekly is None:
             return None
         return {"form": None, "status": "none", "onboarding": onboarding, "weekly": weekly}
-    from apps.checkins.client_page import daily_open_day
 
-    day = daily_open_day(client, today)  # yesterday while it is still open and not sent (E27)
+    day = today  # Home shows only today's daily (Probid 2026-11-04); yesterday is on the Check-ins strip
     sub = Submission.objects.filter(client=client, form_type="daily", date=day).order_by("-created_at").first()
     return {"form": form.id, "status": "sent" if sub else "pending", "sent_at": sub.created_at if sub else None,
             "date": day, "is_yesterday": day < today, "onboarding": onboarding, "weekly": weekly,

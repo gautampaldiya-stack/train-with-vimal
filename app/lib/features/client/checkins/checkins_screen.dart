@@ -268,12 +268,12 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
           Text('Not filled. Only today and yesterday can be filled, older days are view only.',
               style: AppText.s(12.5, W.w4, color: AppColors.muted, h: 1.45))
         else if (s == null) ...[
-          Text(
-            dd.isYesterday
-                ? 'Log yesterday\'s data (${dayShortNoYear(day)}): how you slept last night and how the day went. ${_dailyWhat(f)}.'
-                : '${_dailyWhat(f)}. You can also fill it tomorrow morning, after you know how you slept.',
-            style: AppText.s(12.5, W.w4, color: AppColors.muted, h: 1.45),
-          ),
+          // Under the strip: the coach's description of the form, else one plain line (Probid 2026-11-04: no
+          // auto text about the questions).
+          f.description.isNotEmpty
+              ? _desc(f.description)
+              : Text(dd.isYesterday ? 'A quick look at how yesterday went.' : 'A quick look at how today went.',
+                  style: AppText.s(12.5, W.w4, color: AppColors.muted, h: 1.45)),
           CaButton(dd.isYesterday ? 'Fill yesterday\'s check-in' : 'Start daily check-in', icon: AppIcons.play, onPressed: () => context.go('/checkins/daily')),
         ] else ...[
           ChNote(
@@ -363,11 +363,8 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
 
   ScrollController? _dayCtl;
 
-  /// "6 questions · takes about 30 seconds": what it asks, without listing the questions on the card (E23).
-  String _dailyWhat(CkForm f) {
-    final n = f.questions.where((q) => q.type != 'photo' && q.type != 'measures').length;
-    return '$n ${n == 1 ? 'question' : 'questions'} from ${c.data!.coachFirst} · takes about ${_takes(n)}';
-  }
+  /// The coach's description of the form, from the builder.
+  Widget _desc(String t) => Text(t, style: AppText.s(13, W.w5, color: AppColors.text2, h: 1.45));
 
   /// About 5 seconds a question on the daily, 15 on the weekly.
   String _takes(int n, {int each = 5}) {
@@ -410,6 +407,7 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
                   : hkPill(w.late ? 'Still open' : (dueToday ? 'Due today' : 'Open'), bg: AppColors.amberBg, fg: AppColors.amberText))
               : hkPill('Sent', bg: AppColors.okBg, fg: AppColors.okText),
         ),
+        if (f.description.isNotEmpty) _desc(f.description),
         if (s == null) ...[
           // No question chips on the card (E28): only how long it takes.
           Text(

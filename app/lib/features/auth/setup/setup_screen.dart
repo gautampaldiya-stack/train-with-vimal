@@ -127,7 +127,13 @@ class _SetupScreenState extends State<SetupScreen> {
 
   void _back() {
     if (widget.edit) return context.go('/setup/done');
-    if (step == 0) return context.go('/pending');
+    // An approved client came here from the Home / Check-ins card: back goes home, not to the approval wait.
+    if (step == 0) {
+      if (Services.session.me?.pending == true) return context.go('/pending');
+      // Leaving on the first step: "You have completed X of Y questions" · Continue / Save, do it later.
+      showLaterSheet(context, saveStep: step);
+      return;
+    }
     setState(() => step--);
   }
 
@@ -161,7 +167,13 @@ class _SetupScreenState extends State<SetupScreen> {
     final last = step == SetupState.count - 1;
     final nextT = widget.edit ? 'Save changes' : (last ? 'Finish' : 'Continue · ${SetupState.shorts[step + 1]}');
     final hasBack = step > 0 && !widget.edit;
-    return AuthFrame(
+    // The phone's back button: the page's own Back, never closing the app (Probid 2026-11-04).
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _back();
+      },
+      child: AuthFrame(
       wide: true,
       brand: BrandKind.steps,
       steps: setupBrand(context, current: step, fromDone: widget.edit),
@@ -191,6 +203,7 @@ class _SetupScreenState extends State<SetupScreen> {
         else
           ..._step(),
       ],
+    ),
     );
   }
 
@@ -1000,14 +1013,14 @@ Future<void> showLaterSheet(BuildContext context, {int? saveStep}) {
   return showAppSheet<void>(
     context,
     title: 'Finish setup later?',
-    sub: 'Your answers so far are saved.',
+    sub: 'You have completed ${st.filledCount} of ${st.totalCount} questions. Your answers so far are saved.',
     footerStretch: true,
     // `ca-sf`: Keep going / Save & leave.
     footer: (ctx) => [
       Row(spacing: 8, children: [
-        Expanded(child: CaButton('Keep going', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop())),
+        Expanded(child: CaButton('Continue', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop())),
         Expanded(
-          child: ValueListenableBuilder(valueListenable: busy, builder: (_, b, _) => CaButton('Save & leave', loading: b, onPressed: () => save(ctx))),
+          child: ValueListenableBuilder(valueListenable: busy, builder: (_, b, _) => CaButton('Save, do it later', loading: b, onPressed: () => save(ctx))),
         ),
       ]),
     ],

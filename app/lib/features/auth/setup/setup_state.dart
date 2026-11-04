@@ -103,6 +103,11 @@ class SetupState extends ChangeNotifier {
   /// Field key (or `q<id>` for an extra question) → the message under it.
   Map<String, String> errors = {};
 
+  /// Questions answered so far and all of them (same count as the Home / Check-ins card, onboarding.status).
+  static bool _has(Object? x) => x != null && x != '' && !(x is List && x.isEmpty) && !(x is Map && x.isEmpty);
+  int get filledCount => fields.where((f) => _has(v[f.key])).length + extra.where((q) => _has(extraAnswers[q.id])).length;
+  int get totalCount => fields.length + extra.length;
+
   int get firstTodo => List.generate(count, (i) => i).firstWhere((i) => !done.contains(i), orElse: () => -1);
 
   List<SetupField> fieldsOf(int step) => [for (final f in fields) if (f.step == keys[step]) f];

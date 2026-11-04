@@ -111,7 +111,8 @@ def form_payload(form, coach_first, photos=True, client=None):
         if q.type == QuestionType.NUMBER and client is not None and (q.settings or {}).get("quick"):
             row["last"] = last_number(client, q)
         out.append(row)
-    return {"id": str(form.id), "name": form.name, "type": form.type, "questions": out}
+    return {"id": str(form.id), "name": form.name, "type": form.type,
+            "description": form.description.replace("{coach}", coach_first or "your coach"), "questions": out}
 
 
 def _week_counts(client, monday):
@@ -325,8 +326,9 @@ def checkins_page(client, tab="weekly", before=None, request=None, day=None):
         for r in rows:
             r.update(_week_counts(client, r["due"] - timedelta(days=6)))
 
-    # the picked day (never before the start or after today), else yesterday while it is still open, else today
-    day = min(max(day, _start(client)), today) if day else daily_open_day(client, today)
+    # The day picked on the strip (never before the start or after today), else today: yesterday only when it is
+    # picked (Probid 2026-11-04).
+    day = min(max(day, _start(client)), today) if day else today
     d_today = Submission.objects.filter(client=client, form_type="daily", date=day).first()
     last_w = WeightLog.objects.filter(client=client, date__lt=day).order_by("-date").first()
     today_w = WeightLog.objects.filter(client=client, date=day).first()

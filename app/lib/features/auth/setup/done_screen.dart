@@ -59,7 +59,13 @@ class _DoneScreenState extends State<DoneScreen> {
     final me = Services.session.me!;
     final coach = me.coachFirst;
     final wait = me.pending;
-    return AuthFrame(
+    // The phone's back button: the page's own Back, never closing the app (Probid 2026-11-04).
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go(wait ? '/pending' : '/home');
+      },
+      child: AuthFrame(
       brand: BrandKind.steps,
       footBorder: !authSplit(context),
       steps: setupBrand(context, fromDone: true),
@@ -131,6 +137,7 @@ class _DoneScreenState extends State<DoneScreen> {
             ]),
           ),
       ],
+    ),
     );
   }
 }

@@ -202,6 +202,12 @@ def test_photo_week_checkin_asks_measurements_and_saves_them_to_progress(client_
                                     weekday=timezone.localdate().weekday(), time="18:00")
         cur = schedule.current(riya)
     today = cur["due"]
+    # Body measurements go with the photos: make this a photo week whatever day the check-in was moved to.
+    from apps.checkins.models import PhotoSet
+    from apps.clients.models import ClientProfile
+
+    ClientProfile.objects.filter(user=riya).update(photo_every_weeks=1)
+    PhotoSet.objects.filter(client=riya, submission__isnull=True, date__gt=today - timedelta(days=7)).delete()
     Submission.objects.filter(client=riya, form_type="weekly", date__gte=today - timedelta(days=today.weekday())).delete()
     # The demo's entry from this period makes the step go away (one entry per period); start without it.
     Measurement.objects.filter(client=riya, date__gte=today - timedelta(days=today.weekday() + 7)).delete()

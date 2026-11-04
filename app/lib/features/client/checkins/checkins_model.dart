@@ -458,6 +458,9 @@ class CkForm {
   final List<CkQ> questions;
   String get id => '${j['id']}';
   String get type => '${j['type']}';
+
+  /// The coach's description of this form (builder → Description); empty = nothing shown.
+  String get description => '${j['description'] ?? ''}'.trim();
   CkQ? byMetric(String m) => questions.where((q) => q.metric == m).firstOrNull;
 }
 

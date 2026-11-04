@@ -182,6 +182,10 @@ A15. ✅ Home bina plan: har din "Rest and recover" nahi, "Plan not assigned yet
     * "Log food" button hatao.
 18. ✅ Workout card: pehle 3 exercises numbered card par hi (naam + sets line), "+ N more · See all", shuru hua workout ho to "X of N exercises" bar aur ho chuke par hara tick; future din ka alag See all button hata diya.
 
+#### C · 4 Nov
+C20. ✅ Edit home: kisi bhi Home card par long press → bottom tabs ki jagah bar "Edit home?" Cancel / Edit home (halki vibration). Phone ka back bar band karta hai. Web: long press ya right-click se seedha Edit home. Home ke neeche wala "Edit home" button hata diya.
+C21. ✅ Home Check-ins card: text left, button / Done / date chip right.
+
 ### D. Progress / More / Notifications
 
 19. ✅ Progress: Workouts stat card (Waist aur Bench best ke beech) samajh nahi aata. Meaningful details dikhao. → Har tile me value + ek line: Waist "−X cm since start" (kam hua to hara), Workouts done "This week X of Y", Bench best "Heaviest set so far".
@@ -195,7 +199,7 @@ A15. ✅ Home bina plan: har din "Rest and recover" nahi, "Plan not assigned yet
     * Daily card par sawal ki list nahi: "6 questions from Aman · takes about 30 seconds".
     * Weekly: due din aur time client ke weekly schedule se (Client profile → Send a form → When, "Every week"; warna Sunday 6 pm). Usi din se khulta hai aur 2 din aur khula rehta hai; pehle din se pehle button locked ("Opens Sun"). Due din par "Due today", baad me "Still open".
     * Reminder 10 am, 2 pm, 7 pm har khule din par (jab tak na bhara). 3 din baad Missed, agla dikhta hai.
-    * ⬜ Admin ka description card par: form me description field nahi hai, Probid se poocha (builder me "Description" box?).
+    * ✅ Admin ka description card par (4 Nov): form builder → Form details me "Description (optional)" box (admin + trainer, daily / weekly / sab forms). Client ke Daily / Weekly card par aur form ke upar dikhta hai; khaali ho to kuch nahi. Client copy aur Duplicate me saath jaata hai. Migration checkins 0010.
 24. ✅ Past Check-ins: scrollbar hata (fade + "Scroll for older" bache). Detail sheet: upar numbers (sirf jo hain), coach reply, phir "Your answers" box me har sawal (form ke shabd) left, jawab right; photos neeche.
 25. ✅ Questions: sirf admin ke sawal. Daily ka "Anything else?" note card aur water/steps line hata. Har type ka sahi input (number box ya − / +, single/multiple/dropdown/yes-no with Other, scale, short/long with coach chips). Photo aur body measurements sirf weekly me.
 26. ✅ Header: phone par "Week 3 of 12 · Aman reads every one" (program ka naam sirf web par).
@@ -212,7 +216,7 @@ A15. ✅ Home bina plan: har din "Rest and recover" nahi, "Plan not assigned yet
     * ✅ Duplicate questions: do published daily forms ho to app `-updated_at` se form uthata tha, builder ka draft autosave bhi `updated_at` badalta tha, isliye form badal jaata tha. Ab `library.live_form()` = sabse naya banaya published form. Daily ka hard-coded "Anything else?" bhi hata. Test.
     * ✅ Submit error: daily multiple choice ko text box se bhejta tha ("Pick one of the options"), number − / + 0 se shuru hota tha (min se kam), photo/measures ka galat jawab. Sab theek; error toast ab sawal ka naam aur server ka reason dikhata hai. Test.
     * ✅ Daily na dikhna: wahi form swap (archived/badla form). Ab ek tay rule.
-31. ⬜ Partially completed onboarding: "0 questions filled" kis screen par hai, Probid se screenshot maanga.
+31. ✅ Partially completed onboarding (4 Nov): ginti `onboarding.status()` se (Home row aur Check-ins card same number). Card se /setup pehle adhoore step par khulta hai; step 0 par Back = Home (approved client). "Finish later" sheet: "You have completed 4 of 12 questions…", buttons Continue / Save, do it later.
 32. ✅ Unsaved check-in exit: weekly ya daily me jawab badle aur bheja nahi, back par "You have not finished this check-in" · "Save and continue later" / "Discard". Daily ka draft bhi phone par (aaj tak).
 33. ✅ Finish (sent) page: hara header (tick, title, kab), "Your answers" box me har sawal number ke saath, sawal grey, jawab bold neeche; khali = "Skipped"; photos alag box.
 34. ✅ Sub-pages ka back button: box hata, plain ← arrow (`CaBackBtn`), har client sub-page aur setup pages par ek hi widget.
@@ -229,6 +233,12 @@ E41. ✅ Har sawal ka "Description / subtitle" field admin builder me (weekly, d
 E42. ✅ Bug: phone par adhoora onboarding ("fill the remaining") Check-ins page par nahi dikhta. Root cause + test. Root cause: Check-ins/Home par onboarding ka koi card hi nahi tha. Ab Check-ins par Onboarding card, Home par row (0 jawab aur naye approve hue client ke liye bhi). Test: tests/test_onboarding_pending.py.
 E43. ✅ Bug (web): onboarding par "Finish and leave" (0 jawab) + "remind me tomorrow", agle din na reminder na pending onboarding. Reminder ki date/timezone, job chalta hai ya nahi, 0 jawab par card chhupta hai ya nahi. Root cause + test. Root cause: reminder job sirf "active" clients dekhta tha (naya sign-up "pending" hota hai), beat sirf 9 am chalta tha (8 pm wala kabhi nahi), route "/welcome" app me tha hi nahi. Ab pending bhi, har 15 min, route /setup. Test: tests/test_onboarding_pending.py.
 E44. ✅ Bug: water reminder har baar same "1 L". Root cause: message sirf "X L behind" bolta tha, X = target ka time wala hissa − log kiya; 12 baje tak kuch log na ho to roz "1 L". Goal bhi meal plan template se (Water card ka habit target nahi). Ab: Water card wala goal, sirf water habit ho to, 1 ghante me log kiya ho to nahi, text "You've had 0.5 L of 3 L today. Aim for 1.25 L by now." / "No water logged yet today…", tap = Food ki water sheet. Test: tests/test_water_reminder.py.
+E45. ✅ Daily check-in default AAJ (Probid 4 Nov): Check-ins page aur Home dono aaj ka daily dikhate hain; kal ka sirf strip par kal chunne se (bhar / edit ho sakta hai). Root cause: server kal ka unsent daily default deta tha, aur strip par "aaj" tap = default din = phir kal, isliye aaj khulta nahi tha. Test: test_check_ins_and_home_open_on_today_even_with_yesterday_unsent.
+E46. ✅ Home Check-ins card: Edit home me hata diya ho tab bhi kuch baaki ho (onboarding / aaj ka daily / khula weekly) to card upar dikhta hai. Edit home list me naam "Check-ins".
+E47. ✅ Backend tests sab green: test DB har run par naya (`--create-db`; purana DB pichle din ka seed rakhta tha, isliye date wale tests fail hote the). Weekly/photo tests ab kisi bhi din chalte hain.
+E48. ✅ Bug: app kholne me bahut time. Root cause: pehli screen se pehle app server se `auth/me/` ka jawab wait karta tha (12–30 s timeout), server slow ho to splash par atka. Ab login wala client phone me saved profile se turant khulta hai, server ka jawab peeche se update karta hai; sirf 401/403 par logout (pehle server error par bhi token mit jaata tha).
+E49. ✅ Bug: onboarding par phone ka back = app band. Root cause: /setup, /setup/checklist, /setup/done app shell ke bahar hain, isliye back ka rule wahan nahi lagta tha. Ab un pages par PopScope: back = pichhla step; pehle step par "Finish setup later?" sheet (X of Y, Continue / Save, do it later); pending client /pending. Test: app/test/back_setup_test.dart.
+E50. ✅ Check-ins page daily card: week strip ke neeche sawalon wali auto line ("N questions… takes about") hata di; form ka Description, warna "A quick look at how today went."
 
 ### F. Workout Logger (Strong app design aur layout)
 *(Dhyaan: 28 Oct ka pichla logger kaam (D-75, rest D-79 etc.) rollback me hataya gaya, sirf backup bundle me hai: `/mnt/project-files/backup-oct28/`. Wapas lana ya naya banana Probid decide karega.)*

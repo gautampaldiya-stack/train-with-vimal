@@ -167,7 +167,8 @@ class FormViewSet(SoftDeleteViewMixin, viewsets.ModelViewSet):
     def duplicate(self, request, pk=None):
         src = self.get_object()
         with transaction.atomic():
-            f = Form.objects.create(name=f"{src.name} (copy)"[:120], type=src.type, created_by=request.user)
+            f = Form.objects.create(name=f"{src.name} (copy)"[:120], type=src.type, description=src.description,
+                                   created_by=request.user)
             # the copy starts from what the builder shows (the draft when there is one)
             Question.objects.bulk_create([
                 Question(form=f, order=i, profile_key=d.get("profile_key", ""),

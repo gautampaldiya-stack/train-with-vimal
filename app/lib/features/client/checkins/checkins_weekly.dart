@@ -246,6 +246,8 @@ class _WeeklyCheckinState extends State<WeeklyCheckin> {
             onBack: _exit,
             backLabel: _editing ? 'Cancel' : 'Back',
           ),
+          if ((sent == null || _editing) && (w.form?.description ?? '').isNotEmpty)
+            Text(w.form!.description, style: AppText.s(13, W.w5, color: AppColors.text2, h: 1.45)),
           if (sent == null || _editing)
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,

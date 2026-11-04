@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-11-04 · Daily check-in opens on today; form description; onboarding "4 of 12"
+- **Pehle:** Kal ka daily na bheja ho to Check-ins page aur Home kal ka daily dikhate the, strip par aaj tap karne se aaj nahi khulta tha. Form ka koi description nahi. Onboarding "Finish later" sheet me ginti nahi. Home se Check-ins card hata diya to baaki check-in bhi nahi dikhta.
+- **Ab:** Default hamesha aaj; kal sirf strip se. Builder me form Description, client card + form ke upar. Sheet: "You have completed X of Y questions", Continue / Save, do it later. Kuch baaki ho to Check-ins card Home par hamesha.
+- **Kyun:** Probid, 4 Nov (E27 ka rule badla: kal wala default nahi).
+- **Updated:** backend checkins/models.py (+0010), serializers.py, client_page.py, client_forms.py, views.py, activity/dashboard.py, pytest.ini, tests; app form_builder_screen, checkins_*, home_model/screen, setup_state/screen; docs/WORK-TRACKER.md
+
 ### 2026-11-04 · Check-ins card on Home, daily strip, onboarding card, no-plan Food, water reminder (E35–E44, A11–A15)
 - **Pehle:** Home par sirf daily check-in card. Check-ins par sirf aaj/kal ka daily, koi strip nahi; purana daily bhi edit ho sakta tha (sirf "same day sent" rule). Adhoora onboarding kahin nahi dikhta tha; reminder sirf active clients ko, sirf 9 am, route /welcome. Bina meal plan Log food khulta tha, Quick add / Other time chalte the; Home par "Rest and recover". Water reminder roz same "1 L behind", meal plan ka goal.
 - **Ab:** Home "Check-ins" card: Onboarding (adhoora ho to), Daily, Weekly rows, done state. Check-ins par Onboarding card, daily card me week strip, aaj/kal hi bhar/badal sakte, purane din view only. Stat cards barabar height. Sawal ka Description / subtitle client ko dikhta hai. Bina plan: Log food button nahi, meal me add / Quick add / Other time band ("Your plan is not created yet"), Home par "Plan not assigned yet". Onboarding reminder pending clients ko bhi, har 15 min check, /setup. Water reminder Water card ka goal, asli progress, 1 ghante me log kiya to nahi, tap = Food water sheet.

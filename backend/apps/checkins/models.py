@@ -30,6 +30,8 @@ class Form(SoftDeleteModel):
     type = models.CharField(max_length=12, choices=FormType.choices, db_index=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT, db_index=True)
     is_parq = models.BooleanField(default=False)
+    # Shown to the client on the Daily / Weekly check-in card and on top of the form (Probid 2026-11-04).
+    description = models.CharField(max_length=300, blank=True, default="")
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
     client = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.CASCADE,
                                related_name="own_forms")

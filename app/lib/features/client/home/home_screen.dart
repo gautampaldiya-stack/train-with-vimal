@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -15,6 +16,7 @@ import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
 import '../../../app/shell/app_shell.dart' show hideBottomBar;
+import '../../../app/shell/back_nav.dart' show BackIntercept;
 import '../train/workout_model.dart';
 import '../progress/progress_parts.dart';
 import 'home_model.dart';
@@ -37,6 +39,9 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
 
   /// Edit home (D-87): the card order being edited, null outside edit mode. Cards move only in edit mode.
   List<String>? _edit;
+
+  /// A long press on a card asks first (Probid 2026-11-04): the bottom tabs turn into Cancel / Edit home.
+  bool _ask = false;
   final _editTop = GlobalKey();
 
   @override
@@ -80,9 +85,27 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
 
   /// Phone = board `ClientHomeHero` (Gautam picked the hero, 2026-10-16): the blue hero runs under the status
   /// bar and the week strip overlaps its bottom edge by 34.
-  Widget _phone(HomeData d) => _edit == null
-      ? _phoneBody(d)
-      : Column(children: [Expanded(child: _phoneBody(d)), _editBar()]);
+  /// The phone's back button closes the Cancel / Edit home bar or Edit home first.
+  Widget _phone(HomeData d) => BackIntercept(
+        onBack: () {
+          if (_ask) {
+            _closeAsk();
+            return true;
+          }
+          if (_edit != null) {
+            _setEdit(null);
+            return true;
+          }
+          return false;
+        },
+        child: _phoneInner(d),
+      );
+
+  Widget _phoneInner(HomeData d) => _edit != null
+      ? Column(children: [Expanded(child: _phoneBody(d)), _editBar()])
+      : _ask
+          ? Column(children: [Expanded(child: _phoneBody(d)), _askBar(d)])
+          : _phoneBody(d);
 
   // the status bar turns dark on the page colour once the hero has scrolled away (Probid 2026-11-03)
   Widget _phoneBody(HomeData d) => HeroStatus(
@@ -194,12 +217,11 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
   List<Widget> _phoneCards(HomeData d) => _edit != null
       ? [_editor(d, web: false)]
       : [
-          for (final k in d.layout) ?_card(k, d, web: false),
+          for (final k in d.shownLayout) ?_held(_card(k, d, web: false), d),
           _habits(d),
           if (_dueSupps(d).isNotEmpty) _supps(d),
           ?_coach(d),
           if (d.coming.isNotEmpty) ...[const ChSection('Coming up'), _coming(d)],
-          _editBtn(d),
         ];
 
   // ─────────────────────────────── Edit home (D-87): the cards in the client's order, drag to move
@@ -240,11 +262,46 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     showToast(context, 'Home saved', sub: 'Your cards show in this order on every device', kind: ToastKind.ok);
   }
 
-  Widget _editBtn(HomeData d) => Center(
-        child: Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: CaButton('Edit home', kind: CaBtnKind.out, expand: false, icon: AppIcons.edit, onPressed: () => _setEdit([...d.layout])),
+  /// A Home card that opens Edit home on a long press (phone and web) or a right-click (web). Taps and scrolling
+  /// inside the card work as before. The old "Edit home" button at the bottom of Home is gone (Probid 2026-11-04).
+  Widget? _held(Widget? card, HomeData d) => card == null
+      ? null
+      : GestureDetector(
+          behavior: HitTestBehavior.deferToChild,
+          onLongPress: () => _askEdit(d),
+          onSecondaryTap: () => _setEdit([...d.layout]),
+          child: card,
+        );
+
+  void _askEdit(HomeData d) {
+    if (_edit != null || _ask) return;
+    HapticFeedback.lightImpact();
+    if (!context.isPhone) return _setEdit([...d.layout]); // no bottom tabs on the web: straight to Edit home
+    setState(() => _ask = true);
+    hideBottomBar.value = true;
+  }
+
+  void _closeAsk() {
+    setState(() => _ask = false);
+    hideBottomBar.value = false;
+  }
+
+  /// Phone: after a long press, Cancel / Edit home in place of the bottom tabs.
+  Widget _askBar(HomeData d) => Container(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+        decoration: const BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          boxShadow: [BoxShadow(color: AppColors.weekShadow, blurRadius: 18, offset: Offset(0, -4))],
         ),
+        child: Row(spacing: 8, children: [
+          Expanded(child: ChTwoLine('Edit home?', 'Move, remove or add cards')),
+          CaButton('Cancel', kind: CaBtnKind.out, expand: false, onPressed: _closeAsk),
+          CaButton('Edit home', expand: false, onPressed: () {
+            setState(() => _ask = false);
+            _setEdit([...d.layout]);
+          }),
+        ]),
       );
 
   /// Phone: the Edit home bar in place of the bottom tabs (a sheet edge with the title, Cancel and Done).
@@ -301,7 +358,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
   };
   static const _cardSub = {
     'workout': 'Today’s workout and Start',
-    'checkin': 'Fill today’s daily check-in',
+    'checkin': 'Onboarding, daily and weekly check-ins',
     'food': 'Calories left and the next meal',
     'progress': 'Weight, body fat, muscle, strength',
     'adherence': 'Your plan this week in %',
@@ -442,14 +499,15 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
       onTap: action == null ? onTap : null,
       builder: (_, h, _) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 10),
+        // Text on the left, the button / Done / date chip on the right (Probid 2026-11-04).
         child: Row(spacing: 12, children: [
-          lead,
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
               Text(title, style: AppText.s(14, W.w7)),
               Text(sub, style: AppText.s(12.5, W.w4, color: AppColors.muted)),
             ]),
           ),
+          lead,
         ]),
       ),
     );
@@ -611,7 +669,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                     ]);
                   }
                   // The layout cards alternate between the two columns, in the client's order.
-                  final cards = [for (final k in d.layout) ?_card(k, d, web: true)];
+                  final cards = [for (final k in d.shownLayout) ?_held(_card(k, d, web: true), d)];
                   final left = [
                     _week(d, web: true),
                     for (final (i, w) in cards.indexed) if (i.isEven) w,
@@ -622,7 +680,6 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                     _habits(d),
                     if (_dueSupps(d).isNotEmpty) _supps(d),
                     ?_coach(d),
-                    _editBtn(d),
                   ];
                   final two = box.maxWidth >= 680;
                   return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 18, children: [

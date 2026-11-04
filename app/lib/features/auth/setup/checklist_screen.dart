@@ -38,7 +38,13 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
   Widget build(BuildContext context) {
     final me = Services.session.me!;
     final ft = st.firstTodo;
-    return AuthFrame(
+    // The phone's back button: the page's own Back, never closing the app (Probid 2026-11-04).
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go(me.pending ? '/pending' : '/home');
+      },
+      child: AuthFrame(
       wide: true,
       brand: BrandKind.steps,
       steps: setupBrand(context),
@@ -76,6 +82,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
         ),
         CaHint(st.remindLine, icon: AppIcons.bell, action: 'Change', onAction: () => showLaterSheet(context)),
       ],
+    ),
     );
   }
 }

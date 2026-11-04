@@ -357,7 +357,7 @@ String since(DateTime t, {bool ago = false}) {
 /// Home cards that Edit home can order or remove (`layout` from `GET me/home/`, D-87), and their names.
 const homeCards = {
   'workout': 'Workout',
-  'checkin': 'Daily check-in',
+  'checkin': 'Check-ins',
   'food': 'Food',
   'progress': 'Progress summary',
   'adherence': 'Weekly adherence',
@@ -367,6 +367,18 @@ const homeCards = {
 
 extension HomeExtras on HomeData {
   List<String> get layout => [for (final k in (json['layout'] as List? ?? homeCards.keys)) if (homeCards.containsKey('$k')) '$k'];
+
+  /// Something to fill now: setup not finished, today's daily not sent, or the weekly open and not sent.
+  bool get checkinPending {
+    final c = checkin;
+    if (c == null) return false;
+    final w = c.weekly;
+    return c.onboarding != null || (c.form.isNotEmpty && !c.sent) || (w != null && w['open'] == true && w['sent'] != true);
+  }
+
+  /// The cards shown: the client's layout, with Check-ins put back on top while one is pending, even if it was
+  /// removed in Edit home (Probid 2026-11-04: a check-in that is due always shows on Home).
+  List<String> get shownLayout => layout.contains('checkin') || !checkinPending ? layout : ['checkin', ...layout];
 
   /// Workout day id of today (Start workout opens the logger with it).
   int? get dayId => ((json['workout'] as Map?)?['day'] as Map?)?['id'] as int?;
