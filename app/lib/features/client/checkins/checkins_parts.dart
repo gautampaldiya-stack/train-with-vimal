@@ -18,8 +18,11 @@ import 'checkins_model.dart';
 
 /// `ck-q`: a question card — bold title, grey (or blue once answered) label on the right.
 class CkQCard extends StatelessWidget {
-  const CkQCard({super.key, required this.title, required this.label, this.got = false, required this.children});
+  const CkQCard({super.key, required this.title, required this.label, this.got = false, this.sub = '', required this.children});
   final String title, label;
+
+  /// The admin's description / subtitle of the question (builder → "Description / subtitle").
+  final String sub;
   final bool got;
   final List<Widget> children;
   @override
@@ -43,6 +46,7 @@ class CkQCard extends StatelessWidget {
             Text(label, style: AppText.s(12, got ? W.w7 : W.w6, color: got ? AppColors.accentText : AppColors.muted)),
           ],
         ),
+        if (sub.isNotEmpty) Transform.translate(offset: const Offset(0, -6), child: Text(sub, style: AppText.s(12.5, W.w4, color: AppColors.muted, h: 1.4))),
         ...children,
       ],
     ),

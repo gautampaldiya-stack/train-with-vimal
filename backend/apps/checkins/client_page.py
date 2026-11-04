@@ -234,6 +234,17 @@ def weekly_rows(client, before=None):
     return rows
 
 
+def daily_strip(client, today):
+    """Check-ins week strip (like Food): last week and this week, each day sent or not."""
+    monday = today - timedelta(days=today.weekday())
+    first = monday - timedelta(days=7)
+    sent = set(Submission.objects.filter(client=client, form_type="daily", date__range=(first, monday + timedelta(days=6)))
+               .values_list("date", flat=True))
+    start = _start(client)
+    return [{"date": first + timedelta(days=i), "sent": first + timedelta(days=i) in sent,
+             "before_start": first + timedelta(days=i) < start} for i in range(14)]
+
+
 DAILY_OPEN_DAYS = 1  # a day's daily check-in can still be sent the next day
 
 
@@ -278,7 +289,8 @@ def client_weekly_form(client):
     return _live_form("weekly")
 
 
-def checkins_page(client, tab="weekly", before=None, request=None):
+def checkins_page(client, tab="weekly", before=None, request=None, day=None):
+    """`day`: the day picked in the week strip (its daily check-in); none = the open one (yesterday or today)."""
     from apps.clients.metrics import active_program
 
     from . import schedule
@@ -313,7 +325,8 @@ def checkins_page(client, tab="weekly", before=None, request=None):
         for r in rows:
             r.update(_week_counts(client, r["due"] - timedelta(days=6)))
 
-    day = daily_open_day(client, today)  # yesterday while it is still open, else today
+    # the picked day (never before the start or after today), else yesterday while it is still open, else today
+    day = min(max(day, _start(client)), today) if day else daily_open_day(client, today)
     d_today = Submission.objects.filter(client=client, form_type="daily", date=day).first()
     last_w = WeightLog.objects.filter(client=client, date__lt=day).order_by("-date").first()
     today_w = WeightLog.objects.filter(client=client, date=day).first()
@@ -327,7 +340,10 @@ def checkins_page(client, tab="weekly", before=None, request=None):
                     "weeks": pa.effective_program.weeks} if pa else None,
         "stats": {"streak": streak(client, "daily"), "weekly_on_time": on_time, "weekly_due": due_total,
                   "last_change_kg": last_change},
-        "daily": {"date": day, "is_yesterday": day < today, "form": form_payload(daily, coach_first),
+        "daily": {"date": day, "is_yesterday": day == today - timedelta(days=1),
+                  # today and yesterday can be filled / edited, older days are view-only (like Food)
+                  "editable": day >= today - timedelta(days=1),
+                  "strip": daily_strip(client, today), "form": form_payload(daily, coach_first),
                   "sent": full_row(d_today, request), **_habit_day(client, day),
                   "last_weight": {"date": last_w.date, "kg": float(last_w.weight_kg)} if last_w else None,
                   "today_weight": float(today_w.weight_kg) if today_w else None},
@@ -338,6 +354,8 @@ def checkins_page(client, tab="weekly", before=None, request=None):
                    "sent": {**this_week, **full_row(Submission.objects.get(id=this_week["id"]), request)}
                    if this_week else None,
                    "last_weight": float(prev_weekly_w) if prev_weekly_w is not None else None},
+        # The setup questionnaire while it is not finished, also with 0 answered (E42).
+        "onboarding": _onboarding(client),
         "tab": tab, "history": rows, "has_more": more, "history_total": totals,
         "next_before": rows[-1]["date"] if rows and more else None,
     }
@@ -401,3 +419,10 @@ def _live_form(form_type):
     from apps.checkins.library import live_form
 
     return live_form(form_type)
+
+
+def _onboarding(client):
+    from apps.clients.onboarding import status
+
+    st = status(client)
+    return None if st["complete"] else st

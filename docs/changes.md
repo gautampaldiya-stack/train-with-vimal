@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-11-04 · Check-ins card on Home, daily strip, onboarding card, no-plan Food, water reminder (E35–E44, A11–A15)
+- **Pehle:** Home par sirf daily check-in card. Check-ins par sirf aaj/kal ka daily, koi strip nahi; purana daily bhi edit ho sakta tha (sirf "same day sent" rule). Adhoora onboarding kahin nahi dikhta tha; reminder sirf active clients ko, sirf 9 am, route /welcome. Bina meal plan Log food khulta tha, Quick add / Other time chalte the; Home par "Rest and recover". Water reminder roz same "1 L behind", meal plan ka goal.
+- **Ab:** Home "Check-ins" card: Onboarding (adhoora ho to), Daily, Weekly rows, done state. Check-ins par Onboarding card, daily card me week strip, aaj/kal hi bhar/badal sakte, purane din view only. Stat cards barabar height. Sawal ka Description / subtitle client ko dikhta hai. Bina plan: Log food button nahi, meal me add / Quick add / Other time band ("Your plan is not created yet"), Home par "Plan not assigned yet". Onboarding reminder pending clients ko bhi, har 15 min check, /setup. Water reminder Water card ka goal, asli progress, 1 ghante me log kiya to nahi, tap = Food water sheet.
+- **Kyun:** Probid, WORK-TRACKER 4 Nov (E35–E44, A11–A15).
+- **Updated:** backend activity/dashboard.py, checkins/client_page.py, views.py, clients/onboarding.py, notifications/reminders.py, config beat; tests test_onboarding_pending.py, test_water_reminder.py, test_client_checkins.py; app home, checkins_*, food_screen, food_log_screen, habits_sheets, forms_common, setup_screen, router; docs/WORK-TRACKER.md
+
 ### 2026-11-03 · Check-ins: schedule, daily open next day, only coach questions (E)
 - **Pehle:** Weekly har Sunday 6 pm (calendar week), pehle bhi bhar sakte the, 9 am ek reminder. Daily sirf aaj. Daily me app ka apna "Anything else?" note aur water line; multiple choice / Other daily me nahi. Live daily/weekly form `-updated_at` se (autosave se badal jaata tha). Past check-ins me kala scrollbar. Measurements − / + se. Back button box wala.
 - **Ab:** Weekly client ke schedule ke din se (default Sunday 6 pm), 3 din khula, 10/2/7 reminder, phir Missed; due date par save. Daily usi din ka, agle din tak khula. Sirf coach ke sawal, har type ka sahi input. Live form = sabse naya published. Measurements plain box + history. Adhoora check-in chhodne par Save / Discard. Sent page aur past detail me saaf Q&A. Back = plain ← arrow.

@@ -23,10 +23,13 @@ import '../../../core/widgets/tooltip.dart';
 /// water, then My plan (the meals to eat) or the Food log of the picked day. On a wide web page the tabs stay
 /// put and only the meal cards scroll.
 class ClientFoodScreen extends StatefulWidget {
-  const ClientFoodScreen({super.key, this.meal});
+  const ClientFoodScreen({super.key, this.meal, this.water = false});
 
   /// `/food?meal=<id>` (Home → Ate it): open today's plan scrolled to this meal (C17).
   final int? meal;
+
+  /// `/food?water=1` (the water reminder): open today's water sheet once the day is loaded.
+  final bool water;
   @override
   State<ClientFoodScreen> createState() => _ClientFoodScreenState();
 }
@@ -48,7 +51,17 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
       c.tab = 'plan';
       c.addListener(_goToMeal);
     }
+    if (widget.water) c.addListener(_openWater);
     c.start();
+  }
+
+  void _openWater() {
+    final d = c.data;
+    if (d == null) return;
+    c.removeListener(_openWater);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && d.waterAssigned) _waterSheet(d);
+    });
   }
 
   /// Once the day is on screen: scroll to the meal Home asked for and ring it for a moment.
@@ -597,8 +610,8 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
     if (!d.hasPlan || d.meals.isEmpty) {
       return [
         ChCard(children: [
-          ChHead(lead: const ChIcon(AppIcons.food, tone: ChTone.green), title: 'No meal plan yet', sub: 'Your coach adds your meal plan. You can still log what you eat.'),
-          if (d.isToday) CaButton('Log food', kind: CaBtnKind.dark, small: true, icon: AppIcons.plus, onPressed: _logFood),
+          // No Log food here (Probid 2026-11-04): meals come from the plan, so there is nothing to log into yet.
+          ChHead(lead: const ChIcon(AppIcons.food, tone: ChTone.green), title: 'No meal plan yet', sub: 'Your coach adds your meal plan. Logging opens once it is ready.'),
         ]),
       ];
     }

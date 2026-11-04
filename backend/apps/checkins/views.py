@@ -371,7 +371,8 @@ class MyCheckinsView(APIView):
         if tab not in ("weekly", "daily"):
             raise serializers.ValidationError({"tab": ["Use weekly or daily."]})
         before = parse_date(request.query_params.get("before") or "") if request.query_params.get("before") else None
-        data = checkins_page(request.user, tab, before, request=request)
+        day = parse_date(request.query_params.get("day") or "") if request.query_params.get("day") else None
+        data = checkins_page(request.user, tab, before, request=request, day=day)
         from .client_page import form_cards
 
         data["forms"] = form_cards(request.user)
@@ -469,9 +470,14 @@ class MySubmissionViewSet(mixins.RetrieveModelMixin, mixins.CreateModelMixin, mi
 
     def partial_update(self, request, pk=None):
         sub = get_object_or_404(self.get_queryset(), pk=pk)
-        # Daily and weekly check-ins can be changed only on the day they were sent (Probid, 2026-10-31). The day
-        # sent, not `date`: a weekly one is stored on its due date and a daily one may be yesterday's.
-        if timezone.localtime(sub.created_at).date() != timezone.localdate():
+        # A daily check-in can be changed while its day is open, today or yesterday, like Food (Probid 2026-11-04).
+        # A weekly one only on the day it was sent (it is stored on its due date).
+        today = timezone.localdate()
+        if sub.form_type == "daily":
+            closed = sub.date < today - timedelta(days=1)
+        else:
+            closed = timezone.localtime(sub.created_at).date() != today
+        if closed:
             raise serializers.ValidationError("A check-in can be changed only on the day it was sent.")
         answers, files = self._payload(request)
         note = request.data.get("note", (sub.metrics or {}).get("note", "")) or ""

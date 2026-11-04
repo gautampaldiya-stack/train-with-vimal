@@ -549,7 +549,7 @@ Future<FmQ?> showQuestionEditor(BuildContext context,
             ]),
           ),
           if (w.keyed)
-            FmNote(AppIcons.info, 'This question fills ${profileLabel.isEmpty ? 'a field' : '"$profileLabel"'} in the client profile, so its answer type and options stay as they are. You can change its words, help text and Required.'),
+            FmNote(AppIcons.info, 'This question fills ${profileLabel.isEmpty ? 'a field' : '"$profileLabel"'} in the client profile, so its answer type and options stay as they are. You can change its words, description and Required.'),
           if (w.choice && !w.keyed) ...[
             Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
               Text('Options, one per line', style: AppText.label),
@@ -642,7 +642,7 @@ Future<FmQ?> showQuestionEditor(BuildContext context,
                 Text('Shown under the answer box as "Tap to add" chips. Up to 8.', style: AppText.s(12, W.w5, color: AppColors.muted)),
               ]),
             ),
-          if (w.type == 'scale') const FmNote(AppIcons.doc, 'Clients rate from 1 to 5. Use the help text to say what 1 and 5 mean.'),
+          if (w.type == 'scale') const FmNote(AppIcons.doc, 'Clients rate from 1 to 5. Use the description to say what 1 and 5 mean.'),
           if (questionTags(w.type).isNotEmpty)
             drField(
               'Progress tag (optional)',
@@ -655,7 +655,7 @@ Future<FmQ?> showQuestionEditor(BuildContext context,
                     style: AppText.s(12, W.w5, color: AppColors.muted)),
               ]),
             ),
-          drField('Help text (optional)', AppTextField(controller: help, placeholder: 'e.g. Empty stomach, same scale')),
+          drField('Description / subtitle (optional)', AppTextField(controller: help, placeholder: 'Shown to the client under the question, e.g. Empty stomach, same scale')),
           DrSwitch(title: 'Required', sub: 'The client must answer it', value: w.required, onChanged: (v) => set(() => w.required = v)),
         ]);
       },

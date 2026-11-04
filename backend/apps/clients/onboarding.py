@@ -692,3 +692,24 @@ def setup_fields(asks):
 
 def is_complete(cp):
     return all(k in (cp.onboarding or {}) for k in CLIENT_ONBOARDING_STEPS)
+
+
+def status(user):
+    """Setup questionnaire progress for the Home and Check-ins cards (Probid 2026-11-04): {filled, total, complete}.
+    `filled` counts the questions with an answer, also when the client left with "Finish later" (0 answered is
+    still shown: the card never hides behind a "skipped" flag)."""
+    cp = user.client_profile
+    if is_complete(cp):
+        return {"filled": 0, "total": 0, "complete": True}
+    asks, extra = form_questions()
+    fields = setup_fields(asks)
+    vals = values(user)
+
+    def has(v):
+        return v not in (None, "", [], {})
+
+    filled = sum(1 for f in fields if has(vals.get(f["key"])))
+    got = ((cp.onboarding or {}).get("agree") or {}).get("extra") or {}
+    filled += sum(1 for q in extra if has(got.get(str(q["id"]))))
+    return {"filled": filled, "total": len(fields) + len(extra), "complete": False,
+            "later": cp.onboarding_skipped_at is not None}

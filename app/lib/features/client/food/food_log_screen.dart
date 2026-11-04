@@ -146,6 +146,21 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     if (mounted) setState(() {});
   }
 
+  // ─────────────────────────────── No meal plan (Probid 2026-11-04)
+
+  /// No plan: meals and their times come from the plan, so nothing can be added to a meal. She can look through
+  /// the foods and create her own custom foods only.
+  bool get _noPlan {
+    final d = day.data;
+    return d != null && (!d.hasPlan || d.meals.isEmpty);
+  }
+
+  bool _blockNoPlan() {
+    if (!_noPlan) return false;
+    showToast(context, 'Your plan is not created yet', sub: 'You can use this after it is created.', kind: ToastKind.info);
+    return true;
+  }
+
   // ─────────────────────────────── Meals
 
   List<String> get _mealNames {
@@ -398,6 +413,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
   }
 
   void _add(FdFood f, {({int id, String name, double grams})? unit, double? qty, bool useDefault = true}) {
+    if (_blockNoPlan()) return;
     final u = useDefault ? f.unit : unit;
     final q = useDefault ? (f.unit == null ? 100.0 : f.qty) : qty!;
     final g = f.grams(u, q);
@@ -416,6 +432,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
   }
 
   void _toggle(FdFood f) {
+    if (_blockNoPlan()) return;
     if (_sel.any((x) => x.food == f.id)) {
       setState(() => _sel.removeWhere((x) => x.food == f.id));
       return;
@@ -429,6 +446,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
   }
 
   void _quickAdd() {
+    if (_blockNoPlan()) return;
     if (_qa[0] <= 0) {
       showToast(context, 'Enter the calories first', sub: 'Protein, carbs and fat are optional', kind: ToastKind.warn);
       return;
@@ -547,8 +565,8 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
             child: Hover(
               onTap: () => _mealMenu(bc),
               builder: (_, h, _) => Row(mainAxisSize: MainAxisSize.min, spacing: 6, children: [
-                Flexible(child: CutText('Add to $meal', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(20, W.w8, color: h ? AppColors.accentText : AppColors.text))),
-                const AppIcon(AppIcons.chevronDown, size: 16, color: AppColors.muted),
+                Flexible(child: CutText(_noPlan ? 'No meal plan yet' : 'Add to $meal', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(20, W.w8, color: _noPlan ? AppColors.muted : (h ? AppColors.accentText : AppColors.text)))),
+                if (!_noPlan) const AppIcon(AppIcons.chevronDown, size: 16, color: AppColors.muted),
               ]),
             ),
           ),
@@ -574,6 +592,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
   }
 
   Future<void> _mealMenu(BuildContext anchor) async {
+    if (_blockNoPlan()) return;
     final names = _mealNames;
     String label(String n) {
       final m = _mealOf(n);
@@ -648,6 +667,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
 
   /// Add to → Other time: a name and the time it was eaten (today, not later than now).
   void _otherSheet() {
+    if (_blockNoPlan()) return;
     final now = DateTime.now();
     final name = TextEditingController(text: _at != null ? meal : '');
     final at = ValueNotifier<DateTime>(_at ?? now.subtract(Duration(minutes: now.minute % 5)));
@@ -993,7 +1013,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     _boxes(_qa, (k, v) => setState(() => _qa[k] = v)),
     Row(spacing: 8, children: [
       Expanded(child: LayoutBuilder(builder: (_, b) => fdBtn('Create custom food', _customFood, icon: b.maxWidth >= 178 ? AppIcons.plus : null))),
-      Expanded(child: fdBtn('Quick add', _quickAdd, kind: CaBtnKind.dark)),
+      Expanded(child: Opacity(opacity: _noPlan ? .45 : 1, child: fdBtn('Quick add', _quickAdd, kind: CaBtnKind.dark))),
     ]),
     Semantics(
       button: true,

@@ -33,6 +33,17 @@ class CheckinsController extends ChangeNotifier {
 
   String tab = 'weekly';
   CheckinsData? data;
+
+  /// The day picked on the daily strip (E36); null = the open one (yesterday while unsent, else today).
+  /// Shared by every check-ins page, so the daily page opens on the same day.
+  static DateTime? pickedDay;
+
+  void pickDay(DateTime d) {
+    final t = DateTime.now();
+    final today = DateTime(t.year, t.month, t.day);
+    pickedDay = DateTime(d.year, d.month, d.day) == today ? null : d;
+    load();
+  }
   ApiError? error;
   final rows = <CkRow>[];
   bool hasMore = false, _more = false;
@@ -119,9 +130,12 @@ class CheckinsController extends ChangeNotifier {
   Future<void> load() async {
     final t = tab;
     try {
-      final j = await Services.api.get<Map<String, dynamic>>('me/checkins/', query: {'tab': t});
+      final j = await Services.api.get<Map<String, dynamic>>('me/checkins/', query: {
+        'tab': t,
+        if (pickedDay != null) 'day': DateFormat('yyyy-MM-dd').format(pickedDay!),
+      });
       if (t != tab) return;
-      if (t == 'weekly') unawaited(Services.cache.write(_cacheKey, j));
+      if (t == 'weekly' && pickedDay == null) unawaited(Services.cache.write(_cacheKey, j));
       _take(j);
       await _readDraft();
       await _readFormDrafts();
@@ -352,6 +366,9 @@ class CheckinsData {
     return p == null ? who : 'Week ${p['week']} of ${p['weeks']} · $who';
   }
 
+  /// The setup questionnaire while it is not finished: {filled, total, later}; null when done (E42).
+  Map<String, dynamic>? get onboarding => (j['onboarding'] as Map?)?.cast<String, dynamic>();
+
   Map<String, dynamic> get _stats => j['stats'] as Map<String, dynamic>? ?? {};
   int get streak => (_stats['streak'] as num?)?.toInt() ?? 0;
   List<(String, String)> cells(bool dailySentNow) {
@@ -393,11 +410,25 @@ class CkDaily {
 
   /// Yesterday's check-in is still open (it can be sent until the end of the next day, E27).
   bool get isYesterday => j['is_yesterday'] == true;
+
+  /// Today and yesterday can be sent or edited; older days are view only (E37, like Food).
+  bool get editable => j['editable'] != false;
+
+  /// Last week and this week, for the strip on top of the daily card (E36).
+  List<CkStripDay> get strip => [for (final x in (j['strip'] as List? ?? [])) CkStripDay(x as Map<String, dynamic>)];
   int? get steps => (j['steps'] as num?)?.toInt();
   int? get waterMl => (j['water_ml'] as num?)?.toInt();
   double? get todayWeight => _num(j['today_weight']);
   double? get lastWeight => _num((j['last_weight'] as Map?)?['kg']);
   DateTime? get lastWeightDate => DateTime.tryParse('${(j['last_weight'] as Map?)?['date']}');
+}
+
+class CkStripDay {
+  CkStripDay(this.j);
+  final Map<String, dynamic> j;
+  DateTime get date => DateTime.tryParse('${j['date']}') ?? DateTime.now();
+  bool get sent => j['sent'] == true;
+  bool get beforeStart => j['before_start'] == true;
 }
 
 class CkWeekly {

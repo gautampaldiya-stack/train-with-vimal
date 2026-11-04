@@ -117,7 +117,9 @@ class HkCells extends StatelessWidget {
   final List<(String, String)> cells;
   final bool big;
   @override
-  Widget build(BuildContext context) => Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 8, children: [
+  // Every box the same height, also when one label wraps to two lines (Probid 2026-11-04).
+  Widget build(BuildContext context) => IntrinsicHeight(
+        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
         for (final (v, l) in cells)
           Expanded(
             child: Container(
@@ -129,7 +131,8 @@ class HkCells extends StatelessWidget {
               ]),
             ),
           ),
-      ]);
+      ]),
+      );
 }
 
 /// `ch-sec sm`: small grey upper-case section title.

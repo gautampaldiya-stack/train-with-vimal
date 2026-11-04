@@ -153,9 +153,16 @@ SUPP_TIMES = {"breakfast": 8, "morning": 8, "pre_workout": None, "post_workout":
 
 @shared_task
 def water_reminders():
-    """Every 2 hours from 10 am to 8 pm when today's water is behind the day's pace (7 am – 10 pm)."""
-    from apps.clients.metrics import active_meal_plan
+    """Every 2 hours from 10 am to 8 pm when today's water is behind the day's pace (7 am – 10 pm).
+
+    Probid 2026-11-04: "har baar same 1 L remind karta hai". The goal came from the meal plan template only
+    (not the coach's water-habit target the Water card shows, and not the client's own copy of the plan), and
+    the text only said how far behind, so with nothing logged by noon it said "1 L" every day. Now: same goal as
+    the Water card (nutrition.services.water_goal), only for clients with a water habit (no habit, no water card,
+    A10), not within an hour of logging water, the text says what was drunk out of the goal, and a tap opens the
+    Food page's water sheet."""
     from apps.nutrition.models import WaterLog
+    from apps.nutrition.services import _active_plan, water_goal, water_habit
 
     local = _local_now()
     if local.hour not in WATER_HOURS or local.minute >= 15:
@@ -165,20 +172,30 @@ def water_reminders():
     for c in _active_clients():
         if not _prefs(c).water:
             continue
-        mp = active_meal_plan(c, today)
-        goal = mp.plan.water_ml if mp else 0
-        if not goal:
+        h = water_habit(c, today)
+        if h is None:
             continue
-        had = WaterLog.objects.filter(client=c, date=today).values_list("ml", flat=True).first() or 0
+        mp = _active_plan(c, today)
+        goal = water_goal(h, mp.followed if mp else None)
+        log = WaterLog.objects.filter(client=c, date=today).first()
+        had = log.ml if log else 0
+        if log and had and log.updated_at >= local - timedelta(minutes=60):
+            continue  # just logged some: no nag right after
         due = goal * min(1, (local.hour - 7) / 15)
-        behind = due - had
-        if behind >= 500 and once(c, "water", local.hour, today):
-            left = f"{behind / 1000:.1f}".rstrip("0").rstrip(".")
-            notify(c, "water_reminder", "Water reminder",
-                   f"You are {left} L behind for the day at {dfmt(local, '%-I:%M %p').lower()}.",
-                   data={"route": "/habits"})
+        if due - had >= 500 and had < goal and once(c, "water", local.hour, today):
+            aim = _litres(round(due / 250) * 250)
+            body = (f"No water logged yet today. Aim for {aim} by now." if not had else
+                    f"You've had {_litres(had)} of {_litres(goal)} today. Aim for {aim} by now.")
+            notify(c, "water_reminder", "Water reminder", body, data={"route": "/food?water=1"})
             sent += 1
     return sent
+
+
+def _litres(ml):
+    """1500 → "1.5 L", 2000 → "2 L", 250 → "250 ml"."""
+    if ml < 1000:
+        return f"{int(ml)} ml"
+    return f"{ml / 1000:.2f}".rstrip("0").rstrip(".") + " L"
 
 
 @shared_task
@@ -241,29 +258,38 @@ def habit_reminders():
 def onboarding_reminders():
     """Setup not finished. The time the client picked in "Finish setup later?" wins;
     otherwise next day, 9 am (up to 3 days). "Off" stops both."""
+    from apps.clients.onboarding import is_complete
+
     local = _local_now()
     sent = 0
-    picked = _active_clients().filter(client_profile__onboarding__has_key="_remind")
+    # Clients still waiting for approval fill the setup too, so they get the reminder they picked (X2: only
+    # "active" clients were looked at, so a new sign-up never got it).
+    picked = (User.objects.filter(role="client", status__in=["active", "pending"], is_active=True,
+                                  client_profile__removed_at__isnull=True,
+                                  client_profile__onboarding__has_key="_remind")
+              .select_related("client_profile"))
     for c in picked:
         cp = c.client_profile
         r = cp.onboarding.get("_remind") or {}
-        if r.get("sent") or not r.get("at") or len(cp.client_steps_done) >= 5:
+        if r.get("sent") or not r.get("at") or is_complete(cp):
             continue
         if datetime.fromisoformat(r["at"]) <= local:
-            send_template(c, "onboarding-form-reminder", data={"route": "/welcome"})
+            # "/setup" opens the setup steps where they stopped ("/welcome" is not a page of the app).
+            send_template(c, "onboarding-form-reminder", data={"route": "/setup"})
             cp.onboarding["_remind"] = {**r, "sent": True}
             cp.save(update_fields=["onboarding"])
             sent += 1
     if not (local.hour == 9 and local.minute < 15):
         return sent
     today = local.date()
-    for c in _active_clients().filter(date_joined__date__lt=today,
-                                      date_joined__date__gte=today - timedelta(days=3)):
+    for c in (User.objects.filter(role="client", status__in=["active", "pending"], is_active=True,
+                                  client_profile__removed_at__isnull=True, date_joined__date__lt=today,
+                                  date_joined__date__gte=today - timedelta(days=3)).select_related("client_profile")):
         cp = c.client_profile
-        if len(cp.onboarding_done or []) >= 5 or (cp.onboarding or {}).get("_remind"):
+        if is_complete(cp) or (cp.onboarding or {}).get("_remind"):
             continue
         if once(c, "onboarding", "setup", today):
-            send_template(c, "onboarding-form-reminder", data={"route": "/welcome"})
+            send_template(c, "onboarding-form-reminder", data={"route": "/setup"})
             sent += 1
     return sent
 

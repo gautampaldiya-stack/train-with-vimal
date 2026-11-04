@@ -305,6 +305,8 @@ def home_week(client, today, pa):
         cardio = bool(exs) and exs[0].exercise.muscle_group == "cardio"
         out.append({
             "date": d, "today": d == today, "is_rest": not exs, "name": pd.name if pd and exs else "",
+            # no workout plan covers this day: "Plan not assigned yet", not "Rest and recover" (Probid 2026-11-04)
+            "no_plan": pd is None,
             "rest_note": pd.rest_note if pd and pd.is_rest else "",
             "kind": "cardio" if cardio else "strength", "minutes": _day_minutes(exs),
             "exercises": [{"id": pe.id, "name": pe.exercise.name, "line": _ex_line(pe)} for pe in exs],
@@ -326,18 +328,35 @@ def home_layout(cp):
 
 
 def checkin_today(client, today):
-    """Home Check-in card: today's daily check-in, pending or sent; None when there is no daily form."""
-    from apps.checkins.models import Form, Question, Submission
+    """Home Check-ins card (Probid 2026-11-04): up to three rows. `onboarding` (only while setup is not finished:
+    "4 of 12 filled"), the daily check-in (the keys at the top; null form = no daily form) and `weekly` (Fill now
+    only while it is open, else the next due date). None when there is nothing to show."""
+    from apps.checkins import schedule
+    from apps.checkins.models import Question, Submission
+    from apps.clients.onboarding import status
 
+    ob = status(client)
+    onboarding = None if ob["complete"] else ob
+    wform = _live_form("weekly")
+    weekly = None
+    if wform is not None:
+        cur = schedule.current(client, today)
+        wsub = Submission.objects.filter(client=client, form_type="weekly",
+                                         date__range=(cur["due"] - timedelta(days=schedule.OPEN_DAYS), cur["closes"])
+                                         ).order_by("-created_at").first()
+        weekly = {"due": cur["due"], "due_at": cur["due_at"], "open": cur["open"], "late": cur["late"],
+                  "closes": cur["closes"], "sent": wsub is not None, "sent_at": wsub.created_at if wsub else None}
     form = _live_form("daily")
     if not form:
-        return None
+        if onboarding is None and weekly is None:
+            return None
+        return {"form": None, "status": "none", "onboarding": onboarding, "weekly": weekly}
     from apps.checkins.client_page import daily_open_day
 
     day = daily_open_day(client, today)  # yesterday while it is still open and not sent (E27)
     sub = Submission.objects.filter(client=client, form_type="daily", date=day).order_by("-created_at").first()
     return {"form": form.id, "status": "sent" if sub else "pending", "sent_at": sub.created_at if sub else None,
-            "date": day, "is_yesterday": day < today,
+            "date": day, "is_yesterday": day < today, "onboarding": onboarding, "weekly": weekly,
             "questions": Question.objects.filter(form=form, is_removed=False).count(), "due": "9:00 pm"}
 
 

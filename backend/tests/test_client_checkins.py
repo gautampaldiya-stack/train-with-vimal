@@ -18,6 +18,19 @@ PNG = "data:image/png;base64," + base64.b64encode(bytes.fromhex(
 def photo_week():
     """The demo's last photo set is last week; with photos every week this week asks for them too."""
     ClientProfile.objects.filter(user__email="riya@example.com").update(photo_every_weeks=1)
+    _open_weekly()
+
+
+def _open_weekly():
+    """The weekly check-in is sent only while its window is open (E23): due today for these tests."""
+    from apps.accounts.models import User
+    from apps.checkins import schedule
+    from apps.checkins.models import FormSchedule
+
+    riya = User.objects.get(email="riya@example.com")
+    if not schedule.current(riya)["open"]:
+        FormSchedule.objects.create(client=riya, form=Form.objects.filter(type="weekly").first(), repeat="week",
+                                    weekday=timezone.localdate().weekday(), time="18:00")
 
 def _page(c, **params):
     r = c.get("/api/v1/me/checkins/", params)
@@ -339,3 +352,28 @@ def test_daily_is_open_today_and_tomorrow_only(client_user):
     old = client_user.post("/api/v1/me/submissions/", {"form": f["id"], "answers": {},
                                                        "date": (today - timedelta(days=2)).isoformat()}, format="json")
     assert old.status_code == 400
+
+
+def test_daily_strip_picks_a_day_and_older_days_are_view_only(client_user):
+    """E36 / E37 (Probid 2026-11-04): a week strip like Food; today and yesterday can be filled or edited,
+    older days only viewed."""
+    today = timezone.localdate()
+    d = _page(client_user)["daily"]
+    assert len(d["strip"]) == 14 and d["editable"] is True
+    assert {x["date"] for x in d["strip"]} >= {str(today), str(today - timedelta(days=1))}
+
+    old = today - timedelta(days=3)
+    o = _page(client_user, day=str(old))["daily"]
+    assert o["date"] == str(old) and o["editable"] is False and o["is_yesterday"] is False
+    y = _page(client_user, day=str(today - timedelta(days=1)))["daily"]
+    assert y["editable"] is True and y["is_yesterday"] is True
+    assert _page(client_user, day=str(today + timedelta(days=2)))["daily"]["date"] == str(today)  # no future
+
+
+def test_an_old_daily_check_in_cannot_be_edited(client_user):
+    riya = Submission.objects.filter(client__email="riya@example.com").first().client
+    f = Form.objects.filter(type="daily").first()
+    today = timezone.localdate()
+    old = Submission.objects.create(client=riya, form=f, form_type="daily", date=today - timedelta(days=3))
+    r = client_user.patch(f"/api/v1/me/submissions/{old.id}/", {"answers": {}}, format="json")
+    assert r.status_code == 400

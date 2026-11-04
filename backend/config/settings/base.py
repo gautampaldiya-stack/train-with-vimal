@@ -246,7 +246,7 @@ CELERY_BEAT_SCHEDULE = {
     "water-reminders": {"task": _R + "water_reminders", "schedule": crontab(minute=0, hour="10-20/2")},
     "supplement-reminders": {"task": _R + "supplement_reminders", "schedule": crontab(minute=0, hour="8,12,21,22")},
     "purge-data-exports": {"task": "apps.clients.account.purge_data_exports", "schedule": crontab(minute=45, hour=3)},
-    "onboarding-reminders": {"task": _R + "onboarding_reminders", "schedule": crontab(minute=0, hour=9)},
+    "onboarding-reminders": {"task": _R + "onboarding_reminders", "schedule": crontab(minute="*/15")},  # picked time (e.g. tonight 8 pm), 9 am nudge
     "scheduled-forms": {"task": "apps.checkins.tasks.send_scheduled_forms", "schedule": crontab(minute="*/15")},
     # team + housekeeping
     "document-expiry": {"task": _R + "document_expiry_reminders", "schedule": crontab(minute=30, hour=8)},

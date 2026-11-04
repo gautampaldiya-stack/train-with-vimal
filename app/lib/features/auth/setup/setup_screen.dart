@@ -239,7 +239,7 @@ class _SetupScreenState extends State<SetupScreen> {
     final q = _Q(f.label, req: f.required, help: f.help);
     switch (f.kind) {
       case 'goal':
-        return [_Q(f.label, req: f.required, help: f.help.isEmpty ? '$coach builds your training and meals around it.' : f.help), _goals(), _err(f.key)];
+        return [_Q(f.label, req: f.required, help: f.help), _goals(), _err(f.key)];
       case 'choice' when f.options.every((o) => o.$3 != null) && f.options.length <= 3:
         return [
           q,

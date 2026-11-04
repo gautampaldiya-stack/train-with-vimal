@@ -153,6 +153,14 @@ Probid ka rule (2 Nov): abhi screenshot nahi lena, mobile par try nahi karna. Si
 9. ✅ "This week" card: Monday ko last Sat-Sun bhi (halke), average sirf is hafte ka, chune din par kcal, protein aur meals logged.
 10. ✅ Water card: water habit nahi to "Water habit is not assigned to you yet" (log bhi nahi hota). "Log water" button → sheet (− / ml / +, value tap karke type). 3-dot → History (is hafta + pichhle 3). Us din ka water saaf, target coach ka (habit target, warna plan), client edit nahi karta.
 
+
+#### A · 4 Nov: koi meal plan nahi (Probid)
+A11. ✅ "No meal plan yet" card se Log food button hatao.
+A12. ✅ Log Food page bina plan: meal chips (Add to snack…) disabled; sirf foods dekh sakte aur apna custom food bana sakte, meal me add nahi.
+A13. ✅ Other time sheet na khule: "Your plan is not created yet. You can use this after it is created."
+A14. ✅ Quick add bhi disabled.
+A15. ✅ Home bina plan: har din "Rest and recover" nahi, "Plan not assigned yet".
+
 ### B. Log Food page — ✅ sab ho gaya (3 Nov), Probid ka test baaki
 
 11. ✅ "Other" time sheet: stepper hata diya. Ghanta (1–12) : minute (00–59) ke 2 box, AM/PM switch; galat number par laal line, aage ka time ho to "Use this time" nahi chalta. Now / 30 min ago chips rakhe.
@@ -208,6 +216,19 @@ Probid ka rule (2 Nov): abhi screenshot nahi lena, mobile par try nahi karna. Si
 32. ✅ Unsaved check-in exit: weekly ya daily me jawab badle aur bheja nahi, back par "You have not finished this check-in" · "Save and continue later" / "Discard". Daily ka draft bhi phone par (aaj tak).
 33. ✅ Finish (sent) page: hara header (tick, title, kab), "Your answers" box me har sawal number ke saath, sawal grey, jawab bold neeche; khali = "Skipped"; photos alag box.
 34. ✅ Sub-pages ka back button: box hata, plain ← arrow (`CaBackBtn`), har client sub-page aur setup pages par ek hi widget.
+
+
+#### E · 4 Nov (Probid, phone screenshot)
+E35. ✅ Home Check-ins card: 3 rows, Onboarding (sirf adhoora ho to, "4 of 12 filled", Fill now / Continue), Daily (Fill now), Weekly (Fill now sirf due din, baaki din next due date). Done ho to done state, button nahi.
+E36. ✅ Check-ins page week strip (Food jaisa): din chuno = us din ka daily check-in. Done: daily card me 14 din ka strip (pichla + ye week), sent par tick; din chuno to `me/checkins/?day=`.
+E37. ✅ Edit rule Food jaisa: sirf kal (aur aaj) bhar/badal sakte; purane din sirf dekh sakte. Done: server aaj/kal ka daily hi lene/badalne deta hai; purane din "Missed" ya sirf View, Edit button nahi.
+E38. ✅ Past weeks preview: kisi bhi purane week ka weekly check-in kholo, saaf sawal-jawab. Is week ka bhar ne ke baad bhi preview. Done: past list ka har row sheet me Q&A kholta hai; is week ka "View what you sent".
+E39. ✅ Daily streak / stat cards: sab blocks ki height barabar.
+E40. ✅ "Anything else?" hard-coded hatao (E25 me hua; build check karna), sirf admin ke sawal.
+E41. ✅ Har sawal ka "Description / subtitle" field admin builder me (weekly, daily, onboarding); client ko wahi dikhe, hamara likha nahi. Done: "Help text" field pehle se tha, naam "Description / subtitle"; daily page par bhi dikhta hai, app ka likha fallback hata.
+E42. ✅ Bug: phone par adhoora onboarding ("fill the remaining") Check-ins page par nahi dikhta. Root cause + test. Root cause: Check-ins/Home par onboarding ka koi card hi nahi tha. Ab Check-ins par Onboarding card, Home par row (0 jawab aur naye approve hue client ke liye bhi). Test: tests/test_onboarding_pending.py.
+E43. ✅ Bug (web): onboarding par "Finish and leave" (0 jawab) + "remind me tomorrow", agle din na reminder na pending onboarding. Reminder ki date/timezone, job chalta hai ya nahi, 0 jawab par card chhupta hai ya nahi. Root cause + test. Root cause: reminder job sirf "active" clients dekhta tha (naya sign-up "pending" hota hai), beat sirf 9 am chalta tha (8 pm wala kabhi nahi), route "/welcome" app me tha hi nahi. Ab pending bhi, har 15 min, route /setup. Test: tests/test_onboarding_pending.py.
+E44. ✅ Bug: water reminder har baar same "1 L". Root cause: message sirf "X L behind" bolta tha, X = target ka time wala hissa − log kiya; 12 baje tak kuch log na ho to roz "1 L". Goal bhi meal plan template se (Water card ka habit target nahi). Ab: Water card wala goal, sirf water habit ho to, 1 ghante me log kiya ho to nahi, text "You've had 0.5 L of 3 L today. Aim for 1.25 L by now." / "No water logged yet today…", tap = Food ki water sheet. Test: tests/test_water_reminder.py.
 
 ### F. Workout Logger (Strong app design aur layout)
 *(Dhyaan: 28 Oct ka pichla logger kaam (D-75, rest D-79 etc.) rollback me hataya gaya, sirf backup bundle me hai: `/mnt/project-files/backup-oct28/`. Wapas lana ya naya banana Probid decide karega.)*

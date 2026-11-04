@@ -94,7 +94,8 @@ bool _under(String path, List<String> roots) => roots.any((p) => path == p || pa
 final Map<String, Widget Function(GoRouterState)> screens = {
   '/home': (_) => const ClientHomeScreen(),
   '/habits': (_) => const ClientHabitsScreen(),
-  '/food': (st) => ClientFoodScreen(key: ValueKey(st.uri.toString()), meal: int.tryParse(st.uri.queryParameters['meal'] ?? '')),
+  '/food': (st) => ClientFoodScreen(key: ValueKey(st.uri.toString()), meal: int.tryParse(st.uri.queryParameters['meal'] ?? ''),
+      water: st.uri.queryParameters['water'] == '1'),
   '/food/:id': (st) => st.pathParameters['id'] == 'log'
       ? FoodLogScreen(key: ValueKey(st.uri.toString()), meal: st.uri.queryParameters['meal'], at: st.uri.queryParameters['at'], date: st.uri.queryParameters['date'])
       : const ClientFoodScreen(),

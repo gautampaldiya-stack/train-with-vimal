@@ -121,7 +121,9 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     final done = d.strip.where((x) => !x.rest && x.done).length;
     final line1 = d.strip.isEmpty
         ? 'Your coach is setting up your plan.'
-        : today == null || today.rest
+        : today != null && today.noPlan
+            ? 'Your coach is setting up your plan.'
+            : today == null || today.rest
             ? 'Rest day today.'
             : '${today.name.isEmpty ? (today.cardio ? 'Cardio' : 'Strength') : today.name} today.';
     final line2 = planned == 0 ? '' : '\n$done of $planned workout${planned == 1 ? '' : 's'} done this week.';
@@ -364,32 +366,93 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
 
   // ─────────────────────────────── Check-in, Progress summary, Weekly adherence, Rest timer (D-87)
 
+  /// Home Check-ins card (Probid 2026-11-04): up to three rows, Onboarding (only while setup is not finished),
+  /// Daily and Weekly. The action sits on the left of each row; a finished row shows a done tick instead.
   Widget _checkinCard(HomeData d) {
     final ci = d.checkin!;
-    if (ci.sent) {
-      // Sent: one line; a tap opens Check-ins, where Edit answers is (today only).
-      return Hover(
-        onTap: () => context.go('/checkins'),
-        builder: (_, h, _) => ChCard(children: [
-          ChHead(
-            lead: const ChIcon(AppIcons.checkCircle, tone: ChTone.green),
-            title: 'Daily check-in',
-            sub: 'Sent ✓${ci.at == null ? '' : ' · ${clock(ci.at!)}'}',
-            action: const AppIcon(AppIcons.chevronRight, size: 18, color: AppColors.muted),
+    final ob = ci.onboarding, wk = ci.weekly;
+    final rows = <Widget>[];
+    if (ob != null) {
+      final n = (ob['filled'] as num?)?.toInt() ?? 0, t = (ob['total'] as num?)?.toInt() ?? 0;
+      rows.add(_ciRow(
+        title: 'Onboarding',
+        sub: '$n of $t filled',
+        action: n > 0 ? 'Continue' : 'Fill now',
+        onTap: () => context.go('/setup'),
+      ));
+    }
+    if (ci.form.isNotEmpty) {
+      rows.add(ci.sent
+          ? _ciRow(title: 'Daily check-in', sub: 'Sent${ci.at == null ? '' : ' · ${clock(ci.at!)}'}', done: true, onTap: () => context.go('/checkins'))
+          : _ciRow(
+              title: ci.yesterday ? 'Yesterday\'s check-in' : 'Daily check-in',
+              sub: ci.yesterday ? 'Still open until tonight · ${ci.questions} questions' : '${ci.questions} question${ci.questions == 1 ? '' : 's'} · today',
+              action: 'Fill now',
+              onTap: () => context.go('/checkins/daily?from=home'),
+            ));
+    }
+    if (wk != null) {
+      final due = DateTime.tryParse('${wk['due']}') ?? DateTime.now();
+      final open = wk['open'] == true, sent = wk['sent'] == true;
+      final dayTxt = DateFormat('EEE, d MMM').format(due);
+      rows.add(sent
+          ? _ciRow(title: 'Weekly check-in', sub: 'Sent · due $dayTxt', done: true, onTap: () => context.go('/checkins'))
+          : open
+          ? _ciRow(
+              title: 'Weekly check-in',
+              sub: wk['late'] == true ? 'Was due $dayTxt · still open' : 'Due today',
+              action: 'Fill now',
+              onTap: () => context.go('/checkins/weekly'),
+            )
+          // Not its day: the next due date instead of the button.
+          : _ciRow(title: 'Weekly check-in', sub: 'Next due $dayTxt', onTap: () => context.go('/checkins')));
+    }
+    return ChCard(gap: 0, children: [
+      Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('Check-ins', style: AppText.s(15, W.w8))),
+      for (final (i, r) in rows.indexed)
+        Container(
+          decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line))),
+          child: r,
+        ),
+    ]);
+  }
+
+  Widget _ciRow({required String title, required String sub, String? action, bool done = false, required VoidCallback onTap}) {
+    final lead = done
+        ? Container(
+            width: 88,
+            height: 30,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: AppColors.okBg, borderRadius: BorderRadius.circular(99)),
+            child: Row(mainAxisSize: MainAxisSize.min, spacing: 4, children: [
+              const AppIcon(AppIcons.check, size: 13, color: AppColors.okText, stroke: 2.4),
+              Text('Done', style: AppText.s(12, W.w7, color: AppColors.okText)),
+            ]),
+          )
+        : action != null
+        ? SizedBox(width: 88, child: CaButton(action, small: true, onPressed: onTap))
+        : Container(
+            width: 88,
+            height: 30,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(99)),
+            child: const AppIcon(AppIcons.calendarAlt, size: 14, color: AppColors.muted),
+          );
+    return Hover(
+      onTap: action == null ? onTap : null,
+      builder: (_, h, _) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Row(spacing: 12, children: [
+          lead,
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+              Text(title, style: AppText.s(14, W.w7)),
+              Text(sub, style: AppText.s(12.5, W.w4, color: AppColors.muted)),
+            ]),
           ),
         ]),
-      );
-    }
-    return ChCard(children: [
-      ChHead(
-        lead: const ChIcon(AppIcons.clipboard, tone: ChTone.amber),
-        title: 'Daily check-in',
-        sub: ci.yesterday
-            ? 'Yesterday\'s is still open · ${ci.questions} question${ci.questions == 1 ? '' : 's'} · until tonight'
-            : 'Not filled yet · ${ci.questions} question${ci.questions == 1 ? '' : 's'}${ci.due.isEmpty ? '' : ' · by ${ci.due}'}',
       ),
-      CaButton(ci.yesterday ? 'Fill yesterday\'s' : 'Fill now', icon: AppIcons.edit, onPressed: () => context.go('/checkins/daily?from=home')),
-    ]);
+    );
   }
 
   String _sign(num v, String unit) => '${v > 0 ? '+' : v < 0 ? '−' : '±'}${_one(v.abs().toDouble())}$unit';
@@ -502,7 +565,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
         Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 7, children: [
           for (final p in a.parts)
             Row(spacing: 10, children: [
-              SizedBox(width: 78, child: Text(p.label, style: AppText.s(12.5, W.w6, color: AppColors.text2))),
+              SizedBox(width: 88, child: Text(p.label, style: AppText.s(12.5, W.w6, color: AppColors.text2))),
               Expanded(child: ChBar(p.planned == 0 ? 0 : p.done / p.planned, color: tone(p.planned == 0 ? 0 : p.done / p.planned), height: 5)),
               SizedBox(width: 44, child: Text('${p.done}/${p.planned}', textAlign: TextAlign.right, style: AppText.s(12.5, W.w7, tabular: true))),
             ]),
@@ -742,10 +805,12 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     final kids = <Widget>[];
 
     // Hero
-    final (colors, label, icon) = day.rest
+    final (colors, label, icon) = day.noPlan
+        ? (AppColors.heroGray, 'No plan', AppIcons.calendarAlt)
+        : day.rest
         ? (AppColors.heroGray, 'Rest day', AppIcons.moon)
         : (day.cardio ? AppColors.heroBlue : AppColors.heroGreen, today ? 'Today’s workout' : (past ? 'Workout' : 'Coming workout'), day.cardio ? AppIcons.run : AppIcons.dumbbell);
-    final tags = day.rest ? ['No workout', 'Walk', 'Stretch'] : [day.cardio ? 'Cardio' : 'Strength', '$n exercises', '${day.minutes} min'];
+    final tags = day.noPlan ? <String>[] : day.rest ? ['No workout', 'Walk', 'Stretch'] : [day.cardio ? 'Cardio' : 'Strength', '$n exercises', '${day.minutes} min'];
     kids.add(Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -759,7 +824,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
           Expanded(child: Text(label.toUpperCase(), style: AppText.s(11.5, W.w8, color: AppColors.text2, ls: .575))),
           Text(dayShort(day.date), style: AppText.s(12.5, W.w7, color: AppColors.muted)),
         ]),
-        Text(day.rest ? 'Rest and recover' : day.name, style: AppText.s(22, W.w8, ls: -0.22)),
+        Text(day.noPlan ? 'Plan not assigned yet' : (day.rest ? 'Rest and recover' : day.name), style: AppText.s(22, W.w8, ls: -0.22)),
         Wrap(spacing: 6, runSpacing: 6, children: [
           for (final t in tags)
             Container(
@@ -828,7 +893,17 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
         ]),
       ));
     }
-    if (day.rest) {
+    if (day.noPlan) {
+      body.add(Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: ChNote(
+          top: true,
+          bg: AppColors.sub,
+          fg: AppColors.text2,
+          child: Text('${d.coachFirst} has not assigned your workout plan yet. It shows up here as soon as it is ready.', style: AppText.s(13, W.w4, color: AppColors.text2)),
+        ),
+      ));
+    } else if (day.rest) {
       body.add(Padding(
         padding: const EdgeInsets.only(top: 10),
         child: ChNote(

@@ -39,6 +39,8 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
   @override
   void initState() {
     super.initState();
+    // From Home: the open day (today, or yesterday while unsent), not a day picked earlier on the strip.
+    if (widget.from == 'home') CheckinsController.pickedDay = null;
     c.start().then((_) => _openFromLink());
     _list.addListener(() {
       if (_list.position.extentAfter < 200) c.loadMore();
@@ -53,6 +55,7 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
     c.dispose();
     _scroll.dispose();
     _list.dispose();
+    _dayCtl?.dispose();
     super.dispose();
   }
 
@@ -113,7 +116,7 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 12,
-        children: [_top(d, web: false), _cells(d), ?_daily(d), ?_weekly(d), ..._forms(d), _history(d)],
+        children: [_top(d, web: false), ?_setup(d), _cells(d), ?_daily(d), ?_weekly(d), ..._forms(d), _history(d)],
       ),
     ),
   );
@@ -132,7 +135,7 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
             constraints: const BoxConstraints(maxWidth: 1080),
             child: LayoutBuilder(
               builder: (context, box) {
-                final left = [_cells(d), ?_daily(d), ?_weekly(d)];
+                final left = [?_setup(d), _cells(d), ?_daily(d), ?_weekly(d)];
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   spacing: 18,
@@ -199,13 +202,40 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
     children: [HkCells(d.cells(false), big: !context.isPhone)],
   );
 
+  // ─────────────────────────────── Setup questionnaire not finished (E42)
+
+  Widget? _setup(CheckinsData d) {
+    final ob = d.onboarding;
+    if (ob == null) return null;
+    final n = (ob['filled'] as num?)?.toInt() ?? 0, t = (ob['total'] as num?)?.toInt() ?? 0;
+    return ChCard(
+      gap: 10,
+      children: [
+        ChHead(
+          lead: const ChIcon(AppIcons.user, tone: ChTone.purple),
+          title: 'Onboarding',
+          sub: '$n of $t filled · ${d.coachFirst} needs it to plan for you',
+          action: hkPill('To finish', bg: AppColors.purpleBg, fg: AppColors.purpleText),
+        ),
+        ChBar(t == 0 ? 0 : n / t, color: AppColors.accent),
+        CaButton(n > 0 ? 'Fill the remaining' : 'Start onboarding', icon: AppIcons.play, onPressed: () => context.go('/setup')),
+      ],
+    );
+  }
+
   // ─────────────────────────────── Daily card
 
   Widget? _daily(CheckinsData d) {
     final f = d.daily.form;
     if (f == null) return null;
-    final s = d.daily.sent ?? CheckinsController.queuedDaily;
-    final today = d.daily.date;
+    final dd = d.daily;
+    final now = DateTime.now();
+    final realToday = DateTime(now.year, now.month, now.day);
+    final day = DateTime(dd.date.year, dd.date.month, dd.date.day);
+    final isToday = day == realToday;
+    // Picked an older day on the strip: only its own sent row (the queued one is today's or yesterday's).
+    final s = dd.sent ?? (dd.editable ? CheckinsController.queuedDaily : null);
+    final name = isToday ? 'Today' : (dd.isYesterday ? 'Yesterday' : dayShortNoYear(day));
     String line() {
       final m = s!.metrics;
       final e = f.byMetric('energy')?.show(m['energy'], short: true);
@@ -221,22 +251,30 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
           lead: const ChIcon(AppIcons.sun, tone: ChTone.blue),
           title: 'Daily check-in',
           sub: s == null
-              ? '${d.daily.isYesterday ? 'Yesterday' : 'Today'}, ${dayShortNoYear(today).replaceFirst(',', '')}${d.daily.isYesterday ? ' · open until tonight' : ''}'
-              : '${d.daily.isYesterday ? 'Yesterday' : 'Today'} · sent at ${s.sentAt == null ? '—' : clock(s.sentAt!)}',
+              ? (isToday || dd.isYesterday
+                  ? '$name, ${dayShortNoYear(day).replaceFirst(',', '')}${dd.isYesterday ? ' · open until tonight' : ''}'
+                  : name)
+              : '$name · sent at ${s.sentAt == null ? '—' : clock(s.sentAt!)}',
           action: s == null
-              ? (d.daily.isYesterday
-                  ? hkPill('Still open', bg: AppColors.amberBg, fg: AppColors.amberText)
-                  : hkPill('Due today', bg: AppColors.infoBg, fg: AppColors.infoText))
+              ? (!dd.editable
+                  ? hkPill('Missed', bg: AppColors.sub, fg: AppColors.muted)
+                  : dd.isYesterday
+                      ? hkPill('Still open', bg: AppColors.amberBg, fg: AppColors.amberText)
+                      : hkPill('Due today', bg: AppColors.infoBg, fg: AppColors.infoText))
               : hkPill('Sent', bg: AppColors.okBg, fg: AppColors.okText),
         ),
-        if (s == null) ...[
+        if (dd.strip.isNotEmpty) _dayStrip(dd, realToday),
+        if (s == null && !dd.editable)
+          Text('Not filled. Only today and yesterday can be filled, older days are view only.',
+              style: AppText.s(12.5, W.w4, color: AppColors.muted, h: 1.45))
+        else if (s == null) ...[
           Text(
-            d.daily.isYesterday
-                ? 'Log yesterday\'s data (${dayShortNoYear(today)}): how you slept last night and how the day went. ${_dailyWhat(f)}.'
+            dd.isYesterday
+                ? 'Log yesterday\'s data (${dayShortNoYear(day)}): how you slept last night and how the day went. ${_dailyWhat(f)}.'
                 : '${_dailyWhat(f)}. You can also fill it tomorrow morning, after you know how you slept.',
             style: AppText.s(12.5, W.w4, color: AppColors.muted, h: 1.45),
           ),
-          CaButton(d.daily.isYesterday ? 'Fill yesterday\'s check-in' : 'Start daily check-in', icon: AppIcons.play, onPressed: () => context.go('/checkins/daily')),
+          CaButton(dd.isYesterday ? 'Fill yesterday\'s check-in' : 'Start daily check-in', icon: AppIcons.play, onPressed: () => context.go('/checkins/daily')),
         ] else ...[
           ChNote(
             icon: AppIcons.checkCircle,
@@ -250,15 +288,80 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
               Expanded(
                 child: CaButton('View', kind: CaBtnKind.out, small: true, icon: AppIcons.eye, onPressed: () => context.go('/checkins/daily')),
               ),
-              Expanded(
-                child: CaButton('Edit answers', kind: CaBtnKind.out, small: true, icon: AppIcons.edit, onPressed: () => context.go('/checkins/daily?edit=1')),
-              ),
+              if (dd.editable)
+                Expanded(
+                  child: CaButton('Edit answers', kind: CaBtnKind.out, small: true, icon: AppIcons.edit, onPressed: () => context.go('/checkins/daily?edit=1')),
+                ),
             ],
           ),
         ],
       ],
     );
   }
+
+  /// Last week and this week, like the Food strip (E36): a tick for a sent day, today ringed, the picked one
+  /// shaded. Days before the client started and future days can't be picked.
+  Widget _dayStrip(CkDaily dd, DateTime today) {
+    const wd = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final days = dd.strip;
+    final picked = DateTime(dd.date.year, dd.date.month, dd.date.day);
+    return LayoutBuilder(builder: (_, b) {
+      final w = b.maxWidth / 7;
+      return SizedBox(
+        height: 64,
+        child: ListView.builder(
+          controller: _dayCtl ??= ScrollController(initialScrollOffset: w * (days.length > 7 ? (today.weekday == 1 ? 5 : 7) : 0)),
+          scrollDirection: Axis.horizontal,
+          itemExtent: w,
+          itemCount: days.length,
+          itemBuilder: (_, i) {
+            final x = days[i];
+            final day = DateTime(x.date.year, x.date.month, x.date.day);
+            final on = day == picked, real = day == today, future = day.isAfter(today);
+            final off = future || x.beforeStart;
+            final Widget mark = x.sent
+                ? Container(
+                    width: 16,
+                    height: 16,
+                    alignment: Alignment.center,
+                    decoration: const BoxDecoration(color: AppColors.okSolid, shape: BoxShape.circle),
+                    child: const AppIcon(AppIcons.check, size: 10, color: AppColors.white, stroke: 3),
+                  )
+                : real
+                    ? Container(width: 16, height: 16, decoration: BoxDecoration(color: AppColors.white, shape: BoxShape.circle, border: Border.all(color: AppColors.accent, width: 2)))
+                    : off
+                        ? const DashedCircle(size: 16)
+                        : Container(width: 16, height: 16, decoration: const BoxDecoration(color: AppColors.sub, shape: BoxShape.circle));
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: Semantics(
+                button: !off,
+                selected: on,
+                label: '${dayShortNoYear(day)}${x.sent ? ', sent' : ''}${real ? ', today' : ''}',
+                child: Hover(
+                  onTap: off || on ? null : () => c.pickDay(day),
+                  builder: (_, h, _) => Container(
+                    padding: const EdgeInsets.symmetric(vertical: 5),
+                    decoration: BoxDecoration(
+                      color: on ? AppColors.accentSoft : (h && !off ? AppColors.outlineHover : null),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(spacing: 3, children: [
+                      Text(real ? 'Today' : wd[day.weekday - 1], style: AppText.s(10.5, W.w6, color: on ? AppColors.sessText : AppColors.muted)),
+                      Text('${day.day}', style: AppText.s(11.5, off ? W.w6 : W.w7, color: off ? AppColors.muted : (on ? AppColors.sessText : AppColors.text))),
+                      mark,
+                    ]),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    });
+  }
+
+  ScrollController? _dayCtl;
 
   /// "6 questions · takes about 30 seconds": what it asks, without listing the questions on the card (E23).
   String _dailyWhat(CkForm f) {

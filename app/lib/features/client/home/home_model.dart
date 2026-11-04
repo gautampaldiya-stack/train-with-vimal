@@ -195,6 +195,7 @@ class HomeDay {
       : date = _date(j['date']),
         today = j['today'] == true,
         rest = j['is_rest'] == true,
+        noPlan = j['no_plan'] == true,
         name = '${j['name'] ?? ''}',
         cardio = j['kind'] == 'cardio',
         minutes = _n(j['minutes']).toInt(),
@@ -205,6 +206,9 @@ class HomeDay {
         doneLine = '${j['done_line'] ?? ''}';
   final DateTime date;
   final bool today, rest, cardio, done, inProgress;
+
+  /// No workout plan covers this day (Probid 2026-11-04: "Plan not assigned yet", not "Rest and recover").
+  final bool noPlan;
   final String name, doneLine;
   final int minutes, exercisesDone;
   final List<({String name, String line})> exercises;
@@ -369,11 +373,13 @@ extension HomeExtras on HomeData {
 
   /// Today's daily check-in: (form id, sent, sent at, questions); null when the coach has no daily form.
   /// [yesterday]: yesterday's is still open and not sent (it can be sent until the end of the next day).
-  ({String form, bool sent, DateTime? at, int questions, String due, bool yesterday})? get checkin {
+  ({String form, bool sent, DateTime? at, int questions, String due, bool yesterday, Map<String, dynamic>? onboarding, Map<String, dynamic>? weekly})? get checkin {
     final c = json['checkin_today'] as Map?;
     if (c == null) return null;
     return (
-      form: '${c['form']}',
+      onboarding: (c['onboarding'] as Map?)?.cast<String, dynamic>(),
+      weekly: (c['weekly'] as Map?)?.cast<String, dynamic>(),
+      form: c['form'] == null ? '' : '${c['form']}',
       sent: c['status'] == 'sent',
       at: _dateOr(c['sent_at']),
       questions: _n(c['questions']).toInt(),

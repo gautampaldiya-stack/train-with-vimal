@@ -243,7 +243,21 @@ class _DailyCheckinState extends State<DailyCheckin> {
       final web = !context.isPhone;
       final answered = qs.where(_has).length;
       final total = qs.length;
-      final showForm = today == null || _editing;
+      // Older than yesterday: view only (E37, like Food). Not sent then: missed.
+      if (!d.editable && today == null) {
+        return CkPage(
+          web: web,
+          header: [CkTop(title: 'Daily check-in', sub: dayShortNoYear(d.date), onBack: () => context.go(widget.back))],
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 40),
+              child: Text('Missed · this day can\'t be filled any more.\nOnly today and yesterday can be filled.',
+                  textAlign: TextAlign.center, style: AppText.s(13, W.w5, color: AppColors.muted, h: 1.5)),
+            ),
+          ],
+        );
+      }
+      final showForm = d.editable && (today == null || _editing);
       return CkPage(
         web: web,
         header: [
@@ -278,6 +292,7 @@ class _DailyCheckinState extends State<DailyCheckin> {
       final t = _texts[q.id] ??= TextEditingController(text: v == null ? '' : (v as num).toDouble().toStringAsFixed(1));
       return CkQCard(
         title: title,
+        sub: q.help,
         label: _tag(q),
         got: v != null,
         children: [
@@ -298,6 +313,7 @@ class _DailyCheckinState extends State<DailyCheckin> {
       final diff = q.metric == 'weight' && last != null && when != null ? '${kgChange(x - last, zero: '±0.0 kg')} since ${dayName(when)}' : _tag(q);
       return CkQCard(
         title: title,
+        sub: q.help,
         label: diff,
         children: [
           CkStepper(
@@ -314,6 +330,7 @@ class _DailyCheckinState extends State<DailyCheckin> {
     if (q.isChoice || q.type == 'multiple') {
       return CkQCard(
         title: title,
+        sub: q.help,
         label: q.type == 'multiple' && v == null ? (q.required ? 'Pick one or more' : 'Optional') : label,
         got: v != null,
         children: [CkChoice(q: q, value: v, onChanged: (x) => _set(q, x))],
@@ -322,6 +339,7 @@ class _DailyCheckinState extends State<DailyCheckin> {
     if (q.type == 'scale') {
       return CkQCard(
         title: title,
+        sub: q.help,
         label: label,
         got: v != null,
         children: [CkScale(labels: q.labels, value: q.scaleOf(v), onPick: (n) => _set(q, n))],
@@ -331,6 +349,7 @@ class _DailyCheckinState extends State<DailyCheckin> {
     void changed() => _set(q, t.text.trim().isEmpty ? null : t.text.trim());
     return CkQCard(
       title: title,
+      sub: q.help,
       label: _tag(q),
       got: v != null,
       children: [
@@ -371,6 +390,7 @@ class _DailyCheckinState extends State<DailyCheckin> {
       buttons: Row(
         spacing: 8,
         children: [
+          if (d.editable)
           Expanded(
             flex: 5,
             child: CaButton(
