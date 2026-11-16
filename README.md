@@ -15,6 +15,8 @@ Every command Probid's PC uses, in order. Git Bash from the repo folder; PowerSh
 **1. Get the latest code** (each morning / before testing)
 ```bash
 git checkout working
+git fetch origin
+git reset --hard origin/working   # same as the cloud; drops local changes not pushed (cloud amends + force-pushes)
 git pull origin working
 cd backend && source .venv/Scripts/activate && pip install -r requirements-dev.txt && python manage.py migrate && cd ..
 cd app && flutter pub get && dart run tool/firebase_web.dart && cd ..

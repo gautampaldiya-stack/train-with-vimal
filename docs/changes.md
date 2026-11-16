@@ -18,6 +18,19 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+## 2026-11-17 · Migrate on a PC database that had the Oct-28 backup
+- **Pehle:** Jis DB par Oct-28 wale purane migrations chal chuke the (training 0008_upload_names / 0009_logger_strong / 0010_rest_timers, checkins 0008–0009, clients 0008–0009), wahan `migrate` par "column set_type already exists" aata tha.
+- **Ab:** training 0008, 0009 aur checkins 0010 sabse pehle `apps/common/oct28.py: undo_oct28` chalate hain: jo purana migration DB me record hai, uske columns / tables drop + row delete, phir naye migrations normal chalte hain. Baaki DB (live, naya) par kuch nahi karta.
+- **Kyun:** Probid ke PC par migrate fail hua (17 Nov).
+- **Phir (17 Nov):** cleanup ne `checkins_form.description` bhi hata diya tha jab checkins 0010 pehle se chal chuka tha → Home 500. Ab cleanup aisa column nahi hatata jiska naya migration chal chuka ho (`NEW_OWNER`), aur checkins 0011 missing `description` wapas banata hai. README daily commands: fetch + reset --hard + pull.
+- **Updated:** backend/apps/common/oct28.py, training 0008 + 0009, checkins 0010 + 0011, README
+
+## 2026-11-16 · Rest line under sets, no bottom rest bar
+- **Pehle:** Sets ke beech rest line 24 px oonchi, chalte rest ki progress sirf chhote chip me; neeche REST bar (Pause / +15s / Skip) bhi dikhta tha; rest line tap = sirf edit; upar ka chip (rest band ho to) seedha 90 s rest shuru karta tha.
+- **Ab:** Rest line 18 px, sets ke paas; chalte rest me poori line neeli bharti aur right se khali hoti hai. Neeche ka rest bar hata diya (upar chip + line + mini bar kaafi). Rest line tap: chal raha ho to rest sheet (−15 / Pause / +15, Edit, Reset, Skip), warna "Rest after set N" sheet (time badlo, Start now, Save). Upar chip: rest sheet, ya time chun ke Start. Swipe left: chalta rest = Skip, warna is set ka rest Off (Undo). Set row swipe = delete (pehle jaisa).
+- **Kyun:** Probid, ph_g3_restrow.png par comment.
+- **Updated:** app workout_screen.dart, workout_model.dart (restStart, restEdit) · Decision D-90
+
 ## 2026-11-16 · Rest timers (tracker G44–G50)
 - **Pehle:** Har exercise ka ek hi rest, set type ya set ke hisaab se nahi; rest sirf neeche ka bar; planned / actual rest save nahi hota; sound / vibration ka setting nahi.
 - **Ab:** Working / Warm-up / Drop rest (coach plan me, client exercise ⋯ → Rest timers, agle workouts ka default), har set ka apna rest (set menu, set ke neeche line, swipe = Off), coach "Lock rest", tick par Strong jaisi rest sheet (−15 / Pause / +15, Reset, Skip, X), restart ke baad bhi sahi, Android notification rest khatam par, history me rest 1:45 / 2:00, More me Workout sound & vibration.

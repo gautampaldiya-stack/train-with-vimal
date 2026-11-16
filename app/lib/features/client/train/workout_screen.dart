@@ -56,7 +56,6 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
   RawDialogRoute? _restRoute;
   double? _lifted;
-  double _barH = 0;
   bool _idleUp = false;
   final _note = TextEditingController();
   final _scroll = ScrollController();
@@ -208,7 +207,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       listenable: c,
       builder: (context, _) {
         final phone = context.isPhone;
-        _lift(phone && !c.finished ? (act != null ? 300 : (_barH > 0 ? _barH + _cancelH + 10 : _cancelH + 10)) : null);
+        _lift(phone && !c.finished ? (act != null ? 300 : _cancelH + 10) : null);
         if (c.finished) return _doneView(c, phone);
         return _logger(c, phone);
       },
@@ -303,10 +302,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
   Widget _logger(WorkoutController c, bool phone) {
     final keypad = phone && act != null;
-    final resting = c.rest > 0 && !keypad;
     final list = ListView(
       controller: _scroll,
-      padding: EdgeInsets.fromLTRB(phone ? 16 : 28, 6, phone ? 16 : 28, keypad ? 300 : (resting ? 110 : 24)),
+      padding: EdgeInsets.fromLTRB(phone ? 16 : 28, 6, phone ? 16 : 28, keypad ? 300 : 24),
       children: [
         _title(c),
         for (var i = 0; i < c.ex.length; i++) _exercise(c, i, web: !phone),
@@ -325,16 +323,6 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           _cancelLink(c, phone),
         ]),
         if (keypad) Positioned(left: 0, right: 0, bottom: 0, child: _keypad(c)),
-        if (resting)
-          Positioned(
-            left: phone ? 0 : null,
-            right: phone ? 0 : 24,
-            bottom: phone ? _cancelH + MediaQuery.paddingOf(context).bottom : _cancelH + 16,
-            width: phone ? null : 420,
-            child: _BarMeasure(onHeight: (h) {
-              if (h != _barH && mounted) setState(() => _barH = h);
-            }, child: _restBar(c, web: !phone)),
-          ),
       ]),
     );
   }
@@ -358,7 +346,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               button: true,
               label: resting ? 'Rest ${clockText(c.rest)}' : 'Rest timer',
               child: Hover(
-                onTap: () => resting ? c.restShow(true) : c.restNow(c.cur),
+                onTap: () => resting ? c.restShow(true) : _restIdle(c),
                 builder: (_, h, _) => ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: Container(
@@ -744,8 +732,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         : rested != null && s.done
             ? 'rested ${clockText(rested)}'
             : clockText(planned);
-    final color = running ? AppColors.white : (rested != null && s.done ? AppColors.muted : AppColors.accentText);
     final p = running && c.restMax > 0 ? (c.rest / c.restMax).clamp(0.0, 1.0) : 0.0;
+    final done = rested != null && s.done && !running;
+    final text = own && !running && !done ? '$label · this set' : label;
     final bar = Semantics(
       button: true,
       label: running ? 'Rest ${clockText(c.rest)} left, open the rest timer' : 'Rest after set ${c.label(i, k)}: $label',
@@ -754,78 +743,151 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           setState(() => act = null);
           if (running) {
             c.restShow(true);
-          } else if (locked) {
-            _toast('Rest set by ${c.plan.coachFirst}', sub: '${c.ex[i].name} · ${clockText(planned)}', kind: ToastKind.info);
           } else {
             _setRest(c, i, k);
           }
         },
+        // Thin and close to the sets (Probid 16 Nov). While it runs the line itself empties from right to left.
         builder: (_, h, _) => SizedBox(
-          height: 24,
-          child: Row(spacing: 8, children: [
-            Expanded(child: Container(height: 2, color: running ? AppColors.accent : AppColors.accentRing)),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: Container(
-                height: 20,
-                constraints: const BoxConstraints(minWidth: 56),
-                color: running ? AppColors.accentSoft : (h ? AppColors.accentSoft : null),
+          height: 18,
+          width: double.infinity,
+          child: Stack(alignment: Alignment.center, children: [
+            Positioned(
+              left: 0,
+              right: 0,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(2),
                 child: Stack(children: [
-                  if (running) Positioned.fill(child: FractionallySizedBox(alignment: Alignment.centerLeft, widthFactor: p, child: Container(color: AppColors.accent))),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Center(
-                      widthFactor: 1,
-                      child: Text(own && !running ? '$label · this set' : label,
-                          style: AppText.s(12, W.w7, color: running && p < .5 ? AppColors.accentText : color, tabular: true)),
-                    ),
-                  ),
+                  Container(height: running ? 4 : 2, color: running ? AppColors.accentSoft : AppColors.accentRing),
+                  if (running) FractionallySizedBox(widthFactor: p, child: Container(height: 4, color: AppColors.accent)),
                 ]),
               ),
             ),
-            Expanded(child: Container(height: 2, color: running ? AppColors.accent : AppColors.accentRing)),
+            Container(
+              height: 16,
+              constraints: const BoxConstraints(minWidth: 48),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              decoration: BoxDecoration(
+                color: running ? AppColors.accent : (h ? AppColors.accentSoft : AppColors.caBg),
+                borderRadius: BorderRadius.circular(5),
+              ),
+              child: Center(
+                widthFactor: 1,
+                child: Text(text,
+                    style: AppText.s(11.5, W.w7, h: 1, color: running ? AppColors.white : (done ? AppColors.muted : AppColors.accentText), tabular: true)),
+              ),
+            ),
           ]),
         ),
       ),
     );
-    if (locked || running) return bar;
+    if (locked && !running) return bar;
+    // Swipe left: a running rest is skipped, otherwise there is no rest after this set (Undo).
     return Dismissible(
       key: ValueKey('rest:${s.key}'),
       direction: DismissDirection.endToStart,
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 16),
-        color: AppColors.badBg,
-        child: Text('No rest', style: AppText.s(12, W.w7, color: AppColors.badText)),
+        color: running ? AppColors.accentSoft : AppColors.badBg,
+        child: Text(running ? 'Skip rest' : 'No rest', style: AppText.s(11.5, W.w7, color: running ? AppColors.accentText : AppColors.badText)),
       ),
-      onDismissed: (_) {
-        final before = s.rest;
-        c.setSetRest(i, k, 0);
-        _toast('Rest removed', sub: 'No rest after set ${c.label(i, k)}', kind: ToastKind.del, undo: () => c.setSetRest(i, k, before));
+      confirmDismiss: (_) async {
+        if (running) {
+          c.restSkip();
+        } else {
+          final before = s.rest;
+          c.setSetRest(i, k, 0);
+          _toast('Rest removed', sub: 'No rest after set ${c.label(i, k)}', kind: ToastKind.del, undo: () => c.setSetRest(i, k, before));
+        }
+        return false;
       },
       child: bar,
     );
   }
 
-  /// Set menu → Rest timer for this set, or a tap on the rest line (G45).
+  /// Rest line tap, set menu → Rest timer for this set (G45): change this set's rest and / or start it now (Probid 16 Nov).
   void _setRest(WorkoutController c, int i, int k) {
     final s = c.sets[i][k];
+    final locked = c.ex[i].restLocked;
     var v = c.restFor(i, k);
     final own = s.rest != null;
     _ask(
       title: 'Rest after set ${c.label(i, k)}',
       sub: '${c.ex[i].name} · only this set',
+      body: locked
+          ? _p('${c.plan.coachFirst} set this rest: ${_restText(v)}. You can start it now.')
+          : StatefulBuilder(
+              builder: (_, set) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
+                _RestStepper(value: v, onChanged: (n) => set(() => v = n)),
+                if (own)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Builder(
+                      builder: (bc) => Hover(
+                        onTap: () {
+                          Navigator.of(bc).pop();
+                          c.setSetRest(i, k, null);
+                        },
+                        builder: (_, h, _) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Text('Use exercise rest (${_restText(c.restFor(i, k, own: false))})',
+                              style: AppText.s(13, W.w7, color: h ? AppColors.accent : AppColors.accentText)),
+                        ),
+                      ),
+                    ),
+                  ),
+              ]),
+            ),
+      buttons: (ctx) => [
+        CaButton('Start now', kind: CaBtnKind.out, icon: AppIcons.play, onPressed: () {
+          Navigator.of(ctx).pop();
+          if (!locked && v != c.restFor(i, k)) c.setSetRest(i, k, v);
+          c.restStart(i, k, v == 0 ? null : v);
+        }),
+        if (!locked)
+          CaButton('Save', icon: AppIcons.check, onPressed: () {
+            Navigator.of(ctx).pop();
+            c.setSetRest(i, k, v);
+          }),
+      ],
+    );
+  }
+
+  /// Top rest chip with no rest running: pick a time and start it.
+  void _restIdle(WorkoutController c) {
+    final i = c.cur;
+    var v = c.rests[i].work > 0 ? c.rests[i].work : 90;
+    _ask(
+      title: 'Rest timer',
+      sub: c.ex[i].name,
       body: StatefulBuilder(builder: (_, set) => _RestStepper(value: v, onChanged: (n) => set(() => v = n))),
       buttons: (ctx) => [
-        own
-            ? CaButton('Use exercise rest', kind: CaBtnKind.out, onPressed: () {
-                Navigator.of(ctx).pop();
-                c.setSetRest(i, k, null);
-              })
-            : CaButton('Cancel', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop()),
+        CaButton('Cancel', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop()),
+        CaButton('Start', icon: AppIcons.play, onPressed: () {
+          Navigator.of(ctx).pop();
+          if (v > 0) c.restNow(i, v);
+        }),
+      ],
+    );
+  }
+
+  /// Rest sheet → Change: a new length for the rest that is running.
+  void _restChange(WorkoutController c) {
+    var v = c.restMax;
+    _ask(
+      title: 'Change rest',
+      sub: 'Time passed stays passed',
+      body: StatefulBuilder(builder: (_, set) => _RestStepper(value: v, onChanged: (n) => set(() => v = n))),
+      buttons: (ctx) => [
+        CaButton('Cancel', kind: CaBtnKind.out, onPressed: () {
+          Navigator.of(ctx).pop();
+          if (c.rest > 0) c.restShow(true);
+        }),
         CaButton('Save', icon: AppIcons.check, onPressed: () {
           Navigator.of(ctx).pop();
-          c.setSetRest(i, k, v);
+          c.restEdit(v);
+          if (c.rest > 0) c.restShow(true);
         }),
       ],
     );
@@ -1577,70 +1639,6 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
   // ─────────────────────────────── Rest bar (`cl-rest`)
 
-  static const _barShape = BoxDecoration(
-    color: AppColors.white,
-    borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-    border: Border(top: BorderSide(color: AppColors.line), left: BorderSide(color: AppColors.line), right: BorderSide(color: AppColors.line)),
-    boxShadow: AppShadows.barUp,
-  );
-
-  /// `cl-rest`: phone white bar over the tabs, web dark bar under the panel.
-  Widget _restBar(WorkoutController c, {required bool web}) {
-    final fg = web ? AppColors.white : AppColors.text;
-    final lab = web ? AppColors.valPh : AppColors.muted;
-    final p = c.restMax == 0 ? 0.0 : (c.rest / c.restMax).clamp(0.0, 1.0);
-    Widget btn(Widget child, String label, VoidCallback onTap) => Semantics(
-          button: true,
-          label: label,
-          child: Hover(
-            onTap: onTap,
-            builder: (_, h, _) => Container(
-              height: web ? 32 : 34,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: web ? AppColors.white.withValues(alpha: h ? .22 : .12) : (h ? AppColors.pressed : AppColors.sub),
-                borderRadius: BorderRadius.circular(web ? 8 : 10),
-              ),
-              child: child,
-            ),
-          ),
-        );
-    final row = Row(spacing: 10, children: [
-      Semantics(
-        button: true,
-        label: 'Open the rest timer',
-        child: GestureDetector(
-          onTap: () => c.restShow(true),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(c.restPaused ? 'REST · PAUSED' : 'REST', style: AppText.s(11, W.w7, color: lab, ls: .55)),
-            Text(clockText(c.rest), style: AppText.s(20, W.w8, color: fg, tabular: true)),
-          ]),
-        ),
-      ),
-      Expanded(
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: Stack(children: [
-            Container(height: 6, color: web ? AppColors.white.withValues(alpha: .15) : AppColors.track),
-            FractionallySizedBox(widthFactor: p, child: Container(height: 6, color: web ? AppColors.toastInfo : AppColors.accent)),
-          ]),
-        ),
-      ),
-      btn(AppIcon(c.restPaused ? AppIcons.play : AppIcons.pause, size: 15, color: fg), c.restPaused ? 'Resume rest' : 'Pause rest', c.restToggle),
-      btn(Text('+15s', style: AppText.s(13, W.w7, color: fg)), 'Add 15 seconds', c.restMore),
-      btn(Text('Skip', style: AppText.s(13, W.w7, color: fg)), 'Skip rest', c.restSkip),
-    ]);
-    if (web) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(color: AppColors.text, borderRadius: BorderRadius.circular(14), boxShadow: AppShadows.restBar),
-        child: row,
-      );
-    }
-    return Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10), decoration: _barShape, child: row);
-  }
-
   // ─────────────────────────────── Rest sheet (tracker G48)
 
   /// Opens by itself when a set with rest is ticked. Phone: a sheet at the bottom; web: a card in the middle.
@@ -1748,7 +1746,11 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           round('', c.restPaused ? 'Resume' : 'Pause', c.restToggle, icon: c.restPaused ? AppIcons.play : AppIcons.pause, dark: true, size: 68),
           round('+15', 'Add 15 seconds', () => c.restMore()),
         ]),
-        Row(spacing: 10, children: [
+        Row(spacing: 8, children: [
+          if (!c.ex[at.$1].restLocked) Expanded(child: CaButton('Edit', kind: CaBtnKind.out, icon: AppIcons.edit, onPressed: () {
+            c.restShow(false);
+            _restChange(c);
+          })),
           Expanded(child: CaButton('Reset', kind: CaBtnKind.out, icon: AppIcons.restart, onPressed: c.restReset)),
           Expanded(child: CaButton('Skip', icon: AppIcons.next, onPressed: c.restSkip)),
         ]),
@@ -2115,21 +2117,6 @@ class _Ring extends CustomPainter {
 
   @override
   bool shouldRepaint(_Ring old) => old.p != p;
-}
-
-/// Reports the height of the logger's bottom bar (timer or rest), so toasts sit 10 above it.
-class _BarMeasure extends StatelessWidget {
-  const _BarMeasure({required this.onHeight, required this.child});
-  final void Function(double) onHeight;
-  final Widget child;
-  @override
-  Widget build(BuildContext context) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final h = context.mounted ? context.size?.height : null;
-      if (h != null) onHeight(h);
-    });
-    return child;
-  }
 }
 
 /// Rest length: − 1:30 + in 15-second steps (0 = Off, up to 15:00), with quick picks (tracker G44/G45).

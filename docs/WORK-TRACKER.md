@@ -348,7 +348,7 @@ E51. ✅ Admin/trainer client Logs (Daily, Weekly, Habits, Supplements) aur clie
     * Rest timer row par left swipe = delete.
     * Rest timer row tap = duration editor.
     * Smooth animations.
-    * **Hua:** set row left swipe = delete + Undo; set me data / tick ho to pehle "Delete set?" confirm. Rest line left swipe = is set ka rest Off (Undo). Rest line tap = editor. Countdown line bharti hai.
+    * **Hua:** set row left swipe = delete + Undo; set me data / tick ho to pehle "Delete set?" confirm. Rest line left swipe = is set ka rest Off (Undo). Rest line tap = editor (chalte rest par rest sheet). Line 18 px, chalte rest me poori line bharti. Neeche ka rest bar hataya (Probid 16 Nov).
 47. ✅ Admin-defined rest timers: plan builder me set, client logger me dikhen. Admin lock kar sakta hai. Lock na ho to client workout me badal sakta hai, aur admin planned vs actual rest dekh sake.
     * **Hua:** plan builder (library + client plan drawer) me Rest after warm-up / drop set + "Lock rest" toggle (ProgramExercise.rest_warmup_seconds, rest_drop_seconds, rest_locked; migration training 0009). Locked = client ko read-only + toast, server 409 `rest_locked`. Coach Logs me "rest 1:45 / 2:00". Lock rakhna hai ya nahi = Probid ka jawab baaki (card).
 48. ✅ Rest sheet (workout ke dauran) (Strong jaisa)

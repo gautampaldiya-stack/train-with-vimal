@@ -5,6 +5,8 @@ import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
 
+from apps.common.oct28 import undo_oct28
+
 
 def warmups_to_set_type(apps, schema_editor):
     """Sets ticked as warm-up before set types existed keep that type."""
@@ -19,6 +21,8 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # A PC database that ran the Oct-28 backup migrations: drop what they added first (apps/common/oct28.py).
+        migrations.RunPython(undo_oct28, migrations.RunPython.noop),
         migrations.RemoveField(
             model_name="setlog",
             name="distance_km",

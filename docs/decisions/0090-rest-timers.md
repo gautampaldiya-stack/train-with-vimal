@@ -15,7 +15,10 @@ Date: 2026-11-16 · Asked by Probid ("aage ka G ka kaam start kar do").
   answer pending on the card. If "no lock", remove the toggle and the check.
 - **Running:** a tick starts the rest of that set by end time (`_restEnds`), so sleep or app restart keeps it right
   (saved in `workout:live`). Strong-style sheet: ring, −15 / Pause / +15, Reset, Skip, Next up, X hides. Mini bar
-  shows Rest on other pages. Android: exact alarm notification when the rest ends (needs an APK).
+  shows Rest on other pages. No rest bar at the bottom of the logger (Probid 16 Nov): the top chip, the rest line and the
+  mini bar are enough. Rest line: 18 px, the line itself empties while the rest runs; tap = rest sheet (running) or
+  "Rest after set N" (change, Start now, Save); swipe left = Skip (running) or Off. Rest sheet has Edit (new length,
+  time passed stays passed). Top chip with no rest = pick a time and Start. Android: exact alarm notification when the rest ends (needs an APK).
 - **History:** each set stores `rest_planned` and `rest_actual` (seconds); client past workout and coach Logs show
   "rest 1:45 / 2:00".
 - **Sound / haptics:** tick = medium haptic + click, rest end = heavy haptic + alert. More → Workout sound & vibration

@@ -3,6 +3,8 @@
 import django.core.validators
 from django.db import migrations, models
 
+from apps.common.oct28 import undo_oct28
+
 
 class Migration(migrations.Migration):
 
@@ -11,6 +13,8 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # A PC database that ran the Oct-28 backup migrations: drop what they added first (apps/common/oct28.py).
+        migrations.RunPython(undo_oct28, migrations.RunPython.noop),
         migrations.AddField(
             model_name="clientexercisepref",
             name="rest_drop",

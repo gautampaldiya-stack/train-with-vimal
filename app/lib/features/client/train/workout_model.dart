@@ -214,9 +214,9 @@ class WorkoutController extends ChangeNotifier {
   }
 
   /// The rest that follows set [k] of exercise [i]: its own timer, else the exercise's for its set type.
-  int restFor(int i, int k) {
+  int restFor(int i, int k, {bool own = true}) {
     final s = sets[i][k];
-    if (s.rest != null) return s.rest!;
+    if (own && s.rest != null) return s.rest!;
     final r = rests[i];
     return switch (s.kind) { SetKind.warmup => r.warmup, SetKind.drop => r.drop, _ => r.work };
   }
@@ -1197,9 +1197,33 @@ class WorkoutController extends ChangeNotifier {
     LiveNotice.restDone(at: ends, next: nextUp, sound: WorkoutFeel.sound, vibrate: WorkoutFeel.haptics);
   }
 
-  void restNow(int i) {
-    _beginRest(i, -1, rests[i].work > 0 ? rests[i].work : 90);
+  void restNow(int i, [int? secs]) {
+    _beginRest(i, -1, secs ?? (rests[i].work > 0 ? rests[i].work : 90));
     notifyListeners();
+  }
+
+  /// Rest line tap → Start now: the rest after set [k] of exercise [i], [secs] long (its own rest when null).
+  void restStart(int i, int k, [int? secs]) {
+    final v = secs ?? restFor(i, k);
+    _beginRest(i, k, v > 0 ? v : 90);
+    changed();
+  }
+
+  /// Rest sheet → Change: the running rest becomes [v] long in all (what has passed stays passed), and the set it
+  /// follows keeps [v] as its own rest.
+  void restEdit(int v) {
+    if (v <= 0) {
+      restSkip();
+      return;
+    }
+    final used = math.max(0, restMax - rest);
+    restMax = v;
+    rest = math.max(1, v - used);
+    if (!restPaused) _restEnds = DateTime.now().add(Duration(seconds: rest));
+    final (i, k) = restAt;
+    if (k >= 0 && i < sets.length && k < sets[i].length && !ex[i].restLocked) sets[i][k].rest = v;
+    _alarm();
+    changed();
   }
 
   void restMore([int s = 15]) {
