@@ -7,7 +7,10 @@ Updated with every push, so anyone (another Claude session, local Claude Code, a
 **Full list of done / remaining work: [../WORK-TRACKER.md](../WORK-TRACKER.md)** (update it with every push).
 
 ## Done
-- 2026-11-16 (latest): D-89 tracker F33–F43: Workout logger built new Strong-style (one page, start sheet, mini bar,
+- 2026-11-16 (latest): D-90 tracker G44–G50 rest timers (Working / Warm-up / Drop, per set, coach lock, rest sheet,
+  planned vs actual, sound & vibration). Migration training 0009 (`migrate` on deploy). Lock kept until Probid answers
+  the card. **Next:** Probid checks G (rest-end notification needs an APK); then H Edit workout, I history.
+- 2026-11-16: D-89 tracker F33–F43: Workout logger built new Strong-style (one page, start sheet, mini bar,
   notification actions, keypad, Previous, W / D / F, focus metric, form video on finish, Cancel workout at the bottom,
   Congratulations page), BPM instead of km (migration training 0008, run `migrate` on deploy), Edit exercise drawer draft.
   Backend tests green except 2 date-dependent ones not in this area (test_client_checkins board numbers, test_meal_plans

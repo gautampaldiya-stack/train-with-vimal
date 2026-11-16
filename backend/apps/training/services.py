@@ -23,7 +23,8 @@ from .models import (
 User = get_user_model()
 
 EXERCISE_FIELDS = ["exercise_id", "order", "superset_group", "sets", "reps", "rpe", "rest_seconds", "tempo",
-                   "target_weight_kg", "bpm_min", "bpm_max", "note", "override"]
+                   "target_weight_kg", "bpm_min", "bpm_max", "rest_warmup_seconds", "rest_drop_seconds", "rest_locked",
+                   "note", "override"]
 
 
 # ---------------------------------------------------------------- program tree
@@ -108,7 +109,8 @@ def sync_structure(program, weeks_data):
                 e.exercise = ed["exercise"]
                 e.order = i
                 for f in ("superset_group", "sets", "reps", "rpe", "rest_seconds", "tempo", "target_weight_kg",
-                          "bpm_min", "bpm_max", "note", "override"):
+                          "bpm_min", "bpm_max", "rest_warmup_seconds", "rest_drop_seconds", "rest_locked",
+                          "note", "override"):
                     if f in ed:
                         setattr(e, f, ed[f])
                 e.save()
@@ -461,7 +463,7 @@ def save_state(wl, data):
         pe = row.get("program_exercise")
         s.program_exercise_id = pe if pe in pe_ids else None
         s.set_number = row["set_number"]
-        for f in ("weight_kg", "reps", "seconds", "bpm", "rpe"):
+        for f in ("weight_kg", "reps", "seconds", "bpm", "rpe", "rest_seconds", "rest_planned", "rest_actual"):
             setattr(s, f, row.get(f))
         s.is_bodyweight, s.done = row["is_bodyweight"], row["done"]
         s.set_type, s.is_warmup = row["set_type"], row["is_warmup"]

@@ -15,7 +15,7 @@ import '../../core/widgets/responsive.dart';
 import '../../core/widgets/tooltip.dart';
 import '../../core/live/live_notice.dart';
 import '../../features/client/train/train_model.dart' show clockText;
-import '../../features/client/train/workout_model.dart' show WorkoutController;
+import '../../features/client/train/workout_model.dart' show WorkoutController, WorkoutFeel;
 import '../services.dart';
 import 'back_nav.dart';
 import 'nav_items.dart';
@@ -65,6 +65,7 @@ class _AppShellState extends State<AppShell> {
     if (Services.session.me?.role == Role.client) {
       // A workout running on this phone comes back after an app restart: mini bar, clock, notification (F33).
       WorkoutController.revive();
+      WorkoutFeel.load(); // My account and the logger show the saved sound / vibration choice
       LiveNotice.onOpen = () {
         if (mounted) context.go('/train/workout');
       };

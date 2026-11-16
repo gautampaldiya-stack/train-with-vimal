@@ -854,6 +854,12 @@ class _PastSheetState extends State<_PastSheet> {
                             child: Text('${k + 1}', style: AppText.s(10, W.w7, color: AppColors.muted)),
                           ),
                           Text(PastDetail.setText(gr.logType, s), style: AppText.s(12.5, W.w6)),
+                          // rested / timer (tracker G49)
+                          if (s['rest_actual'] != null)
+                            Text(
+                              '· rest ${clockText((s['rest_actual'] as num).toInt())}${(s['rest_planned'] as num? ?? 0) > 0 ? ' / ${clockText((s['rest_planned'] as num).toInt())}' : ''}',
+                              style: AppText.s(12, W.w5, color: AppColors.muted, tabular: true),
+                            ),
                         ]),
                       ),
                   ]),

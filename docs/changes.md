@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+## 2026-11-16 · Rest timers (tracker G44–G50)
+- **Pehle:** Har exercise ka ek hi rest, set type ya set ke hisaab se nahi; rest sirf neeche ka bar; planned / actual rest save nahi hota; sound / vibration ka setting nahi.
+- **Ab:** Working / Warm-up / Drop rest (coach plan me, client exercise ⋯ → Rest timers, agle workouts ka default), har set ka apna rest (set menu, set ke neeche line, swipe = Off), coach "Lock rest", tick par Strong jaisi rest sheet (−15 / Pause / +15, Reset, Skip, X), restart ke baad bhi sahi, Android notification rest khatam par, history me rest 1:45 / 2:00, More me Workout sound & vibration.
+- **Kyun:** Probid: "aage ka G ka kaam start kar do".
+- **Updated:** backend training (models, migration 0009, serializers, services, views), tests/test_rest_g.py; app workout_model / workout_screen / workout_feel / train_model / train_parts, core/live, more_screen, app_shell, library builder sheets / model, cp_plans_edit, cp_logs_detail, app/test/rest_timers_test.dart, AndroidManifest; docs WORK-TRACKER, status, CURRENT · Decision D-90
+
 ## 2026-11-16 · Workout logger new (Strong-style), BPM for cardio, Edit exercise drawer draft
 - **Pehle:** Logger ek exercise ek baar, −/+ steppers, timer logger khulte hi chalta aur Train chhodte hi rukta; cardio me km; Edit exercise drawer har key par peeche ka exercise badal deta tha.
 - **Ab:** Saare exercises ek page par (SET · PREVIOUS · KG · REPS · ✓), Start sheet ke baad clock, ⌄ = mini bar (har page par, workout chalta rahe), Android notification (Complete set / Pause / Skip / +30s), phone keypad, placeholders neeche tak, Previous tap, W / D / F set types, focus metric, form video finish par, Cancel workout screen ke neeche pinned, Finish sheet me har exercise ke sets, Congratulations page. Cardio = BPM (coach Min / Max). Drawer draft, Done par hi apply, footer line hata di.

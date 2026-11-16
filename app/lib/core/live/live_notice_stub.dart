@@ -14,5 +14,10 @@ class LiveNotice {
 
   static Future<void> rest({required String title, required String body, required DateTime endsAt, required int total, required int left, bool paused = false}) async {}
 
+  /// "Rest is over" at [at] (tracker G48). Web: the open page shows a toast instead.
+  static Future<void> restDone({required DateTime at, required String next, bool sound = true, bool vibrate = true}) async {}
+
+  static Future<void> cancelRestDone() async {}
+
   static Future<void> clear() async {}
 }

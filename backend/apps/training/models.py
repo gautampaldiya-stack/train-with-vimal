@@ -129,6 +129,10 @@ class ProgramExercise(models.Model):
     reps = models.CharField(max_length=20, default="8–10")  # "8–10", "AMRAP", "45 s"
     rpe = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MaxValueValidator(10)])
     rest_seconds = models.PositiveSmallIntegerField(default=90, validators=[MaxValueValidator(300)])
+    # rest after a warm-up / a drop set (null = same as rest_seconds); locked = the client cannot change rest (G44/G47)
+    rest_warmup_seconds = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MaxValueValidator(300)])
+    rest_drop_seconds = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MaxValueValidator(300)])
+    rest_locked = models.BooleanField(default=False)
     tempo = models.CharField(max_length=12, blank=True, default="")
     target_weight_kg = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
     # cardio: the heart-rate range the coach wants (beats per minute); the client logs the BPM they got
@@ -232,6 +236,11 @@ class SetLog(models.Model):
                                            validators=[MinValueValidator(30), MaxValueValidator(250)])
     rpe = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True,
                               validators=[MinValueValidator(1), MaxValueValidator(10)])
+    # rest after this set: rest_seconds = the client's own timer for this set only (null = the exercise's rest for
+    # its set type); rest_planned = what the timer was set to, rest_actual = what the client really rested (G45/G49)
+    rest_seconds = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MaxValueValidator(900)])
+    rest_planned = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MaxValueValidator(900)])
+    rest_actual = models.PositiveIntegerField(null=True, blank=True)
     # set added in the app (maybe offline): the app's own id, so a repeated save does not add it twice
     client_key = models.CharField(max_length=40, blank=True, default="")
     is_bodyweight = models.BooleanField(default=False)
@@ -269,6 +278,10 @@ class ClientExercisePref(models.Model):
     client = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="exercise_prefs")
     exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE, related_name="+")
     focus_metric = models.CharField(max_length=16, choices=FocusMetric.choices, default=FocusMetric.VOLUME)
+    # Rest timers the client set for this exercise (exercise ⋯ → Rest timers, G44); null = the plan's rest.
+    rest_work = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MaxValueValidator(900)])
+    rest_warmup = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MaxValueValidator(900)])
+    rest_drop = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MaxValueValidator(900)])
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

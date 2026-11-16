@@ -11,6 +11,9 @@ import '../../../core/api/api_error.dart';
 import '../../../core/live/live_notice.dart';
 import '../../../core/widgets/overlays.dart' show ToastKind;
 import 'train_model.dart';
+import 'workout_feel.dart';
+
+export 'workout_feel.dart';
 
 /// Set types (Strong-style, tracker F38/F39). A drop set is its own row marked D, right after the set it drops from.
 enum SetKind {
@@ -44,6 +47,9 @@ class WSet {
     this.doneAt,
     this.at,
     this.pr = false,
+    this.rest,
+    this.restPlanned,
+    this.restActual,
   });
 
   int? id;
@@ -62,7 +68,11 @@ class WSet {
   /// Workout time (seconds) when it was ticked: "Where the time went".
   int? at;
 
-  WSet copy() => WSet(id: id, key: key, exId: exId, peId: peId, number: number, weight: weight, reps: reps, seconds: seconds, bpm: bpm, rpe: rpe, bw: bw, kind: kind, done: done, doneAt: doneAt, at: at, pr: pr);
+  /// Rest after this set (tracker G45/G49): [rest] = this set's own timer (null = the exercise's for its type,
+  /// 0 = no rest), [restPlanned] = what the timer was set to when it ran, [restActual] = what the client rested.
+  int? rest, restPlanned, restActual;
+
+  WSet copy() => WSet(id: id, key: key, exId: exId, peId: peId, number: number, weight: weight, reps: reps, seconds: seconds, bpm: bpm, rpe: rpe, bw: bw, kind: kind, done: done, doneAt: doneAt, at: at, pr: pr, rest: rest, restPlanned: restPlanned, restActual: restActual);
 
   bool get touched => weight != null || reps != null || seconds != null || bpm != null;
 
@@ -82,6 +92,9 @@ class WSet {
         'set_type': kind.api,
         'done': done,
         'done_at': doneAt?.toUtc().toIso8601String(),
+        'rest_seconds': rest,
+        'rest_planned': restPlanned,
+        'rest_actual': restActual,
       };
 
   Map<String, dynamic> toLocal() => {...toApi(), 'at': at, 'pr': pr};
@@ -108,6 +121,9 @@ class WSet {
       doneAt: doneAt,
       at: _i(j['at']) ?? doneAt?.difference(startedAt).inSeconds.clamp(0, 99 * 3600),
       pr: j['pr'] == true || j['is_pr'] == true,
+      rest: _i(j['rest_seconds']),
+      restPlanned: _i(j['rest_planned']),
+      restActual: _i(j['rest_actual']),
     );
   }
 }
@@ -187,6 +203,43 @@ class WorkoutController extends ChangeNotifier {
   /// Focus metric per exercise index.
   late final List<FocusMetric> focus = [for (final x in ex) FocusMetric.of(x.focusMetric)];
 
+  /// Rest timers per exercise index (tracker G44): working, warm-up and drop sets, in seconds (0 = off). The coach's
+  /// plan, with the client's own timers on top unless the coach locked them.
+  late final List<({int work, int warmup, int drop})> rests = [for (final x in ex) planRest(x)];
+
+  static ({int work, int warmup, int drop}) planRest(TrainEx x) {
+    final p = x.restLocked ? null : x.restPref;
+    int? v(String k) => (p?[k] as num?)?.toInt();
+    return (work: v('work') ?? x.rest, warmup: v('warmup') ?? x.restWarmup ?? x.rest, drop: v('drop') ?? x.restDrop ?? x.rest);
+  }
+
+  /// The rest that follows set [k] of exercise [i]: its own timer, else the exercise's for its set type.
+  int restFor(int i, int k) {
+    final s = sets[i][k];
+    if (s.rest != null) return s.rest!;
+    final r = rests[i];
+    return switch (s.kind) { SetKind.warmup => r.warmup, SetKind.drop => r.drop, _ => r.work };
+  }
+
+  /// Exercise ⋯ → Rest timers: used from now on in this workout and saved as this exercise's rest for next time.
+  void setRests(int i, {required int work, required int warmup, required int drop}) {
+    final x = ex[i];
+    if (x.restLocked) return;
+    rests[i] = (work: work, warmup: warmup, drop: drop);
+    toast?.call('Rest timers saved', sub: '${x.name} · this workout and next time', kind: ToastKind.ok);
+    changed();
+    Services.outbox
+        .enqueue('PUT', 'me/exercise-prefs/${x.exId}/', {'rest_work': work, 'rest_warmup': warmup, 'rest_drop': drop}, tag: 'exercise:pref')
+        .catchError((_) => null);
+  }
+
+  /// Set menu → Rest timer for this set (G45): [v] seconds after this set only; null = the exercise's again.
+  void setSetRest(int i, int k, int? v) {
+    if (ex[i].restLocked) return;
+    sets[i][k].rest = v;
+    changed();
+  }
+
   /// The rest running now, for the web Home Rest timer card (D-87): when it ends, what is next and the workout's
   /// route. Null when no rest runs (or it is paused).
   static final liveRest = ValueNotifier<({DateTime ends, String next, String route})?>(null);
@@ -205,10 +258,14 @@ class WorkoutController extends ChangeNotifier {
     super.notifyListeners();
   }
 
-  // rest timer
+  // rest timer: seconds left (worked out from [_restEnds] while it runs, so it survives the app sleeping)
   int rest = 0, restMax = 0, restUsed = 0;
   bool restPaused = false, restOpen = false;
   (int, int) restAt = (0, -1);
+  DateTime? _restEnds;
+
+  /// Workout time when this rest began, for the set's actual rest (G49).
+  int _restFrom = 0;
 
   // hold countdown on a timed set: (exercise, set, seconds left)
   (int, int, int)? hold;
@@ -322,6 +379,7 @@ class WorkoutController extends ChangeNotifier {
   Future<void> open({int? start, String? reopen}) async {
     _hook();
     await LiveNotice.init();
+    await WorkoutFeel.load();
     try {
       final snap = await Services.cache.read(_cacheKey);
       final lv = plan.live;
@@ -357,6 +415,10 @@ class WorkoutController extends ChangeNotifier {
     if (resume) {
       startedAt = startedAt.add(DateTime.now().difference(pausedAt!));
       pausedAt = null;
+    }
+    if (ready && reopen == null) {
+      final snap = await Services.cache.read(_cacheKey);
+      if (snap is Map && ('${snap['id']}' == '$id' || (local && snap['local'] == true))) _restoreRest(snap);
     }
     if (ready) {
       await _loadVideos();
@@ -516,7 +578,35 @@ class WorkoutController extends ChangeNotifier {
         'reopened': reopened,
         'earlier': earlierSeconds,
         'sets': [for (final xs in sets) [for (final s in xs) s.toLocal()]],
+        // a rest running now comes back after an app restart (G48)
+        'rest': rest > 0
+            ? {'ends': _restEnds?.toUtc().toIso8601String(), 'left': rest, 'max': restMax, 'paused': restPaused, 'i': restAt.$1, 'k': restAt.$2, 'from': _restFrom}
+            : null,
       });
+
+  /// The rest saved with the phone's copy of this workout, if it has not ended yet.
+  void _restoreRest(Map snap) {
+    final r = snap['rest'];
+    if (r is! Map) return;
+    final paused = r['paused'] == true;
+    final ends = DateTime.tryParse('${r['ends']}')?.toLocal();
+    final left = paused ? (r['left'] as num? ?? 0).toInt() : (ends == null ? 0 : (ends.difference(DateTime.now()).inMilliseconds / 1000).ceil());
+    final i = (r['i'] as num? ?? 0).toInt(), k = (r['k'] as num? ?? -1).toInt();
+    if (left <= 0 || i >= ex.length) {
+      if (k >= 0 && i < sets.length && k < sets[i].length && ends != null && sets[i][k].restActual == null) {
+        sets[i][k].restActual = math.max(0, (sets[i][k].restPlanned ?? 0)); // ran out while the app was closed
+      }
+      return;
+    }
+    rest = left;
+    restMax = math.max(left, (r['max'] as num? ?? left).toInt());
+    restPaused = paused;
+    restAt = (i, k);
+    _restFrom = (r['from'] as num? ?? elapsed).toInt();
+    _restEnds = DateTime.now().add(Duration(seconds: left));
+    restOpen = false;
+    _alarm();
+  }
 
   Map<String, dynamic> get _state => {
         'started_at': startedAt.toUtc().toIso8601String(),
@@ -562,12 +652,15 @@ class WorkoutController extends ChangeNotifier {
           hold = (h.$1, h.$2, h.$3 - 1);
         }
       }
-      if (rest > 0 && !restPaused) {
-        rest -= 1;
+      final ends = _restEnds;
+      if (rest > 0 && !restPaused && ends != null) {
+        rest = math.max(0, (ends.difference(DateTime.now()).inMilliseconds / 1000).ceil());
         restUsed += 1;
         if (rest == 0) {
-          restOpen = false;
+          _closeRest();
+          WorkoutFeel.restOver();
           toast?.call('Rest is over', sub: 'Next: $nextUp', kind: ToastKind.info);
+          changed();
         }
       }
     }
@@ -853,15 +946,17 @@ class WorkoutController extends ChangeNotifier {
     hold = null;
     final all = exDone(i);
     final last = setsDone == setsAll && sets.every((xs) => xs.every((y) => y.done));
-    if (on && x.rest > 0 && !last) {
-      rest = x.rest;
-      restMax = x.rest;
-      restPaused = false;
-      restOpen = false; // the rest bar shows; the big timer opens from it (F35)
-      restAt = (i, k);
+    final r = restFor(i, k);
+    if (on) WorkoutFeel.setDone();
+    if (on && r > 0 && !last) {
+      s.restPlanned = r;
+      _beginRest(i, k, r); // the rest sheet opens by itself (G48)
     } else if (on) {
-      rest = 0;
-      restOpen = false;
+      _closeRest();
+    } else if (restAt == (i, k)) {
+      _closeRest(); // unticked the set this rest belongs to
+      s.restActual = null;
+      s.restPlanned = null;
     }
     if (on && s.pr) {
       toast?.call('New best!', sub: '${x.name} · ${kg(s.weight!)} kg × ${s.reps}', kind: ToastKind.star);
@@ -953,8 +1048,7 @@ class WorkoutController extends ChangeNotifier {
   }
 
   void startHold(int i, int k) {
-    rest = 0;
-    restOpen = false;
+    _closeRest();
     hold = (i, k, shownVal(i, k, 0).round());
     notifyListeners();
   }
@@ -1067,36 +1161,82 @@ class WorkoutController extends ChangeNotifier {
 
   // ─────────────────────────────── Rest
 
-  void restNow(int i) {
-    rest = ex[i].rest;
-    restMax = ex[i].rest;
+  /// Starts a rest of [secs] after set [k] of exercise [i] (k = -1: started from the rest chip).
+  void _beginRest(int i, int k, int secs, {bool open = true}) {
+    _closeRest();
+    rest = secs;
+    restMax = secs;
     restPaused = false;
-    restOpen = true;
-    restAt = (i, -1);
+    restOpen = open;
+    restAt = (i, k);
+    _restFrom = elapsed;
+    _restEnds = DateTime.now().add(Duration(seconds: secs));
+    _alarm();
+  }
+
+  /// The rest is over (ran out, skipped, or the next set was ticked): the set keeps what was really rested (G49).
+  void _closeRest() {
+    final (i, k) = restAt;
+    if (_restEnds != null && k >= 0 && i < sets.length && k < sets[i].length) {
+      sets[i][k].restActual = math.max(0, elapsed - _restFrom);
+    }
+    _restEnds = null;
+    rest = 0;
+    restOpen = false;
+    restPaused = false;
+    LiveNotice.cancelRestDone();
+  }
+
+  /// "Rest is over" notification at the end time, so it rings with the app in the background (G48/G50).
+  void _alarm() {
+    final ends = _restEnds;
+    if (ends == null || restPaused || finished) {
+      LiveNotice.cancelRestDone();
+      return;
+    }
+    LiveNotice.restDone(at: ends, next: nextUp, sound: WorkoutFeel.sound, vibrate: WorkoutFeel.haptics);
+  }
+
+  void restNow(int i) {
+    _beginRest(i, -1, rests[i].work > 0 ? rests[i].work : 90);
     notifyListeners();
   }
 
   void restMore([int s = 15]) {
     rest += s;
     restMax = math.max(restMax, rest);
+    _restEnds = _restEnds?.add(Duration(seconds: s));
+    _alarm();
     notifyListeners();
   }
 
   void restLess() {
-    rest = math.max(1, rest - 15);
+    final cut = math.min(15, rest - 1);
+    rest -= cut;
+    _restEnds = _restEnds?.subtract(Duration(seconds: cut));
+    _alarm();
+    notifyListeners();
+  }
+
+  /// Back to the full time (rest sheet → Reset).
+  void restReset() {
+    rest = restMax;
+    if (!restPaused) _restEnds = DateTime.now().add(Duration(seconds: rest));
+    _alarm();
     notifyListeners();
   }
 
   void restToggle() {
     restPaused = !restPaused;
+    // paused: the time left stays; resumed: a new end time from now
+    _restEnds = DateTime.now().add(Duration(seconds: rest));
+    _alarm();
     notifyListeners();
   }
 
   void restSkip() {
-    rest = 0;
-    restOpen = false;
-    restPaused = false;
-    notifyListeners();
+    _closeRest();
+    changed();
   }
 
   void restShow(bool open) {
@@ -1157,11 +1297,16 @@ class WorkoutController extends ChangeNotifier {
         s.pr = false;
       }
     }
+    _closeRest();
+    for (final xs in sets) {
+      for (final s in xs) {
+        s.restPlanned = null;
+        s.restActual = null;
+      }
+    }
     startedAt = DateTime.now();
     pausedAt = null;
     restUsed = 0;
-    rest = 0;
-    restOpen = false;
     hold = null;
     lastActive = 0;
     toast?.call('Workout restarted', sub: 'Timer is running from 0:00', kind: ToastKind.info, undo: () => _restore(before));
@@ -1200,9 +1345,8 @@ class WorkoutController extends ChangeNotifier {
   /// video's file for the upload.
   Future<void> finish({int? at, Future<Uint8List> Function(String path)? read}) async {
     finalSeconds = at ?? elapsed;
+    _closeRest();
     finished = true;
-    rest = 0;
-    restOpen = false;
     hold = null;
     _tick?.cancel();
     _save?.cancel();

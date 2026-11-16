@@ -14,6 +14,7 @@ import '../../../core/widgets/responsive.dart';
 import '../home/home_model.dart' show clock, dayShort, inNum, since;
 import '../home/home_parts.dart';
 import '../progress/progress_screen.dart' show pxLoading;
+import '../train/workout_feel.dart';
 import 'more_model.dart';
 import 'more_parts.dart';
 import 'more_sheets.dart';
@@ -386,8 +387,40 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
   List<Widget> _settingsRows(MoData d, {required bool web}) => [
         MoMenuRow(first: true, icon: AppIcons.shield, title: 'Privacy & data', sub: 'Who sees your data · download · delete', onTap: () => showPrivacySheet(context, c)),
         if (!web) MoMenuRow(icon: AppIcons.pulse, title: 'My activity', sub: 'Everything you logged, newest first', onTap: () => context.go('/more/activity')),
+        MoMenuRow(
+          icon: AppIcons.bellRing,
+          title: 'Workout sound & vibration',
+          sub: '${WorkoutFeel.sound ? 'Sound on' : 'Sound off'} · ${WorkoutFeel.haptics ? 'vibration on' : 'vibration off'}',
+          onTap: _workoutFeel,
+        ),
         MoMenuRow(icon: AppIcons.help, title: 'Help & about', sub: 'Questions, report a problem, version', onTap: () => _help()),
       ];
+
+  /// Sound and vibration on "set complete" and "rest is over" (tracker G50). Kept on this phone.
+  Future<void> _workoutFeel() async {
+    await WorkoutFeel.load();
+    if (!mounted) return;
+    await showAppSheet(
+      context,
+      title: 'Workout sound & vibration',
+      sub: 'When you tick a set and when your rest is over',
+      builder: (ctx) => StatefulBuilder(
+        builder: (_, set) {
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            MoToggleRow(first: true, icon: AppIcons.bellRing, title: 'Sound', sub: 'A click on each set, a sound when rest is over', on: WorkoutFeel.sound,
+                onTap: () => set(() => WorkoutFeel.save(sound: !WorkoutFeel.sound))),
+            MoToggleRow(icon: AppIcons.mobile, title: 'Vibration', sub: 'A buzz on each set and when rest is over', on: WorkoutFeel.haptics,
+                onTap: () => set(() => WorkoutFeel.save(haptics: !WorkoutFeel.haptics))),
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text('Your phone’s silent and Do not disturb modes always win.', style: AppText.s(12.5, W.w4, color: AppColors.muted)),
+            ),
+          ]);
+        },
+      ),
+    );
+    if (mounted) setState(() {});
+  }
 
   Future<void> _help() async {
     final shot = await moCapture(_shot);

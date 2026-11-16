@@ -2,10 +2,13 @@ import 'dart:isolate';
 import 'dart:ui' show IsolateNameServer;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 const _port = 'twv.live_notice';
 const _id = 7101;
+const _restId = 7102;
 
 /// A button tapped while the app sleeps runs here, in a small background isolate: it hands the button to the app's
 /// main isolate, which owns the workout. If the app was closed the press is dropped (the workout is still saved).
@@ -135,8 +138,64 @@ class LiveNotice {
         ),
       );
 
+  static DateTime? _restAt;
+
+  /// "Rest is over · Next: Squat" at the rest's end time (tracker G48/G50). Scheduled with the system, so it rings
+  /// with the app in the background or the phone locked. Its channel plays the sound / vibrates as the client set in
+  /// My account (one channel per choice: a channel's sound cannot change after it is made); the phone's silent and
+  /// do-not-disturb modes are kept by Android itself.
+  static Future<void> restDone({required DateTime at, required String next, bool sound = true, bool vibrate = true}) async {
+    if (!_ready) return;
+    if (_restAt != null && (_restAt!.difference(at).inSeconds).abs() < 1) return;
+    _restAt = at;
+    final ch = 'rest_done_${sound ? 's' : 'q'}${vibrate ? 'v' : 'n'}';
+    final d = NotificationDetails(
+      android: AndroidNotificationDetails(
+        ch,
+        sound ? (vibrate ? 'Rest is over' : 'Rest is over (sound only)') : (vibrate ? 'Rest is over (vibrate only)' : 'Rest is over (silent)'),
+        channelDescription: 'Tells you when your rest between sets is over',
+        icon: 'ic_stat_notify',
+        importance: Importance.high,
+        priority: Priority.high,
+        playSound: sound,
+        enableVibration: vibrate,
+        silent: !sound && !vibrate,
+        autoCancel: true,
+        timeoutAfter: 60 * 1000,
+        category: AndroidNotificationCategory.alarm,
+        visibility: NotificationVisibility.public,
+      ),
+    );
+    final when = tz.TZDateTime.from(at, tz.UTC);
+    try {
+      await _plugin.cancel(id: _restId);
+      try {
+        await _plugin.zonedSchedule(
+            id: _restId, title: 'Rest is over', body: 'Next: $next', scheduledDate: when, notificationDetails: d,
+            androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle, payload: '/train/workout');
+      } on PlatformException catch (_) {
+        // exact alarms not allowed on this phone: a few seconds late is fine
+        await _plugin.zonedSchedule(
+            id: _restId, title: 'Rest is over', body: 'Next: $next', scheduledDate: when, notificationDetails: d,
+            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle, payload: '/train/workout');
+      }
+    } catch (e) {
+      debugPrint('Rest notification: $e');
+    }
+  }
+
+  static Future<void> cancelRestDone() async {
+    if (_restAt == null) return;
+    _restAt = null;
+    if (!_ready) return;
+    try {
+      await _plugin.cancel(id: _restId);
+    } catch (_) {}
+  }
+
   static Future<void> clear() async {
     _last = null;
+    await cancelRestDone();
     if (!_ready) return;
     try {
       await _plugin.cancel(id: _id);

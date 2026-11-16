@@ -58,6 +58,9 @@ Future<String?> showNameModal(BuildContext context,
 /// "Edit sets and rest": a live line on top, Sets / Rest / RPE steppers, Reps, Tempo and a note. Returns the new values.
 Future<Map<String, dynamic>?> showSetsModal(BuildContext context, Map e) async {
   var sets = (e['sets'] as num?)?.toInt() ?? 3, rest = (e['rest_seconds'] as num?)?.toInt() ?? 90, rpe = (e['rpe'] as num?)?.toInt() ?? 0;
+  // rest after warm-up / drop sets (null = same as working sets) and the lock (tracker G47)
+  int? restWu = (e['rest_warmup_seconds'] as num?)?.toInt(), restDrop = (e['rest_drop_seconds'] as num?)?.toInt();
+  var restLock = e['rest_locked'] == true;
   final reps = TextEditingController(text: '${e['reps'] ?? ''}');
   final tempo = TextEditingController(text: '${e['tempo'] ?? ''}');
   final note = TextEditingController(text: '${e['note'] ?? ''}');
@@ -105,6 +108,17 @@ Future<Map<String, dynamic>?> showSetsModal(BuildContext context, Map e) async {
                 upd();
               }))),
         ),
+        pair(
+          meField('Rest after a warm-up set', LibStepper(value: restWu ?? rest, unit: 's', min: 0, max: 300, step: 15, onChanged: (v) => set(() => restWu = v))),
+          meField('Rest after a drop set', LibStepper(value: restDrop ?? rest, unit: 's', min: 0, max: 300, step: 15, onChanged: (v) => set(() => restDrop = v))),
+        ),
+        Row(spacing: 10, children: [
+          AppToggle(value: restLock, onChanged: (v) => set(() => restLock = v)),
+          Expanded(
+            child: Text(restLock ? 'Rest is locked: the client cannot change it' : 'The client can change the rest in the workout',
+                style: AppText.s(13, W.w6, color: AppColors.text2)),
+          ),
+        ]),
         meField('Tempo (optional)', AppTextField(controller: tempo, placeholder: '3-1-1', onChanged: (_) => upd()), hint: 'e.g. 3-1-1'),
         if (cardio)
           ValueListenableBuilder(
@@ -145,6 +159,9 @@ Future<Map<String, dynamic>?> showSetsModal(BuildContext context, Map e) async {
           'sets': sets,
           'reps': reps.text.trim(),
           'rest_seconds': rest,
+          'rest_warmup_seconds': restWu == null || restWu == rest ? null : restWu,
+          'rest_drop_seconds': restDrop == null || restDrop == rest ? null : restDrop,
+          'rest_locked': restLock,
           'rpe': rpe == 0 ? null : rpe,
           'tempo': tempo.text.trim(),
           'note': note.text.trim(),

@@ -229,7 +229,11 @@ class TrainEx {
         setsDone = _n(json['sets_done']).toInt(),
         focusMetric = '${json['focus_metric'] ?? 'volume'}',
         bpmMin = _nn(json['bpm_min'])?.toInt(),
-        bpmMax = _nn(json['bpm_max'])?.toInt();
+        bpmMax = _nn(json['bpm_max'])?.toInt(),
+        restWarmup = _nn(json['rest_warmup_seconds'])?.toInt(),
+        restDrop = _nn(json['rest_drop_seconds'])?.toInt(),
+        restLocked = json['rest_locked'] == true,
+        restPref = (json['rest_pref'] as Map?)?.cast<String, dynamic>();
 
   final Map<String, dynamic> json, full;
   final int index, peId, sets, rest, setsDone;
@@ -237,6 +241,12 @@ class TrainEx {
   final int? rpe, bpmMin, bpmMax;
   final double? targetKg;
   final String focusMetric;
+
+  /// Rest (tracker G44/G47): the coach's rest after a warm-up / drop set (null = [rest]), whether the coach locked it,
+  /// and the client's own timers for this exercise ({work, warmup, drop}, each null = the coach's).
+  final int? restWarmup, restDrop;
+  final bool restLocked;
+  final Map<String, dynamic>? restPref;
 
   /// Cardio: "Target 120–140 bpm" (the coach's range, tracker F42).
   String get bpmText => bpmMin == null && bpmMax == null

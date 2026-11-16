@@ -334,20 +334,24 @@ E51. ✅ Admin/trainer client Logs (Daily, Weekly, Habits, Supplements) aur clie
 
 ### G. Rest Timer (per exercise, per set type)
 
-44. ⬜ Exercise 3-dot menu me "Rest timer" option (Strong jaisa).
+44. ✅ Exercise 3-dot menu me "Rest timer" option (Strong jaisa).
     * Working, Warm-up aur Drop sets ke alag durations, minutes:seconds me enter, seconds me store.
     * Current workout ke current exercise par lage aur us exercise ke agle workouts ka default ban jaye, jab tak badla na jaye.
-45. ⬜ Per-set rest timer
+    * **Hua:** exercise ⋯ → Rest timers sheet: Working / Warm-up / Drop, −/+ 15 s ya quick picks (Off–15:00), seconds me save. Aaj ke workout par turant lagta hai aur `PUT me/exercise-prefs/<exercise>/` se agle workouts ka default (ClientExercisePref.rest_*).
+45. ✅ Per-set rest timer
     * Set number menu ka "Rest timer for this set" sirf us set ka rest.
     * Set row ke neeche dikhe, edit ya remove ho sake.
     * Per-set value exercise default ko override kare.
-46. ⬜ Swipe management
+    * **Hua:** set menu → "Rest timer for this set" (sheet: −/+ 15 s, quick picks, Use exercise rest, Save). Har set ke neeche patli rest line (2:00, "· this set" jab override ho). SetLog.rest_seconds.
+46. ✅ Swipe management
     * Set row par left swipe = delete: undo snackbar, ya set me data ho to pehle confirm.
     * Rest timer row par left swipe = delete.
     * Rest timer row tap = duration editor.
     * Smooth animations.
-47. ⬜ Admin-defined rest timers: plan builder me set, client logger me dikhen. Admin lock kar sakta hai. Lock na ho to client workout me badal sakta hai, aur admin planned vs actual rest dekh sake.
-48. ⬜ Rest sheet (workout ke dauran) (Strong jaisa)
+    * **Hua:** set row left swipe = delete + Undo; set me data / tick ho to pehle "Delete set?" confirm. Rest line left swipe = is set ka rest Off (Undo). Rest line tap = editor. Countdown line bharti hai.
+47. ✅ Admin-defined rest timers: plan builder me set, client logger me dikhen. Admin lock kar sakta hai. Lock na ho to client workout me badal sakta hai, aur admin planned vs actual rest dekh sake.
+    * **Hua:** plan builder (library + client plan drawer) me Rest after warm-up / drop set + "Lock rest" toggle (ProgramExercise.rest_warmup_seconds, rest_drop_seconds, rest_locked; migration training 0009). Locked = client ko read-only + toast, server 409 `rest_locked`. Coach Logs me "rest 1:45 / 2:00". Lock rakhna hai ya nahi = Probid ka jawab baaki (card).
+48. ✅ Rest sheet (workout ke dauran) (Strong jaisa)
     * Set complete par, us set ke liye rest duration ho to timer apne aap shuru.
     * Sheet navbar ke upar neeche: bada countdown, bada saaf Pause, Reset, Skip, +15 s, -15 s, aur chhupane ke liye X.
     * X UI chhupata hai, timer background me chalta rahe.
@@ -355,8 +359,11 @@ E51. ✅ Admin/trainer client Logs (Daily, Weekly, Habits, Supplements) aur clie
     * Home ya dusre page par jao to timer chale aur chhota rest indicator dikhe. Tap = sheet wapas.
     * Rest state persist, rest period ke andar app restart par bhi.
     * App background me ho to shade me rest-finished notification (existing notification setup).
-49. ⬜ History me rest data: har set ka actual rest store, sirf planned nahi (planned 2:00, actual 1:45 agar jaldi skip). History aur workout detail me planned vs actual.
-50. ⬜ Sound aur haptics: set complete aur rest finish par. Device silent mode ka respect. Settings me sound aur haptics toggles.
+    * **Hua:** tick par rest apne aap shuru, Strong jaisi sheet (bada ring, −15 / Pause / +15, Reset, Skip, Next up, X chhupata). Timer end-time se chalta (sleep / restart ke baad bhi sahi, 'workout:live' cache me). Mini bar me Rest. Android: rest khatam par shade notification (exact alarm, APK chahiye).
+49. ✅ History me rest data: har set ka actual rest store, sirf planned nahi (planned 2:00, actual 1:45 agar jaldi skip). History aur workout detail me planned vs actual.
+    * **Hua:** SetLog.rest_planned + rest_actual (seconds) save; client past workout aur coach Logs detail me "rest 1:45 / 2:00".
+50. ✅ Sound aur haptics: set complete aur rest finish par. Device silent mode ka respect. Settings me sound aur haptics toggles.
+    * **Hua:** set tick = medium haptic + click, rest khatam = heavy haptic + sound. More → "Workout sound & vibration" me Sound / Vibration toggles (phone par save). Phone silent ho to system sound nahi bajta.
 
 ### H. Workout Edit aur Timing
 

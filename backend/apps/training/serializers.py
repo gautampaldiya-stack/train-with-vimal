@@ -168,7 +168,8 @@ class ProgramExerciseSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProgramExercise
         fields = ["id", "exercise", "exercise_detail", "order", "superset_group", "sets", "reps", "rpe",
-                  "rest_seconds", "tempo", "target_weight_kg", "bpm_min", "bpm_max", "note", "override", "edited"]
+                  "rest_seconds", "rest_warmup_seconds", "rest_drop_seconds", "rest_locked", "tempo",
+                  "target_weight_kg", "bpm_min", "bpm_max", "note", "override", "edited"]
 
     def validate(self, attrs):
         lo, hi = attrs.get("bpm_min"), attrs.get("bpm_max")
@@ -368,7 +369,7 @@ class SetLogSerializer(serializers.ModelSerializer):
         model = SetLog
         fields = ["id", "program_exercise", "exercise", "exercise_name", "log_type", "set_number", "weight_kg",
                   "reps", "seconds", "bpm", "rpe", "is_bodyweight", "is_warmup", "set_type", "done", "done_at",
-                  "is_pr", "volume", "client_key", "bpm_target"]
+                  "is_pr", "volume", "client_key", "bpm_target", "rest_seconds", "rest_planned", "rest_actual"]
         read_only_fields = ["is_pr", "done_at"]
 
     def get_bpm_target(self, obj):
@@ -466,6 +467,10 @@ class StateSetSerializer(serializers.Serializer):
     is_warmup = serializers.BooleanField(default=False)
     # normal | warmup | drop | failure. An app from before set types sends only is_warmup.
     set_type = serializers.ChoiceField(choices=SetType.choices, required=False)
+    # rest: this set's own timer (null = the exercise's), what the timer was set to, what the client really rested
+    rest_seconds = serializers.IntegerField(min_value=0, max_value=900, required=False, allow_null=True)
+    rest_planned = serializers.IntegerField(min_value=0, max_value=900, required=False, allow_null=True)
+    rest_actual = serializers.IntegerField(min_value=0, max_value=24 * 3600, required=False, allow_null=True)
 
     def validate(self, attrs):
         if not attrs.get("set_type"):

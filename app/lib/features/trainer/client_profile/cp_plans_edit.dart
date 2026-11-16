@@ -136,6 +136,9 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
                         'reps': '${e['reps']}',
                         'rpe': e['rpe'],
                         'rest_seconds': e['rest_seconds'] ?? 0,
+                        'rest_warmup_seconds': e['rest_warmup_seconds'],
+                        'rest_drop_seconds': e['rest_drop_seconds'],
+                        'rest_locked': e['rest_locked'] == true,
                         'tempo': '${e['tempo'] ?? ''}',
                         'target_weight_kg': e['target_weight_kg'],
                         'bpm_min': e['bpm_min'],
@@ -157,6 +160,7 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
       final s = (e['sets'] as num?) ?? 0;
       if (s < 1 || s > 12) return 'Sets for ${exName(e)} must be 1 to 12.';
       if (((e['rest_seconds'] as num?) ?? 0) > 300) return 'Rest for ${exName(e)} can be up to 5 min.';
+      if (((e['rest_warmup_seconds'] as num?) ?? 0) > 300 || ((e['rest_drop_seconds'] as num?) ?? 0) > 300) return 'Rest for ${exName(e)} can be up to 5 min.';
       final r = e['rpe'] as num?;
       if (r != null && (r < 1 || r > 10)) return 'RPE for ${exName(e)} must be 1 to 10.';
       final lo = e['bpm_min'] as num?, hi = e['bpm_max'] as num?;
@@ -644,6 +648,17 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
                 field('Tempo', cell('tempo', '${e['tempo'] ?? ''}', (x) => e['tempo'] = x.trim(), ph: '3-1-1'))),
             two(ctx, field('Rest', cell('rest', restText(e['rest_seconds']), (x) => e['rest_seconds'] = parseRest(x), ph: '90 s or 2 min')),
                 field('Load', cell('load', loadText(e), (x) => e['target_weight_kg'] = parseKg(x), ph: 'kg, or empty for body weight'))),
+            two(ctx, field('Rest after a warm-up set', cell('restwu', restText(e['rest_warmup_seconds']), (x) => e['rest_warmup_seconds'] = x.trim().isEmpty ? null : parseRest(x), ph: 'same as Rest')),
+                field('Rest after a drop set', cell('restdrop', restText(e['rest_drop_seconds']), (x) => e['rest_drop_seconds'] = x.trim().isEmpty ? null : parseRest(x), ph: 'same as Rest'))),
+            StatefulBuilder(
+              builder: (_, set) => Row(spacing: 10, children: [
+                AppToggle(value: e['rest_locked'] == true, onChanged: (v) => set(() => e['rest_locked'] = v)),
+                Expanded(
+                  child: Text(e['rest_locked'] == true ? 'Rest is locked: $first cannot change it' : '$first can change the rest in the workout',
+                      style: AppText.s(13, W.w6, color: AppColors.text2)),
+                ),
+              ]),
+            ),
             if (isCardio(e))
               two(ctx, field('Min BPM', cell('bpmlo', '${e['bpm_min'] ?? ''}', (x) => e['bpm_min'] = int.tryParse(x.trim()), ph: '120', kb: TextInputType.number)),
                   field('Max BPM', cell('bpmhi', '${e['bpm_max'] ?? ''}', (x) => e['bpm_max'] = int.tryParse(x.trim()), ph: '140', kb: TextInputType.number))),

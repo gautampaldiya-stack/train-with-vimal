@@ -15,6 +15,7 @@ from rest_framework.views import APIView
 
 from apps.activity.services import log as activity_log
 from apps.clients.services import get_visible_client, visible_clients
+from apps.common.exceptions import Conflict
 from apps.common.mixins import SoftDeleteViewMixin
 from apps.common.permissions import HasTrainerPermission, IsClient, IsStaff
 from apps.notifications.services import notify
@@ -747,8 +748,7 @@ class MyTrainView(APIView):
             ids = [e.exercise_id for e in rows]
             last = services.last_performance(u, ids)
             prs = services.personal_bests(u, ids)
-            prefs = dict(ClientExercisePref.objects.filter(client=u, exercise_id__in=ids)
-                         .values_list("exercise_id", "focus_metric"))
+            prefs = {p.exercise_id: p for p in ClientExercisePref.objects.filter(client=u, exercise_id__in=ids)}
             for e in rows:
                 d = ProgramExerciseSerializer(e).data
                 d["exercise_full"] = ExerciseSerializer(e.exercise, context={"request": request}).data
@@ -762,7 +762,11 @@ class MyTrainView(APIView):
                         d["exercise_full"]["media"] = media_of(own, request)
                         d["exercise_full"]["video_title"] = own.title if own else None
                 d["last_time"] = last.get(e.exercise_id)
-                d["focus_metric"] = prefs.get(e.exercise_id, "volume")
+                pref = prefs.get(e.exercise_id)
+                d["focus_metric"] = pref.focus_metric if pref else "volume"
+                # the client's own rest timers (null = the plan's); ignored while the coach has locked rest
+                d["rest_pref"] = ({"work": pref.rest_work, "warmup": pref.rest_warmup, "drop": pref.rest_drop}
+                                  if pref and not e.rest_locked else None)
                 d["pr"] = prs.get(e.exercise_id)
                 mine = [s for s in here.sets.all() if s.exercise_id == e.exercise_id] if here else []
                 d["sets_done"] = sum(1 for s in mine if s.done and not s.is_warmup)
@@ -806,18 +810,37 @@ def _last_performed(user, pd, day):
 
 
 class MyExercisePrefView(APIView):
-    """Logger → Focus metric of one exercise (`PUT me/exercise-prefs/<exercise id>/`). Safe to send again."""
+    """Logger → Focus metric and Rest timers of one exercise (`PUT me/exercise-prefs/<exercise id>/`).
+
+    Send only what changes: `focus_metric`, and / or `rest_work`, `rest_warmup`, `rest_drop` in seconds (null = back to
+    the plan's). Rest cannot be changed while the coach has locked it in the client's plan (G47). Safe to send again.
+    """
 
     permission_classes = [IsClient]
+    REST = ("rest_work", "rest_warmup", "rest_drop")
 
     def put(self, request, exercise_id):
         ex = get_object_or_404(Exercise, id=exercise_id)
-        metric = request.data.get("focus_metric")
-        if metric not in FocusMetric.values:
-            raise serializers.ValidationError({"focus_metric": ["Pick one of the focus metrics."]})
-        ClientExercisePref.objects.update_or_create(client=request.user, exercise=ex,
-                                                    defaults={"focus_metric": metric})
-        return Response({"exercise": str(ex.id), "focus_metric": metric})
+        data, changes = request.data, {}
+        if "focus_metric" in data:
+            if data["focus_metric"] not in FocusMetric.values:
+                raise serializers.ValidationError({"focus_metric": ["Pick one of the focus metrics."]})
+            changes["focus_metric"] = data["focus_metric"]
+        rest = {k: data[k] for k in self.REST if k in data}
+        for k, v in rest.items():
+            if v is not None and (not isinstance(v, int) or isinstance(v, bool) or not 0 <= v <= 900):
+                raise serializers.ValidationError({k: ["Rest is 0:00 to 15:00."]})
+        if rest:
+            pa, _, _, _ = services.today_plan(request.user, timezone.localdate())
+            if pa and ProgramExercise.objects.filter(day__week__program=pa.effective_program, exercise=ex,
+                                                     rest_locked=True).exists():
+                raise Conflict("Your coach has set the rest for this exercise.", code="rest_locked")
+            changes.update(rest)
+        if not changes:
+            raise serializers.ValidationError({"focus_metric": ["Nothing to change."]})
+        pref, _ = ClientExercisePref.objects.update_or_create(client=request.user, exercise=ex, defaults=changes)
+        return Response({"exercise": str(ex.id), "focus_metric": pref.focus_metric,
+                         **{k: getattr(pref, k) for k in self.REST}})
 
 
 class MyWorkoutViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):

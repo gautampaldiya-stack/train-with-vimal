@@ -165,7 +165,11 @@ String _setText(Map s) {
   }
   final type = switch ('${s['set_type'] ?? ''}') { 'warmup' => 'Warm-up · ', 'drop' => 'Drop set · ', 'failure' => 'To failure · ', _ => '' };
   final rpe = s['rpe'] == null ? '' : ' · RPE ${double.tryParse('${s['rpe']}')?.toStringAsFixed(1).replaceAll('.0', '') ?? s['rpe']}';
-  return bits.isEmpty ? 'Set ${s['set_number']}' : '$type${bits.join(' · ')}$rpe';
+  // rest after the set: what the client really rested next to the timer (tracker G49), "rest 1:45 / 2:00"
+  final ra = s['rest_actual'] as num?, rp = s['rest_planned'] as num?;
+  String mmss(num v) => '${v ~/ 60}:${(v.toInt() % 60).toString().padLeft(2, '0')}';
+  final rest = ra == null ? '' : ' · rest ${mmss(ra)}${rp != null && rp > 0 ? ' / ${mmss(rp)}' : ''}';
+  return bits.isEmpty ? 'Set ${s['set_number']}$rest' : '$type${bits.join(' · ')}$rpe$rest';
 }
 
 Widget _num(int i, Tone tone) => Container(
