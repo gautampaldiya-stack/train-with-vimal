@@ -148,17 +148,24 @@ Widget _future(Future<Map> f, Widget Function(Map) done) => FutureBuilder<Map>(
 
 String _setText(Map s) {
   final kg = double.tryParse('${s['weight_kg'] ?? ''}');
-  final reps = s['reps'], secs = s['seconds'], km = double.tryParse('${s['distance_km'] ?? ''}');
+  final reps = s['reps'], secs = s['seconds'], bpm = s['bpm'];
   final bits = <String>[];
-  if (km != null && km > 0) bits.add('${cpOne(km)} km');
   if (secs != null && (secs as num) > 0) bits.add(secs >= 120 ? '${(secs / 60).round()} min' : '$secs s');
+  // cardio: the heart rate the client got next to the coach's range (tracker F42)
+  if (bpm != null) {
+    final t = s['bpm_target'];
+    final range = t is List && t.length == 2 ? ' (target ${[t[0], t[1]].where((v) => v != null).join('–')})' : '';
+    bits.add('$bpm bpm$range');
+  }
   if (reps != null && (reps as num) > 0) {
     final bw = s['is_bodyweight'] == true;
     bits.add(kg != null && kg > 0 ? '${bw ? 'Body + ' : ''}${cpOne(kg)} kg × $reps' : (bw ? 'Body × $reps' : '× $reps'));
   } else if (kg != null && kg > 0) {
     bits.add('${cpOne(kg)} kg');
   }
-  return bits.isEmpty ? 'Set ${s['set_number']}' : bits.join(' · ');
+  final type = switch ('${s['set_type'] ?? ''}') { 'warmup' => 'Warm-up · ', 'drop' => 'Drop set · ', 'failure' => 'To failure · ', _ => '' };
+  final rpe = s['rpe'] == null ? '' : ' · RPE ${double.tryParse('${s['rpe']}')?.toStringAsFixed(1).replaceAll('.0', '') ?? s['rpe']}';
+  return bits.isEmpty ? 'Set ${s['set_number']}' : '$type${bits.join(' · ')}$rpe';
 }
 
 Widget _num(int i, Tone tone) => Container(

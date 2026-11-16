@@ -138,6 +138,8 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
                         'rest_seconds': e['rest_seconds'] ?? 0,
                         'tempo': '${e['tempo'] ?? ''}',
                         'target_weight_kg': e['target_weight_kg'],
+                        'bpm_min': e['bpm_min'],
+                        'bpm_max': e['bpm_max'],
                         'note': '${e['note'] ?? ''}',
                         'override': e['override'] ?? {},
                       },
@@ -157,6 +159,9 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
       if (((e['rest_seconds'] as num?) ?? 0) > 300) return 'Rest for ${exName(e)} can be up to 5 min.';
       final r = e['rpe'] as num?;
       if (r != null && (r < 1 || r > 10)) return 'RPE for ${exName(e)} must be 1 to 10.';
+      final lo = e['bpm_min'] as num?, hi = e['bpm_max'] as num?;
+      if ((lo != null && (lo < 30 || lo > 250)) || (hi != null && (hi < 30 || hi > 250))) return 'BPM for ${exName(e)} must be 30 to 250.';
+      if (lo != null && hi != null && hi < lo) return 'Max BPM for ${exName(e)} must not be below min.';
     }
     return null;
   }
@@ -591,9 +596,10 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
   }
 
   /// Edit drawer for one exercise of the day: sets, reps, RPE, tempo, rest, load, note. Previous / Next walk the
-  /// day's exercises; every change shows in the list at once (only for this client).
+  /// day's exercises. Changes stay in a draft until Done (tracker F43); back, swipe down or a tap outside drops them.
   Future<void> _editExercise(int start) {
     final i = ValueNotifier(start);
+    final drafts = ExerciseDrafts(_ex);
     Widget field(String label, Widget f) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [Text(label, style: AppText.label), f]);
     Widget two(BuildContext ctx, Widget a, Widget b) => ctx.isPhone
         ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [a, b])
@@ -616,10 +622,10 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
         builder: (ctx, _) {
           final n = i.value;
           if (n >= _ex.length) return const SizedBox();
-          final e = _ex[n] as Map;
+          final e = drafts.of(n);
           final tag = tagsOf(exercisesOf(_day(sel)))[n];
           Widget cell(String k, String v, ValueChanged<String> on, {String ph = '–', TextInputType? kb}) =>
-              _Cell(key: ValueKey('ed$k$n$_gen'), value: v, placeholder: ph, height: 36, keyboard: kb, onChanged: (x) => _change(() => on(x)));
+              _Cell(key: ValueKey('ed$k$n$_gen'), value: v, placeholder: ph, height: 36, keyboard: kb, onChanged: on);
           return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [
             const SizedBox(height: 2),
             Row(spacing: 10, children: [
@@ -630,7 +636,7 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
                   Text('Exercise ${n + 1} of ${_ex.length}${'${e['superset_group'] ?? ''}'.isEmpty ? '' : ' · superset ${e['superset_group']}'}', style: AppText.cap),
                 ]),
               ),
-              AppButton('Swap', icon: AppIcons.swap, size: BtnSize.sm, onPressed: () => _pick(swap: n)),
+              AppButton('Swap', icon: AppIcons.swap, size: BtnSize.sm, onPressed: () => _pick(swap: n).then((_) => drafts.drop(n))),
             ]),
             two(ctx, field('Sets', cell('sets', '${e['sets'] ?? ''}', (x) => e['sets'] = int.tryParse(x.trim()) ?? 0, ph: '3', kb: TextInputType.number)),
                 field('Reps', cell('reps', '${e['reps'] ?? ''}', (x) => e['reps'] = x.trim(), ph: '8–10'))),
@@ -638,7 +644,10 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
                 field('Tempo', cell('tempo', '${e['tempo'] ?? ''}', (x) => e['tempo'] = x.trim(), ph: '3-1-1'))),
             two(ctx, field('Rest', cell('rest', restText(e['rest_seconds']), (x) => e['rest_seconds'] = parseRest(x), ph: '90 s or 2 min')),
                 field('Load', cell('load', loadText(e), (x) => e['target_weight_kg'] = parseKg(x), ph: 'kg, or empty for body weight'))),
-            field('Note for $first', _Cell(key: ValueKey('ednote$n$_gen'), value: '${e['note'] ?? ''}', placeholder: 'Two warm-up sets first, slow on the way down…', lines: 3, onChanged: (x) => _change(() => e['note'] = x))),
+            if (isCardio(e))
+              two(ctx, field('Min BPM', cell('bpmlo', '${e['bpm_min'] ?? ''}', (x) => e['bpm_min'] = int.tryParse(x.trim()), ph: '120', kb: TextInputType.number)),
+                  field('Max BPM', cell('bpmhi', '${e['bpm_max'] ?? ''}', (x) => e['bpm_max'] = int.tryParse(x.trim()), ph: '140', kb: TextInputType.number))),
+            field('Note for $first', _Cell(key: ValueKey('ednote$n$_gen'), value: '${e['note'] ?? ''}', placeholder: 'Two warm-up sets first, slow on the way down…', lines: 3, onChanged: (x) => e['note'] = x)),
             Text('Rest up to 5 min. Changes carry to the later weeks when you save.', style: AppText.cap),
           ]);
         },
@@ -654,8 +663,12 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
               builder: (_, n, _) => Text(n < _ex.length ? 'Exercise ${n + 1} of ${_ex.length} · only for $first' : '', style: AppText.cap),
             ),
           ),
-        AppButton.primary('Done', icon: AppIcons.check, onPressed: () => Navigator.of(ctx).pop()),
+        AppButton.primary('Done', icon: AppIcons.check, onPressed: () {
+          if (drafts.apply()) _change(() {});
+          Navigator.of(ctx).pop();
+        }),
       ],
+      footerLine: false,
     ).whenComplete(() => disposeLater([i]));
   }
 }

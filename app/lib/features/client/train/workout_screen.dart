@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
@@ -10,20 +11,20 @@ import 'package:intl/intl.dart';
 import '../../../app/shell/back_nav.dart';
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
-import '../../../core/widgets/animated_rows.dart';
 import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
+import '../../../core/widgets/tooltip.dart';
 import '../home/home_parts.dart';
 import 'train_model.dart';
 import 'train_parts.dart';
 import 'workout_model.dart';
-import '../../../core/widgets/tooltip.dart';
 
-/// Workout logger (boards `ClientWorkout` phone and `ClientWorkoutWeb`): one exercise at a time,
-/// sets with −/+ values and ticks, rest timer, workout timer, finish and the "Workout done" page.
-/// [start] = program day to start, [reopen] = finished workout to log more sets on.
+/// Workout logger, Strong-style (tracker F, Probid 2026-11-16, built new from his screenshots): every exercise on
+/// one page with SET · PREVIOUS · KG · REPS · ✓ rows, number boxes with placeholders, a phone keypad, set types
+/// (W / D / F), focus metric, ⌄ to the mini bar, Cancel workout at the end and the Congratulations page.
+/// [start] = program day to start (the Start sheet shows first), [reopen] = finished workout to log more sets on.
 class WorkoutScreen extends StatefulWidget {
   const WorkoutScreen({super.key, this.start, this.reopen, this.then});
   final int? start;
@@ -36,22 +37,29 @@ class WorkoutScreen extends StatefulWidget {
   State<WorkoutScreen> createState() => _WorkoutScreenState();
 }
 
+/// The box being typed in with the phone keypad: (exercise, set, column).
+typedef _Cell = (int, int, int);
+
 class _WorkoutScreenState extends State<WorkoutScreen> {
   final train = TrainController();
   WorkoutController? w;
   String? _err;
 
-  /// Value being changed on the current exercise: (set, column).
-  (int, int)? act;
-  int _actEx = -1;
+  /// Start sheet (before the workout exists, so its clock has not started).
+  TrainData? _preview;
+  bool _starting = false;
+
+  /// Phone keypad: the active box and what was typed since it opened (the first key replaces the value).
+  _Cell? act;
+  String _buf = '';
+  bool _fresh = true;
 
   RawDialogRoute? _restRoute;
-
-  /// Phone: toasts sit above the timer / rest bar while the logger is open.
   double? _lifted;
   double _barH = 0;
   bool _idleUp = false;
   final _note = TextEditingController();
+  final _scroll = ScrollController();
 
   @override
   void initState() {
@@ -60,6 +68,11 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   }
 
   Future<void> _boot() async {
+    final have = WorkoutController.current;
+    if (have != null && have.ready && !have.finished && widget.reopen == null) {
+      _attach(have);
+      return;
+    }
     await train.start();
     final d = train.data;
     if (!mounted) return;
@@ -68,16 +81,37 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       setState(() => _err = e == null ? 'Could not load your plan.' : (e.offline ? 'You are offline. Connect to open your workout.' : e.message));
       return;
     }
+    if (widget.start != null && widget.reopen == null && d.live == null && WorkoutController.current == null) {
+      setState(() => _preview = d);
+      return;
+    }
+    await _open(d);
+  }
+
+  void _attach(WorkoutController c) {
+    c.toast = _toast;
+    c.addListener(_onW);
+    setState(() => w = c);
+    _then(c);
+  }
+
+  Future<void> _open(TrainData d) async {
     final c = WorkoutController(d)..toast = _toast;
     c.addListener(_onW);
     setState(() => w = c);
     await c.open(start: widget.start, reopen: widget.reopen);
     if (!mounted) return;
     setState(() {});
-    if (c.ready && !c.finished) {
+    _then(c);
+  }
+
+  void _then(WorkoutController c) {
+    if (!c.ready || c.finished) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       if (widget.then == 'finish') _askFinish(c);
       if (widget.then == 'restart') _askRestart(c);
-    }
+    });
   }
 
   void _lift(double? v) {
@@ -91,10 +125,14 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   @override
   void dispose() {
     if (_lifted != null) Timer.run(() => ToastHost.bottomOffset.value = 75);
-    w?.removeListener(_onW);
-    w?.dispose();
+    final c = w;
+    if (c != null) {
+      c.removeListener(_onW);
+      c.detach(); // the workout goes on: mini bar, notification (F33)
+    }
     train.dispose();
     _note.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -107,9 +145,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   void _onW() {
     final c = w;
     if (c == null || !mounted || !c.ready) return;
-    if (c.cur != _actEx) {
-      act = null;
-      _actEx = c.cur;
+    final a = act;
+    if (a != null && (a.$1 >= c.sets.length || a.$2 >= c.sets[a.$1].length || c.sets[a.$1][a.$2].done)) {
+      setState(() => act = null);
     }
     final restUp = _restRoute != null;
     if (c.restOpen && c.rest > 0 && !restUp && !c.finished) {
@@ -122,29 +160,45 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     if (!c.finished && !c.paused && c.elapsed - c.lastActive >= 3 * 3600) {
       // no answer for 3 hours: saved at the last set
       final at = c.lastTickAt;
-      c.finish(at: at ?? c.elapsed);
-      _toast('Workout saved', sub: at == null ? '${c.setsDone} of ${c.setsAll} sets' : 'Time set to ${clockText(at)}, your last set', kind: ToastKind.star);
+      _finish(c, at: at ?? c.elapsed);
     } else if (c.idle && !_idleUp) {
       _idleUp = true;
       WidgetsBinding.instance.addPostFrameCallback((_) => _askIdle());
     }
   }
 
+  /// ⌄, back or a swipe down: the logger goes down to the mini bar; the workout keeps running (F33).
+  void _collapse() {
+    final to = WorkoutController.backTo;
+    context.go(to.startsWith('/train/workout') ? '/train' : to);
+  }
+
   // ─────────────────────────────── Page
 
-  /// The phone's back button closes the rest panel first, then goes back to the Train overview (Phase 4).
   @override
   Widget build(BuildContext context) => BackIntercept(
-    onBack: () {
-      final c = w;
-      if (c == null || !c.restOpen) return false;
-      c.restShow(false);
-      return true;
-    },
-    child: Builder(builder: _page),
-  );
+        onBack: () {
+          if (act != null) {
+            setState(() => act = null);
+            return true;
+          }
+          final c = w;
+          if (c != null && c.restOpen) {
+            c.restShow(false);
+            return true;
+          }
+          if (c != null && c.ready && !c.finished) {
+            _collapse();
+            return true;
+          }
+          return false;
+        },
+        child: Builder(builder: _page),
+      );
 
   Widget _page(BuildContext context) {
+    final p = _preview;
+    if (p != null) return _startSheet(p);
     final c = w;
     if (_err != null || (c != null && c.failed != null)) return _problem(_err ?? c!.failed!);
     if (c == null || !c.ready) {
@@ -154,11 +208,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       listenable: c,
       builder: (context, _) {
         final phone = context.isPhone;
-        // 10 above the timer / rest bar, measured; there is no tab bar on the logger (the old 75 + 66 counted one,
-        // so toasts floated ~75 too high, Probid 2026-11-02).
-        _lift(phone && !c.finished ? (_barH > 0 ? _barH + 10 : 76) : null);
+        _lift(phone && !c.finished ? (act != null ? 300 : (_barH > 0 ? _barH + 10 : 20)) : null);
         if (c.finished) return _doneView(c, phone);
-        return phone ? _phone(c) : _web(c);
+        return _logger(c, phone);
       },
     );
   }
@@ -174,385 +226,362 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         ),
       );
 
-  Widget _phone(WorkoutController c) {
-    final resting = c.rest > 0;
-    return Stack(children: [
-      CaPinned(
-        head: _top(c, web: false),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 92),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-            _pager(c),
-            _panel(c, web: false),
-          ]),
-        ),
+  // ─────────────────────────────── Start sheet
+
+  /// Before the clock starts: the day, when it was last done and its exercises; Start workout starts it (F34).
+  Widget _startSheet(TrainData d) {
+    final web = !context.isPhone;
+    final last = d.lastPerformed;
+    final card = Container(
+      width: web ? 460 : double.infinity,
+      constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .86),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: web ? BorderRadius.circular(18) : const BorderRadius.vertical(top: Radius.circular(20)),
+        boxShadow: AppShadows.dialogBig,
       ),
-      Positioned(left: 0, right: 0, bottom: 0, child: _BarMeasure(onHeight: (h) {
-        if (h != _barH && mounted) setState(() => _barH = h);
-      }, child: resting ? _restBar(c, web: false) : _timerBar(c))),
-    ]);
-  }
-
-  Widget _web(WorkoutController c) => CaWeb(
-        web: true,
-        child: CaPinned(
-        web: true,
-        head: _top(c, web: true),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(32, 4, 32, 72),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1080),
-              child: LayoutBuilder(builder: (context, box) {
-                final side = box.maxWidth >= 760;
-                final right = Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-                  if (!side) _pager(c),
-                  _panel(c, web: true),
-                  if (c.rest > 0) _restBar(c, web: true),
-                ]);
-                return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 16, children: [
-                  if (side)
-                    Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 20, children: [
-                      SizedBox(width: 280, child: _sideList(c)),
-                      Expanded(child: right),
-                    ])
-                  else
-                    right,
-                ]);
-              }),
-            ),
-          ),
-        ),
-      ));
-
-  // ─────────────────────────────── Top bar (`cl-top`)
-
-  Widget _top(WorkoutController c, {required bool web}) => Padding(
-        padding: EdgeInsets.symmetric(vertical: web ? 4 : 0),
-        child: Row(spacing: 10, children: [
-          CaBackBtn(tooltip: 'Back to overview', onTap: () => context.go('/train')),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-              CutText(c.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(web ? 22 : 17, W.w8)),
-              Row(spacing: 5, children: [
-                Builder(builder: (bc) => _timeChip(c, () => web ? _timerPop(bc, c) : _timerSheet(c))),
-                Flexible(child: CutText('· ${c.setsDone} of ${c.setsAll} sets', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted))),
-              ]),
-            ]),
-          ),
-          Builder(builder: (bc) => CaIconBtn(AppIcons.dots, tooltip: 'Workout options', onTap: () => _menu(bc, c))),
-          CaButton('Finish', small: true, expand: false, onPressed: () => _askFinish(c)),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+        Row(spacing: 10, children: [
+          CaIconBtn(AppIcons.close, tooltip: 'Close', onTap: () => context.go(WorkoutController.backTo.startsWith('/train/workout') ? '/train' : WorkoutController.backTo)),
+          Expanded(child: CutText(d.dayName.isEmpty ? 'Workout' : d.dayName, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(16, W.w8))),
+          const SizedBox(width: 36),
         ]),
-      );
-
-  /// `cl-time`: the running clock, opens the timer.
-  Widget _timeChip(WorkoutController c, VoidCallback onTap) => Semantics(
-        button: true,
-        label: 'Workout timer ${clockText(c.elapsed)}',
-        child: Hover(
-          onTap: onTap,
-          builder: (_, h, _) => Container(
-            height: 22,
-            padding: const EdgeInsets.symmetric(horizontal: 7),
-            decoration: BoxDecoration(color: c.paused ? AppColors.amberBg : (h ? AppColors.pressed : AppColors.sub), borderRadius: BorderRadius.circular(6)),
-            child: Row(mainAxisSize: MainAxisSize.min, spacing: 4, children: [
-              AppIcon(c.paused ? AppIcons.pause : AppIcons.clock, size: 13, color: c.paused ? AppColors.amberText : AppColors.text),
-              Text(clockText(c.elapsed), style: AppText.s(12.5, W.w7, color: c.paused ? AppColors.amberText : AppColors.text, tabular: true)),
+        Text(last == null ? 'First time doing this workout' : 'Last performed: ${DateFormat('d MMMM y').format(last)}',
+            style: AppText.s(13, W.w5, color: AppColors.muted)),
+        Flexible(
+          child: SingleChildScrollView(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              for (final x in d.exercises)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 7),
+                  child: Row(spacing: 12, children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(10)),
+                      child: Text(x.name.isEmpty ? '?' : x.name[0].toUpperCase(), style: AppText.s(17, W.w8, color: AppColors.text2)),
+                    ),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+                        Text(x.kind == ExKind.cardio ? x.name : '${x.sets} × ${x.name}', style: AppText.s(14, W.w7)),
+                        Text(x.muscleLabel, style: AppText.s(12.5, W.w4, color: AppColors.muted)),
+                      ]),
+                    ),
+                    CaIconBtn(AppIcons.help, tooltip: 'How to do it', onTap: () => showGuide(context, x, _info(d, x))),
+                  ]),
+                ),
             ]),
           ),
         ),
-      );
-
-  // ─────────────────────────────── Exercise switcher
-
-  Widget _badge(WorkoutController c, int i, {required bool on}) {
-    final done = c.exDone(i);
-    return Container(
-      width: 24,
-      height: 24,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(color: done ? AppColors.okSolid : (on ? AppColors.accent : AppColors.sub), borderRadius: BorderRadius.circular(7)),
-      child: done
-          ? const AppIcon(AppIcons.check, size: 13, color: AppColors.white, stroke: 2.8)
-          : Text('${i + 1}', style: AppText.s(12, W.w8, color: on ? AppColors.white : AppColors.text2)),
+        CaButton('Start workout', icon: AppIcons.play, loading: _starting, onPressed: _starting
+            ? null
+            : () async {
+                setState(() => _starting = true);
+                final data = _preview!;
+                setState(() => _preview = null);
+                await _open(data);
+                if (mounted) setState(() => _starting = false);
+              }),
+      ]),
+    );
+    return ColoredBox(
+      color: AppColors.scrimSheet,
+      child: web ? Center(child: Padding(padding: const EdgeInsets.all(24), child: card)) : Align(alignment: Alignment.bottomCenter, child: card),
     );
   }
 
-  /// Phone: `cl-pager` chips.
-  Widget _pager(WorkoutController c) => SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        clipBehavior: Clip.none,
-        child: Row(spacing: 6, children: [
-          for (final (i, x) in c.ex.indexed)
-            Hover(
-              onTap: () => c.goTo(i),
-              builder: (_, h, _) {
-                final on = i == c.cur;
-                return Container(
-                  height: 36,
-                  padding: const EdgeInsets.fromLTRB(6, 0, 12, 0),
-                  decoration: BoxDecoration(
-                    color: h && !on ? AppColors.outlineHover : AppColors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: on ? AppColors.text : AppColors.line, width: on ? 2 : 1),
-                  ),
-                  child: Row(spacing: 7, children: [
-                    _badge(c, i, on: on),
-                    Text(x.name, style: AppText.s(13, on ? W.w7 : W.w6, color: on ? AppColors.text : AppColors.text2)),
-                  ]),
-                );
-              },
-            ),
-        ]),
+  GuideInfo _info(TrainData d, TrainEx e) => GuideInfo(
+        context: '${d.dayName} · Exercise ${e.index + 1} of ${d.exercises.length}',
+        program: d.program,
+        coachFirst: d.coachFirst,
+        coachInitials: d.coachInitials,
       );
 
-  /// Web: `cl-side` list.
-  Widget _sideList(WorkoutController c) => Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 4, children: [
-          for (final (i, x) in c.ex.indexed)
-            Hover(
-              onTap: () => c.goTo(i),
-              builder: (_, h, _) {
-                final on = i == c.cur;
-                return Container(
-                  height: 42,
-                  padding: const EdgeInsets.fromLTRB(6, 0, 12, 0),
-                  decoration: BoxDecoration(color: on ? AppColors.sub : (h ? AppColors.outlineHover : null), borderRadius: BorderRadius.circular(10)),
-                  child: Row(spacing: 7, children: [
-                    _badge(c, i, on: on),
-                    Expanded(child: CutText(x.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, on ? W.w7 : W.w6, color: on ? AppColors.text : AppColors.text2))),
-                  ]),
-                );
-              },
-            ),
+  // ─────────────────────────────── Logger
+
+  Widget _logger(WorkoutController c, bool phone) {
+    final keypad = phone && act != null;
+    final resting = c.rest > 0 && !keypad;
+    final list = ListView(
+      controller: _scroll,
+      padding: EdgeInsets.fromLTRB(phone ? 16 : 28, 6, phone ? 16 : 28, keypad ? 300 : (resting ? 110 : 40)),
+      children: [
+        _title(c),
+        for (var i = 0; i < c.ex.length; i++) _exercise(c, i, web: !phone),
+        const SizedBox(height: 18),
+        _cancelLink(c),
+        const SizedBox(height: 12),
+      ],
+    );
+    final body = phone
+        ? list
+        : Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 820), child: list));
+    return CaWeb(
+      web: !phone,
+      child: Stack(children: [
+        Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          _top(c, phone),
+          Expanded(child: GestureDetector(onTap: act == null ? null : () => setState(() => act = null), behavior: HitTestBehavior.translucent, child: body)),
         ]),
-      );
-
-  // ─────────────────────────────── Exercise panel (`cl-panel`)
-
-  String _hint(WorkoutController c, TrainEx e) {
-    final each = e.reps.contains('each side') ? ' each side' : '';
-    switch (e.kind) {
-      case ExKind.weight:
-        final vol = c.sets[c.cur].fold(0.0, (a, s) => a + c.setVolume(s));
-        final bw = c.plan.bodyweight;
-        return 'Volume so far ${NumberFormat.decimalPattern('en_IN').format(vol.round())} kg'
-            '${bw == null ? '' : ' · BW = ${kg(bw)} kg (last weigh-in)'}. Tap BW on a set to log bodyweight; − / + adds load or assistance.';
-      case ExKind.time:
-        final held = c.sets[c.cur].where((s) => s.done).fold(0, (a, s) => a + (s.seconds ?? 0));
-        return 'Hold so far $held s$each. Tap ▶ to time the hold: it counts down and ticks the set at 0. Or tap the time to change it and tick it yourself.';
-      case ExKind.cardio:
-        return 'Log the time and distance from the machine screen. Speed and incline come from ${c.plan.coachFirst}’s target.';
-    }
+        if (keypad) Positioned(left: 0, right: 0, bottom: 0, child: _keypad(c)),
+        if (resting)
+          Positioned(
+            left: phone ? 0 : null,
+            right: phone ? 0 : 24,
+            bottom: phone ? 0 : 20,
+            width: phone ? null : 420,
+            child: _BarMeasure(onHeight: (h) {
+              if (h != _barH && mounted) setState(() => _barH = h);
+            }, child: _restBar(c, web: !phone)),
+          ),
+      ]),
+    );
   }
 
-  Widget _panel(WorkoutController c, {required bool web}) {
-    final e = c.e, n = c.ex.length;
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [
-        Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 8, children: [
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('${e.blockName} · ${c.cur + 1} of $n'.toUpperCase(), style: AppText.s(11.5, W.w8, color: AppColors.accentText, ls: .575)),
-              const SizedBox(height: 2),
-              Text(e.name, style: AppText.s(20, W.w8)),
-            ]),
-          ),
-          if (e.prText.isNotEmpty)
-            Container(
-              height: 24,
-              margin: const EdgeInsets.only(top: 16),
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              decoration: BoxDecoration(color: AppColors.okBg, borderRadius: BorderRadius.circular(7)),
-              child: Row(mainAxisSize: MainAxisSize.min, spacing: 4, children: [
-                const AppIcon(AppIcons.star, size: 12, color: AppColors.okText),
-                Text('PR ${e.prText}', style: AppText.s(12, W.w8, color: AppColors.okText)),
-              ]),
-            ),
-        ]),
-        Padding(
-          padding: const EdgeInsets.only(top: 0),
-          child: Transform.translate(offset: const Offset(0, -8), child: Text('Target ${e.target}', style: AppText.s(13, W.w6, color: AppColors.text2))),
-        ),
-        Transform.translate(
-          offset: const Offset(0, -8),
-          child: Row(spacing: 6, children: [
-            if (e.rest > 0) CaButton('Rest ${e.rest}s', small: true, expand: false, kind: CaBtnKind.out, icon: AppIcons.clock, onPressed: c.restNow),
-            CaButton('How to do it', small: true, expand: false, kind: CaBtnKind.out, icon: AppIcons.play, onPressed: () => _guide(c, e)),
-            const Spacer(),
-            Builder(
-              builder: (bc) => Semantics(
-                button: true,
-                label: 'How to log this',
-                child: Hover(
-                  onTap: () => _tip(bc, _hint(c, e), web: web),
-                  builder: (_, h, _) => Container(
-                    width: 30,
-                    height: 30,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(color: h ? AppColors.sub : null, shape: BoxShape.circle),
-                    child: const AppIcon(AppIcons.infoAlt, size: 17, color: AppColors.muted),
+  /// ⌄ · rest timer · clock · FINISH. A swipe down on it collapses too.
+  Widget _top(WorkoutController c, bool phone) {
+    final resting = c.rest > 0;
+    final p = c.restMax == 0 ? 0.0 : (c.rest / c.restMax).clamp(0.0, 1.0);
+    return GestureDetector(
+      onVerticalDragEnd: (d) {
+        if ((d.primaryVelocity ?? 0) > 250) _collapse();
+      },
+      child: Container(
+        padding: EdgeInsets.fromLTRB(phone ? 8 : 20, phone ? 6 : 14, phone ? 8 : 20, 8),
+        decoration: const BoxDecoration(color: AppColors.caBg, border: Border(bottom: BorderSide(color: AppColors.line))),
+        child: Row(spacing: 8, children: [
+          CaIconBtn(AppIcons.chevronDown, tooltip: 'Minimise (the workout keeps running)', onTap: _collapse),
+          AppTooltip(
+            message: resting ? 'Rest timer' : 'Start a rest timer',
+            child: Semantics(
+              button: true,
+              label: resting ? 'Rest ${clockText(c.rest)}' : 'Rest timer',
+              child: Hover(
+                onTap: () => resting ? c.restShow(true) : c.restNow(c.cur),
+                builder: (_, h, _) => ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    height: 36,
+                    constraints: const BoxConstraints(minWidth: 44),
+                    color: resting ? AppColors.accentSoft : (h ? AppColors.pressed : AppColors.sub),
+                    child: Stack(children: [
+                      if (resting) Positioned.fill(child: FractionallySizedBox(alignment: Alignment.centerLeft, widthFactor: p, child: Container(color: AppColors.accent))),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: Center(
+                          widthFactor: 1,
+                          child: Row(mainAxisSize: MainAxisSize.min, spacing: 5, children: [
+                            AppIcon(AppIcons.clockAlt, size: 17, color: resting ? AppColors.white : AppColors.text2),
+                            if (resting) Text(clockText(c.rest), style: AppText.s(13, W.w8, color: AppColors.white, tabular: true)),
+                          ]),
+                        ),
+                      ),
+                    ]),
                   ),
                 ),
               ),
             ),
-          ]),
-        ),
-        Transform.translate(offset: const Offset(0, -8), child: _box(c, e, web: web)),
-        _nav(c),
-      ]),
-    );
-  }
-
-  void _guide(WorkoutController c, TrainEx e) => showGuide(
-        context,
-        e,
-        GuideInfo(context: '${c.name} · Exercise ${e.index + 1} of ${c.ex.length}', program: c.plan.program, coachFirst: c.plan.coachFirst, coachInitials: c.plan.coachInitials),
-      );
-
-  Widget _nav(WorkoutController c) {
-    final last = c.cur == c.ex.length - 1;
-    return Padding(
-      padding: const EdgeInsets.only(top: 2),
-      child: Row(spacing: 8, children: [
-        CaButton('Previous', kind: CaBtnKind.out, expand: false, icon: AppIcons.chevronLeft, dimmed: c.cur == 0, onPressed: c.cur == 0 ? null : () => c.goTo(c.cur - 1)),
-        Expanded(
-          child: last
-              ? CaButton('Finish workout', icon: AppIcons.check, onPressed: () => _askFinish(c))
-              : CaButton('Next exercise', kind: CaBtnKind.dark, trailingIcon: AppIcons.chevronRight, onPressed: () => c.goTo(c.cur + 1)),
-        ),
-      ]),
-    );
-  }
-
-  // ─────────────────────────────── Sets box (`cl-box`)
-
-  List<Widget> _grid(WorkoutController c, TrainEx e, {required bool web, required List<Widget> cells}) {
-    // cells: set, [prev], value columns..., [go], tick
-    final widths = <int?>[];
-    widths.add(web ? 44 : 34);
-    if (web) widths.add(84);
-    final cols = c.cols(e).length;
-    for (var j = 0; j < cols; j++) {
-      widths.add(null);
-    }
-    if (e.kind == ExKind.time) widths.add(web ? 44 : 40);
-    widths.add(web ? 44 : 40);
-    final flex = switch (e.kind) {
-      ExKind.weight => web ? [3, 2] : [1, 0],
-      ExKind.cardio => [1, 1],
-      ExKind.time => [1],
-    };
-    var fi = 0;
-    return [
-      for (final (i, cell) in cells.indexed)
-        if (widths[i] != null)
-          SizedBox(width: widths[i]!.toDouble(), child: cell)
-        else if (flex[fi++] == 0)
-          SizedBox(width: 92, child: cell)
-        else
-          Expanded(flex: flex[fi - 1], child: cell),
-    ];
-  }
-
-  Widget _box(WorkoutController c, TrainEx e, {required bool web}) {
-    final xs = c.sets[c.cur];
-    final cols = c.cols(e);
-    var wn = 0;
-    final rows = <Widget>[];
-    for (final (k, s) in xs.indexed) {
-      if (!s.wu) wn += 1;
-      rows.add(KeyedSubtree(key: ValueKey(s.key), child: _setRow(c, e, k, s, s.wu ? 'W' : '$wn', s.wu ? 'Warm-up' : c.prev(e, wn - 1), web: web)));
-      final a = act;
-      if (!web && a != null && a.$1 == k) rows.add(KeyedSubtree(key: ValueKey('strip:${s.key}'), child: _strip(c, e, s, a.$2)));
-    }
-    return Container(
-      padding: web ? const EdgeInsets.symmetric(horizontal: 16, vertical: 14) : const EdgeInsets.all(12),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.line)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
-        Row(spacing: 6, children: _grid(c, e, web: web, cells: [
-          _th('Set', left: true),
-          if (web) _th('Prev', left: true),
-          for (final h in cols) _th(h),
-          if (e.kind == ExKind.time) const SizedBox(),
-          const SizedBox(),
-        ])),
-        // a set added or removed grows in / folds away (Phase 5)
-        AnimatedRows(spacing: 8, children: rows),
-        Row(children: [
-          Hover(
-            onTap: () {
-              setState(() => act = null);
-              c.addSet();
-            },
-            builder: (_, h, _) => Container(
-              height: 36,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), border: Border.all(color: h ? AppColors.accent : AppColors.line)),
-              child: Row(mainAxisSize: MainAxisSize.min, spacing: 6, children: [
-                AppIcon(AppIcons.plus, size: 16, color: h ? AppColors.accentText : AppColors.text2),
-                Text('Add set', style: AppText.s(13.5, W.w7, color: h ? AppColors.accentText : AppColors.text2)),
-              ]),
-            ),
           ),
-          const Spacer(),
-          // One tap: every set not ticked yet takes last time's values, ready to change and tick.
-          if (e.lastTime.isNotEmpty && xs.any((s) => !s.done && !s.wu))
-            Hover(
-              onTap: () {
-                setState(() => act = null);
-                c.fillFrom(e.lastTime);
-              },
+          Expanded(
+            child: Text(clockText(c.elapsed), textAlign: TextAlign.center, style: AppText.s(15, W.w7, color: c.paused ? AppColors.amberText : AppColors.text2, tabular: true)),
+          ),
+          Semantics(
+            button: true,
+            label: 'Finish workout',
+            child: Hover(
+              onTap: () => _askFinish(c),
               builder: (_, h, _) => Container(
                 height: 36,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                alignment: Alignment.center,
                 decoration: BoxDecoration(color: h ? AppColors.accentSoft : null, borderRadius: BorderRadius.circular(10)),
-                child: Row(mainAxisSize: MainAxisSize.min, spacing: 6, children: [
-                  const AppIcon(AppIcons.restart, size: 15, color: AppColors.accent),
-                  Text('Use last time', style: AppText.s(13.5, W.w7, color: AppColors.accentText)),
+                child: Text('FINISH', style: AppText.s(14, W.w8, color: AppColors.accentText, ls: 1)),
+              ),
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _title(WorkoutController c) => Padding(
+        padding: const EdgeInsets.only(top: 10, bottom: 4),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+          Row(spacing: 8, children: [
+            Flexible(child: CutText(c.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(21, W.w8))),
+            Builder(builder: (bc) => _dotsBtn(() => _workoutMenu(bc, c), 'Workout options')),
+          ]),
+          Text(
+            [clockText(c.elapsed), if (c.reopened) 'adding sets', if (c.paused) 'paused', '${c.setsDone} of ${c.setsAll} sets'].join(' · '),
+            style: AppText.s(13, W.w5, color: AppColors.muted, tabular: true),
+          ),
+        ]),
+      );
+
+  Widget _dotsBtn(VoidCallback onTap, String label) => Semantics(
+        button: true,
+        label: label,
+        child: Hover(
+          onTap: onTap,
+          builder: (_, h, _) => Container(
+            width: 36,
+            height: 30,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: h ? AppColors.accentSoft : AppColors.hover, borderRadius: BorderRadius.circular(8)),
+            child: const AppIcon(AppIcons.dots, size: 18, color: AppColors.accent),
+          ),
+        ),
+      );
+
+  /// "Cancel workout" at the very end of the list (Probid 2026-11-16: bottom, not in a menu), red, asks first.
+  Widget _cancelLink(WorkoutController c) => Center(
+        child: Semantics(
+          button: true,
+          label: c.reopened ? 'Discard the added sets' : 'Cancel workout',
+          child: Hover(
+            onTap: () => _askCancel(c),
+            builder: (_, h, _) => Container(
+              height: 44,
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(color: h ? AppColors.badBg : null, borderRadius: BorderRadius.circular(10)),
+              child: Text(c.reopened ? 'DISCARD ADDED SETS' : 'CANCEL WORKOUT', style: AppText.s(14, W.w8, color: AppColors.badText, ls: 1)),
+            ),
+          ),
+        ),
+      );
+
+  // ─────────────────────────────── One exercise
+
+  Widget _exercise(WorkoutController c, int i, {required bool web}) {
+    final x = c.ex[i];
+    final cols = c.cols(x);
+    final f = c.focus[i];
+    final sub = [
+      if (x.kind == ExKind.cardio && x.bpmText.isNotEmpty) 'Target ${x.bpmText}',
+      if (x.kind != ExKind.cardio) x.target,
+      if (x.kind == ExKind.cardio && x.reps.isNotEmpty) x.reps,
+    ].join(' · ');
+    return Padding(
+      padding: const EdgeInsets.only(top: 18),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(spacing: 8, children: [
+          Expanded(
+            child: Semantics(
+              button: true,
+              label: 'How to do ${x.name}',
+              child: Hover(
+                onTap: () => _guide(c, x),
+                builder: (_, h, _) => Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+                  Text(x.name, style: AppText.s(16.5, W.w7, color: AppColors.accentText).copyWith(decoration: h ? TextDecoration.underline : null)),
+                  if (sub.isNotEmpty) Text(sub, style: AppText.s(12.5, W.w5, color: AppColors.muted)),
                 ]),
               ),
             ),
+          ),
+          if (x.kind == ExKind.weight)
+            Builder(
+              builder: (bc) => Semantics(
+                button: true,
+                label: 'Focus metric ${f.label}',
+                child: Hover(
+                  onTap: () => _focusMenu(bc, c, i),
+                  builder: (_, h, _) => Container(
+                    height: 30,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(color: h ? AppColors.accentRing : AppColors.accentSoft, borderRadius: BorderRadius.circular(8)),
+                    child: Text(c.focusText(i, f), style: AppText.s(14, W.w8, color: AppColors.accentText, tabular: true)),
+                  ),
+                ),
+              ),
+            ),
+          Builder(builder: (bc) => _dotsBtn(() => _exMenu(bc, c, i), '${x.name} options')),
         ]),
+        const SizedBox(height: 10),
+        _gridRow(c, x, cells: [
+          _th('SET'),
+          _th('PREVIOUS'),
+          for (final h in cols) _th(h),
+          if (x.kind == ExKind.time) const SizedBox(),
+          const Center(child: AppIcon(AppIcons.check, size: 16, color: AppColors.text2, stroke: 2.4)),
+        ]),
+        const SizedBox(height: 4),
+        for (var k = 0; k < c.sets[i].length; k++) KeyedSubtree(key: ValueKey(c.sets[i][k].key), child: _row(c, i, k, web: web)),
+        const SizedBox(height: 4),
+        Center(
+          child: Semantics(
+            button: true,
+            label: 'Add set to ${x.name}',
+            child: Hover(
+              onTap: () {
+                setState(() => act = null);
+                c.addSet(i);
+              },
+              builder: (_, h, _) => Container(
+                height: 40,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: h ? AppColors.accentSoft : null, borderRadius: BorderRadius.circular(10)),
+                child: Text('+ ADD SET', style: AppText.s(14, W.w7, color: AppColors.accentText, ls: 1)),
+              ),
+            ),
+          ),
+        ),
       ]),
     );
   }
 
-  Widget _th(String t, {bool left = false}) => Padding(
-        padding: EdgeInsets.only(left: left ? 4 : 0),
-        child: Text(t, textAlign: left ? TextAlign.left : TextAlign.center, maxLines: 1, style: AppText.s(11, W.w7, color: AppColors.muted)),
-      );
+  /// SET 40 · PREVIOUS flex 5 · value boxes flex 4 each · [hold 40] · ✓ 40.
+  Widget _gridRow(WorkoutController c, TrainEx x, {required List<Widget> cells}) {
+    final n = c.cols(x).length;
+    final out = <Widget>[];
+    for (final (k, w) in cells.indexed) {
+      if (k == 0) {
+        out.add(SizedBox(width: 40, child: w));
+      } else if (k == 1) {
+        out.add(Expanded(flex: n == 1 ? 6 : 5, child: w));
+      } else if (k < 2 + n) {
+        out.add(Expanded(flex: 4, child: w));
+      } else {
+        out.add(SizedBox(width: 40, child: w));
+      }
+    }
+    return Row(spacing: 6, children: out);
+  }
 
-  Widget _setRow(WorkoutController c, TrainEx e, int k, WSet s, String lbl, String prev, {required bool web}) {
+  Widget _th(String t) => Text(t, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.clip, style: AppText.s(11, W.w8, color: AppColors.text2, ls: 1.1));
+
+  Widget _row(WorkoutController c, int i, int k, {required bool web}) {
+    final x = c.ex[i], s = c.sets[i][k];
+    final cols = c.cols(x);
     final hold = c.hold;
-    final running = hold != null && hold.$1 == c.cur && hold.$2 == k;
-    final cols = c.cols(e);
-    final sn = Builder(
+    final running = hold != null && hold.$1 == i && hold.$2 == k;
+    final lbl = c.label(i, k);
+    final labelColor = switch (s.kind) {
+      SetKind.warmup => AppColors.amberText,
+      SetKind.drop => AppColors.purpleText,
+      SetKind.failure => AppColors.badText,
+      SetKind.normal => AppColors.text,
+    };
+    final setCell = Builder(
       builder: (bc) => Semantics(
         button: true,
         label: 'Set $lbl options',
         child: Hover(
-          onTap: () => _setMenu(bc, c, k),
+          onTap: () => _setMenu(bc, c, i, k),
           builder: (_, h, _) => Container(
-            width: 30,
-            height: 30,
+            height: 34,
             alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: s.wu ? AppColors.amberBg : (s.done ? AppColors.avGreenBg : AppColors.sub),
-              borderRadius: BorderRadius.circular(9),
-              border: h ? Border.all(color: AppColors.text2, width: 1.5) : null,
-            ),
+            decoration: BoxDecoration(color: h ? AppColors.pressed : (s.done ? null : AppColors.sub), borderRadius: BorderRadius.circular(8)),
             child: Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
-              Text(lbl, style: AppText.s(13, W.w8, color: s.wu ? AppColors.amberText : (s.done ? AppColors.avGreenText : AppColors.text2))),
-              // Form video sent for this set
+              Text(lbl, style: AppText.s(14, W.w8, color: labelColor)),
               if (c.isFilmed(s))
                 Positioned(
-                  right: -9,
-                  top: -9,
+                  right: -12,
+                  top: -10,
                   child: Container(
                     width: 16,
                     height: 16,
@@ -566,102 +595,53 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         ),
       ),
     );
-    Widget cell(int j) {
-      final a = act;
-      final on = a != null && a.$1 == k && a.$2 == j;
-      final text = running ? '0:${hold.$3.toString().padLeft(2, '0')}' : c.text(s, j, e);
-      final ph = !(s.touched || s.done || running) && c.value(e, s, j) == null;
-      final h = web ? 42.0 : 40.0;
-      Widget val;
-      if (web && on) {
-        val = Container(
-          height: h,
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.line)),
-          child: Row(children: [
-            _pm(AppIcons.minus, 'Less', () => c.step(k, j, -1)),
-            Expanded(child: Text(text, textAlign: TextAlign.center, maxLines: 1, style: AppText.s(15, W.w8, tabular: true))),
-            _pm(AppIcons.plus, 'More', () => c.step(k, j, 1)),
-          ]),
-        );
-      } else {
-        val = Semantics(
-          button: true,
-          label: '${cols[j]} $text',
-          child: Hover(
-            onTap: () => setState(() => act = on ? null : (k, j)),
-            builder: (_, hv, _) => Container(
-              height: h,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: running ? AppColors.accentSoft : (s.done ? AppColors.doneValBg : (on || hv ? AppColors.white : AppColors.caWebBg)),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: running || on || hv ? AppColors.accent : (s.done ? AppColors.doneValLine : AppColors.line)),
-                boxShadow: on ? const [BoxShadow(color: AppColors.accentSoft, spreadRadius: 2)] : null,
-              ),
-              child: Text(text, maxLines: 1, style: AppText.s(15, W.w8, color: running ? AppColors.accent : (ph ? AppColors.valPh : AppColors.text), tabular: true)),
-            ),
-          ),
-        );
-      }
-      if (e.kind == ExKind.weight && j == 0) {
-        return Row(spacing: 5, children: [
-          Semantics(
-            button: true,
-            label: 'Bodyweight',
-            selected: s.bw,
-            child: Hover(
-              onTap: () {
-                c.toggleBw(k);
-                setState(() => act = (k, 0));
+    final pt = c.prevText(i, k);
+    final used = c.prevUsed(i, k);
+    final prev = Semantics(
+      button: pt.isNotEmpty && !s.done,
+      label: pt.isEmpty ? 'No previous set' : 'Previous $pt',
+      child: Hover(
+        onTap: pt.isEmpty || s.done
+            ? null
+            : () {
+                setState(() => act = null);
+                c.usePrev(i, k);
               },
-              builder: (_, hv, _) => Container(
-                width: 30,
-                height: 30,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: s.bw ? AppColors.accent : (hv ? AppColors.outlineHover : AppColors.white),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: s.bw ? AppColors.accent : AppColors.line),
+        builder: (_, h, _) => Container(
+          height: 34,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(color: h && pt.isNotEmpty && !s.done ? AppColors.pressed : null, borderRadius: BorderRadius.circular(8)),
+          child: pt.isEmpty
+              ? Container(width: 16, height: 2.5, decoration: BoxDecoration(color: AppColors.tickOff, borderRadius: BorderRadius.circular(2)))
+              : FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(pt, maxLines: 1, style: AppText.s(13, W.w6, color: used || s.done ? AppColors.valPh : AppColors.text2)),
                 ),
-                child: Text('BW', style: AppText.s(10.5, W.w8, color: s.bw ? AppColors.white : AppColors.text2)),
-              ),
-            ),
-          ),
-          Expanded(child: val),
-        ]);
-      }
-      return val;
-    }
-
+        ),
+      ),
+    );
     final tick = Semantics(
       button: true,
       label: s.done ? 'Untick set $lbl' : 'Tick set $lbl',
       child: Hover(
         onTap: () {
           setState(() => act = null);
-          c.tick(k);
+          c.tick(i, k);
         },
-        builder: (_, h, _) {
-          final sz = web ? 44.0 : 40.0;
-          return Container(
-            width: sz,
-            height: sz,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: s.done ? AppColors.okSolid : AppColors.white,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: s.done || h ? AppColors.okSolid : AppColors.line, width: 1.5),
-            ),
-            child: AppIcon(AppIcons.check, size: 20, stroke: 2.6, color: s.done ? AppColors.white : (h ? AppColors.okSolid : AppColors.tickOff)),
-          );
-        },
+        builder: (_, h, _) => Container(
+          width: 40,
+          height: 34,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: s.done ? AppColors.okSolid : (h ? AppColors.pressed : AppColors.sub),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: AppIcon(AppIcons.check, size: 19, stroke: 2.6, color: s.done ? AppColors.white : (h ? AppColors.okSolid : AppColors.tickOff)),
+        ),
       ),
     );
-
     Widget? go;
-    if (e.kind == ExKind.time) {
-      final sz = web ? 44.0 : 40.0;
+    if (x.kind == ExKind.time) {
       go = s.done && !running
           ? const SizedBox()
           : Semantics(
@@ -670,89 +650,692 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               child: Hover(
                 onTap: () {
                   setState(() => act = null);
-                  running ? c.stopHold() : c.startHold(k);
+                  running ? c.stopHold() : c.startHold(i, k);
                 },
                 builder: (_, h, _) => Container(
-                  width: sz,
-                  height: sz,
+                  width: 34,
+                  height: 34,
                   alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: running ? AppColors.accent : (h ? AppColors.accentSoft : AppColors.white),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: running || h ? AppColors.accent : AppColors.line),
-                  ),
-                  child: AppIcon(running ? AppIcons.stop : AppIcons.play, size: 16, color: running ? AppColors.white : AppColors.accent),
+                  decoration: BoxDecoration(color: running ? AppColors.accent : (h ? AppColors.accentSoft : AppColors.sub), shape: BoxShape.circle),
+                  child: AppIcon(running ? AppIcons.stop : AppIcons.play, size: 15, color: running ? AppColors.white : AppColors.accent),
                 ),
               ),
             );
     }
-
-    return Row(spacing: 6, children: _grid(c, e, web: web, cells: [
-      Align(alignment: Alignment.centerLeft, child: sn),
-      if (web)
-        CutText(prev, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: s.wu ? AppColors.amberText : AppColors.muted)),
-      for (var j = 0; j < cols.length; j++) cell(j),
-      ?go,
-      tick,
-    ]));
+    final row = Container(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      color: s.done ? AppColors.doneValBg : null,
+      child: _gridRow(c, x, cells: [
+        setCell,
+        prev,
+        for (var j = 0; j < cols.length; j++) _box(c, i, k, j, web: web, holdLeft: running && j == 0 ? hold.$3 : null),
+        ?go,
+        tick,
+      ]),
+    );
+    return Dismissible(
+      key: _rowKeys.putIfAbsent(s.key, GlobalKey.new),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        color: AppColors.red,
+        child: const AppIcon(AppIcons.trash, size: 20, color: AppColors.white),
+      ),
+      onDismissed: (_) {
+        setState(() => act = null);
+        c.deleteSet(i, k);
+      },
+      child: row,
+    );
   }
 
-  Widget _pm(AppIconData icon, String label, VoidCallback onTap) => Semantics(
-        button: true,
-        label: label,
-        child: Hover(
-          onTap: onTap,
-          builder: (_, h, _) => Container(
-            width: 30,
-            height: 30,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(color: h ? AppColors.sub : null, borderRadius: BorderRadius.circular(8)),
-            child: AppIcon(icon, size: 15, color: AppColors.text2),
+  /// One number box. Done: plain text on the green row. Phone: tap opens the keypad; tablet / web: a text field.
+  Widget _box(WorkoutController c, int i, int k, int j, {required bool web, int? holdLeft}) {
+    final x = c.ex[i], s = c.sets[i][k];
+    final v = c.value(x, s, j);
+    final ph = c.placeholder(i, k, j);
+    final head = c.cols(x)[j];
+    if (holdLeft != null) {
+      return Container(
+        height: 34,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.accent)),
+        child: Text('0:${'$holdLeft'.padLeft(2, '0')}', style: AppText.s(15, W.w8, color: AppColors.accent, tabular: true)),
+      );
+    }
+    if (s.done) {
+      return SizedBox(
+        height: 34,
+        child: Center(child: Text(c.fmt(x, j, v ?? ph ?? 0), style: AppText.s(15, W.w7, tabular: true))),
+      );
+    }
+    if (web) {
+      return _NumBox(
+        key: ValueKey('nb:${s.key}:$j'),
+        value: v == null ? '' : c.fmt(x, j, v),
+        hint: ph == null ? '' : c.fmt(x, j, ph),
+        decimal: c.decimal(x, j),
+        negative: x.kind == ExKind.weight && j == 0 && (s.bw || x.bodyweight),
+        label: '$head, set ${c.label(i, k)}',
+        onChanged: (t) => c.setValue(i, k, j, t.isEmpty ? null : double.tryParse(t)),
+        onSubmit: () => c.tick(i, k),
+      );
+    }
+    final on = act == (i, k, j);
+    final text = on && !_fresh ? _buf : (v == null ? '' : c.fmt(x, j, v));
+    return Semantics(
+      button: true,
+      label: '$head, set ${c.label(i, k)}: ${text.isEmpty ? (ph == null ? 'empty' : c.fmt(x, j, ph)) : text}',
+      child: Hover(
+        onTap: () => _activate(c, (i, k, j)),
+        builder: (_, h, _) => Container(
+          height: 34,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: on ? AppColors.white : AppColors.sub,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: on ? AppColors.accent : (h ? AppColors.line2 : Colors.transparent), width: on ? 1.5 : 1),
+          ),
+          child: Text(
+            text.isNotEmpty ? text : (ph == null ? '' : c.fmt(x, j, ph)),
+            maxLines: 1,
+            style: AppText.s(15, W.w7, color: text.isNotEmpty ? AppColors.text : AppColors.valPh, tabular: true),
           ),
         ),
-      );
+      ),
+    );
+  }
 
-  /// Phone: `cl-strip` under the set being changed.
-  Widget _strip(WorkoutController c, TrainEx e, WSet s, int j) {
-    final k = c.sets[c.cur].indexOf(s);
-    final col = c.cols(e)[j];
-    final label = e.kind == ExKind.weight && j == 0 ? (s.bw ? 'BW ± kg' : 'Weight kg') : col;
-    Widget round(AppIconData icon, String l, int dir) => Semantics(
+  // ─────────────────────────────── Phone keypad (F36)
+
+  void _activate(WorkoutController c, _Cell cell) {
+    final (i, k, j) = cell;
+    final v = c.value(c.ex[i], c.sets[i][k], j);
+    setState(() {
+      act = cell;
+      _fresh = true;
+      _buf = v == null ? '' : c.fmt(c.ex[i], j, v);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _reveal(cell));
+  }
+
+  /// Keeps the active row above the keypad.
+  void _reveal(_Cell cell) {
+    final c = w;
+    if (c == null || cell.$1 >= c.sets.length || cell.$2 >= c.sets[cell.$1].length) return;
+    final ctx = _rowKeys[c.sets[cell.$1][cell.$2].key]?.currentContext;
+    if (ctx != null) Scrollable.ensureVisible(ctx, alignment: .35, duration: const Duration(milliseconds: 160));
+  }
+
+  final _rowKeys = <String, GlobalKey>{};
+
+  void _key(WorkoutController c, String key) {
+    final a = act;
+    if (a == null) return;
+    final (i, k, j) = a;
+    final x = c.ex[i];
+    var b = _fresh ? '' : _buf;
+    if (key == '⌫') {
+      b = b.isEmpty ? '' : b.substring(0, b.length - 1);
+    } else if (key == '.') {
+      if (!c.decimal(x, j) || b.contains('.')) return;
+      b = b.isEmpty ? '0.' : '$b.';
+    } else {
+      if (b.replaceAll('.', '').length >= 6) return;
+      b = b == '0' ? key : '$b$key';
+    }
+    setState(() {
+      _buf = b;
+      _fresh = false;
+    });
+    c.setValue(i, k, j, b.isEmpty || b == '0.' ? null : double.tryParse(b));
+  }
+
+  void _step(WorkoutController c, int dir) {
+    final a = act;
+    if (a == null) return;
+    final (i, k, j) = a;
+    c.stepValue(i, k, j, dir);
+    final v = c.value(c.ex[i], c.sets[i][k], j);
+    setState(() {
+      _fresh = true;
+      _buf = v == null ? '' : c.fmt(c.ex[i], j, v);
+    });
+  }
+
+  /// NEXT: the next box of this set, then the next set's first box, then the next exercise.
+  void _next(WorkoutController c) {
+    final a = act;
+    if (a == null) return;
+    var (i, k, j) = a;
+    final n = c.cols(c.ex[i]).length;
+    if (j + 1 < n) {
+      _activate(c, (i, k, j + 1));
+      return;
+    }
+    while (true) {
+      k += 1;
+      while (i < c.ex.length && k >= c.sets[i].length) {
+        i += 1;
+        k = 0;
+      }
+      if (i >= c.ex.length) {
+        setState(() => act = null);
+        return;
+      }
+      if (!c.sets[i][k].done) break;
+    }
+    _activate(c, (i, k, 0));
+  }
+
+  Widget _keypad(WorkoutController c) {
+    final a = act!;
+    final x = c.ex[a.$1];
+    final dec = c.decimal(x, a.$3);
+    Widget key(String t, {Widget? child, VoidCallback? onTap, String? label, bool tall = false, Color? bg, Color? fg}) => Semantics(
           button: true,
-          label: l,
+          label: label ?? t,
           child: Hover(
-            onTap: () => c.step(k, j, dir),
+            onTap: onTap ?? () => _key(c, t),
             builder: (_, h, _) => Container(
-              width: 34,
-              height: 34,
+              height: 50,
+              margin: const EdgeInsets.all(3),
               alignment: Alignment.center,
-              decoration: BoxDecoration(color: h ? AppColors.outlineHover : AppColors.white, shape: BoxShape.circle, border: Border.all(color: AppColors.accentRing)),
-              child: AppIcon(icon, size: 16, color: AppColors.text2),
+              decoration: BoxDecoration(color: h ? AppColors.pressed : (bg ?? Colors.transparent), borderRadius: BorderRadius.circular(10)),
+              child: child ?? Text(t, style: AppText.s(22, W.w5, color: fg ?? AppColors.text)),
             ),
           ),
         );
+    Widget side(Widget child) => SizedBox(width: 76, child: child);
+    final rows = [
+      ['1', '2', '3'],
+      ['4', '5', '6'],
+      ['7', '8', '9'],
+    ];
+    final sideKeys = [
+      key('', label: 'Hide the keypad', bg: AppColors.sub, onTap: () => setState(() => act = null), child: const AppIcon(AppIcons.chevronDown, size: 20, color: AppColors.text2)),
+      Container(
+        height: 50,
+        margin: const EdgeInsets.all(3),
+        child: Row(children: [
+          Expanded(child: key('−', label: 'Less', onTap: () => _step(c, -1), child: const AppIcon(AppIcons.minus, size: 18, color: AppColors.text))),
+          Expanded(child: key('+', label: 'More', onTap: () => _step(c, 1), child: const AppIcon(AppIcons.plus, size: 18, color: AppColors.text))),
+        ]),
+      ),
+      key('RPE', label: 'Set RPE', bg: AppColors.sub, onTap: () => _rpe(c, a.$1, a.$2), child: Text(c.sets[a.$1][a.$2].rpe == null ? 'RPE' : 'RPE ${kg(c.sets[a.$1][a.$2].rpe!)}', style: AppText.s(13, W.w7, color: AppColors.text2))),
+    ];
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(10)),
-      child: Row(spacing: 8, children: [
-        Expanded(child: Text(label, style: AppText.s(12.5, W.w7, color: AppColors.sessText))),
-        round(AppIcons.minus, 'Less', -1),
-        SizedBox(width: 56, child: Text(c.text(s, j, e), textAlign: TextAlign.center, style: AppText.s(17, W.w8, tabular: true))),
-        round(AppIcons.plus, 'More', 1),
-        CaButton('Done', small: true, expand: false, kind: CaBtnKind.dark, onPressed: () => setState(() => act = null)),
+      padding: EdgeInsets.fromLTRB(8, 6, 8, 6 + MediaQuery.paddingOf(context).bottom),
+      decoration: const BoxDecoration(color: AppColors.card, border: Border(top: BorderSide(color: AppColors.line)), boxShadow: AppShadows.barUp),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(
+          child: Column(children: [
+            for (final row in rows)
+              Row(children: [for (final t in row) Expanded(child: key(t))]),
+            Row(children: [
+              Expanded(child: dec ? key('.') : const SizedBox(height: 56)),
+              Expanded(child: key('0')),
+              Expanded(child: key('⌫', label: 'Delete', child: const AppIcon(AppIcons.close, size: 20, color: AppColors.text2))),
+            ]),
+          ]),
+        ),
+        side(Column(children: [
+          ...sideKeys,
+          key('NEXT', label: 'Next box', bg: AppColors.accent, onTap: () => _next(c), child: Text('NEXT', style: AppText.s(14, W.w8, color: AppColors.white, ls: 1))),
+        ])),
       ]),
     );
   }
 
-  // ─────────────────────────────── Bottom bars
+  /// RPE of a set: 6 to 10 in halves (tracker: keypad RPE key).
+  void _rpe(WorkoutController c, int i, int k) {
+    final cur = c.sets[i][k].rpe;
+    showAppSheet(
+      context,
+      title: 'RPE for set ${c.label(i, k)}',
+      sub: 'How hard was it? 10 = no reps left',
+      builder: (ctx) => Wrap(spacing: 8, runSpacing: 8, children: [
+        for (var r = 6.0; r <= 10; r += .5)
+          Hover(
+            onTap: () {
+              Navigator.of(ctx).pop();
+              c.setRpe(i, k, r);
+            },
+            builder: (_, h, _) => Container(
+              width: 56,
+              height: 40,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: cur == r ? AppColors.accent : (h ? AppColors.outlineHover : AppColors.white),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: cur == r ? AppColors.accent : AppColors.line),
+              ),
+              child: Text(kg(r), style: AppText.s(14, W.w7, color: cur == r ? AppColors.white : AppColors.text)),
+            ),
+          ),
+        if (cur != null)
+          CaButton('Clear', kind: CaBtnKind.out, small: true, expand: false, onPressed: () {
+            Navigator.of(ctx).pop();
+            c.setRpe(i, k, null);
+          }),
+      ]),
+    );
+  }
 
-  Widget _wic(bool paused) => Container(
-        width: 34,
-        height: 34,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(color: paused ? AppColors.amberBg : AppColors.accentSoft, borderRadius: BorderRadius.circular(10)),
-        child: AppIcon(paused ? AppIcons.pause : AppIcons.clock, size: 17, color: paused ? AppColors.amberText : AppColors.accent),
+  // ─────────────────────────────── Menus
+
+  void _guide(WorkoutController c, TrainEx e) => showGuide(
+        context,
+        e,
+        GuideInfo(context: '${c.name} · Exercise ${e.index + 1} of ${c.ex.length}', program: c.plan.program, coachFirst: c.plan.coachFirst, coachInitials: c.plan.coachInitials),
       );
+
+  /// Title ⋯: pause / resume the clock, restart. (Cancel workout is at the end of the page.)
+  void _workoutMenu(BuildContext anchor, WorkoutController c) {
+    setState(() => act = null);
+    _popover(anchor, width: 230, builder: (ctx, close) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          _mi(c.paused ? 'Resume timer' : 'Pause timer', icon: c.paused ? AppIcons.play : AppIcons.pause, onTap: () {
+            close();
+            c.pauseToggle();
+          }),
+          _mi('Restart workout', icon: AppIcons.restart, sub: 'Untick every set, timer from 0:00', onTap: () {
+            close();
+            _askRestart(c);
+          }),
+        ]));
+  }
+
+  /// Exercise ⋯ for a client (Probid 2026-11-16): no Replace / Remove / Superset; the plan is the coach's.
+  void _exMenu(BuildContext anchor, WorkoutController c, int i) {
+    setState(() => act = null);
+    final x = c.ex[i];
+    _popover(anchor, width: 250, right: true, builder: (ctx, close) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          _mi('How to do it', icon: AppIcons.help, onTap: () {
+            close();
+            _guide(c, x);
+          }),
+          _mi('Past workouts', icon: AppIcons.clock, sub: 'See and use sets from before', onTap: () {
+            close();
+            showExerciseHistory(context, x, onUse: (sets, from) => c.fillFrom(i, sets, from: from));
+          }),
+          if (x.rest > 0)
+            _mi('Start rest timer', icon: AppIcons.clockAlt, sub: '${clockText(x.rest)} for this exercise', onTap: () {
+              close();
+              c.restNow(i);
+            }),
+          if (x.kind == ExKind.weight)
+            _mi('Focus metric', icon: AppIcons.target, sub: c.focus[i].label, onTap: () {
+              close();
+              _focusMenu(anchor, c, i);
+            }),
+        ]));
+  }
+
+  /// The chip beside ⋯: what the client watches while lifting (F40). Kept for this exercise next time too.
+  void _focusMenu(BuildContext anchor, WorkoutController c, int i) {
+    setState(() => act = null);
+    _popover(anchor, width: 260, right: true, builder: (ctx, close) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+            child: Text('FOCUS METRIC', style: AppText.s(11, W.w8, color: AppColors.muted, ls: 1)),
+          ),
+          for (final f in FocusMetric.values)
+            Hover(
+              onTap: () {
+                close();
+                c.setFocus(i, f);
+              },
+              builder: (_, h, _) => Container(
+                height: 40,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(color: h ? AppColors.hover : null, borderRadius: BorderRadius.circular(8)),
+                child: Row(spacing: 8, children: [
+                  SizedBox(width: 18, child: c.focus[i] == f ? const AppIcon(AppIcons.check, size: 16, color: AppColors.accent, stroke: 2.4) : null),
+                  Expanded(child: Text(f.label, style: AppText.s(13.5, W.w6))),
+                  Text(c.focusText(i, f), style: AppText.s(13, W.w7, color: AppColors.text2, tabular: true)),
+                ]),
+              ),
+            ),
+        ]));
+  }
+
+  static const _kindInfo = {
+    SetKind.warmup: ('Warm up', 'A light set to get ready. It is not counted in volume or personal bests.'),
+    SetKind.drop: ('Drop set', 'Right after a set, lower the weight and keep going with no rest.'),
+    SetKind.failure: ('Failure', 'You went until you could not do one more rep with good form.'),
+  };
+
+  /// SET box: set type (W / D / F, each with ?), use last time, bodyweight, form video, RPE, delete (F38, F39, F41).
+  void _setMenu(BuildContext anchor, WorkoutController c, int i, int k) {
+    setState(() => act = null);
+    final x = c.ex[i], s = c.sets[i][k];
+    final vid = c.videoOf(s);
+    Widget kind(SetKind t, Color color) {
+      final (name, info) = _kindInfo[t]!;
+      final on = s.kind == t;
+      return Builder(
+        builder: (rowCtx) => Hover(
+          onTap: () {
+            Navigator.of(rowCtx).pop();
+            c.setKind(i, k, t);
+          },
+          builder: (_, h, _) => Container(
+            height: 40,
+            padding: const EdgeInsets.only(left: 10),
+            decoration: BoxDecoration(color: on ? AppColors.accentSoft : (h ? AppColors.hover : null), borderRadius: BorderRadius.circular(8)),
+            child: Row(spacing: 10, children: [
+              SizedBox(width: 16, child: Text(t.letter, textAlign: TextAlign.center, style: AppText.s(14, W.w8, color: color))),
+              Expanded(child: Text(on ? '$name (tap to undo)' : name, style: AppText.s(13.5, W.w6))),
+              Semantics(
+                button: true,
+                label: 'What is a $name?',
+                child: Hover(
+                  onTap: () => _tip(rowCtx, name, info),
+                  builder: (_, hh, _) => Container(
+                    width: 36,
+                    height: 36,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(color: hh ? AppColors.pressed : null, shape: BoxShape.circle),
+                    child: const AppIcon(AppIcons.help, size: 16, color: AppColors.muted),
+                  ),
+                ),
+              ),
+            ]),
+          ),
+        ),
+      );
+    }
+
+    _popover(anchor, width: 260, builder: (ctx, close) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 6, 10, 4),
+            child: Text('SET TYPE', style: AppText.s(11, W.w8, color: AppColors.muted, ls: 1)),
+          ),
+          kind(SetKind.warmup, AppColors.amberText),
+          kind(SetKind.drop, AppColors.purpleText),
+          kind(SetKind.failure, AppColors.badText),
+          const Divider(height: 10, color: AppColors.line),
+          if (x.lastTime.isNotEmpty)
+            _mi('Use last time', icon: AppIcons.undo, sub: x.lastText, onTap: () {
+              close();
+              c.fillFrom(i, x.lastTime);
+            }),
+          if (x.kind == ExKind.weight)
+            _mi(s.bw ? 'Use a weight' : 'Bodyweight', icon: AppIcons.person, sub: s.bw ? 'Type the kg again' : 'Body weight + any added kg', onTap: () {
+              close();
+              c.toggleBw(i, k);
+            }),
+          if (x.kind == ExKind.weight && !s.wu)
+            _mi(s.rpe == null ? 'RPE' : 'RPE ${kg(s.rpe!)}', icon: AppIcons.pulse, sub: 'How hard the set was', onTap: () {
+              close();
+              _rpe(c, i, k);
+            }),
+          _mi(vid == null ? 'Form video' : 'Change form video', icon: AppIcons.camera, sub: vid == null ? 'Film this set for ${c.plan.coachFirst}' : vid.name, onTap: () {
+            close();
+            _formVideo(anchor, c, i, k);
+          }),
+          if (vid != null)
+            _mi('Remove video', icon: AppIcons.close, onTap: () {
+              close();
+              c.removeVideo(vid);
+            }),
+          _mi('Delete set', icon: AppIcons.trash, danger: true, onTap: () {
+            close();
+            c.deleteSet(i, k);
+          }),
+        ]));
+  }
+
+  void _tip(BuildContext anchor, String title, String text) => _popover(anchor,
+      width: 260,
+      right: true,
+      builder: (ctx, close) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 4, children: [
+              Text(title, style: AppText.s(13.5, W.w8)),
+              Text(text, style: AppText.s(12.5, W.w5, color: AppColors.text2, h: 1.45)),
+            ]),
+          ));
+
+  /// Form video (F41): record or pick a clip for this set; it is sent to the coach when the workout is finished.
+  void _formVideo(BuildContext anchor, WorkoutController c, int i, int k) {
+    Future<void> pick(ImageSource src) async {
+      try {
+        final x = await ImagePicker().pickVideo(source: src, maxDuration: const Duration(seconds: 60));
+        if (x == null) return;
+        final size = await x.length();
+        if (size > 100 * 1024 * 1024) {
+          _toast('This video is too big', sub: 'Up to 100 MB. Film just one set.', kind: ToastKind.warn);
+          return;
+        }
+        final name = x.name.contains('.') ? x.name : '${x.name}.mp4';
+        if (k >= c.sets[i].length) return;
+        c.pickVideo(i, k, path: x.path, name: name, bytes: kIsWeb ? await x.readAsBytes() : null);
+      } catch (_) {
+        _toast('Could not open the camera', sub: 'Allow camera and video access for the app in your phone settings', kind: ToastKind.warn);
+      }
+    }
+
+    if (kIsWeb) {
+      pick(ImageSource.gallery);
+      return;
+    }
+    _popover(anchor, width: 240, builder: (ctx, close) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          _mi('Record a video', icon: AppIcons.camera, sub: 'Up to 60 seconds', onTap: () {
+            close();
+            pick(ImageSource.camera);
+          }),
+          _mi('Choose a video', icon: AppIcons.video, sub: 'From your gallery', onTap: () {
+            close();
+            pick(ImageSource.gallery);
+          }),
+        ]));
+  }
+
+  // ─────────────────────────────── Finish, restart, cancel
+
+  void _askFinish(WorkoutController c) {
+    setState(() => act = null);
+    final left = c.setsAll - c.setsDone;
+    final coach = c.plan.coachFirst;
+    final n = c.videos.length;
+    _ask(
+      title: 'Finish workout?',
+      sub: '${c.setsDone} of ${c.setsAll} sets done · ${clockText(c.elapsed)}',
+      body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
+        _p(left == 0
+            ? 'Nice, every set is done. $coach sees your workout as soon as you finish.'
+            : '$left ${left == 1 ? 'set is' : 'sets are'} not ticked yet. They are saved as skipped, and $coach sees what you did.'),
+        if (n > 0) _p('$n form ${n == 1 ? 'video goes' : 'videos go'} to $coach now.'),
+      ]),
+      buttons: (ctx) => [
+        CaButton('Keep going', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop()),
+        CaButton('Finish', icon: AppIcons.check, onPressed: () {
+          Navigator.of(ctx).pop();
+          _finish(c);
+        }),
+      ],
+    );
+  }
+
+  void _finish(WorkoutController c, {int? at}) {
+    if (c.finished) return;
+    setState(() => act = null);
+    c.finish(at: at, read: (p) => XFile(p).readAsBytes());
+    if (at != null) _toast('Workout saved', sub: 'Time set to ${clockText(at)}, your last set', kind: ToastKind.star);
+  }
+
+  void _askRestart(WorkoutController c) {
+    final n = c.setsDone;
+    final msg = '${n == 0 ? 'The' : (n == 1 ? 'Your 1 ticked set goes back to not done and the' : 'All $n ticked sets go back to not done and the')}'
+        ' timer starts again from 0:00.';
+    _ask(
+      title: 'Restart workout?',
+      sub: '${c.name} · ${clockText(c.elapsed)} so far',
+      body: _p(msg),
+      buttons: (ctx) => [
+        CaButton('Keep going', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop()),
+        CaButton('Restart', icon: AppIcons.restart, onPressed: () {
+          Navigator.of(ctx).pop();
+          setState(() => act = null);
+          c.restart();
+        }),
+      ],
+    );
+  }
+
+  /// Cancel workout (bottom of the page): nothing is saved. After "Log more sets" only the added sets go.
+  void _askCancel(WorkoutController c) {
+    setState(() => act = null);
+    final again = c.reopened;
+    _ask(
+      title: again ? 'Discard the added sets?' : 'Cancel workout?',
+      sub: again ? 'Your finished workout stays as it was' : '${c.setsDone} sets ticked · ${clockText(c.elapsed)}',
+      body: _p(again
+          ? 'The sets you added now are not saved.'
+          : 'Nothing from this workout is saved and the timer stops. ${c.plan.coachFirst} will not see it.'),
+      buttons: (ctx) => [
+        CaButton('Keep going', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop()),
+        _dangerBtn(again ? 'Discard sets' : 'Cancel workout', () async {
+          Navigator.of(ctx).pop();
+          await c.discard();
+          if (mounted) context.go('/train?discarded=${again ? 2 : 1}');
+        }),
+      ],
+    );
+  }
+
+  // ─────────────────────────────── Popovers and sheets
+
+  Future<void> _popover(BuildContext anchor, {required double width, bool right = false, required Widget Function(BuildContext ctx, VoidCallback close) builder}) {
+    final box = anchor.findRenderObject() as RenderBox;
+    final overlay = Overlay.of(anchor, rootOverlay: true).context.findRenderObject() as RenderBox;
+    final tl = box.localToGlobal(Offset.zero, ancestor: overlay);
+    final size = overlay.size;
+    final left = right ? tl.dx + box.size.width - width : tl.dx;
+    final top = tl.dy + box.size.height + 6;
+    return showGeneralDialog(
+      context: anchor,
+      barrierDismissible: true,
+      barrierLabel: 'menu',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 90),
+      transitionBuilder: (_, a, _, child) => FadeTransition(opacity: a, child: child),
+      pageBuilder: (ctx, _, _) => Stack(children: [
+        Positioned(
+          left: left.clamp(8.0, math.max(8.0, size.width - width - 8)),
+          top: top,
+          width: math.min(width, size.width - 16),
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              constraints: BoxConstraints(maxHeight: size.height - top - 12),
+              decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.line), boxShadow: AppShadows.menu),
+              child: SingleChildScrollView(child: builder(ctx, () => Navigator.of(ctx).pop())),
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _mi(String title, {AppIconData? icon, String? sub, bool danger = false, required VoidCallback onTap}) => Hover(
+        onTap: onTap,
+        builder: (_, h, _) => Container(
+          constraints: const BoxConstraints(minHeight: 34),
+          padding: EdgeInsets.symmetric(horizontal: 10, vertical: sub == null ? 7 : 8),
+          decoration: BoxDecoration(color: h ? (danger ? AppColors.badBg : AppColors.hover) : null, borderRadius: BorderRadius.circular(8)),
+          child: Row(crossAxisAlignment: sub == null ? CrossAxisAlignment.center : CrossAxisAlignment.start, spacing: 10, children: [
+            if (icon != null) Padding(padding: EdgeInsets.only(top: sub == null ? 0 : 2), child: AppIcon(icon, size: 16, color: danger ? AppColors.badText : AppColors.text2)),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+                Text(title, style: AppText.s(13.5, W.w6, color: danger ? AppColors.badText : AppColors.text)),
+                if (sub != null) Text(sub, style: AppText.s(12, W.w4, color: AppColors.muted)),
+              ]),
+            ),
+          ]),
+        ),
+      );
+
+
+  Widget _dangerBtn(String label, VoidCallback onTap) => Hover(
+        onTap: onTap,
+        builder: (ctx, h, _) {
+          final web = CaWeb.of(ctx);
+          return Container(
+            height: web ? 40 : 44,
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(color: h ? AppColors.badText : AppColors.red, borderRadius: BorderRadius.circular(web ? 10 : 12)),
+            child: CutText(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(web ? 14 : 14.5, W.w7, color: AppColors.white)),
+          );
+        },
+      );
+
+
+  /// A question sheet: message and two buttons side by side (`cl-ebtns`).
+  Future<void> _ask({required String title, String? sub, Widget? body, required List<Widget> Function(BuildContext ctx) buttons}) => showAppSheet(
+        context,
+        title: title,
+        sub: sub,
+        webWidth: 440,
+        builder: (ctx) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+          ?body,
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Row(spacing: 8, children: [for (final b in buttons(ctx)) Expanded(child: b)]),
+          ),
+        ]),
+      );
+
+  Widget _p(String t) => Text(t, style: AppText.s(14, W.w4, color: AppColors.text2, h: 1.5));
+
+
+  Future<void> _askIdle() async {
+    final c = w;
+    if (c == null || !mounted) return;
+    final at = c.lastTickAt;
+    final mins = (c.elapsed - c.lastActive) ~/ 60;
+    var answered = false;
+    await _ask(
+      title: 'Still working out?',
+      sub: 'No set ticked for $mins min · timer at ${clockText(c.elapsed)}',
+      body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
+        if (at != null)
+          Text.rich(
+            TextSpan(children: [
+              const TextSpan(text: 'Your last set was at '),
+              TextSpan(text: clockText(at), style: const TextStyle(fontWeight: W.w7, color: AppColors.text)),
+              const TextSpan(text: '. Finish there so the extra minutes don’t count.'),
+            ]),
+            style: AppText.s(14, W.w4, color: AppColors.text2, h: 1.5),
+          )
+        else
+          _p('You haven’t ticked a set yet.'),
+        Text('If you don’t answer, the workout is saved at your last set after 3 hours.', style: AppText.s(12.5, W.w4, color: AppColors.muted, h: 1.45)),
+      ]),
+      buttons: (ctx) => [
+        CaButton('Keep going', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop()),
+        CaButton(at != null ? 'Finish at ${clockText(at)}' : 'Finish workout', onPressed: () {
+          answered = true;
+          Navigator.of(ctx).pop();
+          if (at != null) {
+            _finish(c, at: at);
+          } else {
+            c.keepGoing();
+            _askFinish(c);
+          }
+        }),
+      ],
+    );
+    if (!answered && !c.finished) c.keepGoing();
+    _idleUp = false;
+  }
+
+
+  // ─────────────────────────────── Rest bar (`cl-rest`)
 
   static const _barShape = BoxDecoration(
     color: AppColors.white,
@@ -760,30 +1343,6 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     border: Border(top: BorderSide(color: AppColors.line), left: BorderSide(color: AppColors.line), right: BorderSide(color: AppColors.line)),
     boxShadow: AppShadows.barUp,
   );
-
-  /// Phone: `cl-wbar` with the workout time, opens the timer sheet.
-  Widget _timerBar(WorkoutController c) => Semantics(
-        button: true,
-        label: 'Workout timer',
-        child: Hover(
-          onTap: () => _timerSheet(c),
-          builder: (_, h, _) => Container(
-            padding: const EdgeInsets.fromLTRB(16, 10, 18, 10),
-            decoration: h ? _barShape.copyWith(color: AppColors.outlineHover) : _barShape,
-            child: Row(spacing: 10, children: [
-              _wic(c.paused),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(c.paused ? 'TIMER PAUSED' : 'WORKOUT TIME', style: AppText.s(11, W.w7, color: AppColors.muted, ls: .55)),
-                  Text(clockText(c.elapsed), style: AppText.s(18, W.w8, tabular: true)),
-                ]),
-              ),
-              Text('${c.setsDone} of ${c.setsAll} sets', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
-              const AppIcon(AppIcons.chevronUp, size: 16, color: AppColors.muted),
-            ]),
-          ),
-        ),
-      );
 
   /// `cl-rest`: phone white bar over the tabs, web dark bar under the panel.
   Widget _restBar(WorkoutController c, {required bool web}) {
@@ -924,424 +1483,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     );
   }
 
-  // ─────────────────────────────── Popovers (menu, set menu, timer, info tip)
-
-  Future<void> _popover(BuildContext anchor, {required double width, bool right = false, required Widget Function(BuildContext ctx, VoidCallback close) builder}) {
-    final box = anchor.findRenderObject() as RenderBox;
-    final overlay = Overlay.of(anchor, rootOverlay: true).context.findRenderObject() as RenderBox;
-    final tl = box.localToGlobal(Offset.zero, ancestor: overlay);
-    final size = overlay.size;
-    final left = right ? tl.dx + box.size.width - width : tl.dx;
-    final top = tl.dy + box.size.height + 6;
-    return showGeneralDialog(
-      context: anchor,
-      barrierDismissible: true,
-      barrierLabel: 'menu',
-      barrierColor: Colors.transparent,
-      transitionDuration: const Duration(milliseconds: 90),
-      transitionBuilder: (_, a, _, child) => FadeTransition(opacity: a, child: child),
-      pageBuilder: (ctx, _, _) => Stack(children: [
-        Positioned(
-          left: left.clamp(8.0, math.max(8.0, size.width - width - 8)),
-          top: top,
-          width: math.min(width, size.width - 16),
-          child: Material(
-            color: Colors.transparent,
-            child: Container(
-              padding: const EdgeInsets.all(6),
-              constraints: BoxConstraints(maxHeight: size.height - top - 12),
-              decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.line), boxShadow: AppShadows.menu),
-              child: SingleChildScrollView(child: builder(ctx, () => Navigator.of(ctx).pop())),
-            ),
-          ),
-        ),
-      ]),
-    );
-  }
-
-  Widget _mi(String title, {AppIconData? icon, String? sub, bool danger = false, required VoidCallback onTap}) => Hover(
-        onTap: onTap,
-        builder: (_, h, _) => Container(
-          constraints: const BoxConstraints(minHeight: 34),
-          padding: EdgeInsets.symmetric(horizontal: 10, vertical: sub == null ? 7 : 8),
-          decoration: BoxDecoration(color: h ? (danger ? AppColors.badBg : AppColors.hover) : null, borderRadius: BorderRadius.circular(8)),
-          child: Row(crossAxisAlignment: sub == null ? CrossAxisAlignment.center : CrossAxisAlignment.start, spacing: 10, children: [
-            if (icon != null) Padding(padding: EdgeInsets.only(top: sub == null ? 0 : 2), child: AppIcon(icon, size: 16, color: danger ? AppColors.badText : AppColors.text2)),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                Text(title, style: AppText.s(13.5, W.w6, color: danger ? AppColors.badText : AppColors.text)),
-                if (sub != null) Text(sub, style: AppText.s(12, W.w4, color: AppColors.muted)),
-              ]),
-            ),
-          ]),
-        ),
-      );
-
-  void _menu(BuildContext anchor, WorkoutController c) => _popover(anchor, width: 220, right: true, builder: (ctx, close) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        _mi('Past workouts', icon: AppIcons.clock, onTap: () {
-          close();
-          showExerciseHistory(context, c.e, onUse: (sets, from) {
-            setState(() => act = null);
-            c.fillFrom(sets, from: from);
-          });
-        }),
-        _mi('Restart workout', icon: AppIcons.restart, onTap: () {
-          close();
-          _askRestart(c);
-        }),
-        _mi('Remove logged work', icon: AppIcons.trash, danger: true, onTap: () {
-          close();
-          _askRemove(c);
-        }),
-      ]));
-
-  void _setMenu(BuildContext anchor, WorkoutController c, int k) {
-    setState(() => act = null);
-    final s = c.sets[c.cur][k];
-    _popover(anchor, width: 240, builder: (ctx, close) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          _mi(s.wu ? 'Make it a working set' : 'Mark as warm-up',
-              icon: AppIcons.flame,
-              sub: s.wu ? 'Counts towards volume again' : 'Does not count towards volume',
-              onTap: () {
-                close();
-                c.warmup(k);
-              }),
-          _mi('Send a form video', icon: AppIcons.camera, sub: 'Film this set for your coach to check', onTap: () {
-            close();
-            _formVideo(anchor, c, k);
-          }),
-          _mi('Delete set', icon: AppIcons.trash, danger: true, onTap: () {
-            close();
-            c.deleteSet(k);
-          }),
-        ]));
-  }
-
-  /// Form check video (Gautam, 22 Oct: from the logger, per set): record on a phone or pick a clip, up to 100 MB.
-  void _formVideo(BuildContext anchor, WorkoutController c, int k) {
-    final s = c.sets[c.cur][k];
-    final exName = c.ex[c.cur].name;
-    Future<void> pick(ImageSource src) async {
-      try {
-        final x = await ImagePicker().pickVideo(source: src, maxDuration: const Duration(seconds: 60));
-        if (x == null) return;
-        final b = await x.readAsBytes();
-        if (b.length > 100 * 1024 * 1024) {
-          c.toast?.call('This video is too big', sub: 'Up to 100 MB. Film just one set.', kind: ToastKind.warn);
-          return;
-        }
-        await c.sendFormVideo(s, exName, x.name.contains('.') ? x.name : '${x.name}.mp4', b);
-      } catch (_) {
-        c.toast?.call('Could not open the camera', sub: 'Allow camera and video access for the app in your phone settings', kind: ToastKind.warn);
-      }
-    }
-
-    if (kIsWeb) {
-      pick(ImageSource.gallery);
-      return;
-    }
-    _popover(anchor, width: 240, builder: (ctx, close) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          _mi('Record a video', icon: AppIcons.camera, sub: 'Up to 60 seconds', onTap: () {
-            close();
-            pick(ImageSource.camera);
-          }),
-          _mi('Choose a video', icon: AppIcons.video, sub: 'From your gallery', onTap: () {
-            close();
-            pick(ImageSource.gallery);
-          }),
-        ]));
-  }
-
-  void _tip(BuildContext anchor, String text, {required bool web}) => _popover(anchor,
-      width: web ? 320 : 260,
-      right: true,
-      builder: (ctx, close) => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-            child: Text(text, style: AppText.s(12.5, W.w6, h: 1.45)),
-          ));
-
-  /// Web: `cl-tpop` under the time chip.
-  void _timerPop(BuildContext anchor, WorkoutController c) => _popover(anchor,
-      width: 250,
-      builder: (ctx, close) => CaWeb(
-            web: true,
-            child: ListenableBuilder(
-              listenable: c,
-              builder: (_, _) => Padding(
-                padding: const EdgeInsets.all(6),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
-                  Text(c.paused ? 'TIMER PAUSED' : 'WORKOUT TIME', style: AppText.s(11.5, W.w7, color: AppColors.muted, ls: .575)),
-                  Text(clockText(c.elapsed), style: AppText.s(30, W.w8, tabular: true)),
-                  _timerBtns(c),
-                  _restartLink(() {
-                    close();
-                    _askRestart(c);
-                  }),
-                ]),
-              ),
-            ),
-          ));
-
-  Widget _timerBtns(WorkoutController c, {double? height}) => Row(spacing: 6, children: [
-        Expanded(child: _tbtn('1 min', AppIcons.minus, () => c.shift(-60), height: height)),
-        Expanded(child: _tbtn(c.paused ? 'Resume' : 'Pause', c.paused ? AppIcons.play : AppIcons.pause, c.pauseToggle, height: height, dark: true)),
-        Expanded(child: _tbtn('1 min', AppIcons.plus, () => c.shift(60), height: height)),
-      ]);
-
-  /// `cl-tbtns` button: like `ca-btn sm` with 8 px sides so "− 1 min" fits in the 250 wide popover.
-  Widget _tbtn(String label, AppIconData icon, VoidCallback onTap, {double? height, bool dark = false}) => Semantics(
-        button: true,
-        label: icon == AppIcons.minus ? 'Minus $label' : (icon == AppIcons.plus ? 'Plus $label' : label),
-        child: Hover(
-          onTap: onTap,
-          builder: (_, h, _) => Container(
-            height: height ?? 32,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            decoration: BoxDecoration(
-              color: dark ? (h ? AppColors.black : AppColors.text) : (h ? AppColors.outlineHover : AppColors.white),
-              borderRadius: BorderRadius.circular(height == null ? 8 : 10),
-              border: Border.all(color: dark ? AppColors.text : AppColors.line),
-            ),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Row(mainAxisSize: MainAxisSize.min, spacing: 4, children: [
-                AppIcon(icon, size: 14, color: dark ? AppColors.white : AppColors.text),
-                Text(label, style: AppText.s(13, W.w7, color: dark ? AppColors.white : AppColors.text, h: 1)),
-              ]),
-            ),
-          ),
-        ),
-      );
-
-  Widget _restartLink(VoidCallback onTap) => Center(
-        child: Hover(
-          onTap: onTap,
-          builder: (_, h, _) => Container(
-            height: 32,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(color: h ? AppColors.hover : null, borderRadius: BorderRadius.circular(8)),
-            child: Row(mainAxisSize: MainAxisSize.min, spacing: 6, children: [
-              const AppIcon(AppIcons.restart, size: 15, color: AppColors.text2),
-              Text('Restart workout', style: AppText.s(13, W.w6, color: AppColors.text2)),
-            ]),
-          ),
-        ),
-      );
-
-  /// Phone: "Workout timer" sheet (`cl-tsheet`).
-  void _timerSheet(WorkoutController c) => showAppSheet(
-        context,
-        title: 'Workout timer',
-        sub: 'Started at ${DateFormat('h:mm a').format(c.startedAt).toLowerCase()} · ${c.name}',
-        builder: (ctx) => ListenableBuilder(
-          listenable: c,
-          builder: (_, _) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
-            Text(c.paused ? 'TIMER PAUSED' : 'WORKOUT TIME', textAlign: TextAlign.center, style: AppText.s(11.5, W.w7, color: AppColors.muted, ls: .575)),
-            Text(clockText(c.elapsed), textAlign: TextAlign.center, style: AppText.s(44, W.w8, tabular: true)),
-            _timerBtns(c, height: 40),
-            _restartLink(() {
-              Navigator.of(ctx).pop();
-              _askRestart(c);
-            }),
-            Text('The timer stops when you finish the workout, or when you leave Train. Continue workout starts it again.', textAlign: TextAlign.center, style: AppText.s(12.5, W.w4, color: AppColors.muted)),
-            const SizedBox(height: 4),
-            Row(spacing: 8, children: [
-              Expanded(
-                child: _dangerOut('Remove logged work', () {
-                  Navigator.of(ctx).pop();
-                  _askRemove(c);
-                }),
-              ),
-              Expanded(
-                child: CaButton('Finish workout', onPressed: () {
-                  Navigator.of(ctx).pop();
-                  _askFinish(c);
-                }),
-              ),
-            ]),
-          ]),
-        ),
-      );
-
-  Widget _dangerOut(String label, VoidCallback onTap) => Hover(
-        onTap: onTap,
-        builder: (ctx, h, _) {
-          final web = CaWeb.of(ctx);
-          return Container(
-            height: web ? 40 : 44,
-            alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(color: h ? AppColors.badBg : AppColors.white, borderRadius: BorderRadius.circular(web ? 10 : 12), border: Border.all(color: AppColors.line)),
-            child: FittedBox(fit: BoxFit.scaleDown, child: Text(label, maxLines: 1, style: AppText.s(web ? 14 : 14.5, W.w7, color: AppColors.badText))),
-          );
-        },
-      );
-
-  Widget _dangerBtn(String label, VoidCallback onTap) => Hover(
-        onTap: onTap,
-        builder: (ctx, h, _) {
-          final web = CaWeb.of(ctx);
-          return Container(
-            height: web ? 40 : 44,
-            alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(color: h ? AppColors.badText : AppColors.red, borderRadius: BorderRadius.circular(web ? 10 : 12)),
-            child: CutText(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(web ? 14 : 14.5, W.w7, color: AppColors.white)),
-          );
-        },
-      );
-
-  // ─────────────────────────────── Sheets
-
-  /// A question sheet: message and two buttons side by side (`cl-ebtns`).
-  Future<void> _ask({required String title, String? sub, Widget? body, required List<Widget> Function(BuildContext ctx) buttons}) => showAppSheet(
-        context,
-        title: title,
-        sub: sub,
-        webWidth: 440,
-        builder: (ctx) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-          ?body,
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Row(spacing: 8, children: [for (final b in buttons(ctx)) Expanded(child: b)]),
-          ),
-        ]),
-      );
-
-  Widget _p(String t) => Text(t, style: AppText.s(14, W.w4, color: AppColors.text2, h: 1.5));
-
-  void _askFinish(WorkoutController c) {
-    final all = c.setsDone == c.setsAll;
-    final coach = c.plan.coachFirst;
-    _ask(
-      title: 'Finish workout?',
-      sub: '${c.setsDone} of ${c.setsAll} sets done',
-      body: _p(all
-          ? 'Nice, every set is done. $coach sees your workout as soon as you finish.'
-          : '${c.setsAll - c.setsDone} sets are not ticked yet. They are saved as skipped, and $coach sees what you did.'),
-      buttons: (ctx) => [
-        CaButton('Keep going', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop()),
-        CaButton('Finish', icon: AppIcons.check, onPressed: () {
-          Navigator.of(ctx).pop();
-          _finish(c);
-        }),
-      ],
-    );
-  }
-
-  void _finish(WorkoutController c, {int? at}) {
-    c.finish(at: at);
-    _toast('Workout saved',
-        sub: at == null ? '${c.setsDone} of ${c.setsAll} sets' : 'Time set to ${clockText(at)}, your last set', kind: ToastKind.star);
-  }
-
-  void _askRestart(WorkoutController c) {
-    final n = c.setsDone;
-    final msg = '${n == 0 ? 'The' : (n == 1 ? 'Your 1 ticked set goes back to not done and the' : 'All $n ticked sets go back to not done and the')}'
-        ' timer starts again from 0:00. You start from the first exercise.';
-    _ask(
-      title: 'Restart workout?',
-      sub: '${c.name} · ${clockText(c.elapsed)} so far',
-      body: _p(msg),
-      buttons: (ctx) => [
-        CaButton('Keep going', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop()),
-        CaButton('Restart', icon: AppIcons.restart, onPressed: () {
-          Navigator.of(ctx).pop();
-          setState(() => act = null);
-          c.restart();
-        }),
-      ],
-    );
-  }
-
-  void _askRemove(WorkoutController c) {
-    var pick = 2;
-    showAppSheet(
-      context,
-      title: 'Remove what you logged?',
-      sub: 'Pick how much to remove',
-      webWidth: 440,
-      builder: (ctx) => StatefulBuilder(
-        builder: (_, set) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-          CaRadioCards(
-            options: [
-              ('Clear this exercise', '${c.e.name} · timer keeps going'),
-              ('Clear all sets', '${c.setsDone} ticked · timer keeps going'),
-              c.reopened
-                  ? ('Discard the extra sets', 'Your finished workout stays as it was')
-                  : ('Discard the whole workout', 'Nothing is saved · timer stops'),
-            ],
-            index: pick,
-            onPick: (i) => set(() => pick = i),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Row(spacing: 8, children: [
-              Expanded(child: CaButton('Keep it', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop())),
-              Expanded(
-                child: _dangerBtn(['Clear exercise', 'Clear all sets', c.reopened ? 'Discard extra sets' : 'Discard workout'][pick], () async {
-                  Navigator.of(ctx).pop();
-                  setState(() => act = null);
-                  if (pick == 0) {
-                    c.clearExercise();
-                  } else if (pick == 1) {
-                    c.clearAll();
-                  } else {
-                    final again = c.reopened;
-                    await c.discard();
-                    if (mounted) context.go('/train?discarded=${again ? 2 : 1}');
-                  }
-                }),
-              ),
-            ]),
-          ),
-        ]),
-      ),
-    );
-  }
-
-  Future<void> _askIdle() async {
-    final c = w;
-    if (c == null || !mounted) return;
-    final at = c.lastTickAt;
-    final mins = (c.elapsed - c.lastActive) ~/ 60;
-    var answered = false;
-    await _ask(
-      title: 'Still working out?',
-      sub: 'No set ticked for $mins min · timer at ${clockText(c.elapsed)}',
-      body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
-        if (at != null)
-          Text.rich(
-            TextSpan(children: [
-              const TextSpan(text: 'Your last set was at '),
-              TextSpan(text: clockText(at), style: const TextStyle(fontWeight: W.w7, color: AppColors.text)),
-              const TextSpan(text: '. Finish there so the extra minutes don’t count.'),
-            ]),
-            style: AppText.s(14, W.w4, color: AppColors.text2, h: 1.5),
-          )
-        else
-          _p('You haven’t ticked a set yet.'),
-        Text('If you don’t answer, the workout is saved at your last set after 3 hours.', style: AppText.s(12.5, W.w4, color: AppColors.muted, h: 1.45)),
-      ]),
-      buttons: (ctx) => [
-        CaButton('Keep going', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop()),
-        CaButton(at != null ? 'Finish at ${clockText(at)}' : 'Finish workout', onPressed: () {
-          answered = true;
-          Navigator.of(ctx).pop();
-          if (at != null) {
-            _finish(c, at: at);
-          } else {
-            c.keepGoing();
-            _askFinish(c);
-          }
-        }),
-      ],
-    );
-    if (!answered && !c.finished) c.keepGoing();
-    _idleUp = false;
-  }
-
-  // ─────────────────────────────── Workout done (`cd`)
+  // ─────────────────────────────── Congratulations (finish page, F)
 
   static const _quick = ['Felt easy today', 'Short on sleep', 'Had to slow down'];
 
@@ -1357,16 +1499,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: gap, children: kids),
         );
     Widget q(String t) => Text(t, style: AppText.s(15, W.w8));
-    Widget stat(String v, String l) => Expanded(
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.line)),
-            child: Column(spacing: 2, children: [
-              FittedBox(fit: BoxFit.scaleDown, child: Text(v, style: AppText.s(19, W.w8, tabular: true))),
-              Text(l, style: AppText.s(12, W.w6, color: AppColors.muted)),
-            ]),
-          ),
-        );
+    final n = c.workoutNumber;
+    final fmt = NumberFormat.decimalPattern('en_IN');
     final content = Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
       Padding(
         padding: const EdgeInsets.fromLTRB(0, 18, 0, 6),
@@ -1379,15 +1513,33 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle, boxShadow: [BoxShadow(color: AppColors.accentSoft, spreadRadius: 8)]),
             child: const AppIcon(AppIcons.star, size: 30, color: AppColors.white),
           ),
-          Text('Workout done!', style: AppText.s(24, W.w8)),
-          Text('${c.name} · ${DateFormat('EEE, d MMM').format(c.date)}', textAlign: TextAlign.center, style: AppText.s(13.5, W.w4, color: AppColors.muted)),
+          Text('Congratulations!', style: AppText.s(24, W.w8)),
+          Text(n == null ? 'Workout saved' : 'That’s your ${_nth(n)} workout!', textAlign: TextAlign.center, style: AppText.s(14, W.w6, color: AppColors.text2)),
         ]),
       ),
-      Row(spacing: 8, children: [
-        stat(clockText(total), 'Total time'),
-        stat('${c.setsDone}/${c.setsAll}', 'Sets'),
-        stat('${NumberFormat.decimalPattern('en_IN').format(c.volume.round())} kg', 'Volume'),
-      ]),
+      // The workout card (Strong's finish page): name, date, time, volume, bests, each exercise with its best set.
+      card([
+        Text(c.name, style: AppText.s(17, W.w8)),
+        Text(DateFormat('EEEE, d MMMM y').format(c.date), style: AppText.s(13, W.w5, color: AppColors.muted)),
+        Wrap(spacing: 16, runSpacing: 6, children: [
+          _fact(AppIcons.clock, clockText(total)),
+          if (c.volume > 0) _fact(AppIcons.dumbbell, '${fmt.format(c.volume.round())} kg'),
+          if (c.prs > 0) _fact(AppIcons.award, '${c.prs} ${c.prs == 1 ? 'PR' : 'PRs'}'),
+          _fact(AppIcons.check, '${c.setsDone}/${c.setsAll} sets'),
+        ]),
+        if (c.summary.isNotEmpty)
+          Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
+            Row(children: [
+              Expanded(child: Text('Exercise', style: AppText.s(12.5, W.w8, color: AppColors.text2))),
+              Text('Best set', style: AppText.s(12.5, W.w8, color: AppColors.text2)),
+            ]),
+            for (final r in c.summary)
+              Row(spacing: 10, children: [
+                Expanded(child: CutText(r.line, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w5, color: AppColors.text2))),
+                Text(r.best, style: AppText.s(13.5, W.w6, tabular: true)),
+              ]),
+          ]),
+      ], gap: 8),
       card([
         q('Where the time went'),
         ClipRRect(
@@ -1524,6 +1676,17 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     );
   }
 
+  static String _nth(int n) {
+    final t = n % 100;
+    final suf = (t >= 11 && t <= 13) ? 'th' : switch (n % 10) { 1 => 'st', 2 => 'nd', 3 => 'rd', _ => 'th' };
+    return '$n$suf';
+  }
+
+  Widget _fact(AppIconData icon, String text) => Row(mainAxisSize: MainAxisSize.min, spacing: 5, children: [
+        AppIcon(icon, size: 15, color: AppColors.muted),
+        Text(text, style: AppText.s(13, W.w6, color: AppColors.text2, tabular: true)),
+      ]);
+
   Widget _leg(Color color, String label, String value) => Row(mainAxisSize: MainAxisSize.min, spacing: 6, children: [
         Container(width: 10, height: 10, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3))),
         Text.rich(
@@ -1561,6 +1724,89 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     }
     _toast('Sent to ${c.plan.coachFirst}', sub: 'Effort ${c.effort} of 10${c.note.trim().isNotEmpty ? ' · with your note' : ''}', kind: ToastKind.ok);
   }
+}
+
+/// A number box on tablet and web (`TextField`): placeholder in grey, Enter ticks the set.
+class _NumBox extends StatefulWidget {
+  const _NumBox({super.key, required this.value, required this.hint, required this.decimal, required this.negative, required this.label, required this.onChanged, required this.onSubmit});
+  final String value, hint, label;
+  final bool decimal, negative;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onSubmit;
+
+  @override
+  State<_NumBox> createState() => _NumBoxState();
+}
+
+class _NumBoxState extends State<_NumBox> {
+  late final _c = TextEditingController(text: widget.value);
+  final _f = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _f.addListener(() {
+      if (_f.hasFocus) _c.selection = TextSelection(baseOffset: 0, extentOffset: _c.text.length);
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void didUpdateWidget(_NumBox old) {
+    super.didUpdateWidget(old);
+    // a value set from outside (Use last time, Undo, +/−) shows unless the client is typing in this box
+    if (!_f.hasFocus && widget.value != _c.text) _c.text = widget.value;
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    _f.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pat = widget.decimal ? (widget.negative ? r'^-?\d{0,4}(\.\d{0,2})?$' : r'^\d{0,4}(\.\d{0,2})?$') : r'^\d{0,4}$';
+    final border = OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.transparent));
+    return SizedBox(
+      height: 34,
+      child: Semantics(
+        label: widget.label,
+        textField: true,
+        child: TextField(
+          controller: _c,
+          focusNode: _f,
+          textAlign: TextAlign.center,
+          keyboardType: TextInputType.numberWithOptions(decimal: widget.decimal, signed: widget.negative),
+          inputFormatters: [_Keep(RegExp(pat))],
+          textInputAction: TextInputAction.done,
+          onChanged: widget.onChanged,
+          onSubmitted: (_) => widget.onSubmit(),
+          style: AppText.s(15, W.w7, tabular: true),
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: widget.hint,
+            hintStyle: AppText.s(15, W.w7, color: AppColors.valPh, tabular: true),
+            filled: true,
+            fillColor: _f.hasFocus ? AppColors.white : AppColors.sub,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+            border: border,
+            enabledBorder: border,
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.accent, width: 1.5)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Keeps the old text when a paste would not match the box's number pattern.
+class _Keep extends TextInputFormatter {
+  _Keep(this.re);
+  final RegExp re;
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue a, TextEditingValue b) => re.hasMatch(b.text) ? b : a;
 }
 
 /// `cr-ring`: grey track and the blue arc of rest left.

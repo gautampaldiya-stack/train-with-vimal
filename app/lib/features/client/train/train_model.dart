@@ -94,6 +94,7 @@ class TrainData {
         live = json['in_progress'] == null ? null : LiveWorkout((json['in_progress'] as Map).cast<String, dynamic>()),
         coach = (json['trainer'] as Map?)?.cast<String, dynamic>(),
         session = json['session'] == null ? null : HomeSession((json['session'] as Map).cast<String, dynamic>()),
+        lastPerformed = json['last_performed'] == null ? null : DateTime.tryParse('${json['last_performed']}'),
         bodyweight = _nn(json['bodyweight_kg'])?.toDouble();
 
   final Map<String, dynamic> json;
@@ -108,6 +109,9 @@ class TrainData {
   final Map<String, dynamic>? coach;
   final HomeSession? session;
   final double? bodyweight;
+
+  /// Start sheet: "Last performed: 3 September 2025" (null = never).
+  final DateTime? lastPerformed;
 
   bool get hasPlan => program.isNotEmpty;
   bool get rest => day == null || day!['is_rest'] == true;
@@ -222,13 +226,26 @@ class TrainEx {
         superset = '${json['superset_group'] ?? ''}',
         lastTime = [for (final s in (json['last_time'] as List? ?? const [])) (s as Map).cast<String, dynamic>()],
         pr = (json['pr'] as Map?)?.cast<String, dynamic>(),
-        setsDone = _n(json['sets_done']).toInt();
+        setsDone = _n(json['sets_done']).toInt(),
+        focusMetric = '${json['focus_metric'] ?? 'volume'}',
+        bpmMin = _nn(json['bpm_min'])?.toInt(),
+        bpmMax = _nn(json['bpm_max'])?.toInt();
 
   final Map<String, dynamic> json, full;
   final int index, peId, sets, rest, setsDone;
   final String reps, tempo, note, superset;
-  final int? rpe;
+  final int? rpe, bpmMin, bpmMax;
   final double? targetKg;
+  final String focusMetric;
+
+  /// Cardio: "Target 120–140 bpm" (the coach's range, tracker F42).
+  String get bpmText => bpmMin == null && bpmMax == null
+      ? ''
+      : bpmMin != null && bpmMax != null
+          ? '$bpmMin–$bpmMax bpm'
+          : bpmMin != null
+              ? 'from $bpmMin bpm'
+              : 'up to $bpmMax bpm';
   final List<Map<String, dynamic>> lastTime;
   final Map<String, dynamic>? pr;
 
@@ -277,7 +294,7 @@ class TrainEx {
 
   /// "3 × 15 · RPE 7 · rest 60 s", "35 min".
   String get target {
-    if (kind == ExKind.cardio) return [reps, if (rpe != null) 'RPE $rpe'].where((s) => s.isNotEmpty).join(' · ');
+    if (kind == ExKind.cardio) return [reps, if (bpmText.isNotEmpty) bpmText, if (rpe != null) 'RPE $rpe'].where((s) => s.isNotEmpty).join(' · ');
     return ['$sets × $reps', if (targetKg != null) '${kg(targetKg!)} kg', if (rpe != null) 'RPE $rpe', if (rest > 0) 'rest ${restText(rest)}'].join(' · ');
   }
 
@@ -304,7 +321,7 @@ class TrainEx {
   String get logsLabel => switch (logType) {
         'bodyweight_reps' => 'Bodyweight × reps',
         'time' => 'Seconds',
-        'distance' => 'Minutes + km',
+        'distance' => 'Minutes + heart rate (BPM)',
         _ => 'kg × reps',
       };
 
@@ -332,7 +349,7 @@ class TrainEx {
     final w = _nn(s['weight_kg'])?.toDouble(), r = _nn(s['reps'])?.toInt(), sec = _nn(s['seconds'])?.toInt();
     final bw = s['bw'] == true || s['is_bodyweight'] == true;
     return switch (kind) {
-      ExKind.cardio => [if (sec != null) '${sec ~/ 60} min', if (_nn(s['distance_km']) != null) '${_nn(s['distance_km'])!.toStringAsFixed(1)} km'].join(' · '),
+      ExKind.cardio => [if (sec != null) '${sec ~/ 60} min', if (_nn(s['bpm']) != null) '${_nn(s['bpm'])} bpm'].join(' · '),
       ExKind.time => sec == null ? '—' : '$sec s',
       ExKind.weight => '${bw ? bwText(w ?? 0) : kg(w ?? 0)} × ${r ?? '—'}',
     };
@@ -464,8 +481,8 @@ class PastDetail {
   /// Text of a logged set by its exercise's log type.
   static String setText(String logType, Map<String, dynamic> s) {
     final w = _nn(s['weight_kg'])?.toDouble(), r = _nn(s['reps'])?.toInt(), sec = _nn(s['seconds'])?.toInt();
-    final km = _nn(s['distance_km'])?.toDouble();
-    if (logType == 'distance') return [if (sec != null) '${(sec / 60).round()} min', if (km != null) '${km.toStringAsFixed(1)} km'].join(' · ');
+    final bpm = _nn(s['bpm'])?.toInt();
+    if (logType == 'distance') return [if (sec != null) '${(sec / 60).round()} min', if (bpm != null) '$bpm bpm'].join(' · ');
     if (logType == 'time') return sec == null ? '—' : '$sec s';
     final bw = s['is_bodyweight'] == true;
     return '${bw ? bwText(w ?? 0) : '${kg(w ?? 0)} kg'} × ${r ?? '—'}';

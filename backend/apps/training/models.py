@@ -131,6 +131,11 @@ class ProgramExercise(models.Model):
     rest_seconds = models.PositiveSmallIntegerField(default=90, validators=[MaxValueValidator(300)])
     tempo = models.CharField(max_length=12, blank=True, default="")
     target_weight_kg = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    # cardio: the heart-rate range the coach wants (beats per minute); the client logs the BPM they got
+    bpm_min = models.PositiveSmallIntegerField(null=True, blank=True,
+                                               validators=[MinValueValidator(30), MaxValueValidator(250)])
+    bpm_max = models.PositiveSmallIntegerField(null=True, blank=True,
+                                               validators=[MinValueValidator(30), MaxValueValidator(250)])
     note = models.CharField(max_length=200, blank=True, default="")
     # "Edit for this program": a per-program copy of name / video / steps / cues.
     override = models.JSONField(default=dict, blank=True)
@@ -195,10 +200,21 @@ class WorkoutLog(TimeStampedModel):
     auto_saved = models.BooleanField(default=False)  # saved at the last set after 3 hours
     paused_at = models.DateTimeField(null=True, blank=True)  # timer paused; resume moves started_at forward
     reopened_at = models.DateTimeField(null=True, blank=True)  # "Log more sets": Discard goes back to this point
+    # Every time the workout was finished: [{"seconds": 720, "finished_at": iso, "ex": {"pe:12": 300}}]. The first
+    # entry is the workout itself, each later one a "Log more sets" addition timed from 0:00.
+    # duration_seconds = the sum, so 12 min + 4 min shows as 16 min with its parts.
+    segments = models.JSONField(default=list, blank=True)
 
     class Meta:
         ordering = ["-date", "-started_at"]
         indexes = [models.Index(fields=["client", "-date"]), models.Index(fields=["client", "status"])]
+
+
+class SetType(models.TextChoices):
+    NORMAL = "normal", "Work set"
+    WARMUP = "warmup", "Warm up"
+    DROP = "drop", "Drop set"
+    FAILURE = "failure", "Failure"
 
 
 class SetLog(models.Model):
@@ -211,12 +227,16 @@ class SetLog(models.Model):
                                     validators=[MinValueValidator(0), MaxValueValidator(1000)])
     reps = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MaxValueValidator(1000)])
     seconds = models.PositiveIntegerField(null=True, blank=True)
-    distance_km = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True,
-                                      validators=[MinValueValidator(0), MaxValueValidator(500)])
+    # cardio: heart rate the client got (replaces the old km field)
+    bpm = models.PositiveSmallIntegerField(null=True, blank=True,
+                                           validators=[MinValueValidator(30), MaxValueValidator(250)])
+    rpe = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True,
+                              validators=[MinValueValidator(1), MaxValueValidator(10)])
     # set added in the app (maybe offline): the app's own id, so a repeated save does not add it twice
     client_key = models.CharField(max_length=40, blank=True, default="")
     is_bodyweight = models.BooleanField(default=False)
-    is_warmup = models.BooleanField(default=False)
+    is_warmup = models.BooleanField(default=False)  # always set_type == "warmup" (kept for every volume query)
+    set_type = models.CharField(max_length=8, choices=SetType.choices, default=SetType.NORMAL)
     done = models.BooleanField(default=False)
     done_at = models.DateTimeField(null=True, blank=True)
     is_pr = models.BooleanField(default=False)
@@ -224,6 +244,35 @@ class SetLog(models.Model):
     class Meta:
         ordering = ["exercise_id", "set_number"]
         indexes = [models.Index(fields=["exercise", "done"])]
+
+    def save(self, *args, **kwargs):
+        # one truth for "warm-up": old callers set is_warmup, the logger sets set_type
+        if self.is_warmup and self.set_type == SetType.NORMAL:
+            self.set_type = SetType.WARMUP
+        self.is_warmup = self.set_type == SetType.WARMUP
+        uf = kwargs.get("update_fields")
+        if uf is not None and ("is_warmup" in uf or "set_type" in uf):
+            kwargs["update_fields"] = list({*uf, "is_warmup", "set_type"})
+        super().save(*args, **kwargs)
+
+
+class FocusMetric(models.TextChoices):
+    VOLUME = "volume", "Total volume"
+    VOLUME_UP = "volume_increase", "Volume increase"
+    REPS = "reps", "Total reps"
+    WEIGHT_REPS = "weight_reps", "Weight / reps"
+
+
+class ClientExercisePref(models.Model):
+    """What a client picked for one exercise in the logger: the number shown beside its ⋯ menu."""
+
+    client = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="exercise_prefs")
+    exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE, related_name="+")
+    focus_metric = models.CharField(max_length=16, choices=FocusMetric.choices, default=FocusMetric.VOLUME)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["client", "exercise"], name="one_pref_per_client_exercise")]
 
 
 class FormVideo(models.Model):

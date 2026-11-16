@@ -1,6 +1,6 @@
 # Work tracker — kitna hua, kitna baki
 
-Probid ki poori list ek jagah. **Last updated: 2026-11-02** · branch `working`.
+Probid ki poori list ek jagah. **Last updated: 2026-11-16** · branch `working`.
 Isko har kaam ke saath update karo: kaam khatam hone par item **Remaining se Completed me** le jao
 (ya uska mark ✅ karo) aur `changes.md` / `phases/CURRENT.md` me bhi likho.
 
@@ -264,55 +264,65 @@ E50. ✅ Check-ins page daily card: week strip ke neeche sawalon wali auto line 
 E51. ✅ Admin/trainer client Logs (Daily, Weekly, Habits, Supplements) aur client ka Check-ins strip: din sirf client active hone se. Sign-up = approve ka din (plan start baad me ho to wo); team ka banaya client = start date / joining. Habit / supplement sirf assign hone ke din se (back-dated start nahi).
 
 ### F. Workout Logger (Strong app design aur layout)
-*(Dhyaan: 28 Oct ka pichla logger kaam (D-75, rest D-79 etc.) rollback me hataya gaya, sirf backup bundle me hai: `/mnt/project-files/backup-oct28/`. Wapas lana ya naya banana Probid decide karega.)*
+*(16 Nov: Probid ne kaha purana backup logger nahi rakhna, naya banaya Strong screenshots se (`/mnt/project-files/strong-logger-nov16/`). Decision D-89.)*
 
-33. ⬜ Layout aur behavior
+33. ✅ Layout aur behavior
     * Neeche swipe = logger mini bar me collapse (kabhi band nahi hota). Bar tap ya upar swipe = wapas khule.
     * Mini bar me workout timer aur current exercise.
     * Logger khula ho (expanded bhi) to bottom navbar hidden, main tab par wapas aaye.
     * Expanded me back = mini bar me collapse. Workout end nahi.
-34. ⬜ Timer
+    * **Hua (16 Nov): saare exercises ek page par; ⌄ / back / neeche swipe = mini bar (har client page ke neeche: workout naam, time, abhi wala exercise ya Rest). Tap ya upar swipe = logger. Logger par tab bar nahi.**
+34. ✅ Timer
     * Bug: timer logger khulte hi shuru hota hai (workout start par nahi) aur logger chhodte hi ruk jaata hai.
     * "Start workout" par shuru, sirf workout active hone tak chale.
     * Collapse, back ya app switch par na ruke.
     * Start timestamp persist ho, app restart ke baad bhi.
     * Active rahte ongoing notification (Android ongoing, iOS Live Activity jahan ho) — existing notification setup se: elapsed time, current exercise, set progress ("Set 3 of 5 done"). Tap = logger.
     * Finish ya reset par notification hatao. Agla workout zero se.
-35. ⬜ Finished workout aur aur sets add karna
+    * **Hua: clock sirf Start workout par (pehle Start sheet: last performed + exercises). Collapse / tab badalna / app band karna clock nahi rokta; start time server + phone par, app restart par mini bar wapas. Android ongoing notification: exercise, set line, Complete set / Pause / Skip / +30s. Finish / Cancel par hat jaata hai. iOS Live Activity parked.**
+35. ✅ Finished workout aur aur sets add karna
     * Finished workout dobara khol ke sets add karne par naya segment timer zero se. Original total restart nahi.
     * Time per exercise per session store: original sets aur har baad ka addition alag.
     * Sahi total sab jagah (exercise card, summary, history), breakdown ke saath. Example: 12 min + 4 min = 16 min.
-36. ⬜ Set entry
+    * **Hua: Log more sets = naya segment 0:00 se; `WorkoutLog.segments` (jaise [720, 240]); total = jod (16 min).**
+36. ✅ Set entry
     * +/- stepper hatao. Weight aur reps ke liye plain numeric fields, numeric keyboard, weight me decimals.
     * Placeholder propagation: set N me weight likho to N+1 se aage placeholder me dikhe. Upar ke sets par asar nahi. Placeholder ya tick tap = confirm. Reps ke liye bhi jahan sahi ho.
     * Test: 5 sets x 5 reps. Set 2 me 60 likho to sets 3–5 ke placeholder 60. Set 1 same.
     * "+ Add Set" text button (filled ya outlined nahi).
     * Completion tick turant volume, total reps, total time update kare.
-37. ⬜ Previous column
+    * **Hua: −/+ hata ke number boxes, phone par apna keypad (1–9, ., ⌫, −/+, RPE, NEXT), web/tablet par text box. Placeholder upar wale set se neeche (test: set 2 me 62.5 → 3, 4 me 62.5). + ADD SET text button. Tick par volume / reps turant.**
+37. ✅ Previous column
     * Har set row me us exercise ke pichle session ke same set number ka weight aur reps ("60 kg x 8").
     * Tap = us set ka weight aur reps fill, aur wo Previous value disabled/light grey.
     * Divergence rule: weight ya reps Previous se alag kar do to Previous wapas dikhe (grey nahi). Original previous values stored rahein.
-38. ⬜ Set number menu: set number tap = Use last time (pichle session se saare sets), Bodyweight, Set type (Drop set shamil), Rest timer for this set.
-39. ⬜ Drop set (Strong ka exact UI screenshots se confirm karo)
+    * **Hua: PREVIOUS = pichle session ka same set; tap = fill, grey; value badli to wapas normal.**
+38. ◐ Set number menu: set number tap = Use last time (pichle session se saare sets), Bodyweight, Set type (Drop set shamil), Rest timer for this set.
+    * **Hua: SET tap = Set type (W / D / F, har ek ka ? info), Use last time, Bodyweight, RPE, Form video, Delete. Rest timer per set → G me.**
+39. ✅ Drop set (Strong ka exact UI screenshots se confirm karo)
     * Drop set, set menu me ek set type hai.
     * Drop set = main weight + ek ya zyada drop weights, har ek ke reps. Strong ka structure (agar Strong har drop ki alag row banata hai to wahi).
     * Drop rows visually grouped ya marked (jaise "D").
     * Set count aur volume me ginti.
-40. ⬜ Focus metric: chuna hua metric exercise ke 3-dot menu ke paas dikhe aur menu se editable. 3-dot menu me Focus metric aur Rest timer dono.
-41. ⬜ Form video (per set)
+    * **Hua: Drop set = apni row, D (purple), set ke baad; volume me ginti. Warm up W (amber) volume / PR me nahi. Failure F (red).**
+40. ✅ Focus metric: chuna hua metric exercise ke 3-dot menu ke paas dikhe aur menu se editable. 3-dot menu me Focus metric aur Rest timer dono.
+    * **Hua: chip ⋯ ke paas (Total Volume / Volume Increase / Total Reps / Weight/Reps), tap = menu, client + exercise ke liye save (`me/exercise-prefs/`). ⋯ menu: How to do it, Past workouts, Start rest timer, Focus metric (Replace / Remove / Superset client ko nahi).**
+41. ✅ Form video (per set)
     * Har set par video (ya Strong per exercise karta hai to wahi, confirm karo).
     * Sirf workout finish par submit.
     * App chhod ke wapas aane par selected video bana rahe.
     * Submit se pehle change ya remove ho sake.
     * Finish screen batae kis exercise aur set me video hai, confirmation ke liye.
-42. ⬜ Cardio (KM ki jagah BPM) *(code me abhi `distance_km` hai: `backend/apps/training/models.py`)*
+    * **Hua: set menu → Form video (record / gallery), set par camera badge, change / remove, sirf Finish par upload; app band karke wapas aane par bhi rehta hai. Finish sheet batata hai kitne videos jayenge.**
+42. ✅ Cardio (KM ki jagah BPM) *(code me abhi `distance_km` hai: `backend/apps/training/models.py`)*
     * KM field hatao, BPM lagao.
     * Admin plan builder me har cardio exercise ke liye target BPM range (min, max) set kare. Client ko us exercise par range dikhe.
     * Client jo BPM mila wo log kare.
     * Admin target vs actual saath me dekhe jahan bhi exercise aaye: client workout detail, history, activity feed detail.
     * Cardio volume me nahi ginta.
     * Purana KM data nahi rakhna. Sirf BPM.
-43. ⬜ Exercise edit drawer
+    * **Hua: `distance_km` hata ke `bpm` (migration training 0008). Admin builder + client plan drawer me Min / Max BPM (30–250). Client ko 'Target 120–140 bpm', MIN · BPM log. Coach logs me target vs actual. Cardio volume me nahi.**
+43. ✅ Exercise edit drawer
     * Bug: drawer me sets field badalte hi peeche ka exercise turant badal jaata hai.
     * Drawer ke changes draft me rahein. Exercise sirf Done tap par badle.
     * Done ke bina band (back, neeche swipe, bahar tap) = draft discard.
@@ -320,6 +330,7 @@ E51. ✅ Admin/trainer client Logs (Daily, Weekly, Habits, Supplements) aur clie
     * Notes field ke neeche ka divider hatao.
     * Har screen par jahan ye drawer use hota hai.
     * Root cause batao (expected: drawer inputs live exercise state me seedha likhte hain, local draft me nahi) aur regression test.
+    * **Hua: root cause = drawer ke inputs seedha live exercise map me likhte the. Ab draft copy (`ExerciseDrafts`), Done par hi apply, band karne par discard. Footer ki line hata di. Test: app/test/exercise_drafts_test.dart.**
 
 ### G. Rest Timer (per exercise, per set type)
 

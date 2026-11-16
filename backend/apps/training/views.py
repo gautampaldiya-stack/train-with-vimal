@@ -23,7 +23,9 @@ from . import services
 from .services import can_edit_program
 from .models import (
     AssignmentStatus,
+    ClientExercisePref,
     Exercise,
+    FocusMetric,
     Program,
     ProgramAssignment,
     ProgramDay,
@@ -745,6 +747,8 @@ class MyTrainView(APIView):
             ids = [e.exercise_id for e in rows]
             last = services.last_performance(u, ids)
             prs = services.personal_bests(u, ids)
+            prefs = dict(ClientExercisePref.objects.filter(client=u, exercise_id__in=ids)
+                         .values_list("exercise_id", "focus_metric"))
             for e in rows:
                 d = ProgramExerciseSerializer(e).data
                 d["exercise_full"] = ExerciseSerializer(e.exercise, context={"request": request}).data
@@ -758,6 +762,7 @@ class MyTrainView(APIView):
                         d["exercise_full"]["media"] = media_of(own, request)
                         d["exercise_full"]["video_title"] = own.title if own else None
                 d["last_time"] = last.get(e.exercise_id)
+                d["focus_metric"] = prefs.get(e.exercise_id, "volume")
                 d["pr"] = prs.get(e.exercise_id)
                 mine = [s for s in here.sets.all() if s.exercise_id == e.exercise_id] if here else []
                 d["sets_done"] = sum(1 for s in mine if s.done and not s.is_warmup)
@@ -783,6 +788,8 @@ class MyTrainView(APIView):
                     "minutes": _day_minutes(rows)} if pd else None,
             "exercises": exercises,
             "completed_today": WorkoutRowSerializer(done_today).data if done_today else None,
+            # Start sheet: "Last performed: 3 September" (this day of the plan, else a workout of the same name)
+            "last_performed": _last_performed(u, pd, day) if pd and not pd.is_rest else None,
             "in_progress": live,
             "trainer": _person(trainer) if trainer else None,
             "session": {"id": str(session.id), "start": session.start, "end": session.end,
@@ -790,6 +797,27 @@ class MyTrainView(APIView):
             if session else None,
             "bodyweight_kg": float(weigh.weight_kg) if weigh else None,
         })
+
+
+def _last_performed(user, pd, day):
+    qs = WorkoutLog.objects.filter(client=user, status="completed", date__lt=day)
+    return (qs.filter(program_day=pd).order_by("-date").values_list("date", flat=True).first()
+            or (qs.filter(name=pd.name).order_by("-date").values_list("date", flat=True).first() if pd.name else None))
+
+
+class MyExercisePrefView(APIView):
+    """Logger → Focus metric of one exercise (`PUT me/exercise-prefs/<exercise id>/`). Safe to send again."""
+
+    permission_classes = [IsClient]
+
+    def put(self, request, exercise_id):
+        ex = get_object_or_404(Exercise, id=exercise_id)
+        metric = request.data.get("focus_metric")
+        if metric not in FocusMetric.values:
+            raise serializers.ValidationError({"focus_metric": ["Pick one of the focus metrics."]})
+        ClientExercisePref.objects.update_or_create(client=request.user, exercise=ex,
+                                                    defaults={"focus_metric": metric})
+        return Response({"exercise": str(ex.id), "focus_metric": metric})
 
 
 class MyWorkoutViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
@@ -924,15 +952,16 @@ class MyWorkoutViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewset
 
     @action(detail=True, methods=["post"])
     def reopen(self, request, pk=None):
-        """'Log more sets' after finishing: the same workout runs again, the timer goes on from its time."""
+        """'Log more sets' after finishing: the same workout runs again. The added part is timed from 0:00 and is
+        added to the first total at the next finish (`WorkoutLog.segments`)."""
         wl = get_object_or_404(WorkoutLog, id=pk, client=request.user, status="completed")
         if WorkoutLog.objects.filter(client=request.user, status="in_progress").exclude(id=wl.id).exists():
             raise serializers.ValidationError({"workout": ["Finish the workout you are doing first."]})
         wl.status = WorkoutLog.Status.IN_PROGRESS
-        wl.started_at = timezone.now() - timedelta(seconds=wl.duration_seconds)
+        wl.started_at = timezone.now()
         wl.finished_at = None
         wl.paused_at = None
-        wl.reopened_at = timezone.now()
+        wl.reopened_at = wl.started_at
         wl.save(update_fields=["status", "started_at", "finished_at", "paused_at", "reopened_at", "updated_at"])
         return Response(WorkoutLogSerializer(self.get_queryset().get(id=wl.id)).data)
 

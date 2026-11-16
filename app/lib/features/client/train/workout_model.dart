@@ -8,11 +8,24 @@ import 'package:uuid/uuid.dart';
 
 import '../../../app/services.dart';
 import '../../../core/api/api_error.dart';
+import '../../../core/live/live_notice.dart';
 import '../../../core/widgets/overlays.dart' show ToastKind;
 import 'train_model.dart';
 
-/// One set in the logger. Values stay null until the client changes or ticks them; until then the
-/// screen shows grey suggestions from last time and the target.
+/// Set types (Strong-style, tracker F38/F39). A drop set is its own row marked D, right after the set it drops from.
+enum SetKind {
+  normal('normal', ''),
+  warmup('warmup', 'W'),
+  drop('drop', 'D'),
+  failure('failure', 'F');
+
+  const SetKind(this.api, this.letter);
+  final String api, letter;
+  static SetKind of(String? v) => SetKind.values.firstWhere((k) => k.api == v, orElse: () => SetKind.normal);
+}
+
+/// One set in the logger. Values stay null until the client types or ticks them; until then the
+/// row shows grey placeholders (the set above, else last time, else the target).
 class WSet {
   WSet({
     this.id,
@@ -23,9 +36,10 @@ class WSet {
     this.weight,
     this.reps,
     this.seconds,
-    this.km,
+    this.bpm,
+    this.rpe,
     this.bw = false,
-    this.wu = false,
+    this.kind = SetKind.normal,
     this.done = false,
     this.doneAt,
     this.at,
@@ -37,17 +51,20 @@ class WSet {
   String exId;
   int? peId;
   int number;
-  double? weight, km;
-  int? reps, seconds;
-  bool bw, wu, done, pr;
+  double? weight, rpe;
+  int? reps, seconds, bpm;
+  bool bw, done, pr;
+  SetKind kind;
   DateTime? doneAt;
+
+  bool get wu => kind == SetKind.warmup;
 
   /// Workout time (seconds) when it was ticked: "Where the time went".
   int? at;
 
-  WSet copy() => WSet(id: id, key: key, exId: exId, peId: peId, number: number, weight: weight, reps: reps, seconds: seconds, km: km, bw: bw, wu: wu, done: done, doneAt: doneAt, at: at, pr: pr);
+  WSet copy() => WSet(id: id, key: key, exId: exId, peId: peId, number: number, weight: weight, reps: reps, seconds: seconds, bpm: bpm, rpe: rpe, bw: bw, kind: kind, done: done, doneAt: doneAt, at: at, pr: pr);
 
-  bool get touched => weight != null || reps != null || seconds != null || km != null;
+  bool get touched => weight != null || reps != null || seconds != null || bpm != null;
 
   Map<String, dynamic> toApi() => {
         'id': ?id,
@@ -58,9 +75,11 @@ class WSet {
         'weight_kg': weight?.toStringAsFixed(2),
         'reps': reps,
         'seconds': seconds,
-        'distance_km': km?.toStringAsFixed(2),
+        'bpm': bpm,
+        'rpe': rpe?.toStringAsFixed(1),
         'is_bodyweight': bw,
         'is_warmup': wu,
+        'set_type': kind.api,
         'done': done,
         'done_at': doneAt?.toUtc().toIso8601String(),
       };
@@ -81,9 +100,10 @@ class WSet {
       weight: _d(j['weight_kg']),
       reps: _i(j['reps']),
       seconds: _i(j['seconds']),
-      km: _d(j['distance_km']),
+      bpm: _i(j['bpm']),
+      rpe: _d(j['rpe']),
       bw: j['is_bodyweight'] == true,
-      wu: j['is_warmup'] == true,
+      kind: j['set_type'] != null ? SetKind.of('${j['set_type']}') : (j['is_warmup'] == true ? SetKind.warmup : SetKind.normal),
       done: j['done'] == true,
       doneAt: doneAt,
       at: _i(j['at']) ?? doneAt?.difference(startedAt).inSeconds.clamp(0, 99 * 3600),
@@ -94,13 +114,48 @@ class WSet {
 
 typedef Toaster = void Function(String title, {String? sub, ToastKind kind, VoidCallback? undo});
 
-/// The running workout: timer, sets, rest, hold timer, finish. Every change is saved on the phone
-/// at once and sent to the server through the outbox (`PUT me/workouts/<id>/state/`), so the
-/// logger keeps working offline. A workout started offline is sent whole when it is finished.
+/// A form video picked in the logger. It goes to the coach only when the workout is finished (tracker F41), so the
+/// client can change or remove it until then. The file's path is kept on the phone, so it survives leaving the app.
+class PendingVideo {
+  PendingVideo({required this.exId, required this.setKey, required this.exName, required this.setLabel, required this.path, required this.name, this.bytes});
+  final String exId, setKey, exName, setLabel, path, name;
+  Uint8List? bytes; // web: the picked file lives only in memory
+
+  Map<String, dynamic> toJson() => {'ex': exId, 'set': setKey, 'exName': exName, 'label': setLabel, 'path': path, 'name': name};
+  static PendingVideo? from(dynamic j) => j is Map
+      ? PendingVideo(exId: '${j['ex']}', setKey: '${j['set']}', exName: '${j['exName']}', setLabel: '${j['label']}', path: '${j['path']}', name: '${j['name']}')
+      : null;
+}
+
+/// Focus metric beside an exercise's ⋯ (tracker F40), kept per exercise for this client.
+enum FocusMetric {
+  volume('volume', 'Total Volume'),
+  volumeUp('volume_increase', 'Volume Increase'),
+  reps('reps', 'Total Reps'),
+  weightReps('weight_reps', 'Weight/Reps');
+
+  const FocusMetric(this.api, this.label);
+  final String api, label;
+  static FocusMetric of(String? v) => FocusMetric.values.firstWhere((f) => f.api == v, orElse: () => FocusMetric.volume);
+}
+
+/// The running workout: timer, every exercise's sets, rest, finish. One lives for the whole workout
+/// ([WorkoutController.current]), so collapsing the logger to the mini bar, going to another tab or turning the
+/// phone off does not stop it (tracker F33/F34). Every change is saved on the phone at once and sent through the
+/// outbox (`PUT me/workouts/<id>/state/`), so it works offline; a workout started offline is sent when finished.
 class WorkoutController extends ChangeNotifier {
   WorkoutController(this.plan);
 
   static const _cacheKey = 'workout:live';
+  static const _videoKey = 'workout:videos';
+
+  /// The workout running now (null when none). The logger, the mini bar and the notification all use it.
+  static final live = ValueNotifier<WorkoutController?>(null);
+  static WorkoutController? get current => live.value;
+
+  /// Where ⌄ (collapse) goes back to: the tab the logger was opened from.
+  static String backTo = '/train';
+
   final TrainData plan;
   List<TrainEx> get ex => plan.exercises;
   Toaster? toast;
@@ -108,35 +163,29 @@ class WorkoutController extends ChangeNotifier {
   String? id;
   bool local = false;
 
-  /// Sets whose form video went to the coach this time ("exercise id:set number").
+  /// Sets whose form video already went to the coach ("exercise id:set number").
   final filmed = <String>{};
-  bool isFilmed(WSet s) => filmed.contains('${s.exId}:${s.number}');
+  bool isFilmed(WSet s) => filmed.contains('${s.exId}:${s.number}') || videos.any((v) => v.setKey == s.key);
 
-  /// Form check: a short clip of one set goes to the coach, who watches it in the workout log. Needs the internet.
-  Future<void> sendFormVideo(WSet s, String exName, String file, Uint8List bytes) async {
-    if (id == null || local) {
-      toast?.call('Could not send the video', sub: 'Connect to the internet, then try again', kind: ToastKind.warn);
-      return;
+  /// Videos waiting for Finish.
+  final videos = <PendingVideo>[];
+  PendingVideo? videoOf(WSet s) {
+    for (final v in videos) {
+      if (v.setKey == s.key) return v;
     }
-    toast?.call('Sending your form video…', sub: '$exName · set ${s.number}', kind: ToastKind.info);
-    try {
-      await Services.api.upload<Map>('me/workouts/$id/form-video/',
-          FormData.fromMap({'file': MultipartFile.fromBytes(bytes, filename: file), 'exercise': s.exId, 'set_number': s.number}));
-      filmed.add('${s.exId}:${s.number}');
-      notifyListeners();
-      toast?.call('Form video sent', sub: 'Your coach will check your form', kind: ToastKind.ok);
-    } on ApiError catch (e) {
-      toast?.call('Could not send the video', sub: e.field('file') ?? e.message, kind: ToastKind.warn);
-    }
+    return null;
   }
+
   String name = '';
   DateTime date = DateTime.now();
   DateTime startedAt = DateTime.now();
   DateTime? pausedAt;
   List<List<WSet>> sets = [];
-  int cur = 0;
   bool ready = false;
   String? failed;
+
+  /// Focus metric per exercise index.
+  late final List<FocusMetric> focus = [for (final x in ex) FocusMetric.of(x.focusMetric)];
 
   /// The rest running now, for the web Home Rest timer card (D-87): when it ends, what is next and the workout's
   /// route. Null when no rest runs (or it is paused).
@@ -144,14 +193,15 @@ class WorkoutController extends ChangeNotifier {
 
   @override
   void notifyListeners() {
-    final live = rest > 0 && !restPaused && !finished && id != null;
+    final on = rest > 0 && !restPaused && !finished && id != null;
     final v = liveRest.value;
-    if (!live) {
+    if (!on) {
       if (v != null) liveRest.value = null;
     } else {
       final ends = DateTime.now().add(Duration(seconds: rest));
       if (v == null || (v.ends.difference(ends).inSeconds).abs() > 2) liveRest.value = (ends: ends, next: nextUp, route: '/train/workout');
     }
+    _notice();
     super.notifyListeners();
   }
 
@@ -171,19 +221,43 @@ class WorkoutController extends ChangeNotifier {
   int finalSeconds = 0, effort = 0;
   String note = '';
 
+  /// "That's workout 12!" on the finish page (null until known).
+  int? workoutNumber;
+
   Timer? _tick, _save;
   bool _gone = false;
 
-  /// Opened with "Log more sets": Discard keeps the finished workout and drops only what was added.
+  /// Opened with "Log more sets": the added sets are timed from 0:00 and added to the first total.
   bool reopened = false;
+
+  /// Time of the earlier part(s) of a reopened workout (for "16 min = 12 + 4").
+  int earlierSeconds = 0;
 
   int get elapsed => ((pausedAt ?? DateTime.now()).difference(startedAt).inSeconds).clamp(0, 99 * 3600);
   bool get paused => pausedAt != null;
   int get setsDone => sets.fold(0, (a, xs) => a + xs.where((s) => s.done && !s.wu).length);
   int get setsAll => sets.fold(0, (a, xs) => a + xs.where((s) => !s.wu).length);
   bool exDone(int i) => sets[i].isNotEmpty && sets[i].every((s) => s.done);
-  TrainEx get e => ex[cur];
   bool get idle => ready && !finished && !paused && elapsed - lastActive >= 1800;
+
+  /// The exercise being worked on: the first one with a set not ticked (else the last).
+  int get cur {
+    final i = sets.indexWhere((xs) => xs.any((s) => !s.done));
+    return i < 0 ? math.max(0, ex.length - 1) : i;
+  }
+
+  TrainEx get e => ex[cur];
+
+  /// The logger screen closed: the workout keeps running; only a finished or discarded one is let go.
+  void detach() {
+    toast = null;
+    if (finished || failed != null) release();
+  }
+
+  /// Ends this controller (after Finish, Discard, sign out).
+  void release() {
+    if (!_gone) dispose();
+  }
 
   @override
   void dispose() {
@@ -194,26 +268,73 @@ class WorkoutController extends ChangeNotifier {
       _push();
     }
     if (_syncLater) _sendLocal();
+    if (live.value == this) live.value = null;
+    liveRest.value = null;
+    LiveNotice.clear();
     super.dispose();
   }
 
   // ─────────────────────────────── Open / start
 
+  static bool _hooked = false;
+
+  static void _hook() {
+    if (_hooked) return;
+    _hooked = true;
+    LiveNotice.onAction = (a) => current?._action(a);
+    Services.session.onSignOut.add(() async {
+      final c = current;
+      if (c != null) {
+        c._syncLater = false;
+        c.release();
+      }
+      await LiveNotice.clear();
+    });
+  }
+
+  /// App opened (or a client signed in) while a workout was running on this phone: bring it back, so the mini bar,
+  /// the clock and the notification are there without opening Train first.
+  static Future<void> revive() async {
+    _hook();
+    if (current != null) return;
+    final snap = await Services.cache.read(_cacheKey);
+    if (snap is Map && snap['finished'] == true) return;
+    final t = TrainController();
+    try {
+      await t.start();
+      final d = t.data;
+      if (d == null || current != null) return;
+      // No workout on this phone and none on the server: nothing to bring back. (A workout started on another
+      // device comes back from the server even without the phone's copy.)
+      if (d.live == null && !(snap is Map && snap['local'] == true)) {
+        if (snap != null) await Services.cache.write(_cacheKey, null); // finished or discarded on another device
+        return;
+      }
+      final c = WorkoutController(d);
+      await c.open();
+      if (!c.ready) c.release();
+    } finally {
+      t.dispose();
+    }
+  }
+
   /// [start] = program day to start; [reopen] = finished workout to log more sets on.
   Future<void> open({int? start, String? reopen}) async {
+    _hook();
+    await LiveNotice.init();
     try {
       final snap = await Services.cache.read(_cacheKey);
-      final live = plan.live;
+      final lv = plan.live;
       if (reopen != null) {
         final j = await Services.api.post<Map<String, dynamic>>('me/workouts/$reopen/reopen/');
         _fromServer(j);
-      } else if (live != null) {
-        final mine = snap is Map && '${snap['id']}' == live.id;
+      } else if (lv != null) {
+        final mine = snap is Map && '${snap['id']}' == lv.id;
         if (mine && Services.outbox.pending.value > 0) {
           _fromLocal(snap.cast<String, dynamic>()); // changes still on their way to the server
         } else {
           try {
-            _fromServer(await Services.api.get<Map<String, dynamic>>('me/workouts/${live.id}/'));
+            _fromServer(await Services.api.get<Map<String, dynamic>>('me/workouts/${lv.id}/'));
             if (mine) restUsed = snap['rest_used'] as int? ?? restUsed; // rest is only counted on the phone
           } on ApiError catch (e) {
             if (!e.offline || !mine) rethrow;
@@ -231,24 +352,33 @@ class WorkoutController extends ChangeNotifier {
       failed = e.offline ? 'You are offline. Connect to open this workout.' : e.message;
     }
     ready = failed == null;
-    // "Continue workout": the timer stopped when the client left Train, it goes on from there.
+    // A workout paused from the Train banner goes on when the logger opens.
     final resume = ready && paused && !finished;
     if (resume) {
       startedAt = startedAt.add(DateTime.now().difference(pausedAt!));
       pausedAt = null;
     }
     if (ready) {
+      await _loadVideos();
       lastActive = math.max(lastActive, _lastTick() ?? 0);
       if (lastActive == 0) lastActive = elapsed;
       _tick = Timer.periodic(const Duration(seconds: 1), (_) => _second());
       _store();
       if (resume) _push();
+      final old = live.value;
+      if (old != null && old != this) old.release();
+      live.value = this;
     }
     notifyListeners();
   }
 
   /// Train banner ⋯ → Pause / Resume timer, without opening the logger.
   static Future<void> setPaused(String id, {required bool pause}) async {
+    final c = current;
+    if (c != null && c.id == id) {
+      if (c.paused != pause) c.pauseToggle();
+      return;
+    }
     final now = DateTime.now().toUtc();
     final snap = await Services.cache.read(_cacheKey);
     if (snap is Map && '${snap['id']}' == id) {
@@ -268,32 +398,25 @@ class WorkoutController extends ChangeNotifier {
 
   /// Train banner ⋯ → Discard workout.
   static Future<void> discardLive(String id) async {
+    final c = current;
+    if (c != null && c.id == id) {
+      await c.discard();
+      return;
+    }
     try {
       await Services.outbox.enqueue('POST', 'me/workouts/$id/discard/', {}, tag: 'workout:discard');
     } on ApiError catch (_) {}
     await drain();
     await Services.cache.write(_cacheKey, null);
+    await Services.cache.write(_videoKey, null);
+    await LiveNotice.clear();
   }
 
   /// A workout is running on this phone (started, not finished or discarded): the exit sheet offers Resume workout.
   static Future<bool> hasLive() async {
+    if (current != null && !current!.finished) return true;
     final snap = await Services.cache.read(_cacheKey);
     return snap is Map && snap['finished'] != true;
-  }
-
-  /// The client left Train and the logger (decision D-17): the workout timer stops. Saved on the
-  /// phone and sent through the outbox with the time it happened, so it works offline too.
-  static Future<void> pauseLive() async {
-    final snap = await Services.cache.read(_cacheKey);
-    if (snap is! Map || snap['finished'] == true || snap['paused_at'] != null) return;
-    final at = DateTime.now().toUtc().toIso8601String();
-    await Services.cache.write(_cacheKey, {...snap.cast<String, dynamic>(), 'paused_at': at});
-    if (snap['local'] == true || snap['id'] == null) return;
-    try {
-      await Services.outbox.enqueue('POST', 'me/workouts/${snap['id']}/pause/', {'at': at}, tag: 'workout:pause');
-    } on ApiError catch (_) {
-      // finished or discarded somewhere else: nothing to stop
-    }
   }
 
   Future<void> _start(int dayId) async {
@@ -322,8 +445,11 @@ class WorkoutController extends ChangeNotifier {
     startedAt = DateTime.tryParse('${j['started_at']}')?.toLocal() ?? DateTime.now();
     pausedAt = j['paused_at'] == null ? null : DateTime.tryParse('${j['paused_at']}')?.toLocal();
     reopened = j['reopened_at'] != null;
-    final tb = j['time_breakdown'];
-    restUsed = tb is Map && tb['rest'] is num ? (tb['rest'] as num).toInt() : 0; // reopened: rest so far
+    earlierSeconds = reopened ? (j['duration_seconds'] as num? ?? 0).toInt() : 0;
+    restUsed = 0;
+    for (final v in (j['form_videos'] as List? ?? const [])) {
+      if (v is Map) filmed.add('${v['exercise']}:${v['set_number']}');
+    }
     final all = [for (final s in (j['sets'] as List? ?? const [])) WSet.from((s as Map).cast<String, dynamic>(), startedAt)];
     sets = [for (final _ in ex) <WSet>[]];
     for (final s in all) {
@@ -338,7 +464,6 @@ class WorkoutController extends ChangeNotifier {
         xs.add(_fresh(ex[i], n));
       }
     }
-    cur = _firstOpen();
   }
 
   void _fromLocal(Map<String, dynamic> j) {
@@ -352,14 +477,9 @@ class WorkoutController extends ChangeNotifier {
     sets = [
       for (var i = 0; i < ex.length; i++) [for (final s in (i < raw.length ? raw[i] as List : const [])) WSet.from((s as Map).cast<String, dynamic>(), startedAt)],
     ];
-    cur = (j['cur'] as int? ?? 0).clamp(0, math.max(0, ex.length - 1));
     restUsed = j['rest_used'] as int? ?? 0;
     reopened = j['reopened'] == true;
-  }
-
-  int _firstOpen() {
-    final i = sets.indexWhere((xs) => xs.any((s) => !s.done));
-    return i < 0 ? 0 : i;
+    earlierSeconds = j['earlier'] as int? ?? 0;
   }
 
   int? _lastTick() {
@@ -391,10 +511,10 @@ class WorkoutController extends ChangeNotifier {
         'date': DateFormat('yyyy-MM-dd').format(date),
         'started_at': startedAt.toUtc().toIso8601String(),
         'paused_at': pausedAt?.toUtc().toIso8601String(),
-        'cur': cur,
         'rest_used': restUsed,
         'finished': finished,
         'reopened': reopened,
+        'earlier': earlierSeconds,
         'sets': [for (final xs in sets) [for (final s in xs) s.toLocal()]],
       });
 
@@ -416,14 +536,14 @@ class WorkoutController extends ChangeNotifier {
             if (s.id == null && ids[s.key] != null) s.id = ids[s.key] as int?;
           }
         }
-        if (!_gone) _store(); // after the logger closed, the phone copy may already be paused
+        if (!_gone) _store();
       }
     } on ApiError catch (e) {
       toast?.call('Could not save the workout', sub: e.message, kind: ToastKind.warn);
     }
   }
 
-  // ─────────────────────────────── Every second: timer, rest, hold
+  // ─────────────────────────────── Every second: rest, hold
 
   void _second() {
     if (finished) return;
@@ -433,9 +553,9 @@ class WorkoutController extends ChangeNotifier {
         if (h.$3 <= 1) {
           hold = null;
           final (i, k, _) = h;
-          if (i == cur && k < sets[i].length) {
-            final v = shown(sets[i][k], 0);
-            tick(k, quiet: true);
+          if (k < sets[i].length) {
+            final v = shownVal(i, k, 0);
+            tick(i, k, quiet: true);
             toast?.call('Hold done', sub: '${ex[i].name} · set ${k + 1} · ${v.round()} s', kind: ToastKind.ok);
           }
         } else {
@@ -454,14 +574,57 @@ class WorkoutController extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ─────────────────────────────── Notification (F34)
+
+  void _notice() {
+    if (_gone || !ready || finished) return;
+    if (rest > 0) {
+      LiveNotice.rest(
+        title: 'Next: $nextUp',
+        body: '${restPaused ? 'Rest paused' : 'Rest'} · ${clockText(rest)} left',
+        endsAt: DateTime.now().add(Duration(seconds: rest)),
+        total: math.max(restMax, rest),
+        left: rest,
+        paused: restPaused,
+      );
+      return;
+    }
+    final i = cur;
+    final xs = sets.isEmpty ? const <WSet>[] : sets[i];
+    final k = xs.indexWhere((s) => !s.done);
+    final work = xs.where((s) => !s.wu).toList();
+    final done = work.where((s) => s.done).length;
+    final body = k < 0
+        ? (setsDone == setsAll ? 'Every set is done. Finish when you are ready' : 'Set $done of ${work.length} done')
+        : '${setLine(i, k)} (${k + 1} of ${xs.length}) · set $done of ${work.length} done';
+    LiveNotice.workout(title: ex.isEmpty ? name : ex[i].name, body: body, startedAt: startedAt, paused: paused, canComplete: k >= 0);
+  }
+
+  void _action(String a) {
+    switch (a) {
+      case 'complete_set':
+        final i = cur, k = sets[i].indexWhere((s) => !s.done);
+        if (k >= 0) tick(i, k);
+      case 'rest_pause':
+        if (rest > 0) restToggle();
+      case 'rest_skip':
+        restSkip();
+      case 'rest_add':
+        if (rest > 0) restMore(30);
+    }
+  }
+
   // ─────────────────────────────── Values
 
-  /// Columns of the current exercise.
+  /// Column titles of an exercise (tracker F36, F42): KG · REPS, +KG · REPS for bodyweight, SEC, MIN · BPM.
   List<String> cols(TrainEx x) => switch (x.kind) {
-        ExKind.cardio => ['Min', 'Km'],
-        ExKind.time => ['Seconds'],
-        ExKind.weight => ['kg / BW', 'Reps'],
+        ExKind.cardio => ['MIN', 'BPM'],
+        ExKind.time => ['SEC'],
+        ExKind.weight => [x.bodyweight ? '+KG' : 'KG', 'REPS'],
       };
+
+  /// Weight and minutes take decimals; reps, seconds and BPM are whole numbers.
+  bool decimal(TrainEx x, int j) => (x.kind == ExKind.weight && j == 0) || (x.kind == ExKind.cardio && j == 0);
 
   static int _firstInt(String s, {bool max = false}) {
     final m = RegExp(r'\d+').allMatches(s).map((m) => int.parse(m.group(0)!)).toList();
@@ -469,105 +632,211 @@ class WorkoutController extends ChangeNotifier {
     return max ? m.take(2).reduce(math.max) : m.first;
   }
 
-  Map<String, dynamic>? _last(TrainEx x, int k) => x.lastTime.isEmpty ? null : (k < x.lastTime.length ? x.lastTime[k] : x.lastTime.last);
+  static num? _n(dynamic v) => v is num ? v : num.tryParse('${v ?? ''}');
 
-  /// The suggestion shown in grey before a value is set.
-  double suggest(TrainEx x, WSet s, int j) {
-    final k = sets[x.index].where((y) => !y.wu).toList().indexOf(s);
-    final last = _last(x, k < 0 ? 0 : k);
-    num? n(dynamic v) => v is num ? v : num.tryParse('${v ?? ''}');
-    switch (x.kind) {
-      case ExKind.cardio:
-        if (j == 0) return (n(last?['seconds']) != null ? n(last!['seconds'])! / 60 : _firstInt(x.reps)).roundToDouble();
-        return (n(last?['distance_km']) ?? 0).toDouble();
-      case ExKind.time:
-        final t = _firstInt(x.reps);
-        return (t > 0 ? t : (n(last?['seconds']) ?? 30)).toDouble();
-      case ExKind.weight:
-        if (j == 1) return _firstInt(x.reps, max: true).toDouble();
-        if (s.bw) return 0;
-        return (n(last?['weight_kg']) ?? x.targetKg ?? 0).toDouble();
-    }
-  }
-
-  /// Value in column [j]: weight / reps, minutes / km, or seconds.
+  /// Value in column [j]: weight / reps, minutes / BPM, or seconds.
   double? value(TrainEx x, WSet s, int j) => switch (x.kind) {
-        ExKind.cardio => j == 0 ? (s.seconds == null ? null : s.seconds! / 60) : s.km,
+        ExKind.cardio => j == 0 ? (s.seconds == null ? null : s.seconds! / 60) : s.bpm?.toDouble(),
         ExKind.time => s.seconds?.toDouble(),
         ExKind.weight => j == 0 ? s.weight : s.reps?.toDouble(),
       };
 
-  double shown(WSet s, int j, [TrainEx? x]) {
-    x ??= ex[_indexOf(s)];
-    return value(x, s, j) ?? suggest(x, s, j);
+  /// Index of [k] among the working sets (warm-ups not counted), or -1 for a warm-up.
+  int workIndex(int i, int k) {
+    if (sets[i][k].wu) return -1;
+    var n = 0;
+    for (var m = 0; m < k; m++) {
+      if (!sets[i][m].wu) n++;
+    }
+    return n;
   }
 
-  int _indexOf(WSet s) => sets.indexWhere((xs) => xs.contains(s));
+  /// Last time's set for this row (same working set number), for the Previous column (F37).
+  Map<String, dynamic>? prevOf(int i, int k) {
+    final x = ex[i], w = workIndex(i, k);
+    if (w < 0 || w >= x.lastTime.length) return null;
+    return x.lastTime[w];
+  }
 
-  void _put(TrainEx x, WSet s, int j, double v) {
+  /// "60 kg × 8", "BW+5 × 10", "45 s", "20 min · 132 bpm"; drop sets end with "(D)".
+  String prevText(int i, int k) {
+    final p = prevOf(i, k);
+    if (p == null) return '';
+    final x = ex[i];
+    final t = x.setText(p);
+    return '${p['type'] == 'drop' ? '$t (D)' : t}${p['type'] == 'failure' ? ' (F)' : ''}';
+  }
+
+  double? _prevVal(TrainEx x, Map<String, dynamic>? p, int j) {
+    if (p == null) return null;
+    return switch (x.kind) {
+      ExKind.cardio => j == 0 ? (_n(p['seconds']) == null ? null : _n(p['seconds'])! / 60) : _n(p['bpm'])?.toDouble(),
+      ExKind.time => _n(p['seconds'])?.toDouble(),
+      ExKind.weight => j == 0 ? (_n(p['weight_kg']) ?? (p['bw'] == true ? 0 : null))?.toDouble() : _n(p['reps'])?.toDouble(),
+    };
+  }
+
+  /// The grey placeholder of an empty box (tracker F36): the nearest set above with a value in this column (sets
+  /// below never change it), else last time's same set, else the coach's target.
+  double? placeholder(int i, int k, int j) {
+    final x = ex[i], xs = sets[i], s = xs[k];
+    for (var m = k - 1; m >= 0; m--) {
+      final o = xs[m];
+      if (o.wu != s.wu) continue;
+      final v = value(x, o, j);
+      if (v != null) return v;
+    }
+    if (s.wu) return null;
+    final last = _prevVal(x, prevOf(i, k), j);
+    switch (x.kind) {
+      case ExKind.weight:
+        if (j == 1) {
+          final t = _firstInt(x.reps, max: true);
+          return t > 0 ? t.toDouble() : last;
+        }
+        return last ?? (s.bw ? null : x.targetKg);
+      case ExKind.time:
+        final t = _firstInt(x.reps);
+        return t > 0 ? t.toDouble() : last;
+      case ExKind.cardio:
+        if (j == 0) {
+          final t = _firstInt(x.reps);
+          return last ?? (t > 0 ? t.toDouble() : null);
+        }
+        return last;
+    }
+  }
+
+  /// What a tick saves for this box: the typed value, else the placeholder, else 0.
+  double shownVal(int i, int k, int j) => value(ex[i], sets[i][k], j) ?? placeholder(i, k, j) ?? 0;
+
+  void _put(TrainEx x, WSet s, int j, double? v) {
     switch (x.kind) {
       case ExKind.cardio:
         if (j == 0) {
-          s.seconds = (v * 60).round();
+          s.seconds = v == null ? null : (v * 60).round();
         } else {
-          s.km = (v * 10).round() / 10;
+          s.bpm = v?.round();
         }
       case ExKind.time:
-        s.seconds = v.round();
+        s.seconds = v?.round();
       case ExKind.weight:
         if (j == 0) {
-          s.weight = (v * 100).round() / 100;
+          s.weight = v == null ? null : (v * 100).round() / 100;
         } else {
-          s.reps = v.round();
+          s.reps = v?.round();
         }
     }
   }
 
-  /// Fill every column with what is shown, so a tick saves what the client sees.
-  void _fill(TrainEx x, WSet s) {
-    for (var j = 0; j < cols(x).length; j++) {
-      if (value(x, s, j) == null) _put(x, s, j, suggest(x, s, j));
-    }
-  }
-
-  double stepOf(TrainEx x, int j) => switch (x.kind) {
-        ExKind.cardio => j == 0 ? 1 : 0.1,
-        ExKind.time => 5,
-        ExKind.weight => j == 1 ? 1 : (x.equipment == 'kettlebell' ? 4 : (x.equipment == 'dumbbell' ? 2 : 2.5)),
+  /// Limits per column, the same as the server's (`StateSetSerializer`).
+  (double, double) limits(TrainEx x, WSet s, int j) => switch (x.kind) {
+        ExKind.cardio => j == 0 ? (0, 1440) : (30, 250),
+        ExKind.time => (0, 86400),
+        ExKind.weight => j == 0 ? (s.bw ? -200 : 0, 1000) : (0, 1000),
       };
 
-  void step(int k, int j, int dir) {
-    final x = e, s = sets[cur][k];
-    final lo = x.kind == ExKind.weight && j == 0 && s.bw ? -40.0 : 0.0;
-    final v = math.max(lo, shown(s, j, x) + dir * stepOf(x, j));
-    _fill(x, s);
+  /// Typed into a box (null = cleared, the placeholder shows again).
+  void setValue(int i, int k, int j, double? v) {
+    final x = ex[i], s = sets[i][k];
+    if (v != null) {
+      final (lo, hi) = limits(x, s, j);
+      v = v.clamp(lo, hi).toDouble();
+    }
     _put(x, s, j, v);
     changed();
   }
 
-  /// "12", "BW+5", "2.9", "35".
-  String text(WSet s, int j, [TrainEx? x]) {
-    x ??= ex[_indexOf(s)];
-    final v = shown(s, j, x);
-    if (x.kind == ExKind.weight && j == 0) return s.bw ? bwText(v) : kg(v);
-    if (x.kind == ExKind.cardio && j == 1) return v.toStringAsFixed(1);
+  /// Keypad − / +: one step from what the box shows.
+  void stepValue(int i, int k, int j, int dir) {
+    final x = ex[i];
+    setValue(i, k, j, shownVal(i, k, j) + dir * stepOf(x, j));
+  }
+
+  double stepOf(TrainEx x, int j) => switch (x.kind) {
+        ExKind.cardio => 1,
+        ExKind.time => 5,
+        ExKind.weight => j == 1 ? 1 : (x.equipment == 'kettlebell' ? 4 : (x.equipment == 'dumbbell' ? 2 : 2.5)),
+      };
+
+  void setRpe(int i, int k, double? v) {
+    sets[i][k].rpe = v;
+    changed();
+  }
+
+  /// Fill every box with what it shows, so a tick saves what the client sees.
+  void _fill(int i, int k) {
+    final x = ex[i], s = sets[i][k];
+    for (var j = 0; j < cols(x).length; j++) {
+      if (value(x, s, j) == null) {
+        final p = placeholder(i, k, j);
+        _put(x, s, j, p ?? 0);
+      }
+    }
+  }
+
+  /// Number text of a value: "12", "12.5", "BW+5" never (the box shows the number, the header says +KG).
+  String fmt(TrainEx x, int j, double v) {
+    if (x.kind == ExKind.weight && j == 0) return kg(v);
+    if (x.kind == ExKind.cardio && j == 0) return kg((v * 10).round() / 10);
     return '${v.round()}';
   }
 
-  /// Prev column: what was done last time in the same working set.
-  String prev(TrainEx x, int workingIndex) {
-    if (x.lastTime.isEmpty || workingIndex >= x.lastTime.length) return '—';
-    return x.setText(x.lastTime[workingIndex]);
+  /// "60 kg × 5", "BW × 10", "45 s", "20 min · 130 bpm" for set [k] as it would be saved.
+  String setLine(int i, int k) {
+    final x = ex[i], s = sets[i][k];
+    String t(int j) => fmt(x, j, shownVal(i, k, j));
+    return switch (x.kind) {
+      ExKind.weight => '${s.bw || x.bodyweight ? bwText(shownVal(i, k, 0)) : '${t(0)} kg'} × ${t(1)}',
+      ExKind.time => '${t(0)} s',
+      ExKind.cardio => '${t(0)} min${value(x, s, 1) != null ? ' · ${t(1)} bpm' : ''}',
+    };
+  }
+
+  /// Previous tapped: this row takes last time's values (F37).
+  void usePrev(int i, int k) {
+    final x = ex[i], s = sets[i][k], p = prevOf(i, k);
+    if (p == null || s.done) return;
+    for (var j = 0; j < cols(x).length; j++) {
+      _put(x, s, j, _prevVal(x, p, j));
+    }
+    if (x.kind == ExKind.weight) s.bw = p['bw'] == true || x.bodyweight;
+    changed();
+  }
+
+  /// Previous is shown light while the row holds exactly last time's values; changing one brings it back (F37).
+  bool prevUsed(int i, int k) {
+    final x = ex[i], s = sets[i][k], p = prevOf(i, k);
+    if (p == null) return false;
+    var any = false;
+    for (var j = 0; j < cols(x).length; j++) {
+      final a = value(x, s, j), b = _prevVal(x, p, j);
+      if (a == null) {
+        if (b != null) return false;
+        continue;
+      }
+      any = true;
+      if (b == null || (a - b).abs() > 0.001) return false;
+    }
+    return any;
+  }
+
+  /// SET column: W / D / F, else the working set's number.
+  String label(int i, int k) {
+    final s = sets[i][k];
+    if (s.kind != SetKind.normal && s.kind != SetKind.failure) return s.kind.letter;
+    if (s.kind == SetKind.failure) return 'F';
+    return '${workIndex(i, k) + 1}';
   }
 
   // ─────────────────────────────── Sets
 
-  /// Tick or untick set [k] of the current exercise.
-  void tick(int k, {bool quiet = false}) {
-    final x = e, s = sets[cur][k];
+  /// Tick or untick set [k] of exercise [i]. A tick saves the placeholders as the values (F36).
+  void tick(int i, int k, {bool quiet = false}) {
+    final x = ex[i], s = sets[i][k];
     final on = !s.done;
     if (on) {
-      _fill(x, s);
+      _fill(i, k);
       s.done = true;
       s.doneAt = DateTime.now();
       s.at = elapsed;
@@ -582,13 +851,14 @@ class WorkoutController extends ChangeNotifier {
       s.pr = false;
     }
     hold = null;
-    final all = exDone(cur);
-    if (on && x.rest > 0 && !all) {
+    final all = exDone(i);
+    final last = setsDone == setsAll && sets.every((xs) => xs.every((y) => y.done));
+    if (on && x.rest > 0 && !last) {
       rest = x.rest;
       restMax = x.rest;
       restPaused = false;
-      restOpen = true;
-      restAt = (cur, k);
+      restOpen = false; // the rest bar shows; the big timer opens from it (F35)
+      restAt = (i, k);
     } else if (on) {
       rest = 0;
       restOpen = false;
@@ -596,34 +866,30 @@ class WorkoutController extends ChangeNotifier {
     if (on && s.pr) {
       toast?.call('New best!', sub: '${x.name} · ${kg(s.weight!)} kg × ${s.reps}', kind: ToastKind.star);
     } else if (on && all && !quiet) {
-      toast?.call('${x.name} done', sub: cur < ex.length - 1 ? 'Next: ${ex[cur + 1].name}' : 'Last one. Finish when you are ready', kind: ToastKind.ok);
+      final next = sets.indexWhere((xs) => xs.any((y) => !y.done));
+      toast?.call('${x.name} done', sub: next >= 0 ? 'Next: ${ex[next].name}' : 'Last one. Finish when you are ready', kind: ToastKind.ok);
     }
-    if (on && all && cur < ex.length - 1) cur += 1;
     changed();
   }
 
-  void addSet() {
-    final x = e, xs = sets[cur];
+  /// "Add set" (F36): a new row under the last one; its boxes show the last row's values as placeholders.
+  void addSet(int i) {
+    final x = ex[i], xs = sets[i];
     final last = xs.isEmpty ? null : xs.last;
-    final s = WSet(key: const Uuid().v4(), exId: x.exId, peId: x.peId, number: (last?.number ?? 0) + 1, bw: last?.bw ?? x.bodyweight);
-    if (last != null && last.touched) {
-      s.weight = last.weight;
-      s.reps = last.reps;
-      s.seconds = last.seconds;
-      s.km = last.km;
-    }
-    xs.add(s);
-    toast?.call('Set added', sub: '${x.name} · set ${xs.length}', kind: ToastKind.ok);
+    xs.add(WSet(key: const Uuid().v4(), exId: x.exId, peId: x.peId, number: (last?.number ?? 0) + 1, bw: last?.bw ?? x.bodyweight));
+    _renumber(i);
     changed();
   }
 
-  /// "Use last time" / "Use these sets": the sets not ticked yet take the values of a past workout,
-  /// working sets in order; extra past sets are added. Ticked sets stay as they are.
-  void fillFrom(List<Map<String, dynamic>> past, {String from = 'last time'}) {
-    final work = [for (final p in past) if (p['is_warmup'] != true && p['wu'] != true) p];
-    if (work.isEmpty) return;
+  /// Use last time (set menu, F38): every set not ticked takes last time's values in order; extra past sets are added.
+  void fillFrom(int i, List<Map<String, dynamic>> past, {String from = 'last time'}) {
+    final work = [for (final p in past) if (p['is_warmup'] != true && p['wu'] != true && p['type'] != 'warmup') p];
+    if (work.isEmpty) {
+      toast?.call('Nothing from last time', sub: '${ex[i].name} has no past sets yet', kind: ToastKind.info);
+      return;
+    }
     final before = _snap();
-    final x = e, xs = sets[cur];
+    final x = ex[i], xs = sets[i];
     final open = xs.where((s) => !s.wu).toList();
     var filled = 0;
     for (var k = 0; k < math.max(open.length, work.length); k++) {
@@ -631,7 +897,7 @@ class WorkoutController extends ChangeNotifier {
       if (k < open.length) {
         s = open[k];
       } else {
-        s = WSet(key: const Uuid().v4(), exId: x.exId, peId: x.peId, number: (xs.isEmpty ? 0 : xs.last.number) + 1, bw: x.bodyweight);
+        s = WSet(key: const Uuid().v4(), exId: x.exId, peId: x.peId, number: xs.length + 1, bw: x.bodyweight);
         xs.add(s);
       }
       if (s.done) continue;
@@ -639,10 +905,12 @@ class WorkoutController extends ChangeNotifier {
       s.weight = WSet._d(p['weight_kg']);
       s.reps = WSet._i(p['reps']);
       s.seconds = WSet._i(p['seconds']);
-      s.km = WSet._d(p['distance_km']);
+      s.bpm = WSet._i(p['bpm']);
       s.bw = p['bw'] == true || p['is_bodyweight'] == true;
+      s.kind = SetKind.of('${p['type'] ?? p['set_type'] ?? 'normal'}');
       filled += 1;
     }
+    _renumber(i);
     if (filled == 0) {
       toast?.call('All sets are ticked', sub: 'Add a set to log more', kind: ToastKind.info);
       return;
@@ -651,38 +919,30 @@ class WorkoutController extends ChangeNotifier {
     changed();
   }
 
-  void deleteSet(int k) {
+  /// Swipe left → delete, with Undo.
+  void deleteSet(int i, int k) {
     final before = _snap();
-    final x = e;
-    sets[cur].removeAt(k);
-    _renumber(cur);
+    final x = ex[i];
+    final s = sets[i].removeAt(k);
+    videos.removeWhere((v) => v.setKey == s.key);
+    _saveVideos();
+    _renumber(i);
     toast?.call('Set deleted', sub: x.name, kind: ToastKind.del, undo: () => _restore(before));
     changed();
   }
 
-  void warmup(int k) {
-    final x = e, s = sets[cur][k];
-    s.wu = !s.wu;
+  /// Set menu: Warm up / Drop set / Failure, or back to a work set when the same type is picked again.
+  void setKind(int i, int k, SetKind kind) {
+    final s = sets[i][k];
+    s.kind = s.kind == kind ? SetKind.normal : kind;
     if (s.wu) s.pr = false;
-    toast?.call(s.wu ? 'Warm-up set' : 'Working set', sub: '${x.name} · ${s.wu ? 'not counted in volume' : 'counts towards volume'}', kind: ToastKind.info);
     changed();
   }
 
-  void toggleBw(int k) {
-    final s = sets[cur][k];
+  void toggleBw(int i, int k) {
+    final s = sets[i][k];
     s.bw = !s.bw;
-    s.weight = s.bw ? 0 : null;
-    changed();
-  }
-
-  /// Load: kg for every set, or bodyweight for every set.
-  void loadAll({required bool bw}) {
-    for (final s in sets[cur]) {
-      if (s.bw != bw) {
-        s.bw = bw;
-        s.weight = bw ? 0 : null;
-      }
-    }
+    s.weight = s.bw ? null : s.weight;
     changed();
   }
 
@@ -692,18 +952,10 @@ class WorkoutController extends ChangeNotifier {
     }
   }
 
-  void goTo(int i) {
-    cur = i.clamp(0, ex.length - 1);
+  void startHold(int i, int k) {
     rest = 0;
     restOpen = false;
-    hold = null;
-    changed(save: false);
-  }
-
-  void startHold(int k) {
-    rest = 0;
-    restOpen = false;
-    hold = (cur, k, shown(sets[cur][k], 0).round());
+    hold = (i, k, shownVal(i, k, 0).round());
     notifyListeners();
   }
 
@@ -713,19 +965,119 @@ class WorkoutController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ─────────────────────────────── Rest
+  // ─────────────────────────────── Focus metric (F40)
 
-  void restNow() {
-    rest = e.rest;
-    restMax = e.rest;
-    restPaused = false;
-    restOpen = true;
-    restAt = (cur, -1);
+  /// Volume of the done working sets of exercise [i] (warm-ups never count, cardio never counts).
+  double exVolume(int i) => ex[i].kind != ExKind.weight ? 0 : sets[i].fold(0.0, (a, s) => a + setVolume(s));
+
+  double _lastVolume(int i) {
+    final x = ex[i];
+    if (x.kind != ExKind.weight) return 0;
+    var v = 0.0;
+    for (final p in x.lastTime) {
+      if (p['type'] == 'warmup') continue;
+      final r = _n(p['reps'])?.toDouble() ?? 0, w = _n(p['weight_kg'])?.toDouble() ?? 0;
+      v += ((p['bw'] == true ? (plan.bodyweight ?? 0) : 0) + w) * r;
+    }
+    return v;
+  }
+
+  int exReps(int i) => sets[i].where((s) => s.done && !s.wu).fold(0, (a, s) => a + (s.reps ?? 0));
+
+  /// The chip text for metric [f] of exercise [i]: "557 kg", "+12%", "21 reps", "26.52 kg".
+  String focusText(int i, FocusMetric f) {
+    final fmt = NumberFormat.decimalPattern('en_IN');
+    switch (f) {
+      case FocusMetric.volume:
+        return '${fmt.format(exVolume(i).round())} kg';
+      case FocusMetric.volumeUp:
+        final last = _lastVolume(i);
+        if (last == 0) return '+0%';
+        final p = ((exVolume(i) - last) / last * 100).round();
+        return '${p >= 0 ? '+' : ''}$p%';
+      case FocusMetric.reps:
+        return '${exReps(i)} reps';
+      case FocusMetric.weightReps:
+        final r = exReps(i);
+        return '${r == 0 ? '0' : (exVolume(i) / r).toStringAsFixed(2)} kg';
+    }
+  }
+
+  void setFocus(int i, FocusMetric f) {
+    focus[i] = f;
+    notifyListeners();
+    Services.outbox.enqueue('PUT', 'me/exercise-prefs/${ex[i].exId}/', {'focus_metric': f.api}, tag: 'exercise:pref').catchError((_) => null);
+  }
+
+  // ─────────────────────────────── Form videos (F41)
+
+  Future<void> _loadVideos() async {
+    final raw = await Services.cache.read(_videoKey);
+    if (raw is! Map || '${raw['workout']}' != (id ?? 'local')) return;
+    videos
+      ..clear()
+      ..addAll([for (final v in (raw['items'] as List? ?? const [])) ?PendingVideo.from(v)].where((v) => v.path.isNotEmpty && !v.path.startsWith('blob:')));
+  }
+
+  void _saveVideos() => Services.cache.write(_videoKey, {
+        'workout': id ?? 'local',
+        'items': [for (final v in videos) if (v.bytes == null) v.toJson()],
+      });
+
+  void pickVideo(int i, int k, {required String path, required String name, Uint8List? bytes}) {
+    final s = sets[i][k];
+    videos.removeWhere((v) => v.setKey == s.key);
+    videos.add(PendingVideo(exId: s.exId, setKey: s.key, exName: ex[i].name, setLabel: label(i, k), path: path, name: name, bytes: bytes));
+    _saveVideos();
+    toast?.call('Video added', sub: '${ex[i].name} · set ${label(i, k)}. It goes to ${plan.coachFirst} when you finish', kind: ToastKind.ok);
     notifyListeners();
   }
 
-  void restMore() {
-    rest += 15;
+  void removeVideo(PendingVideo v) {
+    videos.remove(v);
+    _saveVideos();
+    notifyListeners();
+  }
+
+  /// After Finish: every picked video goes to the coach (needs the internet; the server already has the workout).
+  Future<void> _sendVideos(Future<Uint8List> Function(String path) read) async {
+    if (videos.isEmpty || id == null) return;
+    var ok = 0;
+    for (final v in [...videos]) {
+      final xs = [for (final xs in sets) ...xs];
+      final s = xs.where((s) => s.key == v.setKey).firstOrNull;
+      try {
+        final b = v.bytes ?? await read(v.path);
+        await Services.api.upload<Map>('me/workouts/$id/form-video/',
+            FormData.fromMap({'file': MultipartFile.fromBytes(b, filename: v.name), 'exercise': v.exId, 'set_number': ?s?.number}));
+        filmed.add('${v.exId}:${s?.number}');
+        videos.remove(v);
+        ok += 1;
+      } on ApiError catch (e) {
+        toast?.call('Could not send a video', sub: '${v.exName}: ${e.field('file') ?? e.message}', kind: ToastKind.warn);
+      } catch (_) {
+        toast?.call('Could not send a video', sub: '${v.exName}: the file is no longer on the phone', kind: ToastKind.warn);
+        videos.remove(v);
+      }
+    }
+    _saveVideos();
+    if (ok > 0) toast?.call(ok == 1 ? 'Form video sent' : '$ok form videos sent', sub: '${plan.coachFirst} will check your form', kind: ToastKind.ok);
+    notifyListeners();
+  }
+
+  // ─────────────────────────────── Rest
+
+  void restNow(int i) {
+    rest = ex[i].rest;
+    restMax = ex[i].rest;
+    restPaused = false;
+    restOpen = true;
+    restAt = (i, -1);
+    notifyListeners();
+  }
+
+  void restMore([int s = 15]) {
+    rest += s;
     restMax = math.max(restMax, rest);
     notifyListeners();
   }
@@ -752,19 +1104,12 @@ class WorkoutController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// "Set 2 · 12 kg × 15", or the next exercise.
+  /// "Squat (Barbell)" when its sets are left, "Finish the workout" when all are done.
   String get nextUp {
-    final x = e, xs = sets[cur];
-    final k = xs.indexWhere((s) => !s.done);
-    if (k >= 0) {
-      final s = xs[k];
-      final parts = [
-        for (final (j, c) in cols(x).indexed)
-          text(s, j, x) + switch (c) { 'Reps' => '', 'Seconds' => ' s', 'Min' => ' min', 'Km' => ' km', _ => s.bw ? '' : ' kg' },
-      ];
-      return 'Set ${k + 1} · ${parts.join(' × ')}';
-    }
-    return cur < ex.length - 1 ? ex[cur + 1].name : 'Finish the workout';
+    final i = sets.indexWhere((xs) => xs.any((s) => !s.done));
+    if (i < 0) return 'Finish the workout';
+    final k = sets[i].indexWhere((s) => !s.done);
+    return '${ex[i].name} · ${setLine(i, k)}';
   }
 
   // ─────────────────────────────── Timer
@@ -781,12 +1126,6 @@ class WorkoutController extends ChangeNotifier {
     changed();
   }
 
-  void shift(int seconds) {
-    if (seconds < 0) seconds = -math.min(-seconds, elapsed);
-    startedAt = startedAt.subtract(Duration(seconds: seconds));
-    changed();
-  }
-
   void keepGoing() {
     lastActive = elapsed;
     toast?.call('Timer keeps running', sub: 'Workout time ${clockText(elapsed)}', kind: ToastKind.info);
@@ -795,41 +1134,17 @@ class WorkoutController extends ChangeNotifier {
 
   int? get lastTickAt => _lastTick();
 
-  // ─────────────────────────────── Restart / clear / discard (with Undo)
+  // ─────────────────────────────── Restart / discard (with Undo)
 
-  ({DateTime started, DateTime? paused, List<List<WSet>> sets, int cur, int restUsed}) _snap() =>
-      (started: startedAt, paused: pausedAt, sets: [for (final xs in sets) [for (final s in xs) s.copy()]], cur: cur, restUsed: restUsed);
+  ({DateTime started, DateTime? paused, List<List<WSet>> sets, int restUsed}) _snap() =>
+      (started: startedAt, paused: pausedAt, sets: [for (final xs in sets) [for (final s in xs) s.copy()]], restUsed: restUsed);
 
-  void _restore(({DateTime started, DateTime? paused, List<List<WSet>> sets, int cur, int restUsed}) b) {
+  void _restore(({DateTime started, DateTime? paused, List<List<WSet>> sets, int restUsed}) b) {
     startedAt = b.started;
     pausedAt = b.paused;
     sets = b.sets;
-    cur = b.cur;
     restUsed = b.restUsed;
     changed();
-  }
-
-  List<WSet> _freshSets(int i) {
-    final old = sets[i];
-    final n = ex[i].sets;
-    return [
-      for (var k = 0; k < n; k++)
-        if (k < old.length)
-          (old[k].copy()
-            ..weight = null
-            ..reps = null
-            ..seconds = null
-            ..km = null
-            ..done = false
-            ..doneAt = null
-            ..at = null
-            ..wu = false
-            ..pr = false
-            ..bw = ex[i].bodyweight
-            ..number = k + 1)
-        else
-          _fresh(ex[i], k + 1),
-    ];
   }
 
   void restart() {
@@ -844,7 +1159,6 @@ class WorkoutController extends ChangeNotifier {
     }
     startedAt = DateTime.now();
     pausedAt = null;
-    cur = 0;
     restUsed = 0;
     rest = 0;
     restOpen = false;
@@ -854,30 +1168,12 @@ class WorkoutController extends ChangeNotifier {
     changed();
   }
 
-  void clearExercise() {
-    final before = _snap(), x = e;
-    sets[cur] = _freshSets(cur);
-    rest = 0;
-    hold = null;
-    toast?.call('${x.name} cleared', sub: 'Timer keeps going', kind: ToastKind.del, undo: () => _restore(before));
-    changed();
-  }
-
-  void clearAll() {
-    final before = _snap();
-    sets = [for (var i = 0; i < ex.length; i++) _freshSets(i)];
-    cur = 0;
-    rest = 0;
-    hold = null;
-    toast?.call('All sets cleared', sub: 'Timer keeps going', kind: ToastKind.del, undo: () => _restore(before));
-    changed();
-  }
-
-  /// Discard the whole workout: nothing is saved. After "Log more sets" the server keeps the
-  /// finished workout as it was and drops only the sets ticked since.
+  /// Cancel workout: nothing is saved. After "Log more sets" the server keeps the finished workout as it was and
+  /// drops only the sets added since.
   Future<void> discard() async {
     _tick?.cancel();
     _save?.cancel();
+    _syncLater = false;
     if (!local && id != null) {
       try {
         await Services.outbox.enqueue('POST', 'me/workouts/$id/discard/', {}, tag: 'workout:discard');
@@ -885,6 +1181,10 @@ class WorkoutController extends ChangeNotifier {
       await drain();
     }
     await Services.cache.write(_cacheKey, null);
+    await Services.cache.write(_videoKey, null);
+    videos.clear();
+    finished = true; // nothing more runs
+    release();
   }
 
   /// Waits a moment for queued saves to reach the server, so the next page shows them.
@@ -896,8 +1196,9 @@ class WorkoutController extends ChangeNotifier {
 
   // ─────────────────────────────── Finish
 
-  /// Saves the workout. [at] finishes at that workout time (the last set) instead of now.
-  Future<void> finish({int? at}) async {
+  /// Saves the workout. [at] finishes at that workout time (the last set) instead of now. [read] loads a picked
+  /// video's file for the upload.
+  Future<void> finish({int? at, Future<Uint8List> Function(String path)? read}) async {
     finalSeconds = at ?? elapsed;
     finished = true;
     rest = 0;
@@ -906,6 +1207,8 @@ class WorkoutController extends ChangeNotifier {
     _tick?.cancel();
     _save?.cancel();
     _store();
+    await LiveNotice.clear();
+    liveRest.value = null;
     notifyListeners();
     final body = {'duration_seconds': finalSeconds, 'time_breakdown': breakdown};
     if (local) {
@@ -919,6 +1222,21 @@ class WorkoutController extends ChangeNotifier {
       }
     }
     await Services.cache.write(_cacheKey, null);
+    if (read != null) unawaited(_sendVideos(read));
+    unawaited(_count());
+  }
+
+  /// "That's workout 12!": how many workouts the client has finished (this one included).
+  Future<void> _count() async {
+    try {
+      await drain();
+      final j = await Services.api.get<Map<String, dynamic>>('me/workouts/', query: {'page_size': 1});
+      final n = (j['count'] as num?)?.toInt();
+      if (n != null && n > 0) {
+        workoutNumber = local ? n + 1 : n;
+        if (!_gone) notifyListeners();
+      }
+    } catch (_) {}
   }
 
   Map<String, int> get breakdown {
@@ -950,14 +1268,29 @@ class WorkoutController extends ChangeNotifier {
 
   double get volume {
     var v = 0.0;
-    for (final (i, xs) in sets.indexed) {
-      if (ex[i].kind != ExKind.weight) continue;
-      for (final s in xs) {
-        v += setVolume(s);
-      }
+    for (var i = 0; i < ex.length; i++) {
+      v += exVolume(i);
     }
     return v;
   }
+
+  /// Personal bests set in this workout.
+  int get prs => sets.fold(0, (a, xs) => a + xs.where((s) => s.done && s.pr).length);
+
+  /// Finish card: "4 × Squat (Barbell)" and its best set "12 kg × 5" for each exercise with a done set.
+  List<({String line, String best})> get summary => [
+        for (final (i, x) in ex.indexed)
+          if (sets[i].any((s) => s.done && !s.wu))
+            (
+              line: '${sets[i].where((s) => s.done && !s.wu).length} × ${x.name}',
+              best: () {
+                final done = [for (final (k, s) in sets[i].indexed) if (s.done && !s.wu) k];
+                if (x.kind != ExKind.weight) return setLine(i, done.last);
+                done.sort((a, b) => setVolume(sets[i][b]).compareTo(setVolume(sets[i][a])));
+                return setLine(i, done.first);
+              }(),
+            ),
+      ];
 
   /// "Save and send to Aman": effort and note.
   Future<bool> send() async {

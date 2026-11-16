@@ -15,5 +15,6 @@ router.register("me/workouts", views.MyWorkoutViewSet, basename="my-workout")
 urlpatterns = [
     path("exercise-picker/", views.ExercisePickerView.as_view(), name="exercise-picker"),
     path("me/train/", views.MyTrainView.as_view(), name="my-train"),
+    path("me/exercise-prefs/<uuid:exercise_id>/", views.MyExercisePrefView.as_view(), name="my-exercise-pref"),
     *router.urls,
 ]

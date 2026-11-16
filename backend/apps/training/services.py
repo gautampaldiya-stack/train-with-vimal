@@ -23,7 +23,7 @@ from .models import (
 User = get_user_model()
 
 EXERCISE_FIELDS = ["exercise_id", "order", "superset_group", "sets", "reps", "rpe", "rest_seconds", "tempo",
-                   "target_weight_kg", "note", "override"]
+                   "target_weight_kg", "bpm_min", "bpm_max", "note", "override"]
 
 
 # ---------------------------------------------------------------- program tree
@@ -108,7 +108,7 @@ def sync_structure(program, weeks_data):
                 e.exercise = ed["exercise"]
                 e.order = i
                 for f in ("superset_group", "sets", "reps", "rpe", "rest_seconds", "tempo", "target_weight_kg",
-                          "note", "override"):
+                          "bpm_min", "bpm_max", "note", "override"):
                     if f in ed:
                         setattr(e, f, ed[f])
                 e.save()
@@ -381,14 +381,15 @@ def last_performance(client, exercise_ids):
     rows = (SetLog.objects.filter(workout__client=client, workout__status=WorkoutLog.Status.COMPLETED,
                                   exercise_id__in=exercise_ids, done=True, is_warmup=False)
             .order_by("exercise_id", "-workout__date", "set_number")
-            .values("exercise_id", "workout_id", "set_number", "weight_kg", "reps", "seconds", "distance_km",
-                    "is_bodyweight"))
+            .values("exercise_id", "workout_id", "set_number", "weight_kg", "reps", "seconds", "bpm", "rpe",
+                    "set_type", "is_bodyweight", "workout__date"))
     for r in rows:
         ex = r["exercise_id"]
         bucket = out.setdefault(ex, {"workout": r["workout_id"], "sets": []})
         if bucket["workout"] == r["workout_id"]:
             bucket["sets"].append({"set": r["set_number"], "weight_kg": r["weight_kg"], "reps": r["reps"],
-                                   "seconds": r["seconds"], "distance_km": r["distance_km"], "bw": r["is_bodyweight"]})
+                                   "seconds": r["seconds"], "bpm": r["bpm"], "rpe": r["rpe"], "type": r["set_type"],
+                                   "bw": r["is_bodyweight"], "date": r["workout__date"]})
     return {k: v["sets"] for k, v in out.items()}
 
 
@@ -460,9 +461,10 @@ def save_state(wl, data):
         pe = row.get("program_exercise")
         s.program_exercise_id = pe if pe in pe_ids else None
         s.set_number = row["set_number"]
-        for f in ("weight_kg", "reps", "seconds", "distance_km"):
+        for f in ("weight_kg", "reps", "seconds", "bpm", "rpe"):
             setattr(s, f, row.get(f))
-        s.is_bodyweight, s.is_warmup, s.done = row["is_bodyweight"], row["is_warmup"], row["done"]
+        s.is_bodyweight, s.done = row["is_bodyweight"], row["done"]
+        s.set_type, s.is_warmup = row["set_type"], row["is_warmup"]
         if s.done and not was_done:
             s.done_at = row.get("done_at") or now
         elif not s.done:
@@ -507,8 +509,23 @@ def finish_workout(wl, *, effort=None, note="", duration_seconds=None, time_brea
         from apps.common.calc import duration_seconds as calc_duration
 
         duration_seconds = calc_duration(wl.started_at, wl.finished_at)
-    wl.duration_seconds = duration_seconds
-    wl.time_breakdown = time_breakdown or wl.time_breakdown
+    # Each finish is one timed part: the workout, then every "Log more sets" addition (its clock starts at 0:00).
+    # The total is their sum, so 12 min + 4 min is shown as 16 min, never restarted (tracker F35 / H55).
+    seg = {"seconds": int(duration_seconds), "finished_at": wl.finished_at.isoformat()}
+    per_ex = {k: int(v) for k, v in (time_breakdown or {}).items() if str(k).startswith("pe:")}
+    if per_ex:
+        seg["ex"] = per_ex
+    if wl.reopened_at:
+        earlier = wl.segments or [{"seconds": int(wl.duration_seconds)}]  # finished before parts were kept
+        wl.segments = [*earlier, seg]
+        merged = dict(wl.time_breakdown or {})
+        for k, v in (time_breakdown or {}).items():
+            merged[k] = int(merged.get(k) or 0) + int(v)
+        wl.time_breakdown = merged
+    else:
+        wl.segments = [seg]
+        wl.time_breakdown = time_breakdown or wl.time_breakdown
+    wl.duration_seconds = sum(int(s.get("seconds") or 0) for s in wl.segments)
     # finishing again after "Log more sets" keeps the effort and note already sent
     wl.effort = effort if effort is not None else wl.effort
     wl.note = note or wl.note or ""

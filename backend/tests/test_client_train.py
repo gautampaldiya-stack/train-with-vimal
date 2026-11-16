@@ -77,11 +77,13 @@ def test_finish_reopen_and_feedback(client_user):
     r = client_user.post(f"{W}{wid}/reopen/")
     assert r.status_code == 200 and r.json()["status"] == "in_progress"
     started = timezone.datetime.fromisoformat(r.json()["started_at"])
-    assert abs((timezone.now() - started).total_seconds() - 1500) < 30  # the timer goes on from 25:00
+    assert abs((timezone.now() - started).total_seconds()) < 30  # the added part is timed from 0:00 (F35)
 
-    # finishing again keeps the effort and note already sent
-    r = client_user.post(f"{W}{wid}/finish/", {"duration_seconds": 1600}, format="json")
+    # finishing again keeps the effort and note already sent; 25 min + 4 min = 29 min with both parts
+    r = client_user.post(f"{W}{wid}/finish/", {"duration_seconds": 240}, format="json")
     assert r.json()["effort"] == 7 and r.json()["note"] == "Felt easy today"
+    assert r.json()["duration_seconds"] == 1740
+    assert [s["seconds"] for s in r.json()["segments"]] == [1500, 240]
 
 
 def test_past_workouts_filter(client_user):

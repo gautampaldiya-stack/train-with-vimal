@@ -2,11 +2,17 @@
 
 Updated with every push, so anyone (another Claude session, local Claude Code, a developer) can pick up from here.
 
-**Last updated:** 2026-11-02 · branch `working`
+**Last updated:** 2026-11-16 · branch `working`
 
 **Full list of done / remaining work: [../WORK-TRACKER.md](../WORK-TRACKER.md)** (update it with every push).
 
 ## Done
+- 2026-11-16 (latest): D-89 tracker F33–F43: Workout logger built new Strong-style (one page, start sheet, mini bar,
+  notification actions, keypad, Previous, W / D / F, focus metric, form video on finish, Cancel workout at the bottom,
+  Congratulations page), BPM instead of km (migration training 0008, run `migrate` on deploy), Edit exercise drawer draft.
+  Backend tests green except 2 date-dependent ones not in this area (test_client_checkins board numbers, test_meal_plans
+  assign); flutter analyze clean; browser check 390 / 600 / 1024 / 1366. **Next:** Probid checks the logger (phone
+  notification needs an APK); then G (rest timer per exercise / set type, preset sheet), H Edit workout, I history.
 - 2026-10-29 (latest): D-82 Phase 1 of batch 1: shared calculation module (`apps/common/calc.py`), food log
   unrounded, 21 tests in tests/test_calc.py. **Next:** Probid reviews Phase 1; Phase 2 (media upload) only when he says.
 - 2026-10-29: D-81: client plan saves with a newly added exercise (null id); exercise picker 50 a page with

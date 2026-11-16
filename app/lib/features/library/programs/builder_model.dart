@@ -204,6 +204,8 @@ class BuilderModel extends ChangeNotifier {
                         'rest_seconds': e['rest_seconds'],
                         'tempo': '${e['tempo'] ?? ''}',
                         'target_weight_kg': e['target_weight_kg'],
+                        'bpm_min': e['bpm_min'],
+                        'bpm_max': e['bpm_max'],
                         'note': '${e['note'] ?? ''}',
                         'override': e['override'] ?? {},
                       },
@@ -290,6 +292,21 @@ class BuilderModel extends ChangeNotifier {
 String cap(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
 Map exDetail(Map e) => (e['exercise_detail'] as Map?) ?? const {};
+
+/// A cardio exercise (logged as minutes + heart rate): the coach sets a target BPM range for it (tracker F42).
+bool isCardio(Map e) {
+  final x = exDetail(e);
+  return x['log_type'] == 'distance' || x['muscle_group'] == 'cardio';
+}
+
+/// "120–140 bpm", "from 120 bpm", "up to 140 bpm" or "".
+String bpmRange(Map e) {
+  final lo = e['bpm_min'], hi = e['bpm_max'];
+  if (lo != null && hi != null) return '$lo–$hi bpm';
+  if (lo != null) return 'from $lo bpm';
+  if (hi != null) return 'up to $hi bpm';
+  return '';
+}
 
 /// "Chest · also Shoulders, Triceps" (+ " · library: Dips" when renamed for this program).
 String exMuscles(Map e, {bool library = true}) {

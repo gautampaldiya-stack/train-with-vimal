@@ -116,6 +116,12 @@ List<Map> exercisesOf(Map? day) => [for (final e in (day?['exercises'] as List?)
 
 bool isRest(Map? day) => day == null || day['is_rest'] == true || exercisesOf(day).isEmpty;
 
+/// A cardio exercise: the coach sets a target BPM range for it (tracker F42).
+bool isCardio(Map e) {
+  final x = (e['exercise_detail'] as Map?) ?? const {};
+  return x['log_type'] == 'distance' || x['muscle_group'] == 'cardio';
+}
+
 String exName(Map e) => '${(e['override'] as Map?)?['name'] ?? (e['exercise_detail'] as Map?)?['name'] ?? 'Exercise'}';
 
 String restText(Object? s) {
@@ -151,6 +157,7 @@ String exMeta(Map e) => [
       if ('${e['tempo'] ?? ''}'.isNotEmpty) 'tempo ${e['tempo']}',
       if (restText(e['rest_seconds']).isNotEmpty) 'rest ${restText(e['rest_seconds'])}',
       if (loadText(e).isNotEmpty) loadText(e),
+      if (e['bpm_min'] != null || e['bpm_max'] != null) '${e['bpm_min'] ?? '…'}–${e['bpm_max'] ?? '…'} bpm',
     ].join(' · ');
 
 /// About how long a day takes: each set about 45 s of work plus its rest.
@@ -219,3 +226,36 @@ DateTime? planEnd(Map a) {
 /// her / his / their from the client's gender.
 String pronoun(CpController c) => switch ('${c.detail['gender'] ?? ''}') { 'female' => 'her', 'male' => 'his', _ => 'their' };
 String pronounSub(CpController c) => switch ('${c.detail['gender'] ?? ''}') { 'female' => 'she', 'male' => 'he', _ => 'they' };
+
+/// Working copies for the Edit exercise drawer (tracker F43). Root cause of the old bug: the drawer's inputs wrote
+/// straight into the day's live exercise maps, so the list behind changed on every key press and closing the
+/// drawer could not undo it. Now each exercise the drawer shows gets a copy; [apply] (Done) writes the copies back,
+/// closing any other way just drops them.
+class ExerciseDrafts {
+  ExerciseDrafts(this.live);
+  final List live;
+  final _copies = <int, Map>{};
+
+  /// The copy of exercise [n] the drawer reads and writes.
+  Map of(int n) => _copies.putIfAbsent(n, () => Map.of(live[n] as Map));
+
+  /// Forget exercise [n]'s copy (after Swap replaced it).
+  void drop(int n) => _copies.remove(n);
+
+  /// Done: writes every changed copy back. Returns true when anything changed.
+  bool apply() {
+    var changed = false;
+    for (final MapEntry(key: n, value: d) in _copies.entries) {
+      if (n >= live.length) continue;
+      final m = live[n] as Map;
+      if (d.keys.any((k) => d[k] != m[k])) {
+        for (final k in d.keys) {
+          m[k] = d[k];
+        }
+        changed = true;
+      }
+    }
+    _copies.clear();
+    return changed;
+  }
+}

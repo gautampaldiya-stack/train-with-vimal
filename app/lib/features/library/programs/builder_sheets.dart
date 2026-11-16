@@ -61,6 +61,10 @@ Future<Map<String, dynamic>?> showSetsModal(BuildContext context, Map e) async {
   final reps = TextEditingController(text: '${e['reps'] ?? ''}');
   final tempo = TextEditingController(text: '${e['tempo'] ?? ''}');
   final note = TextEditingController(text: '${e['note'] ?? ''}');
+  final cardio = isCardio(e);
+  final bpmLo = TextEditingController(text: '${e['bpm_min'] ?? ''}');
+  final bpmHi = TextEditingController(text: '${e['bpm_max'] ?? ''}');
+  final bpmErr = ValueNotifier<String?>(null);
   final line = ValueNotifier('');
   final repsErr = ValueNotifier<String?>(null);
   void upd() => line.value = '$sets × ${reps.text.trim().isEmpty ? '–' : reps.text.trim()}${rpe > 0 ? ' · RPE $rpe' : ''}'
@@ -102,6 +106,20 @@ Future<Map<String, dynamic>?> showSetsModal(BuildContext context, Map e) async {
               }))),
         ),
         meField('Tempo (optional)', AppTextField(controller: tempo, placeholder: '3-1-1', onChanged: (_) => upd()), hint: 'e.g. 3-1-1'),
+        if (cardio)
+          ValueListenableBuilder(
+            valueListenable: bpmErr,
+            builder: (_, er, _) => meField(
+              'Target heart rate (BPM)',
+              Row(spacing: 10, children: [
+                Expanded(child: AppTextField(controller: bpmLo, placeholder: 'Min, e.g. 120', keyboard: TextInputType.number, onChanged: (_) => bpmErr.value = null)),
+                Text('to', style: AppText.s(13, W.w6, color: AppColors.muted)),
+                Expanded(child: AppTextField(controller: bpmHi, placeholder: 'Max, e.g. 140', keyboard: TextInputType.number, onChanged: (_) => bpmErr.value = null)),
+              ]),
+              hint: 'The client sees this range and logs the BPM they reached.',
+              error: er,
+            ),
+          ),
         meField('Note for the client (optional)', AppTextField(controller: note, placeholder: 'e.g. 30° incline only', maxLines: 3, minLines: 2)),
       ]);
     }),
@@ -112,7 +130,18 @@ Future<Map<String, dynamic>?> showSetsModal(BuildContext context, Map e) async {
           repsErr.value = 'Enter reps, e.g. 8–10, AMRAP, 45 s.';
           return;
         }
+        final lo = int.tryParse(bpmLo.text.trim()), hi = int.tryParse(bpmHi.text.trim());
+        if (cardio && ((lo != null && (lo < 30 || lo > 250)) || (hi != null && (hi < 30 || hi > 250)))) {
+          bpmErr.value = 'BPM must be 30 to 250.';
+          return;
+        }
+        if (cardio && lo != null && hi != null && hi < lo) {
+          bpmErr.value = 'Max must not be below min.';
+          return;
+        }
         Navigator.of(ctx).pop({
+          if (cardio) 'bpm_min': lo,
+          if (cardio) 'bpm_max': hi,
           'sets': sets,
           'reps': reps.text.trim(),
           'rest_seconds': rest,
@@ -123,7 +152,7 @@ Future<Map<String, dynamic>?> showSetsModal(BuildContext context, Map e) async {
       }),
     ],
   );
-  disposeLater([reps, tempo, note, line, repsErr]);
+  disposeLater([reps, tempo, note, line, repsErr, bpmLo, bpmHi, bpmErr]);
   return r;
 }
 

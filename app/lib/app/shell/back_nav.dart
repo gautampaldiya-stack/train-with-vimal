@@ -73,15 +73,12 @@ abstract final class AppBack {
           Expanded(child: btn(ctx, 'Cancel', null)),
           Expanded(child: btn(ctx, 'Exit', 'exit', main: !live)),
         ]),
-        if (live) Text('The workout timer stops when you leave. Continue workout starts it again.', textAlign: TextAlign.center, style: AppText.s(12.5, W.w4, color: AppColors.muted)),
+        if (live) Text('The workout keeps running. Open it again from the notification or the app.', textAlign: TextAlign.center, style: AppText.s(12.5, W.w4, color: AppColors.muted)),
       ]),
     );
     if (!context.mounted) return;
     if (go == 'resume') context.go('/train/workout');
-    if (go == 'exit') {
-      if (live) await WorkoutController.pauseLive();
-      await SystemNavigator.pop();
-    }
+    if (go == 'exit') await SystemNavigator.pop();
   }
 }
 

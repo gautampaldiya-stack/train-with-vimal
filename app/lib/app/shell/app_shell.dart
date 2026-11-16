@@ -13,6 +13,8 @@ import '../../core/widgets/hover.dart';
 import '../../core/widgets/overlays.dart';
 import '../../core/widgets/responsive.dart';
 import '../../core/widgets/tooltip.dart';
+import '../../core/live/live_notice.dart';
+import '../../features/client/train/train_model.dart' show clockText;
 import '../../features/client/train/workout_model.dart' show WorkoutController;
 import '../services.dart';
 import 'back_nav.dart';
@@ -60,6 +62,13 @@ class _AppShellState extends State<AppShell> {
     });
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadCounts()); // not during build: it notifies the badges
     hideBottomBar.addListener(_barChanged);
+    if (Services.session.me?.role == Role.client) {
+      // A workout running on this phone comes back after an app restart: mini bar, clock, notification (F33).
+      WorkoutController.revive();
+      LiveNotice.onOpen = () {
+        if (mounted) context.go('/train/workout');
+      };
+    }
     ToastHost.sheets.addListener(_barChanged); // any bottom sheet open hides the tabs (Probid 2026-11-03, A1)
     // A change saved offline that the server refused later: say so, it is not kept (before it went silently).
     _refused = Services.outbox.results.where((r) => r.late && r.error != null && !r.error!.offline).listen((r) {
@@ -106,10 +115,10 @@ class _AppShellState extends State<AppShell> {
   @override
   void didUpdateWidget(AppShell old) {
     super.didUpdateWidget(old);
-    // Left Train and the workout logger: stop the workout timer (after the logger has saved).
-    bool train(String p) => p == '/train' || p.startsWith('/train/');
-    if (train(old.location) && !train(widget.location)) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => WorkoutController.pauseLive());
+    // The logger's ⌄ goes back to the page it was opened from. Leaving it no longer stops the clock: the workout
+    // keeps running under the mini bar (Strong-style, tracker F33).
+    if (widget.location.startsWith('/train/workout') && !old.location.startsWith('/train/workout')) {
+      WorkoutController.backTo = old.location;
     }
   }
 
@@ -147,14 +156,18 @@ class _AppShellState extends State<AppShell> {
       // itself, so it is taken off here. Before, a fixed 75 left a gap that changed from phone to phone.
       final inset = MediaQuery.paddingOf(context).bottom;
       return ToastOffset(
-        offset: bar ? (_barH > 0 ? _barH - inset + 10 : 75) : 20,
+        offset: _barH > 0 ? _barH - inset + 10 : (bar ? 75 : 20),
         child: Scaffold(
           backgroundColor: isClient ? AppColors.caBg : AppColors.panel,
           // Client Home and the trainer dashboard have a blue hero that runs under the status bar, so they keep the top inset themselves.
           body: SafeArea(bottom: !bar, top: !(isClient ? widget.location == '/home' : me.role == Role.trainer && widget.location == '/dashboard'), child: widget.child),
-          bottomNavigationBar: bar
-              ? _Measure(onHeight: (h) => h != _barH ? setState(() => _barH = h) : null, child: _BottomBar(items: bottomFor(me.role), location: widget.location))
-              : null,
+          bottomNavigationBar: _Measure(
+            onHeight: (h) => h != _barH ? setState(() => _barH = h) : null,
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              if (isClient && ToastHost.sheets.value == 0) WorkoutMiniBar(location: widget.location, safeBottom: !bar),
+              if (bar) _BottomBar(items: bottomFor(me.role), location: widget.location),
+            ]),
+          ),
         ),
       );
     }
@@ -183,7 +196,12 @@ class _AppShellState extends State<AppShell> {
                   border: Border.all(color: AppColors.line),
                   boxShadow: AppShadows.panel,
                 ),
-                child: widget.child,
+                child: isClient
+                    ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                        Expanded(child: widget.child),
+                        WorkoutMiniBar(location: widget.location, safeBottom: false),
+                      ])
+                    : widget.child,
               ),
             ),
           ]),
@@ -393,4 +411,80 @@ class _Measure extends StatelessWidget {
     });
     return child;
   }
+}
+
+/// The running workout, collapsed (Strong-style mini bar, tracker F33): on every client page except the logger.
+/// Shows the workout's name with its clock, or the rest left; a tap (or a swipe up) opens the logger again.
+class WorkoutMiniBar extends StatelessWidget {
+  const WorkoutMiniBar({super.key, required this.location, required this.safeBottom});
+  final String location;
+  final bool safeBottom;
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<WorkoutController?>(
+        valueListenable: WorkoutController.live,
+        builder: (context, c, _) {
+          if (c == null || location.startsWith('/train/workout')) return const SizedBox.shrink();
+          return ListenableBuilder(
+            listenable: c,
+            builder: (context, _) {
+              if (!c.ready || c.finished) return const SizedBox.shrink();
+              final resting = c.rest > 0;
+              final p = c.restMax == 0 ? 0.0 : (c.rest / c.restMax).clamp(0.0, 1.0);
+              final phone = context.isPhone;
+              void open() => context.go('/train/workout');
+              return Semantics(
+                button: true,
+                label: 'Open the workout ${c.name}',
+                child: GestureDetector(
+                  onVerticalDragEnd: (d) {
+                    if ((d.primaryVelocity ?? 0) < -250) open();
+                  },
+                  child: Hover(
+                    onTap: open,
+                    builder: (_, h, _) => Container(
+                      padding: EdgeInsets.fromLTRB(16, 6, 16, 10 + (safeBottom ? MediaQuery.paddingOf(context).bottom : 0)),
+                      decoration: BoxDecoration(
+                        color: h ? AppColors.hover : AppColors.card,
+                        borderRadius: phone ? const BorderRadius.vertical(top: Radius.circular(16)) : null,
+                        border: const Border(top: BorderSide(color: AppColors.line)),
+                        boxShadow: phone ? AppShadows.barUp : null,
+                      ),
+                      child: Column(mainAxisSize: MainAxisSize.min, spacing: 6, children: [
+                        Container(width: 36, height: 4, decoration: BoxDecoration(color: AppColors.line2, borderRadius: BorderRadius.circular(4))),
+                        Row(spacing: 10, children: [
+                          Expanded(
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+                              Text(c.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14.5, W.w8)),
+                              Text(
+                                [clockText(c.elapsed), if (c.paused) 'paused', c.setsDone == c.setsAll ? 'all sets done' : c.e.name].join(' · '),
+                                style: AppText.s(12.5, W.w5, color: c.paused ? AppColors.amberText : AppColors.muted, tabular: true),
+                              ),
+                            ]),
+                          ),
+                          if (resting)
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Container(
+                                height: 34,
+                                width: 84,
+                                color: AppColors.accentSoft,
+                                child: Stack(children: [
+                                  Positioned.fill(child: FractionallySizedBox(alignment: Alignment.centerLeft, widthFactor: p, child: Container(color: AppColors.accent))),
+                                  Center(child: Text('Rest ${clockText(c.rest)}', style: AppText.s(12.5, W.w8, color: AppColors.white, tabular: true))),
+                                ]),
+                              ),
+                            )
+                          else
+                            const AppIcon(AppIcons.chevronUp, size: 20, color: AppColors.text2),
+                        ]),
+                      ]),
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      );
 }

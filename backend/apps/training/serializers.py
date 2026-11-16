@@ -13,6 +13,7 @@ from .models import (
     ProgramExercise,
     ProgramWeek,
     SetLog,
+    SetType,
     WorkoutLog,
 )
 
@@ -167,7 +168,13 @@ class ProgramExerciseSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProgramExercise
         fields = ["id", "exercise", "exercise_detail", "order", "superset_group", "sets", "reps", "rpe",
-                  "rest_seconds", "tempo", "target_weight_kg", "note", "override", "edited"]
+                  "rest_seconds", "tempo", "target_weight_kg", "bpm_min", "bpm_max", "note", "override", "edited"]
+
+    def validate(self, attrs):
+        lo, hi = attrs.get("bpm_min"), attrs.get("bpm_max")
+        if lo is not None and hi is not None and lo > hi:
+            raise serializers.ValidationError({"bpm_max": ["The top of the BPM range must not be below the bottom."]})
+        return attrs
 
     def get_edited(self, obj):
         return bool(obj.override)
@@ -355,13 +362,21 @@ class SetLogSerializer(serializers.ModelSerializer):
     volume = serializers.SerializerMethodField()
     exercise_name = serializers.CharField(source="exercise.name", read_only=True)
     log_type = serializers.CharField(source="exercise.log_type", read_only=True)
+    bpm_target = serializers.SerializerMethodField()
 
     class Meta:
         model = SetLog
         fields = ["id", "program_exercise", "exercise", "exercise_name", "log_type", "set_number", "weight_kg",
-                  "reps", "seconds", "distance_km", "is_bodyweight", "is_warmup", "done", "done_at", "is_pr",
-                  "volume", "client_key"]
+                  "reps", "seconds", "bpm", "rpe", "is_bodyweight", "is_warmup", "set_type", "done", "done_at",
+                  "is_pr", "volume", "client_key", "bpm_target"]
         read_only_fields = ["is_pr", "done_at"]
+
+    def get_bpm_target(self, obj):
+        """Cardio: the coach's heart-rate range for this exercise, so target and actual show side by side."""
+        if obj.exercise.log_type != "distance" or not obj.program_exercise_id:
+            return None
+        pe = obj.program_exercise
+        return [pe.bpm_min, pe.bpm_max] if pe and (pe.bpm_min or pe.bpm_max) else None
 
     def get_volume(self, obj):
         """Bodyweight sets count the client's weight that day (+ added load); see `apps.common.calc.set_volume`."""
@@ -387,9 +402,9 @@ class WorkoutLogSerializer(serializers.ModelSerializer):
         model = WorkoutLog
         fields = ["id", "assignment", "program_day", "name", "date", "status", "started_at", "finished_at",
                   "duration_seconds", "time_breakdown", "effort", "note", "sets_done", "sets_planned", "auto_saved",
-                  "paused_at", "reopened_at", "sets", "form_videos"]
+                  "paused_at", "reopened_at", "segments", "sets", "form_videos"]
         read_only_fields = ["status", "finished_at", "sets_done", "sets_planned", "auto_saved", "assignment",
-                            "started_at", "paused_at", "reopened_at"]
+                            "started_at", "paused_at", "reopened_at", "segments"]
 
     def get_form_videos(self, obj):
         return [form_video_json(v, self.context.get("request")) for v in obj.form_videos.select_related("exercise")]
@@ -444,10 +459,19 @@ class StateSetSerializer(serializers.Serializer):
                                          min_value=-200, max_value=1000)
     reps = serializers.IntegerField(min_value=0, max_value=1000, required=False, allow_null=True)
     seconds = serializers.IntegerField(min_value=0, max_value=24 * 3600, required=False, allow_null=True)
-    distance_km = serializers.DecimalField(max_digits=6, decimal_places=2, required=False, allow_null=True,
-                                           min_value=0, max_value=500)
+    bpm = serializers.IntegerField(min_value=30, max_value=250, required=False, allow_null=True)
+    rpe = serializers.DecimalField(max_digits=3, decimal_places=1, required=False, allow_null=True,
+                                   min_value=1, max_value=10)
     is_bodyweight = serializers.BooleanField(default=False)
     is_warmup = serializers.BooleanField(default=False)
+    # normal | warmup | drop | failure. An app from before set types sends only is_warmup.
+    set_type = serializers.ChoiceField(choices=SetType.choices, required=False)
+
+    def validate(self, attrs):
+        if not attrs.get("set_type"):
+            attrs["set_type"] = SetType.WARMUP if attrs.get("is_warmup") else SetType.NORMAL
+        attrs["is_warmup"] = attrs["set_type"] == SetType.WARMUP
+        return attrs
     done = serializers.BooleanField(default=False)
     done_at = serializers.DateTimeField(required=False, allow_null=True)
 

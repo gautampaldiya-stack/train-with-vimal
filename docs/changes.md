@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+## 2026-11-16 · Workout logger new (Strong-style), BPM for cardio, Edit exercise drawer draft
+- **Pehle:** Logger ek exercise ek baar, −/+ steppers, timer logger khulte hi chalta aur Train chhodte hi rukta; cardio me km; Edit exercise drawer har key par peeche ka exercise badal deta tha.
+- **Ab:** Saare exercises ek page par (SET · PREVIOUS · KG · REPS · ✓), Start sheet ke baad clock, ⌄ = mini bar (har page par, workout chalta rahe), Android notification (Complete set / Pause / Skip / +30s), phone keypad, placeholders neeche tak, Previous tap, W / D / F set types, focus metric, form video finish par, Cancel workout neeche, Congratulations page. Cardio = BPM (coach Min / Max). Drawer draft, Done par hi apply, footer line hata di.
+- **Kyun:** Probid, tracker F33–F43 (16 Nov screenshots).
+- **Updated:** backend training (models, migration 0008, serializers, services, views, urls), checkins/progress.py, clients/account.py, tests test_logger_f.py + test_client_train.py; app workout_model / workout_screen / train_model / train_screen, core/live/*, app_shell (mini bar, revive), back_nav, library builder sheets / model, client plan drawer, cp_logs_detail, overlays (footerLine), app/test/exercise_drafts_test.dart; Android desugaring + notification receiver; docs WORK-TRACKER, status, CURRENT · Decision D-89
+
 ## 2026-11-04 · Fixed page headers, water unit, Up next, water history week
 - **Pehle:** Client pages ka header content ke saath scroll ho jaata tha. Water sheet sirf ml me. Water history me khula week baaki weeks jaisa white, pehchaan nahi aata. Home "Up next" kabhi purana meal dikhata tha.
 - **Ab:** Header (title, back, upar ke buttons) fixed, sirf content scroll (`CaPinned`, `pxPage(fixed:)`); Home ka hero waisa hi. Water sheet me L / ml switch (server par ml). Khula week halke neele panel + border, ghoomta chevron, tinted bar track. "Up next" = aaj ka pehla meal jo log / skip nahi hua, log / skip par hi badalta hai (koi timer nahi); app wapas kholne par reload.

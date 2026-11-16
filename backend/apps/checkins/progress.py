@@ -223,11 +223,11 @@ def _sets_line(sets):
     kg = max((s.weight_kg for s in sets if s.weight_kg is not None), default=None)
     reps = max((s.reps for s in sets if s.reps), default=None)
     secs = max((s.seconds for s in sets if s.seconds), default=None)
-    km = max((s.distance_km for s in sets if s.distance_km), default=None)
+    bpm = max((s.bpm for s in sets if s.bpm), default=None)
     line = f"{len(sets)} × {reps}" if reps else (f"{round(secs / 60)} min" if secs and secs >= 120 else
                                                  f"{len(sets)} × {secs} s" if secs else f"{len(sets)} sets")
-    if km:
-        line += f" · {float(km):g} km"
+    if bpm:
+        line += f" · {bpm} bpm"
     if kg:
         line += f" · {float(kg):g} kg"
     return line

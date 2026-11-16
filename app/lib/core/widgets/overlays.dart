@@ -328,7 +328,9 @@ Future<T?> showAppDrawer<T>(
   Widget? leading,
   bool fixedBody = false,
   double? width,
+  bool footerLine = true,
 }) {
+  // [footerLine]: false drops the line above the footer (Edit exercise drawer, Probid tracker F43).
   // [fixedBody]: the body does not scroll as a whole. It gets a bounded height, so a builder can keep a
   // header (search, tabs) fixed and scroll only its list (`Expanded(ListView)`), as `.pb-pk` boards do.
   if (!OpenGuard.pass()) return Future.value(null);
@@ -379,7 +381,7 @@ Future<T?> showAppDrawer<T>(
             if (footer != null)
               Container(
                 padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-                decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
+                decoration: footerLine ? const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))) : null,
                 child: Row(mainAxisAlignment: MainAxisAlignment.end, spacing: 8, children: footer(ctx)),
               ),
           ]),

@@ -394,7 +394,7 @@ def build_export(client):
         "workouts": _rows(WorkoutLog.objects.filter(client=client).order_by("date"),
                           ["date", "name", "status", "duration_seconds", "effort", "note", "sets_done"]),
         "sets": _rows(SetLog.objects.filter(workout__client=client).order_by("workout__date"),
-                      ["workout__date", "exercise__name", "weight_kg", "reps", "seconds", "distance_km", "done",
+                      ["workout__date", "exercise__name", "weight_kg", "reps", "seconds", "bpm", "rpe", "set_type", "done",
                        "is_pr"]),
         "food_log": _rows(FoodLogEntry.objects.filter(client=client).order_by("logged_at"),
                           ["date", "meal_name", "name", "quantity", "unit_name", "kcal", "protein", "carbs", "fat"]),

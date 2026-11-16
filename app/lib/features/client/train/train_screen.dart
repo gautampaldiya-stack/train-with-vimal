@@ -135,7 +135,17 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
         ),
       ),
       ),
-      if (live != null) Positioned(left: 0, right: 0, bottom: 0, child: _liveBar(d, live)),
+      // The app-wide mini bar (F33) shows the running workout once it is loaded; this bar only covers the moment before.
+      if (live != null)
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: ValueListenableBuilder(
+            valueListenable: WorkoutController.live,
+            builder: (_, c, _) => c != null ? const SizedBox.shrink() : _liveBar(d, live),
+          ),
+        ),
     ]);
   }
 
