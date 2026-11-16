@@ -208,7 +208,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       listenable: c,
       builder: (context, _) {
         final phone = context.isPhone;
-        _lift(phone && !c.finished ? (act != null ? 300 : (_barH > 0 ? _barH + 10 : 20)) : null);
+        _lift(phone && !c.finished ? (act != null ? 300 : (_barH > 0 ? _barH + _cancelH + 10 : _cancelH + 10)) : null);
         if (c.finished) return _doneView(c, phone);
         return _logger(c, phone);
       },
@@ -306,12 +306,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     final resting = c.rest > 0 && !keypad;
     final list = ListView(
       controller: _scroll,
-      padding: EdgeInsets.fromLTRB(phone ? 16 : 28, 6, phone ? 16 : 28, keypad ? 300 : (resting ? 110 : 40)),
+      padding: EdgeInsets.fromLTRB(phone ? 16 : 28, 6, phone ? 16 : 28, keypad ? 300 : (resting ? 110 : 24)),
       children: [
         _title(c),
         for (var i = 0; i < c.ex.length; i++) _exercise(c, i, web: !phone),
-        const SizedBox(height: 18),
-        _cancelLink(c),
         const SizedBox(height: 12),
       ],
     );
@@ -324,13 +322,14 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           _top(c, phone),
           Expanded(child: GestureDetector(onTap: act == null ? null : () => setState(() => act = null), behavior: HitTestBehavior.translucent, child: body)),
+          _cancelLink(c, phone),
         ]),
         if (keypad) Positioned(left: 0, right: 0, bottom: 0, child: _keypad(c)),
         if (resting)
           Positioned(
             left: phone ? 0 : null,
             right: phone ? 0 : 24,
-            bottom: phone ? 0 : 20,
+            bottom: phone ? _cancelH + MediaQuery.paddingOf(context).bottom : _cancelH + 16,
             width: phone ? null : 420,
             child: _BarMeasure(onHeight: (h) {
               if (h != _barH && mounted) setState(() => _barH = h);
@@ -435,19 +434,29 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         ),
       );
 
-  /// "Cancel workout" at the very end of the list (Probid 2026-11-16: bottom, not in a menu), red, asks first.
-  Widget _cancelLink(WorkoutController c) => Center(
-        child: Semantics(
-          button: true,
-          label: c.reopened ? 'Discard the added sets' : 'Cancel workout',
-          child: Hover(
-            onTap: () => _askCancel(c),
-            builder: (_, h, _) => Container(
-              height: 44,
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(color: h ? AppColors.badBg : null, borderRadius: BorderRadius.circular(10)),
-              child: Text(c.reopened ? 'DISCARD ADDED SETS' : 'CANCEL WORKOUT', style: AppText.s(14, W.w8, color: AppColors.badText, ls: 1)),
+  static const double _cancelH = 56;
+
+  /// "Cancel workout" pinned at the bottom of the logger (Probid 2026-11-16: bottom of the screen, not in the page).
+  /// Red text on a plain bar, asks first. After "Log more sets" it discards only the added sets.
+  Widget _cancelLink(WorkoutController c, bool phone) => Container(
+        padding: EdgeInsets.only(bottom: phone ? MediaQuery.paddingOf(context).bottom : 0),
+        decoration: const BoxDecoration(color: AppColors.caBg, border: Border(top: BorderSide(color: AppColors.line))),
+        child: SizedBox(
+          height: _cancelH,
+          child: Center(
+            child: Semantics(
+              button: true,
+              label: c.reopened ? 'Discard the added sets' : 'Cancel workout',
+              child: Hover(
+                onTap: () => _askCancel(c),
+                builder: (_, h, _) => Container(
+                  height: 40,
+                  padding: const EdgeInsets.symmetric(horizontal: 22),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: h ? AppColors.badBg : null, borderRadius: BorderRadius.circular(10)),
+                  child: Text(c.reopened ? 'DISCARD ADDED SETS' : 'CANCEL WORKOUT', style: AppText.s(14, W.w8, color: AppColors.badText, ls: 1)),
+                ),
+              ),
             ),
           ),
         ),
@@ -1147,6 +1156,17 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         _p(left == 0
             ? 'Nice, every set is done. $coach sees your workout as soon as you finish.'
             : '$left ${left == 1 ? 'set is' : 'sets are'} not ticked yet. They are saved as skipped, and $coach sees what you did.'),
+        // Each exercise with its sets, so the client sees what is done here (the page behind is dimmed; Probid 16 Nov).
+        Container(
+          constraints: const BoxConstraints(maxHeight: 260),
+          decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(12)),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              for (final (i, x) in c.ex.indexed) _finishRow(c, i, x, last: i == c.ex.length - 1),
+            ]),
+          ),
+        ),
         if (n > 0) _p('$n form ${n == 1 ? 'video goes' : 'videos go'} to $coach now.'),
       ]),
       buttons: (ctx) => [
@@ -1156,6 +1176,42 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           _finish(c);
         }),
       ],
+    );
+  }
+
+  /// One line of the Finish sheet: ✓ (all done), half (some) or empty, the exercise and "2 of 4 sets".
+  Widget _finishRow(WorkoutController c, int i, TrainEx x, {required bool last}) {
+    final work = c.sets[i].where((s) => !s.wu).toList();
+    final done = work.where((s) => s.done).length;
+    final all = work.isNotEmpty && done == work.length;
+    final some = done > 0 && !all;
+    final vids = c.videos.where((v) => c.sets[i].any((s) => s.key == v.setKey)).length;
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 9),
+      decoration: BoxDecoration(border: last ? null : const Border(bottom: BorderSide(color: AppColors.line))),
+      child: Row(spacing: 10, children: [
+        Container(
+          width: 22,
+          height: 22,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: all ? AppColors.okSolid : (some ? AppColors.amberBg : AppColors.white),
+            shape: BoxShape.circle,
+            border: Border.all(color: all ? AppColors.okSolid : (some ? AppColors.amberText : AppColors.line2)),
+          ),
+          child: all
+              ? const AppIcon(AppIcons.check, size: 13, stroke: 2.8, color: AppColors.white)
+              : (some ? Text('$done', style: AppText.s(11, W.w8, color: AppColors.amberText)) : null),
+        ),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+            CutText(x.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w7)),
+            if (vids > 0) Text('$vids form ${vids == 1 ? 'video' : 'videos'}', style: AppText.s(12, W.w5, color: AppColors.muted)),
+          ]),
+        ),
+        Text(done == 0 ? 'Skipped' : '$done of ${work.length} sets',
+            style: AppText.s(13, W.w7, color: all ? AppColors.okText : (some ? AppColors.amberText : AppColors.muted), tabular: true)),
+      ]),
     );
   }
 

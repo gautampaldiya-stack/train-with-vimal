@@ -8,7 +8,7 @@ with our own theme:
 
 - **One page, every exercise.** Top bar: ⌄ (collapse), rest chip, clock, FINISH. Title with ⋯ (Pause / Resume timer,
   Restart). Each exercise: name (tap = How to do it), target line, focus chip, ⋯, rows SET · PREVIOUS · KG · REPS · ✓,
-  + ADD SET (text button). Swipe a row left = delete with Undo. **CANCEL WORKOUT** at the end of the list (red text,
+  + ADD SET (text button). Swipe a row left = delete with Undo. **CANCEL WORKOUT** pinned at the bottom of the screen (red text,
   asks first). After "Log more sets" it reads DISCARD ADDED SETS.
 - **Start sheet first:** name, "Last performed: 11 November 2026", exercises with sets; the clock starts on
   **Start workout**, not when the page opens.
