@@ -166,9 +166,12 @@ String _setText(Map s) {
   final type = switch ('${s['set_type'] ?? ''}') { 'warmup' => 'Warm-up · ', 'drop' => 'Drop set · ', 'failure' => 'To failure · ', _ => '' };
   final rpe = s['rpe'] == null ? '' : ' · RPE ${double.tryParse('${s['rpe']}')?.toStringAsFixed(1).replaceAll('.0', '') ?? s['rpe']}';
   // rest after the set: what the client really rested next to the timer (tracker G49), "rest 1:45 / 2:00"
-  final ra = s['rest_actual'] as num?, rp = s['rest_planned'] as num?;
+  // and, when the client changed the timer, the coach's rest next to theirs: "rest changed 2:00 → 1:00" (Probid 17 Nov)
+  final ra = s['rest_actual'] as num?, rp = s['rest_planned'] as num?, rc = s['rest_coach'] as num?;
   String mmss(num v) => '${v ~/ 60}:${(v.toInt() % 60).toString().padLeft(2, '0')}';
-  final rest = ra == null ? '' : ' · rest ${mmss(ra)}${rp != null && rp > 0 ? ' / ${mmss(rp)}' : ''}';
+  final changed = rc != null && rp != null && rp != rc;
+  final rest = '${ra == null ? '' : ' · rest ${mmss(ra)}${rp != null && rp > 0 && !changed ? ' / ${mmss(rp)}' : ''}'}'
+      '${changed ? ' · rest changed ${mmss(rc)} → ${rp == 0 ? 'off' : mmss(rp)}' : ''}';
   return bits.isEmpty ? 'Set ${s['set_number']}$rest' : '$type${bits.join(' · ')}$rpe$rest';
 }
 

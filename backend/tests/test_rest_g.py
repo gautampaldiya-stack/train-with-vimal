@@ -113,3 +113,25 @@ def test_coach_rest_fields_save_with_the_plan(db):
     ser.save()
     pe.refresh_from_db()
     assert (pe.rest_warmup_seconds, pe.rest_drop_seconds, pe.rest_locked) == (30, 0, True)
+
+
+def test_coach_sees_the_planned_rest_next_to_the_clients(client_user):
+    """Probid 17 Nov: the client may change rest; the coach sees what was planned and what the client set."""
+    wid = _start(client_user)
+    wl = WorkoutLog.objects.get(id=wid)
+    pe = wl.program_day.exercises.first() if wl.program_day else None
+    if pe is None:
+        return
+    pe.rest_seconds, pe.rest_warmup_seconds = 120, 45
+    pe.save()
+    rows = [
+        {"key": "a", "exercise": str(pe.exercise_id), "program_exercise": pe.id, "set_number": 1, "reps": 8,
+         "done": True, "rest_planned": 60, "rest_actual": 58},
+        {"key": "w", "exercise": str(pe.exercise_id), "program_exercise": pe.id, "set_number": 2, "reps": 8,
+         "done": True, "set_type": "warmup", "is_warmup": True, "rest_planned": 45},
+    ]
+    r = client_user.put(f"{W}{wid}/state/", {"sets": rows}, format="json")
+    assert r.status_code == 200, r.content
+    by = {s["client_key"]: s for s in r.json()["sets"]}
+    assert (by["a"]["rest_coach"], by["a"]["rest_planned"]) == (120, 60)
+    assert by["w"]["rest_coach"] == 45

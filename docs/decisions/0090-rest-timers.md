@@ -25,3 +25,5 @@ Date: 2026-11-16 · Asked by Probid ("aage ka G ka kaam start kar do").
   (saved on the phone). System sound follows the phone's silent mode.
 
 Migration: training 0009 (run `migrate` on deploy).
+
+**Update 2026-11-17 (Probid):** the lock stays. When rest is not locked and the client changes it, the coach sees the planned rest next to the client's ("rest changed 2:00 → 1:00"); the API sends `rest_coach` with each set.

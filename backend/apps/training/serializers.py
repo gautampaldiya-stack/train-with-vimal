@@ -364,13 +364,27 @@ class SetLogSerializer(serializers.ModelSerializer):
     exercise_name = serializers.CharField(source="exercise.name", read_only=True)
     log_type = serializers.CharField(source="exercise.log_type", read_only=True)
     bpm_target = serializers.SerializerMethodField()
+    rest_coach = serializers.SerializerMethodField()
 
     class Meta:
         model = SetLog
         fields = ["id", "program_exercise", "exercise", "exercise_name", "log_type", "set_number", "weight_kg",
                   "reps", "seconds", "bpm", "rpe", "is_bodyweight", "is_warmup", "set_type", "done", "done_at",
-                  "is_pr", "volume", "client_key", "bpm_target", "rest_seconds", "rest_planned", "rest_actual"]
+                  "is_pr", "volume", "client_key", "bpm_target", "rest_seconds", "rest_planned", "rest_actual",
+                  "rest_coach"]
         read_only_fields = ["is_pr", "done_at"]
+
+    def get_rest_coach(self, obj):
+        """The rest the coach planned after this set (by its type), so the coach sees when the client changed it:
+        "2:00 → 1:00" (Probid 17 Nov). None when the set is not from the plan."""
+        pe = obj.program_exercise if obj.program_exercise_id else None
+        if pe is None:
+            return None
+        if obj.set_type == "warmup" or obj.is_warmup:
+            return pe.rest_warmup_seconds if pe.rest_warmup_seconds is not None else pe.rest_seconds
+        if obj.set_type == "drop":
+            return pe.rest_drop_seconds if pe.rest_drop_seconds is not None else pe.rest_seconds
+        return pe.rest_seconds
 
     def get_bpm_target(self, obj):
         """Cardio: the coach's heart-rate range for this exercise, so target and actual show side by side."""

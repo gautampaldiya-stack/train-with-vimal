@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+## 2026-11-17 · Coach sees when the client changed a rest
+- **Pehle:** Coach ki workout detail me sirf "rest 1:45 / 2:00" (asli rest / timer) dikhta; timer client ne badla ya coach ka tha, pata nahi chalta. Rest Off kiya to timer save hi nahi hota.
+- **Ab:** Har set ke saath server coach ka plan wala rest bhejta hai (`rest_coach`, set type ke hisaab se: working / warm-up / drop). Client ne timer badla ho to coach ko dikhta hai: "rest 0:58 · rest changed 2:00 → 1:00" (Off kiya to "→ off"). Tick par set ka timer hamesha save (0 = off). Lock waisa hi: coach lock lagaye to client badal nahi sakta, warna badal sakta hai aur coach ko dikhta hai.
+- **Kyun:** Probid, lock card par jawab (17 Nov): "coach ko pata chal jaega na... pehle kitna rakha aur usne kitna kiya change".
+- **Updated:** backend SetLogSerializer (`rest_coach`), tests/test_rest_g.py, cp_logs_detail (rest text), workout_model (tick saves restPlanned) · D-90
+
 ## 2026-11-17 · Home: card order only on this device; Check-ins default card; coach note cards
 - **Pehle:** Edit home ka card order server par (`PATCH me/home/layout/`, D-87) save hota, har device par same. Check-ins card hata do to bhi due hone par wapas aata, par kahin likha nahi tha kyun. Trainer note card plain text tha.
 - **Ab:** Card order sirf us phone / browser par save (shared_preferences, client ke hisaab se); database me nahi jaata (toast: "Home saved · Your changes are done"). Edit home me peela note: Check-ins default card hai, hata do to bhi check-in due hone par upar wapas aata hai aur bharne ke baad chhup jaata hai; Home par aisa card "Default card · shows while a check-in is due" dikhata hai. Train ka "Note from coach" aur Home ka coach note: avatar + naam + "Your coach", peela tag (For this workout / Note for you), note ek chat bubble me.

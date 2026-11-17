@@ -373,6 +373,7 @@ E51. ✅ Admin/trainer client Logs (Daily, Weekly, Habits, Supplements) aur clie
 51d. ✅ Rest: top bar me sirf chhota rest time + neeche patli progress line; set line par bada timer nahi; aakhri 3 sec 3 buzz, phir ring bell sound (Probid 17 Nov).
 51e. ✅ Finish = turant save, timer band; finish page baad me bhi (Train → Rate it); chhota bar "Finished · rate it" jab tak bheja nahi; panel swipe atakna fix (Probid 17 Nov).
 51f. ✅ Home: card order sirf us device par (DB nahi); Check-ins default card ka message; coach note cards bubble style (Probid 17 Nov).
+51g. ✅ Coach ko dikhe client ne rest kitna badla: "rest changed 2:00 → 1:00" (Probid 17 Nov). Lock option rehta hai.
 51a. ⬜ Kal ka workout (Food jaisa, Probid 17 Nov): week strip me kal chuno to kal ka workout log kar sake (chhoot gaya ho to) ya kal ka kiya hua edit kar sake. Usse purane din sirf dekh sakte.
 52. ⬜ Editable: exercises, sets, weight, reps, set type, rest timers, start aur end time.
 53. ⬜ Start/end badalne par duration aur saari dependent stats recalculate.

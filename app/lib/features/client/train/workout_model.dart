@@ -1032,8 +1032,8 @@ class WorkoutController extends ChangeNotifier {
     final last = setsDone == setsAll && sets.every((xs) => xs.every((y) => y.done));
     final r = restFor(i, k);
     if (on) WorkoutFeel.setDone();
+    if (on) s.restPlanned = r; // the timer this set had (0 = off): the coach sees it next to their plan
     if (on && r > 0 && !last) {
-      s.restPlanned = r;
       _beginRest(i, k, r, open: false); // the rest runs on the line; the sheet opens only from the line / chip (Probid 17 Nov)
     } else if (on) {
       _closeRest();
