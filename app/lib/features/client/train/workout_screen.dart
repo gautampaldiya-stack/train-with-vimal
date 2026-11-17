@@ -1590,14 +1590,14 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         _p(left == 0
             ? 'Nice, every set is done. $coach sees your workout as soon as you finish.'
             : open > 0
-                ? '$open ${open == 1 ? 'set has' : 'sets have'} values but ${open == 1 ? 'is' : 'are'} not ticked. Complete them as they show, or discard them. Empty sets are saved as skipped.'
+                ? '$open ${open == 1 ? 'set is' : 'sets are'} not ticked yet. Complete them as they show, or discard them.'
                 : '$left ${left == 1 ? 'set is' : 'sets are'} not ticked yet. They are saved as skipped, and $coach sees what you did.'),
         // Each exercise with its sets, so the client sees what is done here (the page behind is dimmed; Probid 16 Nov).
         Container(
-          constraints: const BoxConstraints(maxHeight: 260),
-          decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(12)),
+          // no box around the list, only lines between the rows (Probid 17 Nov)
+          constraints: const BoxConstraints(maxHeight: 280),
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            padding: EdgeInsets.zero,
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               for (final (i, x) in c.ex.indexed) _finishRow(c, i, x, last: i == c.ex.length - 1),
             ]),
@@ -1607,20 +1607,20 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       ]),
       buttons: (ctx) => open > 0
           ? [
-              CaButton('Complete unfinished sets', icon: AppIcons.check, onPressed: () {
+              CaButton('Complete unfinished sets', icon: AppIcons.check, small: true, onPressed: () {
                 Navigator.of(ctx).pop();
                 c.completeOpen();
                 _finish(c);
               }),
-              CaButton('Discard unfinished sets', kind: CaBtnKind.out, onPressed: () {
+              CaButton('Discard unfinished sets', kind: CaBtnKind.out, small: true, onPressed: () {
                 Navigator.of(ctx).pop();
                 _finish(c);
               }),
-              CaButton('Cancel', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop()),
+              CaButton('Cancel', kind: CaBtnKind.out, small: true, onPressed: () => Navigator.of(ctx).pop()),
             ]
           : [
-              CaButton('Keep going', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop()),
-              CaButton('Finish', icon: AppIcons.check, onPressed: () {
+              CaButton('Keep going', kind: CaBtnKind.out, small: true, onPressed: () => Navigator.of(ctx).pop()),
+              CaButton('Finish', icon: AppIcons.check, small: true, onPressed: () {
                 Navigator.of(ctx).pop();
                 _finish(c);
               }),
@@ -1636,7 +1636,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     final some = done > 0 && !all;
     final vids = c.videos.where((v) => c.sets[i].any((s) => s.key == v.setKey)).length;
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 9),
+      constraints: const BoxConstraints(minHeight: 44),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(border: last ? null : const Border(bottom: BorderSide(color: AppColors.line))),
       child: Row(spacing: 10, children: [
         Container(
@@ -1654,12 +1655,13 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         ),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-            CutText(x.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w7)),
+            CutText(x.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w6)),
             if (vids > 0) Text('$vids form ${vids == 1 ? 'video' : 'videos'}', style: AppText.s(12, W.w5, color: AppColors.muted)),
           ]),
         ),
-        Text(done == 0 ? 'Skipped' : '$done of ${work.length} sets',
-            style: AppText.s(13, W.w7, color: all ? AppColors.okText : (some ? AppColors.amberText : AppColors.muted), tabular: true)),
+        // the same words for every row: "0 of 3 sets", "2 of 3 sets", "3 of 3 sets"
+        Text('$done of ${work.length} sets',
+            style: AppText.s(13, W.w6, color: all ? AppColors.okText : (some ? AppColors.amberText : AppColors.muted), tabular: true)),
       ]),
     );
   }
