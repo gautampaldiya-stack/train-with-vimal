@@ -134,16 +134,22 @@ class LiveNotice {
     }
   }
 
-  /// Between sets: "Squat · 60 kg × 5 (2 of 5)" with the workout clock and Complete set.
-  static Future<void> workout({required String title, required String body, required DateTime startedAt, bool paused = false, bool canComplete = true}) => _show(
-        'w|$title|$body|${startedAt.millisecondsSinceEpoch}|$paused|$canComplete',
+  /// Labels of the workout notification's actions (ids go back to WorkoutController._action). "open", "finish"
+  /// and "back" bring the app to the front; "complete_set" works from the shade.
+  static const _labels = {'complete_set': 'Complete set', 'open': 'Open', 'finish': 'Finish workout', 'back': 'Return to workout'};
+
+  /// Between sets: "Squat · 60 kg × 5 (2 of 5)" with the workout clock and Complete set; "Add values to mark as
+  /// complete" with Open; "Workout finished" with Finish workout / Return to workout (Probid 17 Nov, like Strong).
+  static Future<void> workout({required String title, required String body, required DateTime startedAt, bool paused = false, List<String> actions = const []}) => _show(
+        'w|$title|$body|${startedAt.millisecondsSinceEpoch}|$paused|${actions.join(',')}',
         title,
         body,
         _details(
           when: startedAt,
           chrono: !paused,
           actions: [
-            if (canComplete) const AndroidNotificationAction('complete_set', 'Complete set', cancelNotification: false),
+            for (final a in actions)
+              AndroidNotificationAction(a, _labels[a] ?? a, cancelNotification: false, showsUserInterface: a != 'complete_set'),
           ],
         ),
       );

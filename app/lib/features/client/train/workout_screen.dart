@@ -188,6 +188,24 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       _restRoute = null;
       if (r.isActive) r.navigator?.removeRoute(r);
     }
+    // notification → Finish workout / Open (Probid 17 Nov)
+    if (c.askFinish) {
+      c.askFinish = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !c.finished) _askFinish(c);
+      });
+    }
+    final si = c.showEx;
+    if (si != null) {
+      c.showEx = null;
+      final k = si < c.sets.length ? c.sets[si].indexWhere((s) => !s.done) : -1;
+      if (k >= 0) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final ctx = _rowKeys[c.sets[si][k].key]?.currentContext;
+          if (ctx != null) Scrollable.ensureVisible(ctx, alignment: .35, duration: const Duration(milliseconds: 260));
+        });
+      }
+    }
     if (!c.finished && !c.paused && c.elapsed - c.lastActive >= 3 * 3600) {
       // no answer for 3 hours: saved at the last set
       final at = c.lastTickAt;

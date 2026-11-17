@@ -684,19 +684,57 @@ class WorkoutController extends ChangeNotifier {
       );
       return;
     }
+    if (ex.isEmpty) {
+      LiveNotice.workout(title: name, body: 'Workout in progress', startedAt: startedAt, paused: paused);
+      return;
+    }
+    // every set ticked: Finish workout / Return to workout (Probid 17 Nov, like Strong)
+    if (sets.every((xs) => xs.every((s) => s.done))) {
+      LiveNotice.workout(title: 'Workout finished', body: name, startedAt: startedAt, paused: paused, actions: const ['finish', 'back']);
+      return;
+    }
     final i = cur;
-    final xs = sets.isEmpty ? const <WSet>[] : sets[i];
+    final xs = sets[i];
     final k = xs.indexWhere((s) => !s.done);
-    final work = xs.where((s) => !s.wu).toList();
-    final done = work.where((s) => s.done).length;
-    final body = k < 0
-        ? (setsDone == setsAll ? 'Every set is done. Finish when you are ready' : 'Set $done of ${work.length} done')
-        : '${setLine(i, k)} (${k + 1} of ${xs.length}) · set $done of ${work.length} done';
-    LiveNotice.workout(title: ex.isEmpty ? name : ex[i].name, body: body, startedAt: startedAt, paused: paused, canComplete: k >= 0);
+    final left = xs.where((s) => !s.done).length;
+    // the last exercise is done but an earlier one still has sets: say which one, Open
+    final back = i < ex.length - 1 && exDone(ex.length - 1);
+    if (back) {
+      LiveNotice.workout(
+        title: ex[i].name,
+        body: '$left ${left == 1 ? 'set is' : 'sets are'} not done yet. Open this exercise to finish ${left == 1 ? 'it' : 'them'}',
+        startedAt: startedAt,
+        paused: paused,
+        actions: const ['open'],
+      );
+      return;
+    }
+    // the set has an empty box (no value, nothing to fill it from): open the app to type it (like Strong)
+    if (!canTick(i, k)) {
+      LiveNotice.workout(title: ex[i].name, body: 'Add values to mark as complete (${k + 1} of ${xs.length})', startedAt: startedAt, paused: paused, actions: const ['open']);
+      return;
+    }
+    LiveNotice.workout(title: ex[i].name, body: '${setLine(i, k)} (${k + 1} of ${xs.length})', startedAt: startedAt, paused: paused, actions: const ['complete_set']);
   }
+
+  /// Notification → Finish workout: the logger opens and asks "Finish workout?".
+  bool askFinish = false;
+
+  /// Notification → Open: the logger shows this exercise (index), once.
+  int? showEx;
 
   void _action(String a) {
     switch (a) {
+      case 'open':
+        showEx = cur;
+        LiveNotice.onOpen?.call();
+        notifyListeners();
+      case 'back':
+        LiveNotice.onOpen?.call();
+      case 'finish':
+        askFinish = true;
+        LiveNotice.onOpen?.call();
+        notifyListeners();
       case 'complete_set':
         final i = cur, k = sets[i].indexWhere((s) => !s.done);
         if (k >= 0 && canTick(i, k)) {
@@ -968,7 +1006,7 @@ class WorkoutController extends ChangeNotifier {
     if (on) WorkoutFeel.setDone();
     if (on && r > 0 && !last) {
       s.restPlanned = r;
-      _beginRest(i, k, r); // the rest sheet opens by itself (G48)
+      _beginRest(i, k, r, open: false); // the rest runs on the line; the sheet opens only from the line / chip (Probid 17 Nov)
     } else if (on) {
       _closeRest();
     } else if (restAt == (i, k)) {
