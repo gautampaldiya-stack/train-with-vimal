@@ -718,41 +718,38 @@ class _PanelHead extends StatelessWidget {
                 ),
                 child: Column(mainAxisSize: MainAxisSize.min, spacing: 5, children: [
                   Container(width: 36, height: 4, decoration: BoxDecoration(color: AppColors.line2, borderRadius: BorderRadius.circular(4))),
-                  Row(spacing: 10, children: [
-                    Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                        Text(c.ready ? c.name : 'Workout', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14.5, W.w7)),
-                        if (c.ready)
-                          Text(
-                            // finished: the clock stops at the saved time; it says what is left to do
-                            c.finished
-                                ? 'Finished · ${clockText(c.finalSeconds)} · ${c.sent ? 'sent to ${c.plan.coachFirst}' : 'rate it for ${c.plan.coachFirst}'}'
-                                : [clockText(c.elapsed), if (c.paused) 'paused', c.setsDone == c.setsAll ? 'all sets done' : c.e.name].join(' · '),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppText.s(12.5, W.w5, color: c.paused ? AppColors.amberText : AppColors.muted, tabular: true),
-                          ),
-                      ]),
-                    ),
-                    // same as the logger's top bar: only the rest time, a thin progress line under it (Probid 17 Nov)
-                    if (resting)
-                      Column(mainAxisSize: MainAxisSize.min, spacing: 3, children: [
-                        Text(clockText(c.rest), style: AppText.s(15, W.w7, color: AppColors.accentText, tabular: true, h: 1)),
-                        SizedBox(
-                          width: 40,
-                          height: 3,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(2),
-                            child: Stack(children: [
-                              Container(color: AppColors.accentSoft),
-                              FractionallySizedBox(widthFactor: p, child: Container(color: AppColors.accent)),
-                            ]),
-                          ),
+                  // Strong: the day name and the workout time in the middle; while resting the rest time sits next
+                  // to the workout time with a thin progress line under it (Probid 17 Nov).
+                  Text(c.ready ? c.name : 'Workout', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: AppText.s(14.5, W.w7)),
+                  if (c.ready)
+                    Row(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
+                      Flexible(
+                        child: Text(
+                          // finished: the clock stops at the saved time; it says what is left to do
+                          c.finished
+                              ? 'Finished · ${clockText(c.finalSeconds)} · ${c.sent ? 'sent to ${c.plan.coachFirst}' : 'rate it for ${c.plan.coachFirst}'}'
+                              : [clockText(c.elapsed), if (c.paused) 'paused'].join(' · '),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppText.s(12.5, W.w5, color: c.paused ? AppColors.amberText : AppColors.muted, tabular: true, h: 1.2),
                         ),
-                      ])
-                    else
-                      const AppIcon(AppIcons.chevronUp, size: 20, color: AppColors.text2),
-                  ]),
+                      ),
+                      if (resting)
+                        Column(mainAxisSize: MainAxisSize.min, spacing: 3, children: [
+                          Text(clockText(c.rest), style: AppText.s(12.5, W.w7, color: AppColors.accentText, tabular: true, h: 1.2)),
+                          SizedBox(
+                            width: 36,
+                            height: 3,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(2),
+                              child: Stack(children: [
+                                Container(color: AppColors.accentSoft),
+                                FractionallySizedBox(widthFactor: p, child: Container(color: AppColors.accent)),
+                              ]),
+                            ),
+                          ),
+                        ]),
+                    ]),
                 ]),
               ),
             ),

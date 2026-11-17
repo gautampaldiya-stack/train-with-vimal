@@ -823,14 +823,17 @@ class WorkoutController extends ChangeNotifier {
     return x.lastTime[w];
   }
 
-  /// "60 kg × 8", "BW+5 × 10", "45 s", "20 min · 132 bpm"; drop sets end with "(D)".
+  /// "60 kg × 8", "BW+5 × 10", "45 s", "20 min · 132 bpm"; drop sets end with "(D)" (failure: see [prevFail]).
   String prevText(int i, int k) {
     final p = prevOf(i, k);
     if (p == null) return '';
     final x = ex[i];
     final t = x.setText(p);
-    return '${p['type'] == 'drop' ? '$t (D)' : t}${p['type'] == 'failure' ? ' (F)' : ''}';
+    return p['type'] == 'drop' ? '$t (D)' : t;
   }
+
+  /// Last time's set was a failure set: the Previous column adds a red "[F]" after the text (Strong, Probid 17 Nov).
+  bool prevFail(int i, int k) => prevOf(i, k)?['type'] == 'failure';
 
   double? _prevVal(TrainEx x, Map<String, dynamic>? p, int j) {
     if (p == null) return null;
@@ -1375,9 +1378,9 @@ class WorkoutController extends ChangeNotifier {
     changed();
   }
 
+  /// "Keep going" on "Still working out?": no toast after the sheet (Probid 17 Nov).
   void keepGoing() {
     lastActive = elapsed;
-    toast?.call('Timer keeps running', sub: 'Workout time ${clockText(elapsed)}', kind: ToastKind.info);
     notifyListeners();
   }
 

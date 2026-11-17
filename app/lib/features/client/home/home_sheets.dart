@@ -42,12 +42,23 @@ class NoticeRow extends StatelessWidget {
 String? noticeRoute(HomeNotice n) {
   if (n.route.startsWith('/')) return n.route;
   return switch (n.event) {
-    'checkin_reviewed' || 'checkin_due' => '/checkins',
-    'personal_best' => '/progress',
-    'plan_updated' || 'program_assigned' => '/train',
-    'meal_plan_assigned' => '/food',
-    _ => null,
+    'checkin_reviewed' || 'checkin_due' || 'checkin_reminder' || 'form_request' || 'form_sent' => '/checkins',
+    'personal_best' || 'milestone' => '/progress',
+    'plan_updated' || 'plan_assigned' || 'program_assigned' || 'workout_reminder' || 'workout_done' => '/train',
+    'water_reminder' => '/food?water=1',
+    'meal_plan_assigned' || 'meal_plan_updated' || 'meal_reminder' || 'supplement_reminder' => '/food',
+    'habit_reminder' => '/habits',
+    'content_shared' => '/library',
+    _ => '/more/notifications',
   };
+}
+
+/// A tapped notification is read, its sheet / panel closes and its page opens (Probid 17 Nov).
+void openNotice(BuildContext sheet, BuildContext page, HomeController c, HomeNotice n) {
+  c.readOne(n);
+  Navigator.of(sheet).pop();
+  final to = noticeRoute(n);
+  if (to != null) GoRouter.of(page).go(to);
 }
 
 Future<void> showNoticesSheet(BuildContext context, HomeController c) => showAppSheet(
@@ -61,10 +72,7 @@ Future<void> showNoticesSheet(BuildContext context, HomeController c) => showApp
         }
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           for (final (i, n) in list.indexed)
-            NoticeRow(n, first: i == 0, onTap: noticeRoute(n) == null ? null : () {
-              Navigator.of(ctx).pop();
-              context.go(noticeRoute(n)!);
-            }),
+            NoticeRow(n, first: i == 0, onTap: () => openNotice(ctx, context, c, n)),
         ]);
       },
       footerStretch: true,

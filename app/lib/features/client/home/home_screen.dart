@@ -820,10 +820,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                             ? Padding(padding: const EdgeInsets.symmetric(vertical: 14), child: Text('No notifications yet.', textAlign: TextAlign.center, style: AppText.s(13, W.w5, color: AppColors.muted)))
                             : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                                 for (final (i, n) in d.notices.indexed)
-                                  NoticeRow(n, first: i == 0, onTap: noticeRoute(n) == null ? null : () {
-                                    Navigator.of(ctx).pop();
-                                    context.go(noticeRoute(n)!);
-                                  }),
+                                  NoticeRow(n, first: i == 0, onTap: () => openNotice(ctx, context, c, n)),
                               ]),
                       ),
                     ),

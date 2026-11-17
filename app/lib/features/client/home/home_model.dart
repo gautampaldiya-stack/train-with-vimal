@@ -139,6 +139,16 @@ class HomeController extends ChangeNotifier {
     unawaited(SharedPreferences.getInstance().then((p) => p.setStringList(_layoutKey, layout)).then((_) {}, onError: (_) {}));
   }
 
+  /// Tapping a notification reads it (Probid 17 Nov).
+  void readOne(HomeNotice n) {
+    if (n.read) return;
+    n.read = true;
+    final d = data!;
+    d.unread = d.unread > 0 ? d.unread - 1 : 0;
+    changed();
+    if (n.id.isNotEmpty) _send('notifications/${n.id}/read/', {});
+  }
+
   void readAll() {
     for (final n in data!.notices) {
       n.read = true;
@@ -310,13 +320,14 @@ class HomeSupplement {
 
 class HomeNotice {
   HomeNotice(Map<String, dynamic> j)
-      : title = '${j['title']}',
+      : id = '${j['id'] ?? ''}',
+        title = '${j['title']}',
         body = '${j['body'] ?? ''}',
         at = _dateOr(j['created_at']) ?? DateTime.now(),
         read = j['read'] == true,
         event = '${j['event'] ?? ''}',
         route = '${(j['data'] as Map?)?['route'] ?? ''}';
-  final String title, body, event, route;
+  final String id, title, body, event, route;
   final DateTime at;
   bool read;
 }

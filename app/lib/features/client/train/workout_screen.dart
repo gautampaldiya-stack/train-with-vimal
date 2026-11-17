@@ -82,6 +82,31 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   /// The set whose tick shakes (empty box), and a counter so each refused tap shakes again.
   (String, int)? _shake;
 
+  /// The row whose Previous shakes (nothing to fill: no previous set, already used, or the set is ticked).
+  (String, int)? _prevShake;
+
+  /// A short sideways shake for a refused tap, played again each time [n] goes up.
+  Widget _shaking(Widget child, String tag, int n) => TweenAnimationBuilder<double>(
+        key: ValueKey('$tag:$n'),
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 420),
+        builder: (_, v, child) => Transform.translate(offset: Offset(math.sin(v * math.pi * 6) * 6 * (1 - v), 0), child: child),
+        child: child,
+      );
+
+  /// A tap with a visible splash (Probid 17 Nov: set number and Previous).
+  Widget _splash({required VoidCallback onTap, required Widget child}) => Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(6),
+          splashColor: AppColors.line2,
+          highlightColor: AppColors.logField,
+          hoverColor: AppColors.logFieldHover,
+          child: child,
+        ),
+      );
+
   void _tryTick(WorkoutController c, int i, int k) {
     if (c.canTick(i, k)) return c.tick(i, k);
     WorkoutFeel.refused();
@@ -686,12 +711,11 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       builder: (bc) => Semantics(
         button: true,
         label: 'Set $lbl options',
-        child: Hover(
+        child: _splash(
           onTap: () => _setMenu(bc, c, i, k),
-          builder: (_, h, _) => Container(
+          child: Container(
             height: 30,
             alignment: Alignment.center,
-            decoration: BoxDecoration(color: h ? AppColors.logFieldHover : null, borderRadius: BorderRadius.circular(6)),
             child: Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
               Text(lbl, style: AppText.s(15, W.w6, color: labelColor)),
               if (c.isFilmed(s))
@@ -712,30 +736,41 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       ),
     );
     final pt = c.prevText(i, k);
-    final used = c.prevUsed(i, k);
-    final prev = Semantics(
-      button: pt.isNotEmpty && !s.done,
-      label: pt.isEmpty ? 'No previous set' : 'Previous $pt',
-      child: Hover(
-        onTap: pt.isEmpty || s.done
-            ? null
-            : () {
-                setState(() => act = null);
-                c.usePrev(i, k);
-              },
-        builder: (_, h, _) => Container(
+    final used = c.prevUsed(i, k), fail = c.prevFail(i, k);
+    Widget prev = Semantics(
+      button: true,
+      label: pt.isEmpty ? 'No previous set' : 'Previous $pt${fail ? ', failure set' : ''}',
+      child: _splash(
+        // nothing to fill (no previous set, already in the boxes, or the set is ticked): it shakes (Probid 17 Nov)
+        onTap: () {
+          setState(() => act = null);
+          if (pt.isEmpty || used || s.done) {
+            WorkoutFeel.refused();
+            setState(() => _prevShake = (s.key, (_prevShake?.$2 ?? 0) + 1));
+          } else {
+            c.usePrev(i, k);
+          }
+        },
+        child: Container(
           height: 30,
           alignment: Alignment.center,
-          decoration: BoxDecoration(color: h && pt.isNotEmpty && !s.done ? AppColors.logFieldHover : null, borderRadius: BorderRadius.circular(6)),
           child: pt.isEmpty
               ? Container(width: 16, height: 2.5, decoration: BoxDecoration(color: AppColors.tickOff, borderRadius: BorderRadius.circular(2)))
               : FittedBox(
                   fit: BoxFit.scaleDown,
-                  child: Text(pt, maxLines: 1, style: AppText.s(14, W.w4, color: used || s.done ? AppColors.valPh : AppColors.text)),
+                  child: Text.rich(
+                    TextSpan(text: pt, children: [
+                      if (fail) TextSpan(text: ' [F]', style: AppText.s(14, W.w5, color: AppColors.badText)),
+                    ]),
+                    maxLines: 1,
+                    style: AppText.s(14, W.w4, color: used || s.done ? AppColors.valPh : AppColors.text),
+                  ),
                 ),
         ),
       ),
     );
+    final ps = _prevShake;
+    if (ps != null && ps.$1 == s.key) prev = _shaking(prev, 'prev', ps.$2);
     Widget tick = Semantics(
       button: true,
       label: s.done ? 'Untick set $lbl' : 'Tick set $lbl',
@@ -757,15 +792,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       ),
     );
     final sh = _shake;
-    if (sh != null && sh.$1 == s.key) {
-      tick = TweenAnimationBuilder<double>(
-        key: ValueKey('shake:${sh.$2}'),
-        tween: Tween(begin: 0, end: 1),
-        duration: const Duration(milliseconds: 420),
-        builder: (_, v, child) => Transform.translate(offset: Offset(math.sin(v * math.pi * 6) * 6 * (1 - v), 0), child: child),
-        child: tick,
-      );
-    }
+    if (sh != null && sh.$1 == s.key) tick = _shaking(tick, 'shake', sh.$2);
     Widget? go;
     if (x.kind == ExKind.time) {
       go = s.done && !running

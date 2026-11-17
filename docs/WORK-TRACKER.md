@@ -378,6 +378,12 @@ E51. ✅ Admin/trainer client Logs (Daily, Weekly, Habits, Supplements) aur clie
 51i. ✅ Rest chalte waqt Strong jaisa poori width ka rest progress bar, andar time (Probid 17 Nov).
 51j. ✅ App bahar ho aur notification hata do to wapas aaye (Android foreground service). Phone par test baaki (Probid 17 Nov).
 51k. ✅ Plan builder aur exercise edit drawer me Rest / warm-up / drop rest: minutes + seconds wheel (Probid 17 Nov).
+51m. ✅ PREVIOUS column me pichla set failure tha to lal "[F]" (Strong jaisa, Probid 17 Nov).
+51n. ✅ "Still working out?" sheet par Keep going ke baad "Timer keeps running" toast nahi (Probid 17 Nov).
+51o. ✅ Band logger bar Strong jaisa: din ka naam + time beech me, rest time usi ke paas progress line ke saath (Probid 17 Nov).
+51p. ✅ Set number aur Previous par tap splash; Previous khaali / use ho chuka ho to shake (Probid 17 Nov).
+51q. ✅ Home notification sheet: tap par read + sahi page khule (Probid 17 Nov).
+51r. ⬜ Log more sets wale workout me Restart: kya ho (Probid ka jawab baaki, card).
 51l. ⏸️ Baad me (Probid 17 Nov: "abhi nahi"): exercises ke beech ka rest. Coach plan me do exercises ke beech rest rakhe; tab last set ke baad exercise ka rest nahi, ye beech wala chale.
 51a. ⬜ Kal ka workout (Food jaisa, Probid 17 Nov): week strip me kal chuno to kal ka workout log kar sake (chhoot gaya ho to) ya kal ka kiya hua edit kar sake. Usse purane din sirf dekh sakte.
 52. ⬜ Editable: exercises, sets, weight, reps, set type, rest timers, start aur end time.
