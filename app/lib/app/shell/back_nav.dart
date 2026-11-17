@@ -8,7 +8,6 @@ import '../../core/widgets/button.dart';
 import '../../core/widgets/client.dart';
 import '../../core/widgets/overlays.dart';
 import '../../features/client/train/workout_model.dart' show WorkoutController;
-import '../../features/client/train/workout_screen.dart' show openWorkout;
 import '../services.dart';
 import 'nav_items.dart';
 
@@ -17,7 +16,7 @@ import 'nav_items.dart';
 /// - a sub-page goes to its section: `/food/log` → `/food`, `/train/workout` → `/train`, `/clients/<id>` → `/clients`;
 /// - a bottom-bar tab goes to Home (`/home`, staff `/dashboard`);
 /// - a page opened from More (Habits, Check-ins, Library, Programs…) goes to More, then Home;
-/// - Home asks "Do you want to exit the app?" (with Resume workout while one is running).
+/// - Home asks "Do you want to exit the app?" (a bold line says when a workout is running).
 /// A screen with its own steps (a check-in form, the rest panel) handles back first through [BackIntercept].
 abstract final class AppBack {
   static final _intercepts = <bool Function()>[];
@@ -56,7 +55,7 @@ abstract final class AppBack {
     await showExitSheet(context, client: me.role == Role.client);
   }
 
-  /// "Do you want to exit the app?" Exit · Cancel, and Resume workout while a workout is running.
+  /// "Do you want to exit the app?" Exit · Cancel; while a workout is running a bold line says so (no button).
   static Future<void> showExitSheet(BuildContext context, {required bool client}) async {
     final live = client && await WorkoutController.hasLive();
     if (!context.mounted) return;
@@ -69,16 +68,19 @@ abstract final class AppBack {
       title: 'Do you want to exit the app?',
       sub: live ? 'Your workout is still in progress' : 'You can open it again any time.',
       builder: (ctx) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
-        if (live) CaButton('Resume workout', icon: AppIcons.play, onPressed: () => Navigator.of(ctx).pop('resume')),
+        // A running workout is only said, in bold; no Resume button (Probid 17 Nov)
+        if (live)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text('Your workout is still running. It keeps running after you exit.', textAlign: TextAlign.center, style: AppText.s(14, W.w7)),
+          ),
         Row(spacing: 8, children: [
           Expanded(child: btn(ctx, 'Cancel', null)),
           Expanded(child: btn(ctx, 'Exit', 'exit', main: !live)),
         ]),
-        if (live) Text('The workout keeps running. Open it again from the notification or the app.', textAlign: TextAlign.center, style: AppText.s(12.5, W.w4, color: AppColors.muted)),
       ]),
     );
     if (!context.mounted) return;
-    if (go == 'resume') openWorkout(context);
     if (go == 'exit') await SystemNavigator.pop();
   }
 }

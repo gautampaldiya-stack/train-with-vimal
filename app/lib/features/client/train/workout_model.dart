@@ -502,7 +502,7 @@ class WorkoutController extends ChangeNotifier {
     await LiveNotice.clear();
   }
 
-  /// A workout is running on this phone (started, not finished or discarded): the exit sheet offers Resume workout.
+  /// A workout is running on this phone (started, not finished or discarded): the exit sheet says so in bold.
   static Future<bool> hasLive() async {
     if (current != null && !current!.finished) return true;
     final snap = await Services.cache.read(_cacheKey);

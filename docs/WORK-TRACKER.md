@@ -385,6 +385,7 @@ E51. ✅ Admin/trainer client Logs (Daily, Weekly, Habits, Supplements) aur clie
 51q. ✅ Home notification sheet: tap par read + sahi page khule (Probid 17 Nov).
 51r. ✅ Log more sets (aaj ka): Discard whole workout + Restart pura naya; kal ka discard / restart nahi (Probid 17 Nov).
 51s. ✅ Finish par Strong jaisa: Complete unfinished sets / Discard unfinished sets / Cancel (Probid 17 Nov).
+51t. ✅ App exit sheet: workout chal raha ho to sirf bold line "Your workout is still running...", Resume button nahi (Probid 17 Nov).
 51l. ⏸️ Baad me (Probid 17 Nov: "abhi nahi"): exercises ke beech ka rest. Coach plan me do exercises ke beech rest rakhe; tab last set ke baad exercise ka rest nahi, ye beech wala chale.
 51a. ⬜ Kal ka workout (Food jaisa, Probid 17 Nov): week strip me kal chuno to kal ka workout log kar sake (chhoot gaya ho to) ya kal ka kiya hua edit kar sake. Usse purane din sirf dekh sakte.
 52. ⬜ Editable: exercises, sets, weight, reps, set type, rest timers, start aur end time.

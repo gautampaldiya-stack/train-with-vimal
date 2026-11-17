@@ -21,7 +21,7 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 ## 2026-11-17 · Logger: Finish with unfinished sets (Strong); today's workout fully discard / restart after Log more sets
 - **Pehle:** Finish par untick sets seedhe skipped save hote. "Log more sets" wale workout me Cancel sirf naye sets hatata ("Discard added sets") aur Restart sab sets untick karta par pehle ka finished hissa server par reh jaata.
 - **Ab:** Finish par agar untick sets me values hain (likhi ya box me dikh rahi): Strong jaisa "Complete unfinished sets" (sab tick, jaisa dikh raha), "Discard unfinished sets" (sirf ticked save), "Cancel"; teen button upar-neeche. Log more sets (sirf aaj ka): Cancel sheet me "Discard whole workout" bhi (`POST discard {"all": true}`), aur Restart pura workout naya karta (`POST restart {"fresh": true}`: reopened_at, segments, time saaf; Undo nahi). Kal / pichle din ka workout logger me khulta hi nahi, isliye wahan discard / restart nahi.
-- **Kyun:** Probid (17 Nov, Strong screenshot): "aaj ya abhi ka discard kar sakte, kal ka discard and restart nahi".
+- **Kyun:** Probid (17 Nov, Strong screenshot): "aaj ya abhi ka discard kar sakte, kal ka discard and restart nahi". Saath me: app exit sheet par workout chal raha ho to Resume button nahi, sirf bold line "Your workout is still running. It keeps running after you exit."
 - **Updated:** workout_model (openValid, completeOpen, restart fresh, discard all), workout_screen (_askFinish, _askCancel, _askRestart, _ask stacks 3 buttons), backend training views discard / restart, tests/test_client_train.py.
 
 ## 2026-11-17 · Logger: [F] in Previous, closed bar like Strong, tap splash; Home notifications open and read
