@@ -597,6 +597,8 @@ class _WorkoutPanelHostState extends State<_WorkoutPanelHost> with SingleTickerP
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
     final inset = mq.padding.bottom;
+    // the phone's status bar height, read from the window too (a parent may have taken it off the padding)
+    final statusH = math.max(mq.padding.top, MediaQueryData.fromView(View.of(context)).padding.top);
     final shown = _shown;
     final c = WorkoutController.live.value;
     final head = _head + (widget.bar ? 0 : inset);
@@ -619,9 +621,13 @@ class _WorkoutPanelHostState extends State<_WorkoutPanelHost> with SingleTickerP
                   right: 0,
                   top: (h - navH - head) * (1 - t),
                   height: h,
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  // dark status bar icons over the white logger (the page under it may be Home's blue hero, whose
+                  // light icons made the time / network invisible, Probid 17 Nov)
+                  child: AnnotatedRegion<SystemUiOverlayStyle>(
+                    value: _AppShellState._statusDark,
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                     // the status bar stays clear: the logger starts under it (it went into it before)
-                    Container(height: mq.padding.top * t, color: AppColors.white),
+                    Container(height: statusH * t, color: AppColors.white),
                     Expanded(
                       child: Stack(children: [
                         Positioned.fill(child: child!),
@@ -638,6 +644,7 @@ class _WorkoutPanelHostState extends State<_WorkoutPanelHost> with SingleTickerP
                       ]),
                     ),
                   ]),
+                  ),
                 );
               },
               child: TickerMode(
@@ -714,19 +721,22 @@ class _PanelHead extends StatelessWidget {
                           ),
                       ]),
                     ),
+                    // same as the logger's top bar: only the rest time, a thin progress line under it (Probid 17 Nov)
                     if (resting)
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          height: 30,
-                          width: 84,
-                          color: AppColors.accentSoft,
-                          child: Stack(children: [
-                            Positioned.fill(child: FractionallySizedBox(alignment: Alignment.centerLeft, widthFactor: p, child: Container(color: AppColors.accent))),
-                            Center(child: Text('Rest ${clockText(c.rest)}', style: AppText.s(12.5, W.w7, color: AppColors.white, tabular: true))),
-                          ]),
+                      Column(mainAxisSize: MainAxisSize.min, spacing: 3, children: [
+                        Text(clockText(c.rest), style: AppText.s(15, W.w7, color: AppColors.accentText, tabular: true, h: 1)),
+                        SizedBox(
+                          width: 40,
+                          height: 3,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(2),
+                            child: Stack(children: [
+                              Container(color: AppColors.accentSoft),
+                              FractionallySizedBox(widthFactor: p, child: Container(color: AppColors.accent)),
+                            ]),
+                          ),
                         ),
-                      )
+                      ])
                     else
                       const AppIcon(AppIcons.chevronUp, size: 20, color: AppColors.text2),
                   ]),

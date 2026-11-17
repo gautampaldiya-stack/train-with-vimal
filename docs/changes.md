@@ -21,8 +21,9 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 ## 2026-11-17 · Rest: small timer in the top bar, 3 buzzes + ring bell
 - **Pehle:** Rest chalte waqt top bar me neela bhara box (icon + time) aur set ki rest line par bada time + moti bharti line.
 - **Ab:** Rest chalte waqt top bar me clock ke paas sirf rest ka time, uske neeche chhoti patli progress line. Set ki rest line hamesha patli, time chhota (bacha hua time). Aakhri 3, 2, 1 second par ek ek buzz (3 baar), khatam hone par ring bell (fight start jaisi) sound.
+- **Phir:** neeche wale chhote bar (panel head) me bhi wahi: sirf time + patli line. Logger upar ho to status bar ke icons dark (pehle neeche wale Home page ke white icons lagte the, isliye time / network nahi dikhta) aur status bar ki height window se padhi jaati hai, logger uske neeche se shuru.
 - **Kyun:** Probid (17 Nov).
-- **Updated:** workout_screen (top bar chip, `_restRow`), workout_model (`_second`), workout_feel (`restCountdown`), assets/sounds/rest_over.wav
+- **Updated:** app_shell (`_PanelHead`, panel AnnotatedRegion, statusH), workout_screen (top bar chip, `_restRow`), workout_model (`_second`), workout_feel (`restCountdown`), assets/sounds/rest_over.wav
 
 ## 2026-11-17 · Workout notification like Strong; no rest sheet on tick
 - **Pehle:** Set tick karte hi Rest timer sheet apne aap khulti thi. Notification har haal me exercise + Complete set dikhati (khali KG par bhi), sab sets ho jaane par sirf "Every set is done. Finish when you are ready" bina button.
