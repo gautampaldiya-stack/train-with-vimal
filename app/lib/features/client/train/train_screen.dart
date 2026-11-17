@@ -43,6 +43,7 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
     if (d != null && !DateUtils.isSameDay(d, DateTime.now())) c.day = d;
     c.start();
     c.addListener(_timer);
+    WorkoutController.saved.addListener(_reload);
     if (widget.discarded > 0) {
       final again = widget.discarded == 2;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -52,6 +53,11 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
         }
       });
     }
+  }
+
+  /// A workout finished or rated: the card shows it (and drops "Rate it for …").
+  void _reload() {
+    if (mounted) c.load();
   }
 
   /// The running workout's clock counts here too.
@@ -67,6 +73,7 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
 
   @override
   void dispose() {
+    WorkoutController.saved.removeListener(_reload);
     _tick?.cancel();
     c.dispose();
     super.dispose();
@@ -328,6 +335,8 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
           style: AppText.s(13, W.w6, color: d.finished ? AppColors.okText : (d.isPast ? AppColors.text2 : AppColors.sessText)),
         ),
       ));
+      final r = _rate(d);
+      if (r != null) body.add(r);
       body.add(CaButton('Back to today', kind: CaBtnKind.out, onPressed: () => this.c.pick(DateTime.now())));
     } else {
       final label = live != null ? 'Continue workout' : (d.finished ? 'Log more sets' : 'Start workout');
@@ -336,6 +345,7 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
           Expanded(child: ChBar(n == 0 ? 0 : doneN / n, color: AppColors.okSolid)),
           Text('$doneN of $n exercises done', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
         ]),
+        if (live == null && _rate(d) != null) _rate(d)!,
         CaButton(label, icon: AppIcons.play, onPressed: n == 0 ? null : () => _go(d)),
       ]);
     }
@@ -361,6 +371,23 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         hero,
         Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: body)),
+      ]),
+    );
+  }
+
+  /// A finished workout not rated yet: "How did it go? Tell Aman" opens its Congratulations page again, where the
+  /// effort and note are sent (Probid 17 Nov: rate it later).
+  Widget? _rate(TrainData d) {
+    final w = d.completed;
+    if (w == null || w['effort'] != null) return null;
+    return ChNote(
+      icon: AppIcons.send,
+      bg: AppColors.accentSoft,
+      fg: AppColors.sessText,
+      padding: const EdgeInsets.fromLTRB(11, 6, 6, 6),
+      child: Row(spacing: 8, children: [
+        Expanded(child: Text('Tell ${d.coachFirst} how hard it was', style: AppText.s(13, W.w6, color: AppColors.sessText))),
+        CaButton('Rate it', small: true, expand: false, onPressed: () => openWorkout(context, '?review=${w['id']}')),
       ]),
     );
   }

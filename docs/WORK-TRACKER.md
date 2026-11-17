@@ -371,6 +371,7 @@ E51. ✅ Admin/trainer client Logs (Daily, Weekly, Habits, Supplements) aur clie
 51b. ✅ Logger ek Strong panel (Probid 17 Nov): neeche head tab bar ke upar, ungli se upar / neeche, status bar me nahi, band nahi hota; set tick / skip / delete / rest khatam pe sound; khali KG pe tick button shake; notification aate hi sound.
 51c. ✅ Notification Strong jaisi (Probid 17 Nov): khali box → Add values + Open; exercise poora → agla; set baaki → us exercise ka naam + Open; sab done → Workout finished + Finish workout / Return to workout. Set tick par rest sheet nahi khulti.
 51d. ✅ Rest: top bar me sirf chhota rest time + neeche patli progress line; set line par bada timer nahi; aakhri 3 sec 3 buzz, phir ring bell sound (Probid 17 Nov).
+51e. ✅ Finish = turant save, timer band; finish page baad me bhi (Train → Rate it); chhota bar "Finished · rate it" jab tak bheja nahi; panel swipe atakna fix (Probid 17 Nov).
 51a. ⬜ Kal ka workout (Food jaisa, Probid 17 Nov): week strip me kal chuno to kal ka workout log kar sake (chhoot gaya ho to) ya kal ka kiya hua edit kar sake. Usse purane din sirf dekh sakte.
 52. ⬜ Editable: exercises, sets, weight, reps, set type, rest timers, start aur end time.
 53. ⬜ Start/end badalne par duration aur saari dependent stats recalculate.

@@ -26,9 +26,13 @@ import 'workout_model.dart';
 /// (W / D / F), focus metric, ⌄ to the mini bar, Cancel workout at the end and the Congratulations page.
 /// [start] = program day to start (the Start sheet shows first), [reopen] = finished workout to log more sets on.
 class WorkoutScreen extends StatefulWidget {
-  const WorkoutScreen({super.key, this.start, this.reopen, this.then});
+  const WorkoutScreen({super.key, this.start, this.reopen, this.review, this.then});
   final int? start;
   final String? reopen;
+
+  /// A finished workout whose effort / note for the coach is not sent yet: opens its Congratulations page
+  /// (Train → Rate it for the coach, Probid 17 Nov).
+  final String? review;
 
   /// Opened from the Train banner ⋯: `finish` or `restart` opens that question at once.
   final String? then;
@@ -100,7 +104,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
   Future<void> _boot() async {
     final have = WorkoutController.current;
-    if (have != null && have.ready && !have.finished && widget.reopen == null) {
+    // the running workout, or the one just finished whose Congratulations page is still open (not sent yet)
+    if (have != null && have.ready && (!have.finished || (!have.sent && (widget.review == null || widget.review == have.id))) && widget.reopen == null) {
       _attach(have);
       return;
     }
@@ -130,7 +135,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     final c = WorkoutController(d)..toast = _toast;
     c.addListener(_onW);
     setState(() => w = c);
-    await c.open(start: widget.start, reopen: widget.reopen);
+    await c.open(start: widget.start, reopen: widget.reopen, review: widget.review);
     if (!mounted) return;
     setState(() {});
     _then(c);
@@ -250,7 +255,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             c.restShow(false);
             return true;
           }
-          if (c != null && c.ready && !c.finished) {
+          if (c != null && c.ready && (!c.finished || _inPanel)) {
             _collapse();
             return true;
           }
@@ -399,6 +404,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     return GestureDetector(
       // phone: the panel follows the finger (Strong); wider screens: a quick swipe down minimises
       onVerticalDragUpdate: _inPanel ? (d) => WorkoutPanel.dragBy!(d.delta.dy) : null,
+      onVerticalDragCancel: _inPanel ? () => WorkoutPanel.dragEnd!(0) : null,
       onVerticalDragEnd: (d) {
         if (_inPanel) {
           WorkoutPanel.dragEnd!(d.primaryVelocity ?? 0);
@@ -1633,13 +1639,13 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
   // ─────────────────────────────── Popovers and sheets
 
+  /// A small menu next to [anchor]: under it when it fits, else above it with its bottom next to the anchor, and
+  /// always inside the screen (Probid 17 Nov: the menu of a set near the bottom went off the screen).
   Future<void> _popover(BuildContext anchor, {required double width, bool right = false, required Widget Function(BuildContext ctx, VoidCallback close) builder}) {
     final box = anchor.findRenderObject() as RenderBox;
     final overlay = Overlay.of(anchor, rootOverlay: true).context.findRenderObject() as RenderBox;
     final tl = box.localToGlobal(Offset.zero, ancestor: overlay);
-    final size = overlay.size;
-    final left = right ? tl.dx + box.size.width - width : tl.dx;
-    final top = tl.dy + box.size.height + 6;
+    final pad = MediaQuery.paddingOf(anchor);
     return showGeneralDialog(
       context: anchor,
       barrierDismissible: true,
@@ -1647,22 +1653,17 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 90),
       transitionBuilder: (_, a, _, child) => FadeTransition(opacity: a, child: child),
-      pageBuilder: (ctx, _, _) => Stack(children: [
-        Positioned(
-          left: left.clamp(8.0, math.max(8.0, size.width - width - 8)),
-          top: top,
-          width: math.min(width, size.width - 16),
-          child: Material(
-            color: Colors.transparent,
-            child: Container(
-              padding: const EdgeInsets.all(6),
-              constraints: BoxConstraints(maxHeight: size.height - top - 12),
-              decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.line), boxShadow: AppShadows.menu),
-              child: SingleChildScrollView(child: builder(ctx, () => Navigator.of(ctx).pop())),
-            ),
+      pageBuilder: (ctx, _, _) => CustomSingleChildLayout(
+        delegate: _PopoverPlace(anchor: tl & box.size, width: width, right: right, top: pad.top + 8, bottom: pad.bottom + 8),
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.line), boxShadow: AppShadows.menu),
+            child: SingleChildScrollView(child: builder(ctx, () => Navigator.of(ctx).pop())),
           ),
         ),
-      ]),
+      ),
     );
   }
 
@@ -2129,6 +2130,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       _toast('Pick how hard it was', sub: 'Tap a number from 1 to 10', kind: ToastKind.warn);
       return;
     }
+    if (!c.sent) return; // saved offline: said by the controller
     _toast('Sent to ${c.plan.coachFirst}', sub: 'Effort ${c.effort} of 10${c.note.trim().isNotEmpty ? ' · with your note' : ''}', kind: ToastKind.ok);
   }
 }
@@ -2322,4 +2324,33 @@ class _RestStepper extends StatelessWidget {
       ]),
     ]);
   }
+}
+
+/// Places a popover under its anchor when it fits, else above it (bottom next to the anchor), inside the screen.
+class _PopoverPlace extends SingleChildLayoutDelegate {
+  const _PopoverPlace({required this.anchor, required this.width, required this.right, required this.top, required this.bottom});
+  final Rect anchor;
+  final double width, top, bottom;
+  final bool right;
+
+  @override
+  BoxConstraints getConstraintsForChild(BoxConstraints c) {
+    final w = math.min(width, c.maxWidth - 16);
+    final room = math.max(anchor.top - 6 - top, c.maxHeight - bottom - anchor.bottom - 6);
+    // below or above, whichever has room; a very long menu gets the taller side and scrolls
+    return BoxConstraints(minWidth: w, maxWidth: w, maxHeight: math.max(120, math.min(c.maxHeight - top - bottom, math.max(room, 0))));
+  }
+
+  @override
+  Offset getPositionForChild(Size size, Size child) {
+    final x = (right ? anchor.right - child.width : anchor.left).clamp(8.0, math.max(8.0, size.width - child.width - 8)).toDouble();
+    final below = anchor.bottom + 6;
+    final fitsBelow = below + child.height <= size.height - bottom;
+    final above = anchor.top - 6 - child.height;
+    final y = fitsBelow || above < top ? below : above;
+    return Offset(x, y.clamp(top, math.max(top, size.height - bottom - child.height)).toDouble());
+  }
+
+  @override
+  bool shouldRelayout(_PopoverPlace o) => o.anchor != anchor || o.width != width || o.right != right || o.top != top || o.bottom != bottom;
 }

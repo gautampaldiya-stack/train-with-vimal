@@ -167,6 +167,9 @@ class WorkoutController extends ChangeNotifier {
 
   /// The workout running now (null when none). The logger, the mini bar and the notification all use it.
   static final live = ValueNotifier<WorkoutController?>(null);
+
+  /// Goes up when a workout is finished or its effort / note is sent: Train reloads its card.
+  static final saved = ValueNotifier<int>(0);
   static WorkoutController? get current => live.value;
 
   /// Where ⌄ (collapse) goes back to: the tab the logger was opened from.
@@ -377,8 +380,9 @@ class WorkoutController extends ChangeNotifier {
   }
 
   /// [start] = program day to start; [reopen] = finished workout to log more sets on.
-  Future<void> open({int? start, String? reopen}) async {
+  Future<void> open({int? start, String? reopen, String? review}) async {
     _hook();
+    if (review != null) return _openReview(review);
     await LiveNotice.init();
     await WorkoutFeel.load();
     try {
@@ -431,6 +435,29 @@ class WorkoutController extends ChangeNotifier {
       final old = live.value;
       if (old != null && old != this) old.release();
       live.value = this;
+    }
+    notifyListeners();
+  }
+
+  /// A finished workout's Congratulations page, to rate it / write to the coach later (Probid 17 Nov). Nothing
+  /// runs: no clock, no notification, not the live workout.
+  Future<void> _openReview(String wid) async {
+    try {
+      final j = await Services.api.get<Map<String, dynamic>>('me/workouts/$wid/');
+      _fromServer(j);
+      reopened = false;
+      earlierSeconds = 0;
+      finished = true;
+      finalSeconds = (j['duration_seconds'] as num? ?? 0).toInt();
+      final tb = j['time_breakdown'];
+      restUsed = tb is Map ? (tb['rest'] as num? ?? 0).toInt() : 0;
+      effort = (j['effort'] as num?)?.toInt() ?? 0;
+      note = '${j['note'] ?? ''}';
+      sent = j['effort'] != null;
+      ready = true;
+      unawaited(_count());
+    } on ApiError catch (e) {
+      failed = e.offline ? 'You are offline. Connect to open this workout.' : e.message;
     }
     notifyListeners();
   }
@@ -1438,7 +1465,16 @@ class WorkoutController extends ChangeNotifier {
     notifyListeners();
     final body = {'duration_seconds': finalSeconds, 'time_breakdown': breakdown};
     if (local) {
-      _syncLater = true; // sent with the effort and the note, or when the screen closes
+      // saved now (Probid 17 Nov: finish = saved); the effort and note can follow later
+      try {
+        final r = await _sendLocal();
+        if (r is Map && r['id'] != null) {
+          id = '${r['id']}';
+          local = false;
+        }
+      } on ApiError catch (e) {
+        toast?.call('Could not save the workout', sub: e.message, kind: ToastKind.warn);
+      }
     } else {
       try {
         await Services.outbox.enqueue('PUT', 'me/workouts/$id/state/', _state, tag: 'workout:state');
@@ -1448,6 +1484,7 @@ class WorkoutController extends ChangeNotifier {
       }
     }
     await Services.cache.write(_cacheKey, null);
+    saved.value++;
     if (read != null) unawaited(_sendVideos(read));
     unawaited(_count());
   }
@@ -1524,18 +1561,23 @@ class WorkoutController extends ChangeNotifier {
     sent = true;
     notifyListeners();
     if (local) {
-      await _sendLocal();
+      // saved offline and still on its way: the server has no id to send it to yet
+      sent = false;
+      toast?.call('Your workout is saved', sub: 'Send this to ${plan.coachFirst} from Train when you are online', kind: ToastKind.info);
+      notifyListeners();
+      return true;
     } else {
       try {
         await Services.outbox.enqueue('POST', 'me/workouts/$id/feedback/', {'effort': effort, 'note': note.trim()}, tag: 'workout:feedback');
+        saved.value++;
       } on ApiError catch (_) {}
     }
     return true;
   }
 
-  Future<void> _sendLocal() async {
+  Future<dynamic> _sendLocal() async {
     _syncLater = false;
-    await Services.outbox.enqueue(
+    return Services.outbox.enqueue(
         'POST',
         'me/workouts/sync/',
         {

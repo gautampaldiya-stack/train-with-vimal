@@ -18,6 +18,18 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+## 2026-11-17 · Finish = saved; rate it later from Train; panel swipe no longer sticks
+- **Pehle:** Notification se Finish karne par Congratulations page bina background ke Home ke upar dikhta; neeche jaane par chhota bar timer chalate hue rehta. Offline shuru hua workout tab tak save nahi hota jab tak Send na karo. Effort / note baad me dene ka koi raasta nahi tha. Panel upar khinchte waqt kabhi beech me atak jaata aur tab bar aadha neeche chala jaata (chhota bar drag ke beech tree se hat jaata tha, drag kho jaata).
+- **Ab:** Panel hamesha opaque (white). Finish karte hi workout save + timer band (offline wala bhi turant sync). Congratulations page se neeche jao to chhota bar "Finished · 1:16:25 · rate it for Aman" dikhata hai (ghadi ruki hui) jab tak Send na karo; Send ke baad neeche jaane par band. Train ke aaj ke card par, jab tak effort nahi gaya, "Tell Aman how hard it was · **Rate it**" → wahi Congratulations page (`?review=<id>`, server se). Chhota bar poore drag me tree me rehta hai, drag cancel par panel kisi ek side settle hota hai.
+- **Kyun:** Probid phone screenshots (17 Nov).
+- **Updated:** app_shell (`_shown`, opaque panel, head always built, drag cancel, finished head), workout_screen (`review`, `_boot` keeps the finished workout, back collapses), workout_model (`_openReview`, finish syncs offline, `saved` notifier), train_screen (`_rate`), router
+
+## 2026-11-17 · Set menu stays on the screen
+- **Pehle:** Set number ka menu hamesha set ke neeche khulta; neeche ke set par aadha screen ke bahar chala jaata.
+- **Ab:** Neeche jagah ho to neeche, nahi to upar khulta hai aur uska neeche wala kinara set number ke paas rehta hai; hamesha screen (status bar / neeche ki patti) ke andar. Logger ke saare chhote menu (⋯ bhi) aise hi.
+- **Kyun:** Probid (17 Nov).
+- **Updated:** workout_screen (`_popover`, `_PopoverPlace`)
+
 ## 2026-11-17 · Rest: small timer in the top bar, 3 buzzes + ring bell
 - **Pehle:** Rest chalte waqt top bar me neela bhara box (icon + time) aur set ki rest line par bada time + moti bharti line.
 - **Ab:** Rest chalte waqt top bar me clock ke paas sirf rest ka time, uske neeche chhoti patli progress line. Set ki rest line hamesha patli, time chhota (bacha hua time). Aakhri 3, 2, 1 second par ek ek buzz (3 baar), khatam hone par ring bell (fight start jaisi) sound.

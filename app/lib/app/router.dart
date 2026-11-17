@@ -129,6 +129,7 @@ final Map<String, Widget Function(GoRouterState)> screens = {
         key: ValueKey(st.uri.toString()),
         start: int.tryParse(st.uri.queryParameters['start'] ?? ''),
         reopen: st.uri.queryParameters['reopen'],
+        review: st.uri.queryParameters['review'],
         then: st.uri.queryParameters['then'],
       ),
   '/library': (_) => const ClientLibraryScreen(),

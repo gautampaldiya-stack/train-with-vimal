@@ -528,7 +528,12 @@ class _WorkoutPanelHostState extends State<_WorkoutPanelHost> with SingleTickerP
     return c != null && c.ready && !c.finished;
   }
 
-  bool get _shown => _req != null || _live || (WorkoutController.live.value?.finished ?? false);
+  /// A finished workout keeps its small bar ("Workout finished") until the effort / note is sent to the coach
+  /// (Probid 17 Nov); then going down lets it go.
+  bool get _shown {
+    final c = WorkoutController.live.value;
+    return _req != null || _live || (c != null && c.finished && !c.sent);
+  }
 
   @override
   void initState() {
@@ -630,8 +635,11 @@ class _WorkoutPanelHostState extends State<_WorkoutPanelHost> with SingleTickerP
                     Container(height: statusH * t, color: AppColors.white),
                     Expanded(
                       child: Stack(children: [
-                        Positioned.fill(child: child!),
-                        if (t < .6 && c != null)
+                        // opaque: the page under it never shows through (the finish page had no background)
+                        Positioned.fill(child: ColoredBox(color: AppColors.white, child: child!)),
+                        // the small bar stays in the tree the whole way: removing it mid-drag lost the drag and the
+                        // panel stuck half way with the tab bar half gone (Probid 17 Nov)
+                        if (c != null)
                           Positioned(
                             left: 0,
                             right: 0,
@@ -656,6 +664,7 @@ class _WorkoutPanelHostState extends State<_WorkoutPanelHost> with SingleTickerP
                     key: ValueKey(_req ?? ''),
                     start: int.tryParse(q['start'] ?? ''),
                     reopen: q['reopen'],
+                    review: q['review'],
                     then: q['then'],
                   ),
                 ),
@@ -696,6 +705,7 @@ class _PanelHead extends StatelessWidget {
               onTap: onOpen,
               onVerticalDragUpdate: (d) => onDrag(d.delta.dy),
               onVerticalDragEnd: (d) => onEnd(d.primaryVelocity ?? 0),
+              onVerticalDragCancel: () => onEnd(0),
               child: Container(
                 height: height,
                 alignment: Alignment.topCenter,
@@ -714,7 +724,10 @@ class _PanelHead extends StatelessWidget {
                         Text(c.ready ? c.name : 'Workout', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14.5, W.w7)),
                         if (c.ready)
                           Text(
-                            [clockText(c.elapsed), if (c.paused) 'paused', if (!c.finished) (c.setsDone == c.setsAll ? 'all sets done' : c.e.name)].join(' · '),
+                            // finished: the clock stops at the saved time; it says what is left to do
+                            c.finished
+                                ? 'Finished · ${clockText(c.finalSeconds)} · ${c.sent ? 'sent to ${c.plan.coachFirst}' : 'rate it for ${c.plan.coachFirst}'}'
+                                : [clockText(c.elapsed), if (c.paused) 'paused', c.setsDone == c.setsAll ? 'all sets done' : c.e.name].join(' · '),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: AppText.s(12.5, W.w5, color: c.paused ? AppColors.amberText : AppColors.muted, tabular: true),
