@@ -385,6 +385,7 @@ class WorkoutController extends ChangeNotifier {
     if (review != null) return _openReview(review);
     await LiveNotice.init();
     await WorkoutFeel.load();
+    unawaited(WorkoutFeel.warm()); // the sounds are ready before the first tick
     try {
       final snap = await Services.cache.read(_cacheKey);
       final lv = plan.live;
