@@ -435,28 +435,35 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               label: resting ? 'Rest ${clockText(c.rest)}' : 'Rest timer',
               child: Hover(
                 onTap: () => resting ? c.restShow(true) : _restIdle(c),
-                builder: (_, h, _) => ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Container(
-                    height: 38,
-                    constraints: const BoxConstraints(minWidth: 48),
-                    color: resting ? AppColors.accentSoft : (h ? AppColors.logFieldHover : AppColors.logField),
-                    // icon in the middle of the box (Probid 17 Nov)
-                    child: Stack(alignment: Alignment.center, children: [
-                      if (resting) Positioned.fill(child: FractionallySizedBox(alignment: Alignment.centerLeft, widthFactor: p, child: Container(color: AppColors.accent))),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        child: Center(
-                          widthFactor: 1,
-                          child: Row(mainAxisSize: MainAxisSize.min, spacing: 5, children: [
-                            AppIcon(AppIcons.clockAlt, size: 20, color: resting ? AppColors.white : AppColors.text),
-                            if (resting) Text(clockText(c.rest), style: AppText.s(13, W.w8, color: AppColors.white, tabular: true)),
-                          ]),
-                        ),
+                // resting: only the rest time next to the clock, a thin progress line under it (Probid 17 Nov)
+                builder: (_, h, _) => resting
+                    ? Container(
+                        height: 38,
+                        constraints: const BoxConstraints(minWidth: 56),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(color: h ? AppColors.accentSoft : null, borderRadius: BorderRadius.circular(10)),
+                        child: Column(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, spacing: 3, children: [
+                          Text(clockText(c.rest), style: AppText.s(15, W.w7, color: AppColors.accentText, tabular: true, h: 1)),
+                          SizedBox(
+                            width: 40,
+                            height: 3,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(2),
+                              child: Stack(children: [
+                                Container(color: AppColors.accentSoft),
+                                FractionallySizedBox(widthFactor: p, child: Container(color: AppColors.accent)),
+                              ]),
+                            ),
+                          ),
+                        ]),
+                      )
+                    : Container(
+                        height: 38,
+                        width: 48,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(color: h ? AppColors.logFieldHover : AppColors.logField, borderRadius: BorderRadius.circular(10)),
+                        child: const AppIcon(AppIcons.clockAlt, size: 20, color: AppColors.text),
                       ),
-                    ]),
-                  ),
-                ),
               ),
             ),
           ),
@@ -837,7 +844,6 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     // after a skip or the end it keeps showing the set's rest, not "rested 0:02" (Probid 17 Nov);
     // the real rest is still saved for history (G49)
     final label = running ? clockText(c.rest) : clockText(planned);
-    final p = running && c.restMax > 0 ? (c.rest / c.restMax).clamp(0.0, 1.0) : 0.0;
     final g = s.done; // on a done set the line is part of the green row, in green (Strong)
     final text = own && !running ? '$label · this set' : label;
     final bar = Semantics(
@@ -857,30 +863,23 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           height: g ? 24 : 18,
           width: double.infinity,
           child: Stack(alignment: Alignment.center, children: [
+            // the progress is in the top bar now; the line stays thin and the time small (Probid 17 Nov)
             Positioned(
               left: 0,
               right: 0,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(2),
-                child: Stack(children: [
-                  Container(height: running ? 4 : 2, color: g ? AppColors.doneValLine : (running ? AppColors.accentSoft : AppColors.accentRing)),
-                  if (running) FractionallySizedBox(widthFactor: p, child: Container(height: 4, color: g ? AppColors.logDoneTick : AppColors.accent)),
-                ]),
-              ),
+              child: Container(height: 2, color: g ? AppColors.doneValLine : AppColors.accentRing),
             ),
             Container(
-              height: g && running ? 20 : 16,
+              height: 16,
               constraints: const BoxConstraints(minWidth: 48),
               padding: const EdgeInsets.symmetric(horizontal: 8),
               decoration: BoxDecoration(
-                color: g ? AppColors.logDoneRow : (running ? AppColors.accent : (h ? AppColors.accentSoft : AppColors.white)),
+                color: g ? AppColors.logDoneRow : (h ? AppColors.accentSoft : AppColors.white),
                 borderRadius: BorderRadius.circular(5),
               ),
               child: Center(
                 widthFactor: 1,
-                child: Text(text,
-                    style: AppText.s(g && running ? 15 : 12, g ? W.w6 : W.w7, h: 1,
-                        color: g ? AppColors.okText : (running ? AppColors.white : AppColors.accentText), tabular: true)),
+                child: Text(text, style: AppText.s(12, g ? W.w6 : W.w7, h: 1, color: g ? AppColors.okText : AppColors.accentText, tabular: true)),
               ),
             ),
           ]),

@@ -63,7 +63,13 @@ class WorkoutFeel {
     _play('rest_skip');
   }
 
-  /// The rest ran out while the app is open (in the background the notification rings).
+  /// 3, 2, 1 seconds before the rest ends: one buzz each (Probid 17 Nov: 3 times, then the bell).
+  static void restCountdown() {
+    if (haptics) HapticFeedback.vibrate();
+  }
+
+  /// The rest ran out while the app is open: a ring bell like a fight starting (Probid 17 Nov). In the background
+  /// the notification rings.
   static void restOver() {
     if (haptics) HapticFeedback.heavyImpact();
     _play('rest_over');

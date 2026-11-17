@@ -657,6 +657,7 @@ class WorkoutController extends ChangeNotifier {
       if (rest > 0 && !restPaused && ends != null) {
         rest = math.max(0, (ends.difference(DateTime.now()).inMilliseconds / 1000).ceil());
         restUsed += 1;
+        if (rest > 0 && rest <= 3) WorkoutFeel.restCountdown();
         if (rest == 0) {
           _closeRest();
           WorkoutFeel.restOver();
