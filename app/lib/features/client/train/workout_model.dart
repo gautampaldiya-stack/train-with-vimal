@@ -1012,6 +1012,39 @@ class WorkoutController extends ChangeNotifier {
   // ─────────────────────────────── Sets
 
   /// Tick or untick set [k] of exercise [i]. A tick saves the placeholders as the values (F36).
+  /// Unticked sets that have something to save (a value or what the box shows), for the Finish sheet.
+  int get openValid {
+    var n = 0;
+    for (var i = 0; i < ex.length; i++) {
+      for (var k = 0; k < sets[i].length; k++) {
+        if (!sets[i][k].done && canTick(i, k)) n++;
+      }
+    }
+    return n;
+  }
+
+  /// Finish → "Complete unfinished sets" (Strong, Probid 17 Nov): every unticked set that has values is ticked as
+  /// it shows, without rests or sounds.
+  void completeOpen() {
+    for (var i = 0; i < ex.length; i++) {
+      final x = ex[i];
+      for (var k = 0; k < sets[i].length; k++) {
+        final s = sets[i][k];
+        if (s.done || !canTick(i, k)) continue;
+        _fill(i, k);
+        s.done = true;
+        s.doneAt = DateTime.now();
+        s.at = elapsed;
+        s.restPlanned = restFor(i, k);
+        final best = x.pr?['weight_kg'];
+        final b = best is num ? best.toDouble() : double.tryParse('${best ?? ''}');
+        s.pr = x.kind == ExKind.weight && !s.bw && !s.wu && b != null && (s.weight ?? 0) > b;
+      }
+    }
+    _closeRest();
+    changed();
+  }
+
   void tick(int i, int k, {bool quiet = false}) {
     final x = ex[i], s = sets[i][k];
     final on = !s.done;
@@ -1421,19 +1454,32 @@ class WorkoutController extends ChangeNotifier {
     restUsed = 0;
     hold = null;
     lastActive = 0;
-    toast?.call('Workout restarted', sub: 'Timer is running from 0:00', kind: ToastKind.info, undo: () => _restore(before));
+    if (reopened) {
+      // After "Log more sets" Restart starts the whole workout again (today only, Probid 17 Nov): the finished
+      // part is gone too, so there is no Undo.
+      reopened = false;
+      earlierSeconds = 0;
+      if (!local && id != null) {
+        unawaited(Services.outbox.enqueue('POST', 'me/workouts/$id/restart/', {'fresh': true, 'started_at': startedAt.toUtc().toIso8601String()}, tag: 'workout:restart')
+            .then((_) {}, onError: (_) {}));
+      }
+      toast?.call('Workout restarted', sub: 'The whole workout starts again from 0:00', kind: ToastKind.info);
+    } else {
+      toast?.call('Workout restarted', sub: 'Timer is running from 0:00', kind: ToastKind.info, undo: () => _restore(before));
+    }
     changed();
   }
 
   /// Cancel workout: nothing is saved. After "Log more sets" the server keeps the finished workout as it was and
   /// drops only the sets added since.
-  Future<void> discard() async {
+  /// [all]: after "Log more sets" the whole workout goes, the finished part too (today only, Probid 17 Nov).
+  Future<void> discard({bool all = false}) async {
     _tick?.cancel();
     _save?.cancel();
     _syncLater = false;
     if (!local && id != null) {
       try {
-        await Services.outbox.enqueue('POST', 'me/workouts/$id/discard/', {}, tag: 'workout:discard');
+        await Services.outbox.enqueue('POST', 'me/workouts/$id/discard/', {if (all) 'all': true}, tag: 'workout:discard');
       } on ApiError catch (_) {}
       await drain();
     }

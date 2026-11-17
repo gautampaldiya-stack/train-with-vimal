@@ -1059,7 +1059,7 @@ class MyWorkoutViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewset
         """Nothing is saved. After "Log more sets" only the sets ticked since then go: the finished
         workout is kept as it was (same time, effort and note)."""
         wl = self._open(pk)
-        if wl.reopened_at:
+        if wl.reopened_at and not request.data.get("all"):  # "all": the whole workout goes (today only, Probid 17 Nov)
             at = wl.reopened_at
             wl.sets.exclude(done=True, done_at__lt=at).delete()
             wl.status = WorkoutLog.Status.COMPLETED
@@ -1081,7 +1081,14 @@ class MyWorkoutViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewset
         wl = self._open(pk)
         prev = wl.started_at
         wl.started_at = timezone.now() if not request.data.get("started_at") else request.data["started_at"]
-        wl.save(update_fields=["started_at"])
+        fields = ["started_at"]
+        if request.data.get("fresh") and wl.reopened_at:
+            # Restart after "Log more sets": the whole workout starts again, the earlier finished part is gone too
+            wl.reopened_at = None
+            wl.segments = []
+            wl.duration_seconds = 0
+            fields += ["reopened_at", "segments", "duration_seconds"]
+        wl.save(update_fields=[*fields, "updated_at"])
         return Response({"started_at": wl.started_at, "previous_started_at": prev})
 
     @action(detail=True, methods=["post"], url_path="clear-sets")

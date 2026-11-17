@@ -1582,13 +1582,16 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     final left = c.setsAll - c.setsDone;
     final coach = c.plan.coachFirst;
     final n = c.videos.length;
+    final open = c.openValid; // unticked sets with values: Strong asks to complete or discard them (Probid 17 Nov)
     _ask(
       title: 'Finish workout?',
       sub: '${c.setsDone} of ${c.setsAll} sets done · ${clockText(c.elapsed)}',
       body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
         _p(left == 0
             ? 'Nice, every set is done. $coach sees your workout as soon as you finish.'
-            : '$left ${left == 1 ? 'set is' : 'sets are'} not ticked yet. They are saved as skipped, and $coach sees what you did.'),
+            : open > 0
+                ? '$open ${open == 1 ? 'set has' : 'sets have'} values but ${open == 1 ? 'is' : 'are'} not ticked. Complete them as they show, or discard them. Empty sets are saved as skipped.'
+                : '$left ${left == 1 ? 'set is' : 'sets are'} not ticked yet. They are saved as skipped, and $coach sees what you did.'),
         // Each exercise with its sets, so the client sees what is done here (the page behind is dimmed; Probid 16 Nov).
         Container(
           constraints: const BoxConstraints(maxHeight: 260),
@@ -1602,13 +1605,26 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         ),
         if (n > 0) _p('$n form ${n == 1 ? 'video goes' : 'videos go'} to $coach now.'),
       ]),
-      buttons: (ctx) => [
-        CaButton('Keep going', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop()),
-        CaButton('Finish', icon: AppIcons.check, onPressed: () {
-          Navigator.of(ctx).pop();
-          _finish(c);
-        }),
-      ],
+      buttons: (ctx) => open > 0
+          ? [
+              CaButton('Complete unfinished sets', icon: AppIcons.check, onPressed: () {
+                Navigator.of(ctx).pop();
+                c.completeOpen();
+                _finish(c);
+              }),
+              CaButton('Discard unfinished sets', kind: CaBtnKind.out, onPressed: () {
+                Navigator.of(ctx).pop();
+                _finish(c);
+              }),
+              CaButton('Cancel', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop()),
+            ]
+          : [
+              CaButton('Keep going', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop()),
+              CaButton('Finish', icon: AppIcons.check, onPressed: () {
+                Navigator.of(ctx).pop();
+                _finish(c);
+              }),
+            ],
     );
   }
 
@@ -1657,8 +1673,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
   void _askRestart(WorkoutController c) {
     final n = c.setsDone;
-    final msg = '${n == 0 ? 'The' : (n == 1 ? 'Your 1 ticked set goes back to not done and the' : 'All $n ticked sets go back to not done and the')}'
-        ' timer starts again from 0:00.';
+    final msg = c.reopened
+        ? 'The whole workout starts again: every set, also the ones you finished before, goes back to not done and the timer starts from 0:00.'
+        : '${n == 0 ? 'The' : (n == 1 ? 'Your 1 ticked set goes back to not done and the' : 'All $n ticked sets go back to not done and the')}'
+            ' timer starts again from 0:00.';
     _ask(
       title: 'Restart workout?',
       sub: '${c.name} · ${clockText(c.elapsed)} so far',
@@ -1680,12 +1698,18 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     final again = c.reopened;
     _ask(
       title: again ? 'Discard the added sets?' : 'Cancel workout?',
-      sub: again ? 'Your finished workout stays as it was' : '${c.setsDone} sets ticked · ${clockText(c.elapsed)}',
+      sub: again ? 'Discard sets keeps your finished workout as it was' : '${c.setsDone} sets ticked · ${clockText(c.elapsed)}',
       body: _p(again
-          ? 'The sets you added now are not saved.'
+          ? 'The sets you added now are not saved. Or discard the whole workout of today: nothing from it is saved and ${c.plan.coachFirst} will not see it.'
           : 'Nothing from this workout is saved and the timer stops. ${c.plan.coachFirst} will not see it.'),
       buttons: (ctx) => [
         CaButton('Keep going', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop()),
+        if (again)
+          _dangerBtn('Discard whole workout', () async {
+            Navigator.of(ctx).pop();
+            await c.discard(all: true);
+            if (mounted) _leave('/train?discarded=1');
+          }),
         _dangerBtn(again ? 'Discard sets' : 'Cancel workout', () async {
           Navigator.of(ctx).pop();
           await c.discard();
@@ -1759,7 +1783,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       );
 
 
-  /// A question sheet: message and two buttons side by side (`cl-ebtns`).
+  /// A question sheet: message and two buttons side by side (`cl-ebtns`); three buttons stack.
   Future<void> _ask({required String title, String? sub, Widget? body, required List<Widget> Function(BuildContext ctx) buttons}) => showAppSheet(
         context,
         title: title,
@@ -1769,7 +1793,13 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           ?body,
           Padding(
             padding: const EdgeInsets.only(top: 6),
-            child: Row(spacing: 8, children: [for (final b in buttons(ctx)) Expanded(child: b)]),
+            child: Builder(builder: (_) {
+              final bs = buttons(ctx);
+              // three answers (Finish with unfinished sets) stack, full width, like Strong
+              return bs.length > 2
+                  ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: bs)
+                  : Row(spacing: 8, children: [for (final b in bs) Expanded(child: b)]);
+            }),
           ),
         ]),
       );

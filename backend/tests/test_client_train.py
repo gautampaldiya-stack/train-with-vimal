@@ -162,3 +162,29 @@ def test_form_video_reaches_the_coach(client_user, trainer):
     d = trainer.get(f"/api/v1/clients/{riya.id}/workouts/{wid}/").json()
     assert d["form_videos"][0]["url"] and d["form_videos"][0]["set_number"] == 3
     assert Notification.objects.filter(recipient=riya.client_profile.trainer, event="form_video").exists()
+
+
+def test_log_more_sets_can_discard_or_restart_the_whole_workout(client_user):
+    """Today's workout opened again with "Log more sets": Discard whole workout and Restart start from nothing
+    (Probid 17 Nov)."""
+    plank = Exercise.objects.get(name="Plank", is_builtin=True)
+    one = {"key": "z1", "exercise": str(plank.id), "set_number": 1, "seconds": 45, "done": True}
+
+    wid = _start(client_user)
+    client_user.put(f"{W}{wid}/state/", {"sets": [one]}, format="json")
+    client_user.post(f"{W}{wid}/finish/", {"duration_seconds": 600}, format="json")
+    client_user.post(f"{W}{wid}/reopen/")
+    assert client_user.post(f"{W}{wid}/discard/", {"all": True}, format="json").status_code == 204
+    w = WorkoutLog.objects.get(id=wid)
+    assert w.status == "discarded" and not w.sets.exists()
+
+    wid = _start(client_user)
+    client_user.put(f"{W}{wid}/state/", {"sets": [one]}, format="json")
+    client_user.post(f"{W}{wid}/finish/", {"duration_seconds": 600}, format="json")
+    client_user.post(f"{W}{wid}/reopen/")
+    r = client_user.post(f"{W}{wid}/restart/", {"fresh": True}, format="json")
+    assert r.status_code == 200
+    w = WorkoutLog.objects.get(id=wid)
+    assert w.reopened_at is None and w.segments == [] and w.duration_seconds == 0
+    r = client_user.post(f"{W}{wid}/finish/", {"duration_seconds": 300}, format="json")
+    assert r.json()["duration_seconds"] == 300  # the earlier 10 min are not added
