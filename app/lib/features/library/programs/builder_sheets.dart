@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/services.dart';
+import '../../../core/widgets/rest_picker.dart';
 import '../../../core/api/api_error.dart';
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
@@ -99,8 +100,9 @@ Future<Map<String, dynamic>?> showSetsModal(BuildContext context, Map e) async {
           ),
         ),
         pair(
-          meField('Rest after each set', LibStepper(value: rest, unit: 's', min: 0, max: 300, step: 15, onChanged: (v) => set(() {
-                rest = v;
+          // rest on minute / second wheels (Probid 17 Nov)
+          meField('Rest after each set', RestField(value: rest, maxMinutes: 5, onChanged: (v) => set(() {
+                rest = (v ?? rest).clamp(0, 300);
                 upd();
               }))),
           meField('RPE (0 = not set)', LibStepper(value: rpe, unit: '', min: 0, max: 10, onChanged: (v) => set(() {
@@ -109,8 +111,8 @@ Future<Map<String, dynamic>?> showSetsModal(BuildContext context, Map e) async {
               }))),
         ),
         pair(
-          meField('Rest after a warm-up set', LibStepper(value: restWu ?? rest, unit: 's', min: 0, max: 300, step: 15, onChanged: (v) => set(() => restWu = v))),
-          meField('Rest after a drop set', LibStepper(value: restDrop ?? rest, unit: 's', min: 0, max: 300, step: 15, onChanged: (v) => set(() => restDrop = v))),
+          meField('Rest after a warm-up set', RestField(title: 'Rest after a warm-up set', value: restWu, sameAs: rest, onChanged: (v) => set(() => restWu = v?.clamp(0, 300)))),
+          meField('Rest after a drop set', RestField(title: 'Rest after a drop set', value: restDrop, sameAs: rest, onChanged: (v) => set(() => restDrop = v?.clamp(0, 300)))),
         ),
         Row(spacing: 10, children: [
           AppToggle(value: restLock, onChanged: (v) => set(() => restLock = v)),

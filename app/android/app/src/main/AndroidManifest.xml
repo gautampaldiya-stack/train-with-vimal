@@ -7,6 +7,9 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
     <!-- exact "Rest is over" time when the phone allows it; else a few seconds late (tracker G48) -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- the running workout keeps its notification and clock with the app in the background (foreground service) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <application
         android:label="Train With Vimal"
         android:name="${applicationName}"
@@ -43,6 +46,17 @@
             android:resource="@color/notify_accent" />
         <!-- Workout notification buttons (Complete set, Pause, Skip rest, +30 sec) work without opening the app (F34). -->
         <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver" />
+        <!-- Workout in progress: keeps the app alive in the background while a workout runs, so the workout
+             notification (clock, rest, Complete set) stays and comes back after a swipe, like Strong. -->
+        <service
+            android:name="com.dexterous.flutterlocalnotifications.ForegroundService"
+            android:exported="false"
+            android:stopWithTask="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Workout timer: shows the running workout clock and rest timer while the user trains" />
+        </service>
         <!-- "Rest is over" at the rest's end time, with the app in the background (tracker G48) -->
         <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
         <!-- Don't delete the meta-data below.

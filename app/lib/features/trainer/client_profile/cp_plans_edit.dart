@@ -8,6 +8,7 @@ import '../../../app/services.dart';
 import '../../../core/api/api_error.dart';
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
+import '../../../core/widgets/rest_picker.dart';
 import '../../../core/widgets/badge.dart';
 import '../../../core/widgets/button.dart';
 import '../../../core/widgets/card.dart';
@@ -646,10 +647,16 @@ class _WorkoutEditorState extends State<WorkoutEditor> {
                 field('Reps', cell('reps', '${e['reps'] ?? ''}', (x) => e['reps'] = x.trim(), ph: '8–10'))),
             two(ctx, field('RPE (1–10)', cell('rpe', '${e['rpe'] ?? ''}', (x) => e['rpe'] = int.tryParse(x.trim()), kb: TextInputType.number)),
                 field('Tempo', cell('tempo', '${e['tempo'] ?? ''}', (x) => e['tempo'] = x.trim(), ph: '3-1-1'))),
-            two(ctx, field('Rest', cell('rest', restText(e['rest_seconds']), (x) => e['rest_seconds'] = parseRest(x), ph: '90 s or 2 min')),
-                field('Load', cell('load', loadText(e), (x) => e['target_weight_kg'] = parseKg(x), ph: 'kg, or empty for body weight'))),
-            two(ctx, field('Rest after a warm-up set', cell('restwu', restText(e['rest_warmup_seconds']), (x) => e['rest_warmup_seconds'] = x.trim().isEmpty ? null : parseRest(x), ph: 'same as Rest')),
-                field('Rest after a drop set', cell('restdrop', restText(e['rest_drop_seconds']), (x) => e['rest_drop_seconds'] = x.trim().isEmpty ? null : parseRest(x), ph: 'same as Rest'))),
+            // rest times are picked on minute / second wheels, not typed (Probid 17 Nov)
+            StatefulBuilder(builder: (_, set) {
+              final rest = (e['rest_seconds'] as num?)?.toInt() ?? 90;
+              return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [
+                two(ctx, field('Rest', RestField(value: rest, onChanged: (x) => set(() => e['rest_seconds'] = x ?? rest))),
+                    field('Load', cell('load', loadText(e), (x) => e['target_weight_kg'] = parseKg(x), ph: 'kg, or empty for body weight'))),
+                two(ctx, field('Rest after a warm-up set', RestField(title: 'Rest after a warm-up set', value: (e['rest_warmup_seconds'] as num?)?.toInt(), sameAs: rest, onChanged: (x) => set(() => e['rest_warmup_seconds'] = x))),
+                    field('Rest after a drop set', RestField(title: 'Rest after a drop set', value: (e['rest_drop_seconds'] as num?)?.toInt(), sameAs: rest, onChanged: (x) => set(() => e['rest_drop_seconds'] = x)))),
+              ]);
+            }),
             StatefulBuilder(
               builder: (_, set) => Row(spacing: 10, children: [
                 AppToggle(value: e['rest_locked'] == true, onChanged: (v) => set(() => e['rest_locked'] = v)),

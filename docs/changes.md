@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+## 2026-11-17 · Rest: WWE bell on media volume, Strong rest bar, notification stays, rest picker
+- **Pehle:** Rest khatam hone ki ghanti notification volume par bajti aur bahut tez thi. Rest chalte waqt set ke neeche chhoti rest line thi. App bahar ho aur notification hata do to app kholne tak wapas nahi aata (Android app ko freeze kar deta). Plan builder aur exercise edit drawer me Rest / warm-up / drop rest number type karke ya +/- se set hota.
+- **Ab:** Ghanti Probid ki WWE ring bell (`rest_over.mp3`), media volume par, 70%, dusre gaane band nahi karti. Rest chalte waqt set ke neeche Strong jaisa poori width ka neela bar, andar time, bar ghatta jaata hai. Workout chalte waqt Android foreground service (notification ke saath) chalti hai, isliye app bahar bhi timer chalta rehta aur hataya hua notification turant wapas aata hai; workout khatam / band par service band. Rest, warm-up rest aur drop rest ab box par tap karke do wheel se chunte: minutes (0–5) aur seconds (5 ke step), warm-up / drop me "Same as Rest" bhi.
+- **Kyun:** Probid (17 Nov, screenshots + mp3).
+- **Updated:** workout_feel.dart, workout_screen.dart (`_restRow`), core/live/live_notice_io.dart, AndroidManifest.xml (FGS specialUse), core/widgets/rest_picker.dart (new), cp_plans_edit.dart, builder_sheets.dart, test/rest_picker_test.dart · Baad me: exercises ke beech ka rest.
+
 ## 2026-11-17 · Coach sees when the client changed a rest
 - **Pehle:** Coach ki workout detail me sirf "rest 1:45 / 2:00" (asli rest / timer) dikhta; timer client ne badla ya coach ka tha, pata nahi chalta. Rest Off kiya to timer save hi nahi hota.
 - **Ab:** Har set ke saath server coach ka plan wala rest bhejta hai (`rest_coach`, set type ke hisaab se: working / warm-up / drop). Client ne timer badla ho to coach ko dikhta hai: "rest 0:58 · rest changed 2:00 → 1:00" (Off kiya to "→ off"). Tick par set ka timer hamesha save (0 = off). Lock waisa hi: coach lock lagaye to client badal nahi sakta, warna badal sakta hai aur coach ko dikhta hai.

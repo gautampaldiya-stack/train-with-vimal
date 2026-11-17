@@ -33,19 +33,24 @@ class WorkoutFeel {
     } catch (_) {}
   }
 
-  // short sounds like Strong (Probid 17 Nov): a set ticked, a rest skipped or removed, a rest over.
-  // They follow the phone's silent mode (respectSilence) and play over music without stopping it.
+  // short sounds like Strong (Probid 17 Nov): a set ticked, a rest skipped or removed, a rest over (the ring bell
+  // Probid sent). They play on the MEDIA volume, not the notification / ring volume (the bell was too loud there),
+  // and over music without stopping it.
   static final _players = <String, AudioPlayer>{};
+  static final _ctx = AudioContext(
+    android: const AudioContextAndroid(usageType: AndroidUsageType.media, contentType: AndroidContentType.sonification, audioFocus: AndroidAudioFocus.none),
+    iOS: AudioContextIOS(category: AVAudioSessionCategory.ambient, options: const {AVAudioSessionOptions.mixWithOthers}),
+  );
 
-  static Future<void> _play(String name) async {
+  static Future<void> _play(String name, {String ext = 'wav', double volume = .8}) async {
     if (!sound) return;
     try {
       final p = _players[name] ??= AudioPlayer()
-        ..setPlayerMode(PlayerMode.lowLatency)
-        ..setAudioContext(AudioContextConfig(respectSilence: true, focus: AudioContextConfigFocus.mixWithOthers).build())
+        ..setPlayerMode(ext == 'wav' ? PlayerMode.lowLatency : PlayerMode.mediaPlayer)
+        ..setAudioContext(_ctx)
         ..setReleaseMode(ReleaseMode.stop);
       await p.stop();
-      await p.play(AssetSource('sounds/$name.wav'), volume: .8);
+      await p.play(AssetSource('sounds/$name.$ext'), volume: volume);
     } catch (e) {
       debugPrint('Workout sound $name: $e');
     }
@@ -72,7 +77,7 @@ class WorkoutFeel {
   /// the notification rings.
   static void restOver() {
     if (haptics) HapticFeedback.heavyImpact();
-    _play('rest_over');
+    _play('rest_over', ext: 'mp3', volume: .7);
   }
 
   /// Tick with an empty box: the tick button shakes (Strong).

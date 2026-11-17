@@ -128,11 +128,33 @@ class LiveNotice {
     _last = key;
     _again = () => _plugin.show(id: _id, title: title, body: body, notificationDetails: NotificationDetails(android: d), payload: '/train/workout');
     try {
+      if (!_service) {
+        // A foreground service while the workout runs (like Strong): Android does not freeze the app in the
+        // background, so the clock, the rest and "put the notification back after a swipe" keep working with the
+        // app closed (Probid 17 Nov: it only came back when the app was opened).
+        final android = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+        try {
+          await android?.startForegroundService(
+            id: _id,
+            title: title,
+            body: body,
+            notificationDetails: d,
+            payload: '/train/workout',
+            foregroundServiceTypes: {AndroidServiceForegroundType.foregroundServiceTypeSpecialUse},
+          );
+          _service = android != null;
+          return;
+        } catch (e) {
+          debugPrint('Workout service: $e'); // e.g. started from the background: a plain notification then
+        }
+      }
       await _plugin.show(id: _id, title: title, body: body, notificationDetails: NotificationDetails(android: d), payload: '/train/workout');
     } catch (e) {
       debugPrint('Workout notification: $e');
     }
   }
+
+  static bool _service = false;
 
   /// Labels of the workout notification's actions (ids go back to WorkoutController._action). "open", "finish"
   /// and "back" bring the app to the front; "complete_set" works from the shade.
@@ -233,6 +255,12 @@ class LiveNotice {
     _again = null;
     await cancelRestDone();
     if (!_ready) return;
+    if (_service) {
+      _service = false;
+      try {
+        await _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.stopForegroundService();
+      } catch (_) {}
+    }
     try {
       await _plugin.cancel(id: _id);
     } catch (_) {}

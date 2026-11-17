@@ -374,6 +374,11 @@ E51. ✅ Admin/trainer client Logs (Daily, Weekly, Habits, Supplements) aur clie
 51e. ✅ Finish = turant save, timer band; finish page baad me bhi (Train → Rate it); chhota bar "Finished · rate it" jab tak bheja nahi; panel swipe atakna fix (Probid 17 Nov).
 51f. ✅ Home: card order sirf us device par (DB nahi); Check-ins default card ka message; coach note cards bubble style (Probid 17 Nov).
 51g. ✅ Coach ko dikhe client ne rest kitna badla: "rest changed 2:00 → 1:00" (Probid 17 Nov). Lock option rehta hai.
+51h. ✅ Rest ki ghanti: WWE ring bell, media volume par, thodi dheemi (Probid 17 Nov).
+51i. ✅ Rest chalte waqt Strong jaisa poori width ka rest progress bar, andar time (Probid 17 Nov).
+51j. ✅ App bahar ho aur notification hata do to wapas aaye (Android foreground service). Phone par test baaki (Probid 17 Nov).
+51k. ✅ Plan builder aur exercise edit drawer me Rest / warm-up / drop rest: minutes + seconds wheel (Probid 17 Nov).
+51l. ⏸️ Baad me (Probid 17 Nov: "abhi nahi"): exercises ke beech ka rest. Coach plan me do exercises ke beech rest rakhe; tab last set ke baad exercise ka rest nahi, ye beech wala chale.
 51a. ⬜ Kal ka workout (Food jaisa, Probid 17 Nov): week strip me kal chuno to kal ka workout log kar sake (chhoot gaya ho to) ya kal ka kiya hua edit kar sake. Usse purane din sirf dekh sakte.
 52. ⬜ Editable: exercises, sets, weight, reps, set type, rest timers, start aur end time.
 53. ⬜ Start/end badalne par duration aur saari dependent stats recalculate.

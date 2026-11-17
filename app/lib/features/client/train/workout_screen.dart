@@ -617,8 +617,13 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               _row(c, i, k, web: web),
               if (_restRow(c, i, k) case final r?)
-                // a done set's rest line sits inside its green row, edge to edge (Strong)
-                Container(color: c.sets[i][k].done ? AppColors.logDoneRow : AppColors.white, padding: pad, child: r),
+                // a done set's rest line sits inside its green row, edge to edge (Strong); a running rest is its own
+                // blue bar on white under the row (Strong, Probid 17 Nov)
+                Container(
+                  color: c.sets[i][k].done && !(c.rest > 0 && c.restAt == (i, k)) ? AppColors.logDoneRow : AppColors.white,
+                  padding: pad,
+                  child: r,
+                ),
             ]),
           ),
         const SizedBox(height: 4),
@@ -864,8 +869,34 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             _setRest(c, i, k);
           }
         },
-        // Thin and close to the sets (Probid 16 Nov). While it runs the line itself empties from right to left.
-        builder: (_, h, _) => SizedBox(
+        // Thin and close to the sets (Probid 16 Nov). While it runs: a full-width blue bar that empties from right
+        // to left with the time in the middle, like Strong (Probid 17 Nov).
+        builder: (_, h, _) => running
+            ? Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                child: Container(
+                  height: 32,
+                  width: double.infinity,
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    color: AppColors.accentSoft,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.accent, width: 1.2),
+                  ),
+                  child: Stack(alignment: Alignment.center, children: [
+                    Positioned.fill(
+                      child: FractionallySizedBox(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: c.restMax > 0 ? (c.rest / c.restMax).clamp(0.0, 1.0) : 0.0,
+                        child: Container(color: h ? AppColors.accentHover : AppColors.accent),
+                      ),
+                    ),
+                    // the time stays readable once the blue has gone past the middle
+                    Text(clockText(c.rest), style: AppText.s(16, W.w7, color: c.restMax > 0 && c.rest / c.restMax >= .5 ? AppColors.white : AppColors.accentText, tabular: true, h: 1)),
+                  ]),
+                ),
+              )
+            : SizedBox(
           height: g ? 24 : 18,
           width: double.infinity,
           child: Stack(alignment: Alignment.center, children: [
