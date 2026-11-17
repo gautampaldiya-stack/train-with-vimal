@@ -236,6 +236,7 @@ class WorkoutController extends ChangeNotifier {
   /// Set menu → Rest timer for this set (G45): [v] seconds after this set only; null = the exercise's again.
   void setSetRest(int i, int k, int? v) {
     if (ex[i].restLocked) return;
+    if (v == 0 && sets[i][k].rest != 0) WorkoutFeel.restSkipped(); // rest removed: same sound as a skip
     sets[i][k].rest = v;
     changed();
   }
@@ -664,11 +665,9 @@ class WorkoutController extends ChangeNotifier {
         }
       }
     }
-    if (++_beat % 4 == 0 && !_gone) LiveNotice.keep();
+    if (!_gone) LiveNotice.keep();
     notifyListeners();
   }
-
-  int _beat = 0;
 
   // ─────────────────────────────── Notification (F34)
 
@@ -700,7 +699,11 @@ class WorkoutController extends ChangeNotifier {
     switch (a) {
       case 'complete_set':
         final i = cur, k = sets[i].indexWhere((s) => !s.done);
-        if (k >= 0) tick(i, k);
+        if (k >= 0 && canTick(i, k)) {
+          tick(i, k);
+        } else if (k >= 0) {
+          WorkoutFeel.refused();
+        }
       case 'rest_pause':
         if (rest > 0) restToggle();
       case 'rest_skip':
@@ -858,6 +861,18 @@ class WorkoutController extends ChangeNotifier {
   void setRpe(int i, int k, double? v) {
     sets[i][k].rpe = v;
     changed();
+  }
+
+  /// A set can be ticked only when every box shows a value (typed or placeholder). An empty KG on a
+  /// bodyweight set is fine (Probid 17 Nov: the tick shakes when KG is empty, like Strong).
+  bool canTick(int i, int k) {
+    final x = ex[i], s = sets[i][k];
+    if (s.done) return true;
+    for (var j = 0; j < cols(x).length; j++) {
+      if (x.kind == ExKind.weight && j == 0 && (s.bw || x.bodyweight)) continue;
+      if ((value(x, s, j) ?? placeholder(i, k, j)) == null) return false;
+    }
+    return true;
   }
 
   /// Fill every box with what it shows, so a tick saves what the client sees.
@@ -1263,6 +1278,7 @@ class WorkoutController extends ChangeNotifier {
 
   void restSkip() {
     _closeRest();
+    WorkoutFeel.restSkipped();
     changed();
   }
 

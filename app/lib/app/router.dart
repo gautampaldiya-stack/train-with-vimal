@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/icons/app_icons.dart';
 import '../core/leave/leave_guard.dart';
+import '../core/theme/metrics.dart';
 import '../core/theme/motion.dart';
 import '../core/widgets/button.dart';
 import '../core/widgets/card.dart';
@@ -217,6 +220,16 @@ final appRouter = GoRouter(
     if (path == '/' || isPublic) return landingFor(me);
     if (me.needsVerify && !_under(path, _verifyAllowed)) return '/verify';
     if (me.role == Role.client && me.pending && !_under(path, _pendingAllowed)) return '/pending';
+    // Phone: the workout logger is a panel over the app (WorkoutPanel); wider screens keep the page in the panel
+    // next to the side menu (Probid 17 Nov).
+    final q = state.uri.hasQuery ? '?${state.uri.query}' : '';
+    final phone = _phoneWide();
+    if (phone && path == '/train/workout') {
+      // the phone logger is a panel of the shell, not a page: open it over Train
+      WorkoutPanel.pending = q;
+      if (WorkoutPanel.here) scheduleMicrotask(() => WorkoutPanel.show?.call(WorkoutPanel.pending ?? ''));
+      return '/train';
+    }
     return null;
   },
   routes: [
@@ -281,9 +294,7 @@ final appRouter = GoRouter(
 
 /// Page and tab changes fade in with a short rise (Phase 5, 250 ms); nothing moves when the phone asks for no
 /// animations. A change of the query only (a tab inside a page) keeps the page, so it does not animate again.
-Page<void> _page(GoRouterState st, Widget child) => st.uri.path.startsWith('/train/workout')
-    ? _sheetPage(st, child)
-    : CustomTransitionPage<void>(
+Page<void> _page(GoRouterState st, Widget child) => CustomTransitionPage<void>(
       key: st.pageKey,
       child: child,
       transitionDuration: Motion.medium,
@@ -298,18 +309,12 @@ Page<void> _page(GoRouterState st, Widget child) => st.uri.path.startsWith('/tra
       },
     );
 
-/// The workout logger slides up from the mini bar and back down when it is minimised (like Strong, Probid 17 Nov).
-Page<void> _sheetPage(GoRouterState st, Widget child) => CustomTransitionPage<void>(
-      key: st.pageKey,
-      child: child,
-      transitionDuration: Motion.sheet,
-      reverseTransitionDuration: Motion.medium,
-      transitionsBuilder: (context, a, _, child) {
-        if (Motion.off(context)) return child;
-        final c = CurvedAnimation(parent: a, curve: Curves.easeOutCubic, reverseCurve: Curves.easeInCubic);
-        return SlideTransition(position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(c), child: child);
-      },
-    );
+bool _phoneWide() {
+  final views = WidgetsBinding.instance.platformDispatcher.views;
+  if (views.isEmpty) return true;
+  final v = views.first;
+  return v.physicalSize.width / v.devicePixelRatio < Breakpoints.tablet;
+}
 
 Widget _screen(String key, GoRouterState st) {
   final map = switch (Services.session.me?.role) { Role.trainer => trainerScreens, Role.admin => adminScreens, _ => screens };

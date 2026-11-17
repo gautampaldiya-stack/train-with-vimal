@@ -1,3 +1,5 @@
+import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -31,14 +33,44 @@ class WorkoutFeel {
     } catch (_) {}
   }
 
+  // short sounds like Strong (Probid 17 Nov): a set ticked, a rest skipped or removed, a rest over.
+  // They follow the phone's silent mode (respectSilence) and play over music without stopping it.
+  static final _players = <String, AudioPlayer>{};
+
+  static Future<void> _play(String name) async {
+    if (!sound) return;
+    try {
+      final p = _players[name] ??= AudioPlayer()
+        ..setPlayerMode(PlayerMode.lowLatency)
+        ..setAudioContext(AudioContextConfig(respectSilence: true, focus: AudioContextConfigFocus.mixWithOthers).build())
+        ..setReleaseMode(ReleaseMode.stop);
+      await p.stop();
+      await p.play(AssetSource('sounds/$name.wav'), volume: .8);
+    } catch (e) {
+      debugPrint('Workout sound $name: $e');
+    }
+  }
+
   /// A set was ticked.
   static void setDone() {
     if (haptics) HapticFeedback.mediumImpact();
-    if (sound) SystemSound.play(SystemSoundType.click);
+    _play('set_done');
   }
 
-  /// The rest ran out while the logger is open (the notification brings the sound).
+  /// A rest was skipped, or the rest of a set was removed.
+  static void restSkipped() {
+    if (haptics) HapticFeedback.lightImpact();
+    _play('rest_skip');
+  }
+
+  /// The rest ran out while the app is open (in the background the notification rings).
   static void restOver() {
     if (haptics) HapticFeedback.heavyImpact();
+    _play('rest_over');
+  }
+
+  /// Tick with an empty box: the tick button shakes (Strong).
+  static void refused() {
+    if (haptics) HapticFeedback.vibrate();
   }
 }

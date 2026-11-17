@@ -37,6 +37,29 @@ class WorkoutScreen extends StatefulWidget {
   State<WorkoutScreen> createState() => _WorkoutScreenState();
 }
 
+/// Phone: the logger lives in one panel of the app shell (Strong, Probid 17 Nov). Down, its top bar sits on the tab
+/// bar; the finger drags it up to full screen and back down. The shell (WorkoutPanelHost) fills in these hooks.
+abstract final class WorkoutPanel {
+  /// An open asked for before the shell was there (app start from the notification, a /train/workout link).
+  static String? pending;
+  static void Function(String query)? show;
+  static VoidCallback? collapse;
+  static VoidCallback? close;
+  static void Function(double dy)? dragBy;
+  static void Function(double velocity)? dragEnd;
+  static bool Function()? isOpen;
+  static bool get here => show != null;
+}
+
+/// Opens the logger: the panel on a phone, the logger page in the panel on wider screens.
+void openWorkout(BuildContext context, [String query = '']) {
+  if (context.isPhone && WorkoutPanel.here) {
+    WorkoutPanel.show!(query);
+  } else {
+    context.go('/train/workout$query');
+  }
+}
+
 /// The box being typed in with the phone keypad: (exercise, set, column).
 typedef _Cell = (int, int, int);
 
@@ -51,6 +74,15 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
   /// Phone keypad: the active box and what was typed since it opened (the first key replaces the value).
   _Cell? act;
+
+  /// The set whose tick shakes (empty box), and a counter so each refused tap shakes again.
+  (String, int)? _shake;
+
+  void _tryTick(WorkoutController c, int i, int k) {
+    if (c.canTick(i, k)) return c.tick(i, k);
+    WorkoutFeel.refused();
+    setState(() => _shake = (c.sets[i][k].key, (_shake?.$2 ?? 0) + 1));
+  }
   String _buf = '';
   bool _fresh = true;
 
@@ -167,13 +199,21 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   }
 
   /// ⌄, back or a swipe down: the logger goes down to the mini bar; the workout keeps running (F33).
+  bool get _inPanel => context.isPhone && WorkoutPanel.here;
+
   void _collapse() {
-    if (context.canPop()) {
-      context.pop();
+    if (_inPanel) {
+      WorkoutPanel.collapse!();
       return;
     }
     final to = WorkoutController.backTo;
     context.go(to.startsWith('/train/workout') ? '/train' : to);
+  }
+
+  /// Leaves the logger for another page (finished, discarded, could not open): the phone panel closes first.
+  void _leave(String to) {
+    if (_inPanel) WorkoutPanel.close!();
+    context.go(to);
   }
 
   // ─────────────────────────────── Page
@@ -181,6 +221,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   @override
   Widget build(BuildContext context) => BackIntercept(
         onBack: () {
+          // the panel is down: back is for the page under it
+          if (_inPanel && !WorkoutPanel.isOpen!()) return false;
           if (act != null) {
             setState(() => act = null);
             return true;
@@ -224,7 +266,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           child: Column(mainAxisSize: MainAxisSize.min, spacing: 10, children: [
             Text('Could not open the workout', style: AppText.s(15, W.w7)),
             Text(msg, textAlign: TextAlign.center, style: AppText.s(13, W.w4, color: AppColors.muted)),
-            CaButton('Back to Train', kind: CaBtnKind.out, expand: false, onPressed: () => context.go('/train')),
+            CaButton('Back to Train', kind: CaBtnKind.out, expand: false, onPressed: () => _leave('/train')),
           ]),
         ),
       );
@@ -246,7 +288,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       ),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
         Row(spacing: 10, children: [
-          CaIconBtn(AppIcons.close, tooltip: 'Close', onTap: () => context.go(WorkoutController.backTo.startsWith('/train/workout') ? '/train' : WorkoutController.backTo)),
+          CaIconBtn(AppIcons.close, tooltip: 'Close', onTap: () => _inPanel ? WorkoutPanel.close!() : context.go(WorkoutController.backTo.startsWith('/train/workout') ? '/train' : WorkoutController.backTo)),
           Expanded(child: CutText(d.dayName.isEmpty ? 'Workout' : d.dayName, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(16, W.w8))),
           const SizedBox(width: 36),
         ]),
@@ -318,7 +360,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     final body = phone
         ? list
         : Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 820), child: list));
-    return CaWeb(
+    final page = CaWeb(
       web: !phone,
       child: ColoredBox(color: AppColors.white, child: Stack(children: [
         Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -329,6 +371,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         if (keypad) Positioned(left: 0, right: 0, bottom: 0, child: _keypad(c)),
       ])),
     );
+    return page;
   }
 
   /// ⌄ · rest timer · clock · FINISH. A swipe down on it collapses too.
@@ -336,8 +379,14 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     final resting = c.rest > 0;
     final p = c.restMax == 0 ? 0.0 : (c.rest / c.restMax).clamp(0.0, 1.0);
     return GestureDetector(
+      // phone: the panel follows the finger (Strong); wider screens: a quick swipe down minimises
+      onVerticalDragUpdate: _inPanel ? (d) => WorkoutPanel.dragBy!(d.delta.dy) : null,
       onVerticalDragEnd: (d) {
-        if ((d.primaryVelocity ?? 0) > 250) _collapse();
+        if (_inPanel) {
+          WorkoutPanel.dragEnd!(d.primaryVelocity ?? 0);
+        } else if ((d.primaryVelocity ?? 0) > 250) {
+          _collapse();
+        }
       },
       child: Container(
         padding: EdgeInsets.fromLTRB(phone ? 8 : 20, phone ? 6 : 14, phone ? 8 : 20, 8),
@@ -372,9 +421,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                   borderRadius: BorderRadius.circular(10),
                   child: Container(
                     height: 38,
-                    constraints: const BoxConstraints(minWidth: 46),
+                    constraints: const BoxConstraints(minWidth: 48),
                     color: resting ? AppColors.accentSoft : (h ? AppColors.logFieldHover : AppColors.logField),
-                    child: Stack(children: [
+                    // icon in the middle of the box (Probid 17 Nov)
+                    child: Stack(alignment: Alignment.center, children: [
                       if (resting) Positioned.fill(child: FractionallySizedBox(alignment: Alignment.centerLeft, widthFactor: p, child: Container(color: AppColors.accent))),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -650,13 +700,13 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         ),
       ),
     );
-    final tick = Semantics(
+    Widget tick = Semantics(
       button: true,
       label: s.done ? 'Untick set $lbl' : 'Tick set $lbl',
       child: Hover(
         onTap: () {
           setState(() => act = null);
-          c.tick(i, k);
+          _tryTick(c, i, k);
         },
         builder: (_, h, _) => Container(
           width: 40,
@@ -670,6 +720,16 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         ),
       ),
     );
+    final sh = _shake;
+    if (sh != null && sh.$1 == s.key) {
+      tick = TweenAnimationBuilder<double>(
+        key: ValueKey('shake:${sh.$2}'),
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 420),
+        builder: (_, v, child) => Transform.translate(offset: Offset(math.sin(v * math.pi * 6) * 6 * (1 - v), 0), child: child),
+        child: tick,
+      );
+    }
     Widget? go;
     if (x.kind == ExKind.time) {
       go = s.done && !running
@@ -752,13 +812,13 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     final s = c.sets[i][k];
     final planned = c.restFor(i, k);
     final running = c.rest > 0 && c.restAt == (i, k);
-    final rested = s.restActual;
-    if (planned == 0 && !running && rested == null) return null;
+    // rest removed (swipe / Off) = no line at all, even if some rest had already run (Probid 17 Nov)
+    if (planned == 0 && !running) return null;
     final locked = c.ex[i].restLocked;
     final own = s.rest != null;
     // after a skip or the end it keeps showing the set's rest, not "rested 0:02" (Probid 17 Nov);
     // the real rest is still saved for history (G49)
-    final label = running ? clockText(c.rest) : clockText(planned == 0 ? (rested ?? 0) : planned);
+    final label = running ? clockText(c.rest) : clockText(planned);
     final p = running && c.restMax > 0 ? (c.rest / c.restMax).clamp(0.0, 1.0) : 0.0;
     final g = s.done; // on a done set the line is part of the green row, in green (Strong)
     final text = own && !running ? '$label · this set' : label;
@@ -993,7 +1053,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         negative: x.kind == ExKind.weight && j == 0 && (s.bw || x.bodyweight),
         label: '$head, set ${c.label(i, k)}',
         onChanged: (t) => c.setValue(i, k, j, t.isEmpty ? null : double.tryParse(t)),
-        onSubmit: () => c.tick(i, k),
+        onSubmit: () => _tryTick(c, i, k),
       );
     }
     final on = act == (i, k, j);
@@ -1548,7 +1608,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         _dangerBtn(again ? 'Discard sets' : 'Cancel workout', () async {
           Navigator.of(ctx).pop();
           await c.discard();
-          if (mounted) context.go('/train?discarded=${again ? 2 : 1}');
+          if (mounted) _leave('/train?discarded=${again ? 2 : 1}');
         }),
       ],
     );
@@ -1994,7 +2054,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           fg: AppColors.okText,
           child: Text('Sent to $coach. You will usually get a reply within a few hours.', style: AppText.s(13, W.w7, color: AppColors.okText)),
         ),
-      CaButton('Back to home', kind: CaBtnKind.out, onPressed: () => context.go('/home')),
+      CaButton('Back to home', kind: CaBtnKind.out, onPressed: () => _leave('/home')),
     ]);
     if (phone) return SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 6, 16, 24), child: content);
     return CaWeb(

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -16,6 +17,7 @@ import '../../core/widgets/tooltip.dart';
 import '../../core/live/live_notice.dart';
 import '../../features/client/train/train_model.dart' show clockText;
 import '../../features/client/train/workout_model.dart' show WorkoutController, WorkoutFeel;
+import '../../features/client/train/workout_screen.dart' show WorkoutPanel, WorkoutScreen, openWorkout;
 import '../services.dart';
 import 'back_nav.dart';
 import 'nav_items.dart';
@@ -67,7 +69,7 @@ class _AppShellState extends State<AppShell> {
       WorkoutController.revive();
       WorkoutFeel.load(); // My account and the logger show the saved sound / vibration choice
       LiveNotice.onOpen = () {
-        if (mounted) context.go('/train/workout');
+        if (mounted) openWorkout(context);
       };
     }
     ToastHost.sheets.addListener(_barChanged); // any bottom sheet open hides the tabs (Probid 2026-11-03, A1)
@@ -156,18 +158,27 @@ class _AppShellState extends State<AppShell> {
       // Toasts sit 10 above the bar, measured (it grows with the phone's bottom inset); the host adds that inset
       // itself, so it is taken off here. Before, a fixed 75 left a gap that changed from phone to phone.
       final inset = MediaQuery.paddingOf(context).bottom;
+      final top = !(isClient ? widget.location == '/home' : me.role == Role.trainer && widget.location == '/dashboard');
+      if (isClient) {
+        // Client phone: the workout logger is one panel over the page, under the tab bar (Strong, Probid 17 Nov).
+        return Scaffold(
+          backgroundColor: AppColors.caBg,
+          body: _WorkoutPanelHost(
+            bar: bar,
+            nav: _BottomBar(items: bottomFor(me.role), location: widget.location),
+            page: (bottomSafe) => SafeArea(bottom: bottomSafe, top: top, child: widget.child),
+          ),
+        );
+      }
       return ToastOffset(
         offset: _barH > 0 ? _barH - inset + 10 : (bar ? 75 : 20),
         child: Scaffold(
-          backgroundColor: isClient ? AppColors.caBg : AppColors.panel,
-          // Client Home and the trainer dashboard have a blue hero that runs under the status bar, so they keep the top inset themselves.
-          body: SafeArea(bottom: !bar, top: !(isClient ? widget.location == '/home' : me.role == Role.trainer && widget.location == '/dashboard'), child: widget.child),
+          backgroundColor: AppColors.panel,
+          // The trainer dashboard has a blue hero that runs under the status bar, so it keeps the top inset itself.
+          body: SafeArea(bottom: !bar, top: top, child: widget.child),
           bottomNavigationBar: _Measure(
             onHeight: (h) => h != _barH ? setState(() => _barH = h) : null,
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              if (isClient && ToastHost.sheets.value == 0) WorkoutMiniBar(location: widget.location, safeBottom: !bar),
-              if (bar) _BottomBar(items: bottomFor(me.role), location: widget.location),
-            ]),
+            child: bar ? _BottomBar(items: bottomFor(me.role), location: widget.location) : const SizedBox.shrink(),
           ),
         ),
       );
@@ -434,7 +445,7 @@ class WorkoutMiniBar extends StatelessWidget {
               final p = c.restMax == 0 ? 0.0 : (c.rest / c.restMax).clamp(0.0, 1.0);
               final phone = context.isPhone;
               // push, so minimising pops and slides the logger down over this page
-              void open() => context.push('/train/workout');
+              void open() => openWorkout(context);
               return Semantics(
                 button: true,
                 label: 'Open the workout ${c.name}',
@@ -486,6 +497,242 @@ class WorkoutMiniBar extends StatelessWidget {
                 ),
               );
             },
+          );
+        },
+      );
+}
+
+
+/// Phone, client: the page, the workout panel and the tab bar in one stack (Strong, Probid 17 Nov).
+/// Down: only the panel's top bar shows, right on the tab bar (name, clock, rest). The finger drags it up to full
+/// screen (the tab bar slides away under it) and back down (the logger goes behind the tab bar, its top bar turns
+/// back into the small bar). The logger stays built the whole time, so nothing is lost going up and down.
+class _WorkoutPanelHost extends StatefulWidget {
+  const _WorkoutPanelHost({required this.bar, required this.nav, required this.page});
+  final bool bar;
+  final Widget nav;
+  final Widget Function(bool bottomSafe) page;
+
+  @override
+  State<_WorkoutPanelHost> createState() => _WorkoutPanelHostState();
+}
+
+class _WorkoutPanelHostState extends State<_WorkoutPanelHost> with SingleTickerProviderStateMixin {
+  static const _head = 62.0; // the panel's top bar when it is down
+  late final _t = AnimationController(vsync: this, duration: const Duration(milliseconds: 320));
+  String? _req; // what opened it (Start / Continue / ⋯ Finish …), null = only the running workout
+  double _navH = 0, _travel = 1;
+
+  bool get _live {
+    final c = WorkoutController.live.value;
+    return c != null && c.ready && !c.finished;
+  }
+
+  bool get _shown => _req != null || _live || (WorkoutController.live.value?.finished ?? false);
+
+  @override
+  void initState() {
+    super.initState();
+    WorkoutPanel.show = _show;
+    WorkoutPanel.collapse = _down;
+    WorkoutPanel.close = _close;
+    WorkoutPanel.dragBy = _dragBy;
+    WorkoutPanel.dragEnd = _dragEnd;
+    WorkoutPanel.isOpen = () => _t.value > .5;
+    WorkoutController.live.addListener(_changed);
+    final p = WorkoutPanel.pending;
+    if (p != null) {
+      WorkoutPanel.pending = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _show(p));
+    }
+  }
+
+  @override
+  void dispose() {
+    if (WorkoutPanel.show == _show) {
+      WorkoutPanel.show = WorkoutPanel.collapse = WorkoutPanel.close = null;
+      WorkoutPanel.dragBy = WorkoutPanel.dragEnd = null;
+      WorkoutPanel.isOpen = null;
+    }
+    WorkoutController.live.removeListener(_changed);
+    _t.dispose();
+    super.dispose();
+  }
+
+  void _changed() {
+    if (!mounted) return;
+    setState(() {});
+    // a workout that ended elsewhere (Train ⋯ Discard): nothing left to show
+    if (!_shown) _t.value = 0;
+  }
+
+  void _show(String q) {
+    if (!mounted) return;
+    setState(() {
+      if (q.isNotEmpty || _req == null) _req = q;
+    });
+    _t.animateTo(1, curve: Curves.easeOutCubic);
+  }
+
+  void _down() => _t.animateTo(0, curve: Curves.easeOutCubic).then((_) {
+        if (mounted && !_live && _t.value == 0) setState(() => _req = null);
+      });
+
+  void _close() {
+    _t.value = 0;
+    if (mounted) setState(() => _req = null);
+  }
+
+  void _dragBy(double dy) => _t.value = (_t.value - dy / _travel).clamp(0.0, 1.0);
+
+  void _dragEnd(double v) {
+    if (v < -400 || (v.abs() <= 400 && _t.value > .5)) {
+      _t.animateTo(1, curve: Curves.easeOutCubic);
+    } else {
+      _down();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    final inset = mq.padding.bottom;
+    final shown = _shown;
+    final c = WorkoutController.live.value;
+    final head = _head + (widget.bar ? 0 : inset);
+    final navH = widget.bar ? _navH : 0.0;
+    final q = Uri.parse('x${_req ?? ''}').queryParameters;
+    return ToastOffset(
+      offset: (widget.bar && _navH > 0 ? _navH - inset : 0) + (shown ? head : 0) + 10,
+      child: LayoutBuilder(builder: (context, box) {
+        final h = box.maxHeight;
+        _travel = math.max(1, h - navH - head);
+        return Stack(children: [
+          Positioned(left: 0, right: 0, top: 0, bottom: navH + (shown ? head : 0), child: widget.page(!widget.bar && !shown)),
+          if (shown)
+            AnimatedBuilder(
+              animation: _t,
+              builder: (context, child) {
+                final t = _t.value;
+                return Positioned(
+                  left: 0,
+                  right: 0,
+                  top: (h - navH - head) * (1 - t),
+                  height: h,
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    // the status bar stays clear: the logger starts under it (it went into it before)
+                    Container(height: mq.padding.top * t, color: AppColors.white),
+                    Expanded(
+                      child: Stack(children: [
+                        Positioned.fill(child: child!),
+                        if (t < .6 && c != null)
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            top: 0,
+                            child: IgnorePointer(
+                              ignoring: t > .3,
+                              child: Opacity(opacity: (1 - t / .3).clamp(0.0, 1.0), child: _PanelHead(c: c, height: head, onOpen: () => _show(''), onDrag: _dragBy, onEnd: _dragEnd)),
+                            ),
+                          ),
+                      ]),
+                    ),
+                  ]),
+                );
+              },
+              child: TickerMode(
+                enabled: true,
+                child: MediaQuery.removePadding(
+                  context: context,
+                  removeTop: true,
+                  child: WorkoutScreen(
+                    key: ValueKey(_req ?? ''),
+                    start: int.tryParse(q['start'] ?? ''),
+                    reopen: q['reopen'],
+                    then: q['then'],
+                  ),
+                ),
+              ),
+            ),
+          if (widget.bar)
+            AnimatedBuilder(
+              animation: _t,
+              builder: (_, child) => Positioned(left: 0, right: 0, bottom: shown ? -_navH * _t.value : 0, child: child!),
+              child: _Measure(onHeight: (v) => v != _navH ? setState(() => _navH = v) : null, child: widget.nav),
+            ),
+        ]);
+      }),
+    );
+  }
+}
+
+/// The panel's top bar when it is down: workout name, clock and exercise, rest left; tap or drag up opens it.
+class _PanelHead extends StatelessWidget {
+  const _PanelHead({required this.c, required this.height, required this.onOpen, required this.onDrag, required this.onEnd});
+  final WorkoutController c;
+  final double height;
+  final VoidCallback onOpen;
+  final void Function(double) onDrag;
+  final void Function(double) onEnd;
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+        listenable: c,
+        builder: (context, _) {
+          final resting = c.rest > 0;
+          final p = c.restMax == 0 ? 0.0 : (c.rest / c.restMax).clamp(0.0, 1.0);
+          return Semantics(
+            button: true,
+            label: 'Open the workout ${c.name}',
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onOpen,
+              onVerticalDragUpdate: (d) => onDrag(d.delta.dy),
+              onVerticalDragEnd: (d) => onEnd(d.primaryVelocity ?? 0),
+              child: Container(
+                height: height,
+                alignment: Alignment.topCenter,
+                padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+                decoration: const BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
+                  border: Border(top: BorderSide(color: AppColors.line)),
+                  boxShadow: AppShadows.barUp,
+                ),
+                child: Column(mainAxisSize: MainAxisSize.min, spacing: 5, children: [
+                  Container(width: 36, height: 4, decoration: BoxDecoration(color: AppColors.line2, borderRadius: BorderRadius.circular(4))),
+                  Row(spacing: 10, children: [
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+                        Text(c.ready ? c.name : 'Workout', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14.5, W.w7)),
+                        if (c.ready)
+                          Text(
+                            [clockText(c.elapsed), if (c.paused) 'paused', if (!c.finished) (c.setsDone == c.setsAll ? 'all sets done' : c.e.name)].join(' · '),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppText.s(12.5, W.w5, color: c.paused ? AppColors.amberText : AppColors.muted, tabular: true),
+                          ),
+                      ]),
+                    ),
+                    if (resting)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          height: 30,
+                          width: 84,
+                          color: AppColors.accentSoft,
+                          child: Stack(children: [
+                            Positioned.fill(child: FractionallySizedBox(alignment: Alignment.centerLeft, widthFactor: p, child: Container(color: AppColors.accent))),
+                            Center(child: Text('Rest ${clockText(c.rest)}', style: AppText.s(12.5, W.w7, color: AppColors.white, tabular: true))),
+                          ]),
+                        ),
+                      )
+                    else
+                      const AppIcon(AppIcons.chevronUp, size: 20, color: AppColors.text2),
+                  ]),
+                ]),
+              ),
+            ),
           );
         },
       );

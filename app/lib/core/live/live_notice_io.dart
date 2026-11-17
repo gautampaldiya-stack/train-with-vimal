@@ -36,7 +36,7 @@ class LiveNotice {
   static bool _checking = false;
 
   /// Like Strong: a swipe on Android 14+ can hide the ongoing notification, so while the workout runs it is put
-  /// back (checked every few seconds) until the workout is finished or discarded ([clear]).
+  /// back (checked every second, so it comes back at once) until the workout is finished or discarded ([clear]).
   static Future<void> keep() async {
     final again = _again;
     if (!_ready || again == null || _checking) return;
@@ -77,6 +77,11 @@ class LiveNotice {
         },
         onDidReceiveBackgroundNotificationResponse: liveNoticeBackground,
       );
+      // the old silent channels (until 17 Nov) are not used any more; a channel's sound cannot change after it is made
+      final android = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      for (final old in ['workout', 'workout_live']) {
+        await android?.deleteNotificationChannel(channelId: old).catchError((_) {});
+      }
       _ready = true;
     } catch (e) {
       debugPrint('Workout notification is off: $e');
@@ -92,16 +97,20 @@ class LiveNotice {
     List<AndroidNotificationAction> actions = const [],
   }) =>
       AndroidNotificationDetails(
-        'workout',
+        // own channel, not "Silent": it sits with the normal notifications and shows its actions like Strong's
+        // (Probid 17 Nov). Like Strong it plays the phone's notification sound once when it is shown (start, or back
+        // after a swipe); the every-second updates stay quiet (onlyAlertOnce).
+        'workout_sound',
         'Workout in progress',
         channelDescription: 'The workout clock, your set and rest while you train',
         icon: 'ic_stat_notify',
-        importance: Importance.low, // no sound or pop-up: it only sits in the shade
-        priority: Priority.low,
+        importance: Importance.high,
+        priority: Priority.high,
+        playSound: true,
+        enableVibration: false,
         ongoing: true,
         autoCancel: false,
         onlyAlertOnce: true,
-        silent: true,
         showWhen: true,
         when: when.millisecondsSinceEpoch,
         usesChronometer: chrono,

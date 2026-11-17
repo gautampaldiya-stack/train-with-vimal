@@ -8,6 +8,7 @@ import '../../core/widgets/button.dart';
 import '../../core/widgets/client.dart';
 import '../../core/widgets/overlays.dart';
 import '../../features/client/train/workout_model.dart' show WorkoutController;
+import '../../features/client/train/workout_screen.dart' show openWorkout;
 import '../services.dart';
 import 'nav_items.dart';
 
@@ -77,7 +78,7 @@ abstract final class AppBack {
       ]),
     );
     if (!context.mounted) return;
-    if (go == 'resume') context.go('/train/workout');
+    if (go == 'resume') openWorkout(context);
     if (go == 'exit') await SystemNavigator.pop();
   }
 }

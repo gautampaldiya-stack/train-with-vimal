@@ -18,6 +18,7 @@ import '../../../core/widgets/responsive.dart';
 import '../../../app/shell/app_shell.dart' show hideBottomBar;
 import '../../../app/shell/back_nav.dart' show BackIntercept;
 import '../train/workout_model.dart';
+import '../train/workout_screen.dart' show openWorkout;
 import '../progress/progress_parts.dart';
 import 'home_model.dart';
 import 'home_parts.dart';
@@ -1030,7 +1031,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
       body.add(Padding(
         padding: const EdgeInsets.only(top: 12),
         child: CaButton(going ? 'Continue workout' : 'Start workout', icon: AppIcons.play,
-            onPressed: () => context.go(going ? '/train/workout' : '/train/workout?start=${d.dayId ?? ''}')),
+            onPressed: () => openWorkout(context, going ? '' : '?start=${d.dayId ?? ''}')),
       ));
     }
     // The border is drawn on top (foregroundDecoration), so the tinted header stays inside the rounded corners

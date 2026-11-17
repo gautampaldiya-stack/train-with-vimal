@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
@@ -15,6 +14,7 @@ import 'train_model.dart';
 import 'train_parts.dart';
 import '../../../core/widgets/tooltip.dart';
 import 'workout_model.dart' show WorkoutController;
+import 'workout_screen.dart' show openWorkout;
 
 /// Train tab (boards `ClientTrain` phone and `ClientTrainWeb`): the week, today's workout, the
 /// coach's note and the exercise blocks. A running workout shows as a bar (phone) or banner (web).
@@ -105,11 +105,11 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
 
   void _go(TrainData d) {
     if (d.live != null) {
-      context.go('/train/workout');
+      openWorkout(context);
     } else if (d.finished) {
-      context.go('/train/workout?reopen=${d.completed!['id']}');
+      openWorkout(context, '?reopen=${d.completed!['id']}');
     } else {
-      context.go('/train/workout?start=${d.dayId ?? ''}');
+      openWorkout(context, '?start=${d.dayId ?? ''}');
     }
   }
 
@@ -428,7 +428,7 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
 
   /// Phone: white bar over the tabs (`cl-wbar`), opens the logger.
   Widget _liveBar(TrainData d, LiveWorkout live) => Hover(
-        onTap: () => context.go('/train/workout'),
+        onTap: () => openWorkout(context),
         builder: (_, h, _) => Container(
           padding: const EdgeInsets.fromLTRB(16, 10, 18, 10),
           decoration: BoxDecoration(
@@ -475,7 +475,7 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
             Text(clockText(live.elapsed), style: AppText.s(17, W.w8, tabular: true)),
             Text('${live.setsDone} of ${live.setsTotal} sets', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
           ]),
-          CaButton('Continue workout', icon: AppIcons.play, expand: false, onPressed: () => context.go('/train/workout')),
+          CaButton('Continue workout', icon: AppIcons.play, expand: false, onPressed: () => openWorkout(context)),
           _more(live, size: 40, outline: true),
         ]),
       );
@@ -506,8 +506,8 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
     final paused = live.pausedAt != null;
     final entries = [
       MenuEntry(paused ? 'Resume timer' : 'Pause timer', icon: paused ? AppIcons.play : AppIcons.pause, onTap: () => _pause(live, !paused)),
-      MenuEntry('Finish workout', icon: AppIcons.check, onTap: () => context.go('/train/workout?then=finish')),
-      MenuEntry('Restart workout', icon: AppIcons.restart, onTap: () => context.go('/train/workout?then=restart')),
+      MenuEntry('Finish workout', icon: AppIcons.check, onTap: () => openWorkout(context, '?then=finish')),
+      MenuEntry('Restart workout', icon: AppIcons.restart, onTap: () => openWorkout(context, '?then=restart')),
       const MenuEntry('', separator: true),
       MenuEntry('Discard workout', icon: AppIcons.trash, danger: true, onTap: () => _askDiscard(live)),
     ];

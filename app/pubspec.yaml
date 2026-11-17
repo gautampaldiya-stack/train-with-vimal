@@ -53,6 +53,7 @@ dependencies:
   permission_handler: ^13.0.2
   image_picker: ^1.2.4
   video_player: ^2.14.1
+  audioplayers: ^6.1.0 # logger sounds: set done, rest skip / over (Probid 17 Nov)
   youtube_player_iframe: ^6.0.2
   webview_flutter_platform_interface: ^2.15.1
   web: ^1.1.1
@@ -89,6 +90,7 @@ flutter:
     - assets/logo.svg
     - assets/welcome.svg
     - assets/ill/
+    - assets/sounds/
 
   fonts:
     - family: PlusJakartaSans
