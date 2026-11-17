@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../app/services.dart';
 import '../../../core/api/api_error.dart';
@@ -30,10 +31,23 @@ class HomeController extends ChangeNotifier {
     super.dispose();
   }
 
+  /// Edit home's card order lives on this phone only, per signed-in client (Probid 17 Nov: not in the database).
+  static String get _layoutKey => 'twv.home.layout.${Services.session.me?.id ?? ''}';
+  List<String>? _local;
+
+  HomeData _withLayout(Map<String, dynamic> j) {
+    final l = _local;
+    if (l != null) j['layout'] = [...l];
+    return HomeData(j);
+  }
+
   Future<void> start() async {
+    try {
+      _local = (await SharedPreferences.getInstance()).getStringList(_layoutKey);
+    } catch (_) {}
     final c = await Services.cache.read(_cacheKey);
     if (c is Map && data == null) {
-      data = HomeData(c.cast<String, dynamic>());
+      data = _withLayout(Map<String, dynamic>.from(c));
       notifyListeners();
     }
     await load();
@@ -45,7 +59,7 @@ class HomeController extends ChangeNotifier {
     try {
       final j = await Services.api.get<Map<String, dynamic>>('me/home/');
       unawaited(Services.cache.write(_cacheKey, j));
-      data = HomeData(j);
+      data = _withLayout(Map<String, dynamic>.from(j));
       error = null;
     } on ApiError catch (e) {
       error = e;
@@ -117,11 +131,12 @@ class HomeController extends ChangeNotifier {
     _send('me/supplements/${s.id}/', {'taken': taken});
   }
 
-  /// Edit home → Done: the new card order shows at once and is saved (offline too).
+  /// Edit home → Done: the new card order shows at once and is kept on this phone only (Probid 17 Nov).
   void saveLayout(List<String> layout) {
+    _local = [...layout];
     data!.json['layout'] = layout;
     changed();
-    Services.outbox.enqueue('PATCH', 'me/home/layout/', {'layout': layout}, tag: 'home:layout').then((_) {}, onError: (_) => unawaited(load()));
+    unawaited(SharedPreferences.getInstance().then((p) => p.setStringList(_layoutKey, layout)).then((_) {}, onError: (_) {}));
   }
 
   void readAll() {

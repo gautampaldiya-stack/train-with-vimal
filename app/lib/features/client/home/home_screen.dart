@@ -269,7 +269,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     final l = _edit!;
     _setEdit(null);
     c.saveLayout(l);
-    showToast(context, 'Home saved', sub: 'Your cards show in this order on every device', kind: ToastKind.ok);
+    showToast(context, 'Home saved', sub: 'Your changes are done', kind: ToastKind.ok);
   }
 
   /// A Home card that opens Edit home on a long press (phone and web) or a right-click (web). Taps and scrolling
@@ -438,6 +438,19 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
             ),
         ],
       ),
+      // Check-ins is the one card that stays: removed or not, it shows while a check-in is due (Probid 17 Nov)
+      if (d.checkin != null)
+        ChNote(
+          icon: AppIcons.info,
+          bg: AppColors.amberBg,
+          fg: AppColors.amberText,
+          child: Text(
+            _edit!.contains('checkin')
+                ? 'Check-ins is a default card. Even if you remove it, it comes back on top while a check-in is due, and hides again once you fill it.'
+                : 'Check-ins is a default card. It comes back on top while a check-in is due, and hides again once you fill it.',
+            style: AppText.s(12.5, W.w6, color: AppColors.amberText),
+          ),
+        ),
       if (off.isNotEmpty) CaButton('Add card', kind: CaBtnKind.out, icon: AppIcons.plus, onPressed: () => _addCard(off)),
     ]);
   }
@@ -499,6 +512,12 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
           sub: left == 0 ? 'All done for now' : '$left to fill · ${d.coachFirst} reads them',
         ),
       ),
+      // removed in Edit home but shown because one is due: say why it is here
+      if (!d.layout.contains('checkin'))
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Text('Default card · shows while a check-in is due', style: AppText.s(12, W.w5, color: AppColors.muted)),
+        ),
       for (final (i, r) in rows.indexed)
         Container(
           decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line))),
@@ -1291,12 +1310,31 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     if (n == null) return null;
     final by = (n['by'] as Map?) ?? d.coach ?? const {};
     final at = DateTime.tryParse('${n['at']}')?.toLocal();
+    // a message from the coach: avatar, name, when, and the note in a chat bubble (Probid 17 Nov)
     return ChCard(children: [
       Row(spacing: 10, children: [
         ChAvatar('${by['initials'] ?? ''}', green: true),
         Expanded(child: ChTwoLine('${by['full_name'] ?? 'Your coach'}', 'Your trainer${at == null ? '' : ' · ${since(at, ago: true)}'}', size: 15, subSize: 12.5, titleStyle: AppText.s(15, W.w8))),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+          decoration: BoxDecoration(color: AppColors.amberBg, borderRadius: BorderRadius.circular(99)),
+          child: Text('Note for you', style: AppText.s(11.5, W.w7, color: AppColors.amberText)),
+        ),
       ]),
-      Text('${n['body']}', style: AppText.s(14, W.w4, color: AppColors.text2, h: 1.5)),
+      Container(
+        margin: const EdgeInsets.only(left: 46),
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 11),
+        decoration: const BoxDecoration(
+          color: AppColors.accentSoft,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(4),
+            topRight: Radius.circular(14),
+            bottomLeft: Radius.circular(14),
+            bottomRight: Radius.circular(14),
+          ),
+        ),
+        child: Text('${n['body']}', style: AppText.s(14.5, W.w5, color: AppColors.sessText, h: 1.45)),
+      ),
     ]);
   }
 

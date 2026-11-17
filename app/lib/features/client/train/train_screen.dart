@@ -399,17 +399,45 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
 
   // ─────────────────────────────── Coach note (`ch-coach`)
 
+  /// The coach's note for this workout, as a message from them (Probid 17 Nov: make it look good): their avatar
+  /// and name, a "For this workout" tag, and the note in a chat bubble.
   Widget? _note(TrainData d, {required bool web}) {
     if (d.rest || d.note.isEmpty) return null;
     return ChCard(
-      padding: web ? const EdgeInsets.symmetric(horizontal: 14, vertical: 12) : const EdgeInsets.all(14),
+      padding: web ? const EdgeInsets.fromLTRB(14, 12, 14, 14) : const EdgeInsets.fromLTRB(14, 14, 14, 16),
       gap: 10,
       children: [
         Row(spacing: 10, children: [
           ChAvatar(d.coachInitials, green: true),
-          Expanded(child: ChTwoLine('Note from ${d.coachFirst}', 'For this workout', size: 15, subSize: 12.5, titleStyle: AppText.s(15, W.w8))),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+              Text(d.coachFirst, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(15, W.w8)),
+              Text('Your coach', style: AppText.s(12, W.w5, color: AppColors.muted)),
+            ]),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+            decoration: BoxDecoration(color: AppColors.amberBg, borderRadius: BorderRadius.circular(99)),
+            child: Row(mainAxisSize: MainAxisSize.min, spacing: 5, children: [
+              const AppIcon(AppIcons.dumbbell, size: 13, color: AppColors.amberText),
+              Text('For this workout', style: AppText.s(11.5, W.w7, color: AppColors.amberText)),
+            ]),
+          ),
         ]),
-        Text(d.note, style: AppText.s(14, W.w4, color: AppColors.text2, h: 1.5)),
+        Container(
+          margin: const EdgeInsets.only(left: 46),
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 11),
+          decoration: const BoxDecoration(
+            color: AppColors.accentSoft,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(4),
+              topRight: Radius.circular(14),
+              bottomLeft: Radius.circular(14),
+              bottomRight: Radius.circular(14),
+            ),
+          ),
+          child: Text(d.note, style: AppText.s(14.5, W.w5, color: AppColors.sessText, h: 1.45)),
+        ),
       ],
     );
   }

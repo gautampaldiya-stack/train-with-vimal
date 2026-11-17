@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+## 2026-11-17 · Home: card order only on this device; Check-ins default card; coach note cards
+- **Pehle:** Edit home ka card order server par (`PATCH me/home/layout/`, D-87) save hota, har device par same. Check-ins card hata do to bhi due hone par wapas aata, par kahin likha nahi tha kyun. Trainer note card plain text tha.
+- **Ab:** Card order sirf us phone / browser par save (shared_preferences, client ke hisaab se); database me nahi jaata (toast: "Home saved · Your changes are done"). Edit home me peela note: Check-ins default card hai, hata do to bhi check-in due hone par upar wapas aata hai aur bharne ke baad chhup jaata hai; Home par aisa card "Default card · shows while a check-in is due" dikhata hai. Train ka "Note from coach" aur Home ka coach note: avatar + naam + "Your coach", peela tag (For this workout / Note for you), note ek chat bubble me.
+- **Kyun:** Probid (17 Nov).
+- **Updated:** home_model (`saveLayout`, `_withLayout`), home_screen (editor note, check-in card line, `_coach`), train_screen (`_note`) · D-87 layout ab device par
+
 ## 2026-11-17 · Finish = saved; rate it later from Train; panel swipe no longer sticks
 - **Pehle:** Notification se Finish karne par Congratulations page bina background ke Home ke upar dikhta; neeche jaane par chhota bar timer chalate hue rehta. Offline shuru hua workout tab tak save nahi hota jab tak Send na karo. Effort / note baad me dene ka koi raasta nahi tha. Panel upar khinchte waqt kabhi beech me atak jaata aur tab bar aadha neeche chala jaata (chhota bar drag ke beech tree se hat jaata tha, drag kho jaata).
 - **Ab:** Panel hamesha opaque (white). Finish karte hi workout save + timer band (offline wala bhi turant sync). Congratulations page se neeche jao to chhota bar "Finished · 1:16:25 · rate it for Aman" dikhata hai (ghadi ruki hui) jab tak Send na karo; Send ke baad neeche jaane par band. Train ke aaj ke card par, jab tak effort nahi gaya, "Tell Aman how hard it was · **Rate it**" → wahi Congratulations page (`?review=<id>`, server se). Chhota bar poore drag me tree me rehta hai, drag cancel par panel kisi ek side settle hota hai.

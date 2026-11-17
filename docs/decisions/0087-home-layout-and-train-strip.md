@@ -36,3 +36,5 @@ Probid asked for accurate numbers and where they come from. The Progress card no
   estimated 1RM (Epley, `calc.e1rm`) on its first day vs its latest day; top 3 lifts listed. The single "Barbell
   Bench Press" cell is gone.
 - **Weekly adherence:** big % (daily check-ins sent ÷ days Monday to today) with "N of M days checked in".
+
+**Update 2026-11-17 (Probid):** the card order is no longer saved on the server. It lives only on the device (shared_preferences, per client). `PATCH me/home/layout/` stays in the API but the app does not call it.
