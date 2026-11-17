@@ -433,7 +433,8 @@ class WorkoutMiniBar extends StatelessWidget {
               final resting = c.rest > 0;
               final p = c.restMax == 0 ? 0.0 : (c.rest / c.restMax).clamp(0.0, 1.0);
               final phone = context.isPhone;
-              void open() => context.go('/train/workout');
+              // push, so minimising pops and slides the logger down over this page
+              void open() => context.push('/train/workout');
               return Semantics(
                 button: true,
                 label: 'Open the workout ${c.name}',

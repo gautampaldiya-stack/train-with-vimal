@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+## 2026-11-17 · Workout logger looks like Strong
+- **Pehle:** Logger ka page grey (caBg), isliye grey set boxes dikhte nahi the; done row ka hara bahut halka; boxes 34 high, mote font; app bar ke saath line, ⌄ ek box button; naam ke neeche clock; skip ke baad rest line par "rested 0:02"; keypad box me koi cursor nahi; logger page bina animation khulta / band hota; notification swipe se hat jaati thi.
+- **Ab:** Page white, boxes grey (`logField`), done row poori width hari (`logDoneRow`) aur uski rest line usi hare row ke andar hari (chalte rest me hari progress + bada time). Boxes 30 high, font 16 regular, headers / naam halke, row spacing Strong jaisa. App bar white + neeche shadow, ⌄ plain arrow, rest timer grey square button. Naam ke neeche sirf Paused / Adding sets. Rest line par hamesha set ka rest (asli rest history me save hota hai). Box tap = value select (pehla key replace), phir blinking cursor. Mini bar se logger neeche se slide hoke khulta, ⌄ par neeche jaata. Notification swipe karne par kuch second me wapas aati hai, jab tak workout finish / discard na ho.
+- **Kyun:** Probid, Strong screenshots (17 Nov).
+- **Updated:** app workout_screen / workout_model, core/live (keep), router (_sheetPage), app_shell (mini bar push), theme colors (logField, logFieldHover, logDoneRow, logDoneTick) + shadows (barDown); docs WORK-TRACKER (H51a kal ka workout), status · Decision D-89
+
 ## 2026-11-17 · Migrate on a PC database that had the Oct-28 backup
 - **Pehle:** Jis DB par Oct-28 wale purane migrations chal chuke the (training 0008_upload_names / 0009_logger_strong / 0010_rest_timers, checkins 0008–0009, clients 0008–0009), wahan `migrate` par "column set_type already exists" aata tha.
 - **Ab:** training 0008, 0009 aur checkins 0010 sabse pehle `apps/common/oct28.py: undo_oct28` chalate hain: jo purana migration DB me record hai, uske columns / tables drop + row delete, phir naye migrations normal chalte hain. Baaki DB (live, naya) par kuch nahi karta.

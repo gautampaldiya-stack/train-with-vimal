@@ -664,8 +664,11 @@ class WorkoutController extends ChangeNotifier {
         }
       }
     }
+    if (++_beat % 4 == 0 && !_gone) LiveNotice.keep();
     notifyListeners();
   }
+
+  int _beat = 0;
 
   // ─────────────────────────────── Notification (F34)
 

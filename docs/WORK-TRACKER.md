@@ -368,6 +368,7 @@ E51. ✅ Admin/trainer client Logs (Daily, Weekly, Habits, Supplements) aur clie
 ### H. Workout Edit aur Timing
 
 51. ⬜ Complete hua workout usi din dobara khol ke edit ho sake. Changes nayi version ke roop me save.
+51a. ⬜ Kal ka workout (Food jaisa, Probid 17 Nov): week strip me kal chuno to kal ka workout log kar sake (chhoot gaya ho to) ya kal ka kiya hua edit kar sake. Usse purane din sirf dekh sakte.
 52. ⬜ Editable: exercises, sets, weight, reps, set type, rest timers, start aur end time.
 53. ⬜ Start/end badalne par duration aur saari dependent stats recalculate.
 54. ⬜ Client History page se bhi edit kar sake.

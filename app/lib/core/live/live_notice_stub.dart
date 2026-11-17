@@ -19,5 +19,7 @@ class LiveNotice {
 
   static Future<void> cancelRestDone() async {}
 
+  static Future<void> keep() async {}
+
   static Future<void> clear() async {}
 }

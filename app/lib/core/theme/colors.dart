@@ -87,6 +87,8 @@ abstract final class AppColors {
   static const metOff = Color(0xFFE5E5E0);
   static const valPh = Color(0xFFA3A39C), tickOff = Color(0xFFC9C9C3), pressed = Color(0xFFE6E6E0);
   static const doneValBg = Color(0xFFEEF9F2), doneValLine = Color(0xFFBFE8CF);
+  // Workout logger (Strong-like, Probid 17 Nov): white page, grey fields, green done rows.
+  static const logField = Color(0xFFEDEDED), logFieldHover = Color(0xFFE3E3E3), logDoneRow = Color(0xFFDDF4E4), logDoneTick = Color(0xFF2EB85C);
   static const restAmber = Color(0xFFF5B544);
   static const goneGray = Color(0xFF6B6B66), goneRing = Color(0xFFEDEDEA);
 

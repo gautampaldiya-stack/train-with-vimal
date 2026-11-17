@@ -32,6 +32,25 @@ class LiveNotice {
   static final _plugin = FlutterLocalNotificationsPlugin();
   static bool _ready = false;
   static String? _last;
+  static Future<void> Function()? _again;
+  static bool _checking = false;
+
+  /// Like Strong: a swipe on Android 14+ can hide the ongoing notification, so while the workout runs it is put
+  /// back (checked every few seconds) until the workout is finished or discarded ([clear]).
+  static Future<void> keep() async {
+    final again = _again;
+    if (!_ready || again == null || _checking) return;
+    _checking = true;
+    try {
+      final android = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      final on = await android?.getActiveNotifications();
+      if (on != null && !on.any((n) => n.id == _id) && identical(again, _again)) await again();
+    } catch (e) {
+      debugPrint('Workout notification check: $e');
+    } finally {
+      _checking = false;
+    }
+  }
   static ReceivePort? _rx;
 
   static bool get _android => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
@@ -98,6 +117,7 @@ class LiveNotice {
   static Future<void> _show(String key, String title, String body, AndroidNotificationDetails d) async {
     if (!_ready || key == _last) return;
     _last = key;
+    _again = () => _plugin.show(id: _id, title: title, body: body, notificationDetails: NotificationDetails(android: d), payload: '/train/workout');
     try {
       await _plugin.show(id: _id, title: title, body: body, notificationDetails: NotificationDetails(android: d), payload: '/train/workout');
     } catch (e) {
@@ -195,6 +215,7 @@ class LiveNotice {
 
   static Future<void> clear() async {
     _last = null;
+    _again = null;
     await cancelRestDone();
     if (!_ready) return;
     try {

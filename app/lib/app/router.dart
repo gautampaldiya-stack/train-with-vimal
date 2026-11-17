@@ -281,7 +281,9 @@ final appRouter = GoRouter(
 
 /// Page and tab changes fade in with a short rise (Phase 5, 250 ms); nothing moves when the phone asks for no
 /// animations. A change of the query only (a tab inside a page) keeps the page, so it does not animate again.
-Page<void> _page(GoRouterState st, Widget child) => CustomTransitionPage<void>(
+Page<void> _page(GoRouterState st, Widget child) => st.uri.path.startsWith('/train/workout')
+    ? _sheetPage(st, child)
+    : CustomTransitionPage<void>(
       key: st.pageKey,
       child: child,
       transitionDuration: Motion.medium,
@@ -293,6 +295,19 @@ Page<void> _page(GoRouterState st, Widget child) => CustomTransitionPage<void>(
           opacity: c,
           child: SlideTransition(position: Tween(begin: const Offset(0, .02), end: Offset.zero).animate(c), child: child),
         );
+      },
+    );
+
+/// The workout logger slides up from the mini bar and back down when it is minimised (like Strong, Probid 17 Nov).
+Page<void> _sheetPage(GoRouterState st, Widget child) => CustomTransitionPage<void>(
+      key: st.pageKey,
+      child: child,
+      transitionDuration: Motion.sheet,
+      reverseTransitionDuration: Motion.medium,
+      transitionsBuilder: (context, a, _, child) {
+        if (Motion.off(context)) return child;
+        final c = CurvedAnimation(parent: a, curve: Curves.easeOutCubic, reverseCurve: Curves.easeInCubic);
+        return SlideTransition(position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(c), child: child);
       },
     );
 

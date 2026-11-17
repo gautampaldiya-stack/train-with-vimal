@@ -168,6 +168,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
   /// ⌄, back or a swipe down: the logger goes down to the mini bar; the workout keeps running (F33).
   void _collapse() {
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
     final to = WorkoutController.backTo;
     context.go(to.startsWith('/train/workout') ? '/train' : to);
   }
@@ -304,9 +308,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     final keypad = phone && act != null;
     final list = ListView(
       controller: _scroll,
-      padding: EdgeInsets.fromLTRB(phone ? 16 : 28, 6, phone ? 16 : 28, keypad ? 300 : 24),
+      padding: EdgeInsets.fromLTRB(0, 10, 0, keypad ? 300 : 24),
       children: [
-        _title(c),
+        Padding(padding: EdgeInsets.symmetric(horizontal: phone ? 14 : 28), child: _title(c)),
         for (var i = 0; i < c.ex.length; i++) _exercise(c, i, web: !phone),
         const SizedBox(height: 12),
       ],
@@ -316,14 +320,14 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         : Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 820), child: list));
     return CaWeb(
       web: !phone,
-      child: Stack(children: [
+      child: ColoredBox(color: AppColors.white, child: Stack(children: [
         Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           _top(c, phone),
           Expanded(child: GestureDetector(onTap: act == null ? null : () => setState(() => act = null), behavior: HitTestBehavior.translucent, child: body)),
           _cancelLink(c, phone),
         ]),
         if (keypad) Positioned(left: 0, right: 0, bottom: 0, child: _keypad(c)),
-      ]),
+      ])),
     );
   }
 
@@ -337,9 +341,26 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       },
       child: Container(
         padding: EdgeInsets.fromLTRB(phone ? 8 : 20, phone ? 6 : 14, phone ? 8 : 20, 8),
-        decoration: const BoxDecoration(color: AppColors.caBg, border: Border(bottom: BorderSide(color: AppColors.line))),
+        decoration: const BoxDecoration(color: AppColors.white, boxShadow: AppShadows.barDown),
         child: Row(spacing: 8, children: [
-          CaIconBtn(AppIcons.chevronDown, tooltip: 'Minimise (the workout keeps running)', onTap: _collapse),
+          // plain arrow like Strong, no box (Probid 17 Nov)
+          AppTooltip(
+            message: 'Minimise (the workout keeps running)',
+            child: Semantics(
+              button: true,
+              label: 'Minimise (the workout keeps running)',
+              child: Hover(
+                onTap: _collapse,
+                builder: (_, h, _) => Container(
+                  width: 40,
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: h ? AppColors.hover : null, shape: BoxShape.circle),
+                  child: const AppIcon(AppIcons.chevronDown, size: 24, color: AppColors.text, stroke: 2.2),
+                ),
+              ),
+            ),
+          ),
           AppTooltip(
             message: resting ? 'Rest timer' : 'Start a rest timer',
             child: Semantics(
@@ -350,9 +371,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 builder: (_, h, _) => ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: Container(
-                    height: 36,
-                    constraints: const BoxConstraints(minWidth: 44),
-                    color: resting ? AppColors.accentSoft : (h ? AppColors.pressed : AppColors.sub),
+                    height: 38,
+                    constraints: const BoxConstraints(minWidth: 46),
+                    color: resting ? AppColors.accentSoft : (h ? AppColors.logFieldHover : AppColors.logField),
                     child: Stack(children: [
                       if (resting) Positioned.fill(child: FractionallySizedBox(alignment: Alignment.centerLeft, widthFactor: p, child: Container(color: AppColors.accent))),
                       Padding(
@@ -360,7 +381,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                         child: Center(
                           widthFactor: 1,
                           child: Row(mainAxisSize: MainAxisSize.min, spacing: 5, children: [
-                            AppIcon(AppIcons.clockAlt, size: 17, color: resting ? AppColors.white : AppColors.text2),
+                            AppIcon(AppIcons.clockAlt, size: 20, color: resting ? AppColors.white : AppColors.text),
                             if (resting) Text(clockText(c.rest), style: AppText.s(13, W.w8, color: AppColors.white, tabular: true)),
                           ]),
                         ),
@@ -372,7 +393,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             ),
           ),
           Expanded(
-            child: Text(clockText(c.elapsed), textAlign: TextAlign.center, style: AppText.s(15, W.w7, color: c.paused ? AppColors.amberText : AppColors.text2, tabular: true)),
+            child: Text(clockText(c.elapsed), textAlign: TextAlign.center, style: AppText.s(15, W.w5, color: c.paused ? AppColors.amberText : AppColors.text2, tabular: true)),
           ),
           Semantics(
             button: true,
@@ -384,7 +405,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(color: h ? AppColors.accentSoft : null, borderRadius: BorderRadius.circular(10)),
-                child: Text('FINISH', style: AppText.s(14, W.w8, color: AppColors.accentText, ls: 1)),
+                child: Text('FINISH', style: AppText.s(15, W.w6, color: AppColors.accentText, ls: .8)),
               ),
             ),
           ),
@@ -397,13 +418,15 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         padding: const EdgeInsets.only(top: 10, bottom: 4),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
           Row(spacing: 8, children: [
-            Flexible(child: CutText(c.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(21, W.w8))),
+            Flexible(child: CutText(c.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(20, W.w7))),
             Builder(builder: (bc) => _dotsBtn(() => _workoutMenu(bc, c), 'Workout options')),
           ]),
-          Text(
-            [clockText(c.elapsed), if (c.reopened) 'adding sets', if (c.paused) 'paused', '${c.setsDone} of ${c.setsAll} sets'].join(' · '),
-            style: AppText.s(13, W.w5, color: AppColors.muted, tabular: true),
-          ),
+          // no clock under the name (it is in the bar), only the state when it matters (Probid 17 Nov)
+          if (c.reopened || c.paused)
+            Text(
+              [if (c.reopened) 'Adding sets', if (c.paused) 'Paused'].join(' · '),
+              style: AppText.s(13, W.w5, color: c.paused ? AppColors.amberText : AppColors.muted),
+            ),
         ]),
       );
 
@@ -428,7 +451,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   /// Red text on a plain bar, asks first. After "Log more sets" it discards only the added sets.
   Widget _cancelLink(WorkoutController c, bool phone) => Container(
         padding: EdgeInsets.only(bottom: phone ? MediaQuery.paddingOf(context).bottom : 0),
-        decoration: const BoxDecoration(color: AppColors.caBg, border: Border(top: BorderSide(color: AppColors.line))),
+        decoration: const BoxDecoration(color: AppColors.white, border: Border(top: BorderSide(color: AppColors.line))),
         child: SizedBox(
           height: _cancelH,
           child: Center(
@@ -461,10 +484,11 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       if (x.kind != ExKind.cardio) x.target,
       if (x.kind == ExKind.cardio && x.reps.isNotEmpty) x.reps,
     ].join(' · ');
+    final pad = EdgeInsets.symmetric(horizontal: web ? 28 : 14);
     return Padding(
-      padding: const EdgeInsets.only(top: 18),
+      padding: const EdgeInsets.only(top: 22),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Row(spacing: 8, children: [
+        Padding(padding: pad, child: Row(spacing: 8, children: [
           Expanded(
             child: Semantics(
               button: true,
@@ -472,7 +496,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               child: Hover(
                 onTap: () => _guide(c, x),
                 builder: (_, h, _) => Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                  Text(x.name, style: AppText.s(16.5, W.w7, color: AppColors.accentText).copyWith(decoration: h ? TextDecoration.underline : null)),
+                  Text(x.name, style: AppText.s(16, W.w6, color: AppColors.accentText).copyWith(decoration: h ? TextDecoration.underline : null)),
                   if (sub.isNotEmpty) Text(sub, style: AppText.s(12.5, W.w5, color: AppColors.muted)),
                 ]),
               ),
@@ -490,26 +514,31 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     alignment: Alignment.center,
                     decoration: BoxDecoration(color: h ? AppColors.accentRing : AppColors.accentSoft, borderRadius: BorderRadius.circular(8)),
-                    child: Text(c.focusText(i, f), style: AppText.s(14, W.w8, color: AppColors.accentText, tabular: true)),
+                    child: Text(c.focusText(i, f), style: AppText.s(14, W.w6, color: AppColors.accentText, tabular: true)),
                   ),
                 ),
               ),
             ),
           Builder(builder: (bc) => _dotsBtn(() => _exMenu(bc, c, i), '${x.name} options')),
-        ]),
+        ])),
         const SizedBox(height: 10),
-        _gridRow(c, x, cells: [
+        Padding(padding: pad, child: _gridRow(c, x, cells: [
           _th('SET'),
           _th('PREVIOUS'),
           for (final h in cols) _th(h),
           if (x.kind == ExKind.time) const SizedBox(),
           const Center(child: AppIcon(AppIcons.check, size: 16, color: AppColors.text2, stroke: 2.4)),
-        ]),
+        ])),
         const SizedBox(height: 4),
         for (var k = 0; k < c.sets[i].length; k++)
           KeyedSubtree(
             key: ValueKey(c.sets[i][k].key),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [_row(c, i, k, web: web), ?_restRow(c, i, k)]),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              _row(c, i, k, web: web),
+              if (_restRow(c, i, k) case final r?)
+                // a done set's rest line sits inside its green row, edge to edge (Strong)
+                Container(color: c.sets[i][k].done ? AppColors.logDoneRow : AppColors.white, padding: pad, child: r),
+            ]),
           ),
         const SizedBox(height: 4),
         Center(
@@ -526,7 +555,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(color: h ? AppColors.accentSoft : null, borderRadius: BorderRadius.circular(10)),
-                child: Text('+ ADD SET', style: AppText.s(14, W.w7, color: AppColors.accentText, ls: 1)),
+                child: Text('ADD SET', style: AppText.s(14, W.w6, color: AppColors.accentText, ls: 1)),
               ),
             ),
           ),
@@ -553,7 +582,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     return Row(spacing: 6, children: out);
   }
 
-  Widget _th(String t) => Text(t, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.clip, style: AppText.s(11, W.w8, color: AppColors.text2, ls: 1.1));
+  Widget _th(String t) => Text(t, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.clip, style: AppText.s(11, W.w7, color: AppColors.text, ls: 1.2));
 
   Widget _row(WorkoutController c, int i, int k, {required bool web}) {
     final x = c.ex[i], s = c.sets[i][k];
@@ -574,11 +603,11 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         child: Hover(
           onTap: () => _setMenu(bc, c, i, k),
           builder: (_, h, _) => Container(
-            height: 34,
+            height: 30,
             alignment: Alignment.center,
-            decoration: BoxDecoration(color: h ? AppColors.pressed : (s.done ? null : AppColors.sub), borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(color: h ? AppColors.logFieldHover : null, borderRadius: BorderRadius.circular(6)),
             child: Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
-              Text(lbl, style: AppText.s(14, W.w8, color: labelColor)),
+              Text(lbl, style: AppText.s(15, W.w6, color: labelColor)),
               if (c.isFilmed(s))
                 Positioned(
                   right: -12,
@@ -609,14 +638,14 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 c.usePrev(i, k);
               },
         builder: (_, h, _) => Container(
-          height: 34,
+          height: 30,
           alignment: Alignment.center,
-          decoration: BoxDecoration(color: h && pt.isNotEmpty && !s.done ? AppColors.pressed : null, borderRadius: BorderRadius.circular(8)),
+          decoration: BoxDecoration(color: h && pt.isNotEmpty && !s.done ? AppColors.logFieldHover : null, borderRadius: BorderRadius.circular(6)),
           child: pt.isEmpty
               ? Container(width: 16, height: 2.5, decoration: BoxDecoration(color: AppColors.tickOff, borderRadius: BorderRadius.circular(2)))
               : FittedBox(
                   fit: BoxFit.scaleDown,
-                  child: Text(pt, maxLines: 1, style: AppText.s(13, W.w6, color: used || s.done ? AppColors.valPh : AppColors.text2)),
+                  child: Text(pt, maxLines: 1, style: AppText.s(14, W.w4, color: used || s.done ? AppColors.valPh : AppColors.text)),
                 ),
         ),
       ),
@@ -631,13 +660,13 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         },
         builder: (_, h, _) => Container(
           width: 40,
-          height: 34,
+          height: 30,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: s.done ? AppColors.okSolid : (h ? AppColors.pressed : AppColors.sub),
-            borderRadius: BorderRadius.circular(8),
+            color: s.done ? AppColors.logDoneTick : (h ? AppColors.logFieldHover : AppColors.logField),
+            borderRadius: BorderRadius.circular(6),
           ),
-          child: AppIcon(AppIcons.check, size: 19, stroke: 2.6, color: s.done ? AppColors.white : (h ? AppColors.okSolid : AppColors.tickOff)),
+          child: AppIcon(AppIcons.check, size: 18, stroke: 2.4, color: s.done ? AppColors.white : (h ? AppColors.logDoneTick : AppColors.valPh)),
         ),
       ),
     );
@@ -654,18 +683,18 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                   running ? c.stopHold() : c.startHold(i, k);
                 },
                 builder: (_, h, _) => Container(
-                  width: 34,
-                  height: 34,
+                  width: 30,
+                  height: 30,
                   alignment: Alignment.center,
-                  decoration: BoxDecoration(color: running ? AppColors.accent : (h ? AppColors.accentSoft : AppColors.sub), shape: BoxShape.circle),
+                  decoration: BoxDecoration(color: running ? AppColors.accent : (h ? AppColors.accentSoft : AppColors.logField), shape: BoxShape.circle),
                   child: AppIcon(running ? AppIcons.stop : AppIcons.play, size: 15, color: running ? AppColors.white : AppColors.accent),
                 ),
               ),
             );
     }
     final row = Container(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      color: s.done ? AppColors.doneValBg : null,
+      padding: EdgeInsets.symmetric(horizontal: web ? 28 : 14, vertical: 6),
+      color: s.done ? AppColors.logDoneRow : AppColors.white,
       child: _gridRow(c, x, cells: [
         setCell,
         prev,
@@ -727,14 +756,12 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     if (planned == 0 && !running && rested == null) return null;
     final locked = c.ex[i].restLocked;
     final own = s.rest != null;
-    final label = running
-        ? clockText(c.rest)
-        : rested != null && s.done
-            ? 'rested ${clockText(rested)}'
-            : clockText(planned);
+    // after a skip or the end it keeps showing the set's rest, not "rested 0:02" (Probid 17 Nov);
+    // the real rest is still saved for history (G49)
+    final label = running ? clockText(c.rest) : clockText(planned == 0 ? (rested ?? 0) : planned);
     final p = running && c.restMax > 0 ? (c.rest / c.restMax).clamp(0.0, 1.0) : 0.0;
-    final done = rested != null && s.done && !running;
-    final text = own && !running && !done ? '$label · this set' : label;
+    final g = s.done; // on a done set the line is part of the green row, in green (Strong)
+    final text = own && !running ? '$label · this set' : label;
     final bar = Semantics(
       button: true,
       label: running ? 'Rest ${clockText(c.rest)} left, open the rest timer' : 'Rest after set ${c.label(i, k)}: $label',
@@ -749,7 +776,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         },
         // Thin and close to the sets (Probid 16 Nov). While it runs the line itself empties from right to left.
         builder: (_, h, _) => SizedBox(
-          height: 18,
+          height: g ? 24 : 18,
           width: double.infinity,
           child: Stack(alignment: Alignment.center, children: [
             Positioned(
@@ -758,23 +785,24 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(2),
                 child: Stack(children: [
-                  Container(height: running ? 4 : 2, color: running ? AppColors.accentSoft : AppColors.accentRing),
-                  if (running) FractionallySizedBox(widthFactor: p, child: Container(height: 4, color: AppColors.accent)),
+                  Container(height: running ? 4 : 2, color: g ? AppColors.doneValLine : (running ? AppColors.accentSoft : AppColors.accentRing)),
+                  if (running) FractionallySizedBox(widthFactor: p, child: Container(height: 4, color: g ? AppColors.logDoneTick : AppColors.accent)),
                 ]),
               ),
             ),
             Container(
-              height: 16,
+              height: g && running ? 20 : 16,
               constraints: const BoxConstraints(minWidth: 48),
               padding: const EdgeInsets.symmetric(horizontal: 8),
               decoration: BoxDecoration(
-                color: running ? AppColors.accent : (h ? AppColors.accentSoft : AppColors.caBg),
+                color: g ? AppColors.logDoneRow : (running ? AppColors.accent : (h ? AppColors.accentSoft : AppColors.white)),
                 borderRadius: BorderRadius.circular(5),
               ),
               child: Center(
                 widthFactor: 1,
                 child: Text(text,
-                    style: AppText.s(11.5, W.w7, h: 1, color: running ? AppColors.white : (done ? AppColors.muted : AppColors.accentText), tabular: true)),
+                    style: AppText.s(g && running ? 15 : 12, g ? W.w6 : W.w7, h: 1,
+                        color: g ? AppColors.okText : (running ? AppColors.white : AppColors.accentText), tabular: true)),
               ),
             ),
           ]),
@@ -944,16 +972,16 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     final head = c.cols(x)[j];
     if (holdLeft != null) {
       return Container(
-        height: 34,
+        height: 30,
         alignment: Alignment.center,
-        decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.accent)),
+        decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(6), border: Border.all(color: AppColors.accent)),
         child: Text('0:${'$holdLeft'.padLeft(2, '0')}', style: AppText.s(15, W.w8, color: AppColors.accent, tabular: true)),
       );
     }
     if (s.done) {
       return SizedBox(
-        height: 34,
-        child: Center(child: Text(c.fmt(x, j, v ?? ph ?? 0), style: AppText.s(15, W.w7, tabular: true))),
+        height: 30,
+        child: Center(child: Text(c.fmt(x, j, v ?? ph ?? 0), style: AppText.s(16, W.w5, tabular: true))),
       );
     }
     if (web) {
@@ -976,21 +1004,39 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       child: Hover(
         onTap: () => _activate(c, (i, k, j)),
         builder: (_, h, _) => Container(
-          height: 34,
+          height: 30,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: on ? AppColors.white : AppColors.sub,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: on ? AppColors.accent : (h ? AppColors.line2 : Colors.transparent), width: on ? 1.5 : 1),
+            color: on ? AppColors.white : AppColors.logField,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: on ? AppColors.text : (h ? AppColors.line2 : Colors.transparent), width: on ? 1.5 : 1),
           ),
-          child: Text(
+          child: on ? _editing(text, ph == null ? '' : c.fmt(x, j, ph)) : Text(
             text.isNotEmpty ? text : (ph == null ? '' : c.fmt(x, j, ph)),
             maxLines: 1,
-            style: AppText.s(15, W.w7, color: text.isNotEmpty ? AppColors.text : AppColors.valPh, tabular: true),
+            style: AppText.s(16, W.w5, color: text.isNotEmpty ? AppColors.text : AppColors.valPh, tabular: true),
           ),
         ),
       ),
     );
+  }
+
+  /// The box being typed in, like a real text field (Probid 17 Nov): just opened = the value is selected (the first
+  /// key replaces it), then the digits with a blinking cursor after them.
+  Widget _editing(String text, String hint) {
+    final style = AppText.s(16, W.w5, tabular: true);
+    if (_fresh && text.isNotEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        color: AppColors.accentRing,
+        child: Text(text, maxLines: 1, style: style),
+      );
+    }
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      if (text.isNotEmpty) Text(text, maxLines: 1, style: style),
+      const _Caret(),
+      if (text.isEmpty && hint.isNotEmpty) Text(hint, maxLines: 1, style: style.copyWith(color: AppColors.valPh)),
+    ]);
   }
 
   // ─────────────────────────────── Phone keypad (F36)
@@ -2052,9 +2098,9 @@ class _NumBoxState extends State<_NumBox> {
   @override
   Widget build(BuildContext context) {
     final pat = widget.decimal ? (widget.negative ? r'^-?\d{0,4}(\.\d{0,2})?$' : r'^\d{0,4}(\.\d{0,2})?$') : r'^\d{0,4}$';
-    final border = OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.transparent));
+    final border = OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Colors.transparent));
     return SizedBox(
-      height: 34,
+      height: 32,
       child: Semantics(
         label: widget.label,
         textField: true,
@@ -2067,17 +2113,17 @@ class _NumBoxState extends State<_NumBox> {
           textInputAction: TextInputAction.done,
           onChanged: widget.onChanged,
           onSubmitted: (_) => widget.onSubmit(),
-          style: AppText.s(15, W.w7, tabular: true),
+          style: AppText.s(16, W.w5, tabular: true),
           decoration: InputDecoration(
             isDense: true,
             hintText: widget.hint,
-            hintStyle: AppText.s(15, W.w7, color: AppColors.valPh, tabular: true),
+            hintStyle: AppText.s(16, W.w5, color: AppColors.valPh, tabular: true),
             filled: true,
-            fillColor: _f.hasFocus ? AppColors.white : AppColors.sub,
+            fillColor: _f.hasFocus ? AppColors.white : AppColors.logField,
             contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
             border: border,
             enabledBorder: border,
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.accent, width: 1.5)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: AppColors.accent, width: 1.5)),
           ),
         ),
       ),
@@ -2117,6 +2163,31 @@ class _Ring extends CustomPainter {
 
   @override
   bool shouldRepaint(_Ring old) => old.p != p;
+}
+
+/// Blinking text cursor for the logger's own number boxes.
+class _Caret extends StatefulWidget {
+  const _Caret();
+  @override
+  State<_Caret> createState() => _CaretState();
+}
+
+class _CaretState extends State<_Caret> with SingleTickerProviderStateMixin {
+  late final _a = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))..repeat();
+  @override
+  void dispose() {
+    _a.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+        animation: _a,
+        builder: (_, _) => Opacity(
+          opacity: _a.value < .5 ? 1 : 0,
+          child: Container(width: 2, height: 18, margin: const EdgeInsets.symmetric(horizontal: 1), color: AppColors.accent),
+        ),
+      );
 }
 
 /// Rest length: − 1:30 + in 15-second steps (0 = Off, up to 15:00), with quick picks (tracker G44/G45).

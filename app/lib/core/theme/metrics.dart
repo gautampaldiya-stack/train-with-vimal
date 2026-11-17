@@ -20,6 +20,7 @@ abstract final class AppShadows {
   ];
   // Client logger: rest bar on web, bottom bars on phone, rest timer dialog / exercise guide on web.
   static const restBar = [BoxShadow(color: Color(0x2E000000), offset: Offset(0, 8), blurRadius: 24)];
+  static const barDown = [BoxShadow(color: Color(0x1A000000), offset: Offset(0, 2), blurRadius: 6)];
   static const barUp = [BoxShadow(color: Color(0x0F000000), offset: Offset(0, -6), blurRadius: 18)];
   static const dialogBig = [BoxShadow(color: Color(0x33000000), offset: Offset(0, 20), blurRadius: 60)];
   static const guide = [BoxShadow(color: Color(0x40000000), offset: Offset(0, 20), blurRadius: 60)];
