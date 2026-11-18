@@ -461,9 +461,9 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
             Flexible(fit: FlexFit.tight, child: Text(b.sub, textAlign: TextAlign.right, style: AppText.s(12.5, W.w6, color: AppColors.muted))),
           ]),
         ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-          decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
+        // phone: no card box, the list runs edge to edge with a line above, below and between (Strong, Probid 18 Nov)
+        _exBox(
+          phone: context.isPhone,
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             for (final (i, e) in b.items.indexed)
               Hover(
@@ -487,6 +487,20 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
           ]),
         ),
       ]);
+
+  Widget _exBox({required bool phone, required Widget child}) => phone
+      ? CaBleed(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+            decoration: const BoxDecoration(color: AppColors.white, border: Border.symmetric(horizontal: BorderSide(color: AppColors.line))),
+            child: child,
+          ),
+        )
+      : Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
+          child: child,
+        );
 
   // ─────────────────────────────── Running workout
 
