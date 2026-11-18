@@ -127,7 +127,7 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
     return Stack(children: [
       CaPinned(
         // Strong (Probid 18 Nov): the bar keeps only the History icon, the title scrolls with the page
-        head: CaTopBar(actions: [
+        head: CaTopBar(title: 'Train', actions: [
           CaIconBtn(AppIcons.clock, plain: true, tooltip: 'History', onTap: () => showPastWorkouts(context, thisName: d.rest || d.dayName.isEmpty ? null : d.dayName)),
         ]),
         body: RefreshIndicator(

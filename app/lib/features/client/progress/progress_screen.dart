@@ -59,7 +59,7 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
 
   Widget _phone(PxData d) => CaPinned(
     // Strong (Probid 18 Nov): past logs and Log weight as icons in the bar, the title scrolls with the page
-    head: CaTopBar(actions: [
+    head: CaTopBar(title: 'Progress', actions: [
       CaIconBtn(AppIcons.clock, plain: true, tooltip: 'View past logs', onTap: () => context.go('/progress/history')),
       CaIconBtn(AppIcons.plus, plain: true, tooltip: 'Log weight', onTap: () => showLogWeight(context, c, onSaved: (day) => setState(() {
         _tab = 'Weight';
@@ -77,7 +77,13 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
         _goal(d),
         _switch(),
         if (_cmp) _firstVsNow(d),
-        _tabCard(d),
+        // a flick left / right on the card moves Weight ⇄ Body ⇄ Strength (Probid 18 Nov)
+        CaSwipe(
+          index: const ['Weight', 'Body', 'Strength'].indexOf(_tab),
+          count: 3,
+          onPick: (i) => setState(() => _tab = const ['Weight', 'Body', 'Strength'][i]),
+          child: _tabCard(d),
+        ),
         _photos(d),
         _stats(d),
         _adherence(d),

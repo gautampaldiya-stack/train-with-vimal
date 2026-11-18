@@ -92,7 +92,7 @@ class _ClientAboutScreenState extends State<ClientAboutScreen> {
     );
     if (phone) {
       return CaPinned(
-        head: CaTopBar(backTip: 'Back to More', onBack: () => context.go('/more')),
+        head: CaTopBar(title: 'About', backTip: 'Back to More', onBack: () => context.go('/more')),
         body: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [

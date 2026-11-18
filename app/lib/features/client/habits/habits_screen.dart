@@ -66,24 +66,29 @@ class _ClientHabitsScreenState extends State<ClientHabitsScreen> {
   // ─────────────────────────────── Layouts
 
   Widget _phone(HabitsData d) => CaPinned(
-      head: CaTopBar(backTip: 'Back to More', onBack: () => context.go('/more')),
+      head: CaTopBar(title: 'Habits & supplements', backTip: 'Back to More', onBack: () => context.go('/more')),
       body: RefreshIndicator(
         onRefresh: c.load,
         color: AppColors.accent,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-            Padding(padding: const EdgeInsets.only(bottom: 4), child: CaPageTitle('Habits & supplements', sub: d.by)),
-            _tabs(web: false),
-            if (!_week) ...[
-              _strip(d, web: false),
-              _dayLine(d),
-              ..._habitCards(d),
-              _supps(d),
-            ] else
-              ..._weekView(d, two: false),
-          ]),
+          child: CaSwipe(
+            index: _week ? 1 : 0,
+            count: 2,
+            onPick: (i) => setState(() => _week = i == 1),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+              Padding(padding: const EdgeInsets.only(bottom: 4), child: CaPageTitle('Habits & supplements', sub: d.by)),
+              _tabs(web: false),
+              if (!_week) ...[
+                _strip(d, web: false),
+                _dayLine(d),
+                ..._habitCards(d),
+                _supps(d),
+              ] else
+                ..._weekView(d, two: false),
+            ]),
+          ),
         ),
       ));
 
@@ -156,10 +161,16 @@ class _ClientHabitsScreenState extends State<ClientHabitsScreen> {
           ),
         );
     final tabs = [tab('Day', !_week, () => setState(() => _week = false)), tab('Week', _week, () => setState(() => _week = true))];
+    if (!web) return Align(alignment: Alignment.centerLeft, child: _tabTrack(tabs));
+    return _tabTrack(tabs);
+  }
+
+  Widget _tabTrack(List<Widget> tabs) {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(8)),
-      child: Row(mainAxisSize: web ? MainAxisSize.min : MainAxisSize.max, spacing: 4, children: [for (final t in tabs) web ? t : Expanded(child: t)]),
+      // as wide as the labels on the phone too (Probid 18 Nov)
+      child: Row(mainAxisSize: MainAxisSize.min, spacing: 4, children: tabs),
     );
   }
 

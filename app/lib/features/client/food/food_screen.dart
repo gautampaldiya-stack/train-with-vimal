@@ -117,7 +117,7 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
 
   Widget _phone(FoodDay d) => CaPinned(
     // Strong (Probid 18 Nov): the bar keeps only the Log food icon, the title scrolls with the page
-    head: CaTopBar(actions: [CaIconBtn(AppIcons.plus, plain: true, tooltip: 'Log food', onTap: _logFood)]),
+    head: CaTopBar(title: 'Food', actions: [CaIconBtn(AppIcons.plus, plain: true, tooltip: 'Log food', onTap: _logFood)]),
     body: RefreshIndicator(
       onRefresh: c.load,
       color: AppColors.accent,
@@ -129,7 +129,13 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
           _strip(d, web: false),
           ..._left(d),
           _tabs(d),
-          ..._list(d),
+          // a flick left / right switches My plan ⇄ Food log (Probid 18 Nov)
+          CaSwipe(
+            index: c.tab == 'plan' ? 0 : 1,
+            count: 2,
+            onPick: (i) => c.pickTab(i == 0 ? 'plan' : 'log'),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: _list(d)),
+          ),
         ]),
       ),
     ),
@@ -1526,9 +1532,10 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
         decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
         child: rows.isEmpty
-            ? Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Text('Nothing logged on ${d.isToday ? 'today' : fdDay(d.date)}.', textAlign: TextAlign.center, style: AppText.s(13, W.w4, color: AppColors.muted)),
+            ? CaEmpty(
+                icon: AppIcons.food,
+                title: d.isToday ? 'Nothing logged yet today' : 'Nothing logged on ${fdDay(d.date)}',
+                sub: d.isToday ? 'Log a meal from My plan, or use Log food at the top. It shows up here.' : 'Meals and foods you log show up here.',
               )
             // a food logged or deleted grows in / folds away (Phase 5)
             : AnimatedRows(children: [

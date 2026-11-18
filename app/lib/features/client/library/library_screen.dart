@@ -6,7 +6,6 @@ import '../../../core/theme/theme.dart';
 import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/responsive.dart';
-import '../food/food_parts.dart' show FdChip;
 import '../home/home_parts.dart';
 import '../progress/progress_screen.dart' show pxLoading;
 import 'library_model.dart';
@@ -25,8 +24,6 @@ class ClientLibraryScreen extends StatefulWidget {
 class _ClientLibraryScreenState extends State<ClientLibraryScreen> {
   final c = LibraryController();
   final _q = TextEditingController();
-
-  static const _tries = ['squat', 'eating out', 'protein', 'check-in'];
 
   @override
   void initState() {
@@ -65,20 +62,26 @@ class _ClientLibraryScreenState extends State<ClientLibraryScreen> {
   // ─────────────────────────────── Layouts
 
   Widget _phone() => CaPinned(
-      head: CaTopBar(backTip: 'Back to More', onBack: () => context.go('/more')),
+      head: CaTopBar(title: 'Library', backTip: 'Back to More', onBack: () => context.go('/more')),
       body: RefreshIndicator(
         onRefresh: c.load,
         color: AppColors.accent,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-            Padding(padding: const EdgeInsets.only(bottom: 4), child: CaPageTitle('Library', sub: 'Videos, PDFs and guides from ${c.coach}')),
-            _progress(),
-            ..._search(),
-            _filters(phone: true),
-            _list(),
-          ]),
+        // a short list still scrolls a little, so the title can go up into the bar (Probid 18 Nov)
+        child: LayoutBuilder(
+          builder: (_, box) => SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: box.maxHeight + 40),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+                Padding(padding: const EdgeInsets.only(bottom: 4), child: CaPageTitle('Library', sub: 'Videos, PDFs and guides from ${c.coach}')),
+                _progress(),
+                ..._search(),
+                _filters(phone: true),
+                _list(),
+              ]),
+            ),
+          ),
         ),
       ));
 
@@ -166,13 +169,7 @@ class _ClientLibraryScreenState extends State<ClientLibraryScreen> {
             if (c.q.isNotEmpty) CaIconBtn(AppIcons.close, tooltip: 'Clear search', onTap: () => _setQ('')),
           ]),
         ),
-        Pull(
-          top: 4,
-          child: Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 6, runSpacing: 6, children: [
-            Text('Try', style: AppText.s(12, W.w6, color: AppColors.muted)),
-            for (final t in _tries) FdChip(t, height: 26, on: c.q == t, onTap: () => _setQ(c.q == t ? '' : t)),
-          ]),
-        ),
+        // no "Try" quick searches under the box (Probid 18 Nov)
       ];
 
   /// `lb-filt`: phone = six equal chips, no counts; web = chips with counts.
@@ -232,13 +229,22 @@ class _ClientLibraryScreenState extends State<ClientLibraryScreen> {
     ]);
   }
 
-  Widget _list() {
+  Widget _list({bool phone = true}) {
     final items = c.items!;
     if (items.isEmpty) return _empty();
-    return ChCard(padding: const EdgeInsets.fromLTRB(14, 10, 14, 4), gap: 0, children: [
+    final rows = [
       Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(_countLine, style: AppText.s(12, W.w7, color: AppColors.muted))),
       for (final x in items) _row(x),
-    ]);
+    ];
+    if (!phone) return ChCard(padding: const EdgeInsets.fromLTRB(14, 10, 14, 4), gap: 0, children: rows);
+    // phone: the list runs edge to edge like Strong's, no card margin (Probid 18 Nov)
+    return CaBleed(
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+        decoration: const BoxDecoration(color: AppColors.white, border: Border.symmetric(horizontal: BorderSide(color: AppColors.line))),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: rows),
+      ),
+    );
   }
 
   Widget _row(LbItem x) => Semantics(
@@ -247,7 +253,7 @@ class _ClientLibraryScreenState extends State<ClientLibraryScreen> {
         child: Hover(
           onTap: () => _open(x.id),
           builder: (_, h, _) => Container(
-            padding: const EdgeInsets.symmetric(vertical: 10),
+            padding: const EdgeInsets.symmetric(vertical: 8),
             decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
             child: Row(spacing: 11, children: [
               LbThumb(x),
@@ -264,9 +270,11 @@ class _ClientLibraryScreenState extends State<ClientLibraryScreen> {
                     ]),
                     style: AppText.s(14, W.w7, h: 1.3, color: h ? AppColors.accentText : AppColors.text),
                   ),
-                  Text(x.meta, style: AppText.s(12, W.w4, color: AppColors.muted)),
-                  Text(x.source, style: AppText.s(11.5, W.w6, color: AppColors.muted)),
-                  if (x.note.isNotEmpty) LbNoteTag(x.noteBy.isEmpty ? c.coach : x.noteBy),
+                  // no "By Vimal" line and no "Note from …" words: the note icon alone says there is a note (Probid 18 Nov)
+                  Row(spacing: 6, children: [
+                    Flexible(child: Text(x.meta, style: AppText.s(12, W.w4, color: AppColors.muted))),
+                    if (x.note.isNotEmpty) LbNoteTag(x.noteBy.isEmpty ? c.coach : x.noteBy, iconOnly: true),
+                  ]),
                 ]),
               ),
               Column(crossAxisAlignment: CrossAxisAlignment.end, spacing: 6, children: [
@@ -324,13 +332,15 @@ class _ClientLibraryScreenState extends State<ClientLibraryScreen> {
                 padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
                   Text(x.title, style: AppText.s(14, W.w7, h: 1.3, color: h ? AppColors.accentText : AppColors.text)),
-                  Text(x.meta, style: AppText.s(12, W.w4, color: AppColors.muted)),
-                  if (x.note.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 2), child: LbNoteTag(x.noteBy.isEmpty ? c.coach : x.noteBy)),
+                  Row(spacing: 6, children: [
+                    Flexible(child: Text(x.meta, style: AppText.s(12, W.w4, color: AppColors.muted))),
+                    if (x.note.isNotEmpty) LbNoteTag(x.noteBy.isEmpty ? c.coach : x.noteBy, iconOnly: true),
+                  ]),
                   const Spacer(),
                   Padding(
                     padding: const EdgeInsets.only(top: 6),
                     child: Row(spacing: 8, children: [
-                      Expanded(child: Text(x.source, style: AppText.s(11.5, W.w6, color: AppColors.muted))),
+                      const Spacer(),
                       LbMark(on: x.saved, onTap: () => lbToggleSave(context, c, x)),
                     ]),
                   ),

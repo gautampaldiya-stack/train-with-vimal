@@ -18,6 +18,13 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+## 2026-11-18 · Chhote swipe tabs, empty states, Library / PDF / article, sheet close
+- **Pehle:** Tabs poori width ke, swipe nahi; Food log khali par sirf ek line; Library me Try chips, "note from ..." text, "by ..." line; PDF me Download / Save for later, bada Mark as done; article plain text; sheet upar tap se band hote waqt thoda upar jump karta tha; Mark all read icon tha.
+- **Ab:** Tabs text jitne chhote + left/right swipe (CaSwipe: Habits, Check-ins history, Food, Food log, Progress). Food / Food log par CaEmpty. Library me sirf note icon, no source line, Try nahi. PDF pages swipe (PageView), Download / Save for later commented out, chhota Mark as done. Article: headings, bullets, steps, quote, bold/italic. Sheet seedha neeche band (trackSheet tab bar ko sheet jaane ke baad wapas laata). Mark all read text button.
+- **Ab (2):** Scroll par top bar ke neeche shadow, bada title bar me chhota title ban jaata (CaPinned scroll sunta, CaTopBar `title`). Status bar ka gap shell ki jagah har page (router `_statusSafe`): Home par jaate waqt purana page upar nahi khisakta. Bada title scroll ke saath khud upar khisak kar chhota hota aur bar me left me ruk jaata (CaPinned moving title). Shadow sirf title poora bar me aane ke baad, sirf neeche. Title 29 / w600 (Strong), bar me 19; Android edge stretch in pages par band (title katta tha). Library chhoti list bhi scroll, rows chhote. Logger set type ? = beech me card + X. Notifications / Library list phone par edge to edge (CaBleed), andar ki padding pehle jaisi.
+- **Kyun:** Probid (18 Nov), Strong jaisa feel.
+- **Updated:** core/widgets/client.dart, core/theme/metrics.dart (AppShadows.topBar), app/router.dart, app_shell.dart, overlays.dart, more / habits / food / food log / progress / check-ins / library screens, library_sheet.dart, library_model.dart, docs/WORK-TRACKER.md (52s–52z)
+
 ## 2026-11-18 · Strong-style page headers on the phone
 - **Pehle:** Har page ka title + buttons upar fixed header me; bell / gear dabbe (border) wale buttons.
 - **Ab:** Phone par upar sirf top bar: Back (andar ke pages) aur bina box wale icons, tap par gol splash (CaTopBar, CaBarIcon, CaIconBtn plain, ChBell plain). Bada title (CaPageTitle) content ke andar, scroll ke saath upar jaata. Train History, Food Log food, Progress past logs / Log weight, Notifications Mark all read icons ban gaye. Web pehle jaisa. Logger dispose me context nahi.

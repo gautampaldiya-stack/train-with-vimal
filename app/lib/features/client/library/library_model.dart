@@ -26,8 +26,8 @@ class LbItem {
   set done(bool v) => j['done'] = v;
   set saved(bool v) => j['saved'] = v;
 
-  /// "Video · 3:05 · by Aman Verma".
-  String get meta => '${lbKind(kind)} · $length · by $by';
+  /// "Video · 3:05" (no source line, per Probid).
+  String get meta => '${lbKind(kind)} · $length';
 
   // Item sheet (`GET me/library/<id>/`)
   List<String> get body => [for (final p in (j['body'] as List? ?? const [])) '$p'];

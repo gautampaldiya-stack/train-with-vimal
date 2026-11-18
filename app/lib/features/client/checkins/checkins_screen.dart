@@ -107,7 +107,7 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
   // ─────────────────────────────── Layouts
 
   Widget _phone(CheckinsData d) => CaPinned(
-    head: CaTopBar(backTip: 'Back to More', onBack: () => context.go('/more')),
+    head: CaTopBar(title: 'Check-ins', backTip: 'Back to More', onBack: () => context.go('/more')),
     body: RefreshIndicator(
       onRefresh: c.load,
       color: AppColors.accent,
@@ -610,6 +610,16 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
     );
     final rows = c.rows;
     final maxH = context.isPhone ? (MediaQuery.sizeOf(context).height * .6).clamp(320.0, 520.0) : 560.0;
+    // a flick left / right on the card moves Weekly ⇄ Daily (Probid 18 Nov)
+    return CaSwipe(
+      index: c.tab == 'weekly' ? 0 : 1,
+      count: 2,
+      onPick: (i) => c.pickTab(i == 0 ? 'weekly' : 'daily'),
+      child: _historyCard(d, rows, maxH, tab),
+    );
+  }
+
+  Widget _historyCard(CheckinsData d, List rows, double maxH, Widget Function(String, String) tab) {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 4, 14, 6),
       decoration: BoxDecoration(

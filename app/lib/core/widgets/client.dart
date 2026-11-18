@@ -23,33 +23,138 @@ class CaWeb extends InheritedWidget {
 
 /// Page with a fixed header: the title row stays at the top and only the content under it scrolls.
 /// Phone: 16 side padding. Web: 32 side padding and the header is centred to [maxWidth] like the content.
-class CaPinned extends StatelessWidget {
-  const CaPinned({super.key, required this.head, required this.body, this.web = false, this.maxWidth = 1080});
+class CaPinned extends StatefulWidget {
+  const CaPinned({super.key, required this.head, required this.body, this.web = false, this.maxWidth = 1080, this.titleTop = 4});
   final Widget head;
   final Widget body;
   final bool web;
   final double maxWidth;
 
-  /// Phone: [head] is a [CaTopBar] (Back, icons), the title is in [body] (Strong, Probid 18 Nov).
-  bool get _bar => !web && head is CaTopBar;
+  /// Phone: the list's top padding above the [CaPageTitle] (where the moving title starts).
+  final double titleTop;
 
   @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: web
-                ? const EdgeInsets.fromLTRB(32, 32, 32, 14)
-                : _bar
-                    ? const EdgeInsets.fromLTRB(4, 4, 6, 0)
-                    : const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: web
-                ? Center(child: ConstrainedBox(constraints: BoxConstraints(maxWidth: maxWidth), child: head))
-                : head,
+  State<CaPinned> createState() => _CaPinnedState();
+}
+
+class _CaPinnedState extends State<CaPinned> {
+  /// How far the page's own list has scrolled; the [CaTopBar] reads it for its shadow and small title.
+  final _scrolled = ValueNotifier<double>(0);
+
+  /// Phone: the head is a [CaTopBar] (Back, icons), the title is in the body (Strong, Probid 18 Nov).
+  bool get _bar => !widget.web && widget.head is CaTopBar;
+
+  @override
+  void dispose() {
+    _scrolled.dispose();
+    super.dispose();
+  }
+
+  bool _onScroll(ScrollNotification n) {
+    // only the page's own up-down list, not a week strip or a chips row inside it
+    if (n.depth == 0 && n.metrics.axis == Axis.vertical) _scrolled.value = n.metrics.pixels.clamp(0, 400).toDouble();
+    return false;
+  }
+
+  /// Strong (Probid 18 Nov, with screenshots): the big title moves up with the page, one to one, and gets smaller as
+  /// it goes; when it reaches the bar it stays there, small, on the left (next to Back).
+  Widget _movingTitle(String title, double off, {required bool back, required int actions}) {
+    const big = CaPageTitle.size;
+    const endScale = CaPageTitle.barSize / big;
+    final travel = _travel;
+    final p = (off / travel).clamp(0.0, 1.0);
+    // it rides with the page (y one to one) while the size and the step right to Back ease in and out, so the
+    // change looks soft, not stepped (Probid 18 Nov: "thoda smooth")
+    final q = Curves.easeInOut.transform(p);
+    final y = CaTopBar.height + widget.titleTop - travel * p;
+    final scale = 1 - (1 - endScale) * q;
+    // the step right (next to Back) only in the last part, once the title is up at the bar; before that it stays
+    // in line with the line under it
+    final x = 16 + ((back ? 54.0 : 16.0) - 16) * Curves.easeInOut.transform(((p - .35) / .65).clamp(0.0, 1.0));
+    return Stack(children: [
+      Positioned(
+        left: x,
+        top: y,
+        right: 16 + 44.0 * actions * p,
+        child: Transform.scale(
+          scale: scale,
+          alignment: Alignment.topLeft,
+          child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: CaPageTitle.style),
+        ),
+      ),
+    ]);
+  }
+
+  /// How far the page scrolls before its title is fully in the bar: from its place in the page (under the bar, after
+  /// the list's top padding) up to the middle of the bar's 48 px row (which starts 4 down).
+  double get _travel {
+    const endH = CaPageTitle.size * CaPageTitle.lineH * CaPageTitle.barSize / CaPageTitle.size;
+    return CaTopBar.height + widget.titleTop - (4 + 24 - endH / 2);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_bar) {
+      // The bar is painted over the top of the list, so its shadow falls on the content scrolling under it.
+      final bar = widget.head as CaTopBar;
+      final title = bar.title;
+      return Stack(children: [
+        Positioned.fill(
+          top: CaTopBar.height,
+          child: NotificationListener<ScrollNotification>(
+            onNotification: _onScroll,
+            // No Android edge stretch on these pages: it squeezed the page under the bar and cut the big title, or slid
+            // the line under it behind it (Probid 18 Nov). Pull to refresh still works.
+            child: ScrollConfiguration(
+              behavior: ScrollConfiguration.of(context).copyWith(overscroll: false),
+              child: title == null ? widget.body : _CaTitleMoves(scrolled: _scrolled, child: widget.body),
+            ),
           ),
-          Expanded(child: body),
-        ],
-      );
+        ),
+        Positioned(left: 0, right: 0, top: 0, child: _CaBarScroll(scrolled: _scrolled, shadowFrom: bar.title == null ? 0 : _travel, child: bar)),
+        if (title != null)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: ValueListenableBuilder<double>(
+                valueListenable: _scrolled,
+                // at rest the page shows its own title (see CaPageTitle); this one takes over once the page moves
+                builder: (_, off, _) => off > 0 ? _movingTitle(title, off, back: bar.onBack != null, actions: bar.actions.length) : const SizedBox.shrink(),
+              ),
+            ),
+          ),
+      ]);
+    }
+    final web = widget.web;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: web ? const EdgeInsets.fromLTRB(32, 32, 32, 14) : const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: web ? Center(child: ConstrainedBox(constraints: BoxConstraints(maxWidth: widget.maxWidth), child: widget.head)) : widget.head,
+        ),
+        Expanded(child: widget.body),
+      ],
+    );
+  }
+}
+
+/// Tells a [CaPageTitle] inside the page that the bar draws its title (the moving one), so it keeps only its place.
+class _CaTitleMoves extends InheritedWidget {
+  const _CaTitleMoves({required this.scrolled, required super.child});
+  final ValueNotifier<double> scrolled;
+  @override
+  bool updateShouldNotify(_CaTitleMoves old) => old.scrolled != scrolled;
+}
+
+/// Hands the page's scroll offset down to its [CaTopBar].
+class _CaBarScroll extends InheritedWidget {
+  const _CaBarScroll({required this.scrolled, required this.shadowFrom, required super.child});
+  final ValueNotifier<double> scrolled;
+
+  /// The scroll at which the bar's shadow starts: once the moving title is fully in the bar.
+  final double shadowFrom;
+  @override
+  bool updateShouldNotify(_CaBarScroll old) => old.scrolled != scrolled || old.shadowFrom != shadowFrom;
 }
 
 enum CaBtnKind { pri, out, dark }
@@ -160,28 +265,137 @@ class CaBarIcon extends StatelessWidget {
       );
 }
 
+/// An empty list, said nicely: a soft round icon, a bold line and a short muted line, centred (Probid 18 Nov: the
+/// food log said "Nothing logged" in one small grey line).
+class CaEmpty extends StatelessWidget {
+  const CaEmpty({super.key, required this.icon, required this.title, required this.sub});
+  final AppIconData icon;
+  final String title, sub;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            width: 52,
+            height: 52,
+            alignment: Alignment.center,
+            decoration: const BoxDecoration(color: AppColors.sub, shape: BoxShape.circle),
+            child: AppIcon(icon, size: 24, color: AppColors.muted),
+          ),
+          const SizedBox(height: 12),
+          Text(title, textAlign: TextAlign.center, style: AppText.s(15, W.w7)),
+          const SizedBox(height: 4),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 280),
+            child: Text(sub, textAlign: TextAlign.center, style: AppText.s(13, W.w4, color: AppColors.muted, h: 1.4)),
+          ),
+        ]),
+      );
+}
+
+/// A swipe left / right on [child] moves to the next / previous tab (Probid 18 Nov: Habits Day ⇄ Week, Food,
+/// Progress, Past check-ins). Only a quick flick counts, so lists still scroll up and down and inner sliders keep their
+/// own drags.
+class CaSwipe extends StatelessWidget {
+  const CaSwipe({super.key, required this.index, required this.count, required this.onPick, required this.child});
+  final int index, count;
+  final ValueChanged<int> onPick;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onHorizontalDragEnd: (d) {
+          final v = d.primaryVelocity ?? 0;
+          if (v < -350 && index < count - 1) onPick(index + 1);
+          if (v > 350 && index > 0) onPick(index - 1);
+        },
+        child: child,
+      );
+}
+
+/// A text action in a page's top bar ("Mark all read"): blue text, no box, a soft ink splash on tap (Probid 18 Nov).
+class CaBarText extends StatelessWidget {
+  const CaBarText(this.label, {super.key, required this.onTap});
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            onTap: onTap == null ? null : () => OpenGuard.tap() ? onTap!() : null,
+            borderRadius: BorderRadius.circular(10),
+            splashColor: AppColors.line2,
+            highlightColor: AppColors.logField,
+            hoverColor: AppColors.logFieldHover,
+            child: Container(
+              height: 40,
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Text(label, style: AppText.s(13.5, W.w7, color: onTap == null ? AppColors.muted : AppColors.accentText)),
+            ),
+          ),
+        ),
+      );
+}
+
 /// A page's top bar on the phone (Strong): Back on the left when there is one, bare action icons on the right, no
 /// title. The page's title sits in the content under it and scrolls away with it (Probid 18 Nov).
 class CaTopBar extends StatelessWidget {
-  const CaTopBar({super.key, this.onBack, this.backTip = 'Back', this.actions = const []});
+  const CaTopBar({super.key, this.onBack, this.backTip = 'Back', this.actions = const [], this.title});
   final VoidCallback? onBack;
   final String backTip;
   final List<Widget> actions;
 
+  /// The page's title: [CaPinned] moves the big [CaPageTitle] up into the bar as the page scrolls (Strong).
+  final String? title;
+
+  /// 4 top padding + 48 bar.
+  static const height = 52.0;
+
   @override
-  Widget build(BuildContext context) => SizedBox(
-        height: 48,
-        child: Row(children: [
-          if (onBack != null) CaBackBtn(tooltip: backTip, onTap: onBack),
-          const Spacer(),
-          ...actions,
-        ]),
+  Widget build(BuildContext context) {
+    final host = context.dependOnInheritedWidgetOfExactType<_CaBarScroll>();
+    final scrolled = host?.scrolled;
+    final from = host?.shadowFrom ?? 0;
+    // The page title is drawn by [CaPinned]: it moves up with the page into this bar (Strong, Probid 18 Nov).
+    Widget row(double off) => SizedBox(
+          height: 48,
+          child: Row(children: [
+            if (onBack != null) CaBackBtn(tooltip: backTip, onTap: onBack),
+            const Spacer(),
+            ...actions,
+          ]),
+        );
+
+    Widget bar(double off) {
+      // a soft shadow only under the bar, once the title has fully come up into it (Strong, Probid 18 Nov)
+      final s = ((off - from) / 8).clamp(0.0, 1.0);
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.caBg,
+          boxShadow: s == 0 ? null : [for (final b in AppShadows.topBar) b.copyWith(color: b.color.withValues(alpha: b.color.a * s))],
+        ),
+        child: Padding(padding: const EdgeInsets.fromLTRB(4, 4, 6, 0), child: row(off)),
       );
+    }
+
+    if (scrolled == null) return bar(0);
+    return ValueListenableBuilder<double>(valueListenable: scrolled, builder: (_, off, _) => bar(off));
+  }
 }
 
 /// A page's big title and line under it, inside the scrolling content (Strong, Probid 18 Nov).
 class CaPageTitle extends StatelessWidget {
   const CaPageTitle(this.title, {super.key, this.sub, this.trailing});
+
+  /// Size and weight like Strong's page titles: a bit bigger, less bold (Probid 18 Nov).
+  static const size = 29.0, lineH = 1.15, barSize = 19.0;
+  static final style = AppText.s(size, W.w6, ls: -0.4, h: lineH);
   final String title;
   final String? sub;
   final Widget? trailing;
@@ -190,7 +404,19 @@ class CaPageTitle extends StatelessWidget {
   Widget build(BuildContext context) => Row(crossAxisAlignment: CrossAxisAlignment.end, spacing: 10, children: [
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: AppText.s(30, W.w8, ls: -0.4, h: 1.15)),
+            // In a phone page with a top bar, once the page has scrolled the bar draws this title and moves it up into
+            // itself (Strong). At rest it stays here, so Android's stretch at the edge moves it with the page and the
+            // line under it does not slide behind it (Probid 18 Nov).
+            Builder(builder: (context) {
+              final text = Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: style);
+              final moves = context.getInheritedWidgetOfExactType<_CaTitleMoves>();
+              if (moves == null) return text;
+              return ValueListenableBuilder<double>(
+                valueListenable: moves.scrolled,
+                builder: (_, off, child) => Opacity(opacity: off > 0 ? 0 : 1, child: child),
+                child: text,
+              );
+            }),
             if (sub != null && sub!.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 2), child: Text(sub!, style: AppText.s(13, W.w5, color: AppColors.muted))),
           ]),
         ),
@@ -804,4 +1030,45 @@ class RenderPull extends RenderShiftedBox {
     (c.parentData! as BoxParentData).offset = Offset(0, -_top);
     size = constraints.constrain(Size(c.size.width, (c.size.height - _top - _bottom).clamp(0, double.infinity)));
   }
+}
+
+/// Lets a list run to the screen's edges inside a page that keeps [by] px on each side (Strong lists, Probid 18 Nov:
+/// "screen touch honi chahiye list"). Takes the parent's width and lays the child out [by] wider on both sides.
+class CaBleed extends SingleChildRenderObjectWidget {
+  const CaBleed({super.key, this.by = 16, required Widget super.child});
+  final double by;
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderBleed(by);
+  @override
+  void updateRenderObject(BuildContext context, RenderObject renderObject) => (renderObject as _RenderBleed).by = by;
+}
+
+class _RenderBleed extends RenderProxyBox {
+  _RenderBleed(this._by);
+  double _by;
+  set by(double v) {
+    if (v == _by) return;
+    _by = v;
+    markNeedsLayout();
+  }
+
+  @override
+  void performLayout() {
+    final w = constraints.maxWidth + 2 * _by;
+    child!.layout(constraints.copyWith(minWidth: w, maxWidth: w), parentUsesSize: true);
+    size = constraints.constrain(Size(constraints.maxWidth, child!.size.height));
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) => context.paintChild(child!, offset - Offset(_by, 0));
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) => result.addWithPaintOffset(
+        offset: Offset(-_by, 0),
+        position: position,
+        hitTest: (r, p) => child!.hitTest(r, position: p),
+      );
+
+  @override
+  void applyPaintTransform(RenderBox child, Matrix4 transform) => transform.translateByDouble(-_by, 0, 0, 1);
 }

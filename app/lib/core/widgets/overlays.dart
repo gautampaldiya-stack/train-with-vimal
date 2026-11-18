@@ -827,7 +827,9 @@ class _ToastBox extends StatelessWidget {
 /// Counts a phone bottom sheet as open until it closes (see [ToastHost.sheets]).
 Future<T?> trackSheet<T>(Future<T?> sheet) {
   Timer.run(() => ToastHost.sheets.value += 1);
-  return sheet.whenComplete(() => Timer.run(() {
+  // Counted down only once the sheet has slid away: the tab bar comes back when the count is 0, and the page under
+  // the sheet got shorter at once, so a closing sheet first jumped up by the bar's height (Probid 18 Nov).
+  return sheet.whenComplete(() => Future.delayed(Motion.short + const Duration(milliseconds: 40), () {
         ToastHost.sheets.value = math.max(0, ToastHost.sheets.value - 1);
         if (ToastHost.sheets.value == 0) ToastHost.sheetH.value = 0;
       }));

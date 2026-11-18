@@ -303,6 +303,15 @@ final appRouter = GoRouter(
 /// that is not a tab (Habits, Check-ins) counts as right of the tabs. Wider screens keep the short fade with a small
 /// rise. Nothing moves when the phone asks for no animations. A change of the query only (a tab inside a page) keeps
 /// the page, so it does not animate again.
+/// Each page keeps its own status bar inset. Client Home and the trainer dashboard run their hero under the status
+/// bar; every other page starts below it. It was set by the shell for the current location, so the page sliding out
+/// to Home lost its inset at once and jumped up under the status bar (Probid 18 Nov).
+Widget _statusSafe(GoRouterState st, Widget child) {
+  final role = Services.session.me?.role;
+  final hero = st.matchedLocation == '/home' || (role == Role.trainer && st.matchedLocation == '/dashboard');
+  return SafeArea(top: !hero, bottom: false, left: false, right: false, child: child);
+}
+
 Page<void> _page(GoRouterState st, Widget child) {
   final sub = st.uri.pathSegments.length > 1;
   if (!sub) _tabMove(st);
@@ -310,7 +319,7 @@ Page<void> _page(GoRouterState st, Widget child) {
     // one key per place: go_router's own key is the pattern (`/:section`), so every tab was the same page and a tab
     // change swapped it in place with no transition at all (the blink, Probid 18 Nov)
     key: ValueKey(st.matchedLocation),
-    child: child,
+    child: _statusSafe(st, child),
     transitionDuration: Motion.page,
     reverseTransitionDuration: sub ? Motion.pageBack : Motion.page,
     transitionsBuilder: (context, a, under, child) {

@@ -1545,16 +1545,47 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         ]));
   }
 
-  void _tip(BuildContext anchor, String title, String text) => _popover(anchor,
-      width: 260,
-      right: true,
-      builder: (ctx, close) => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 4, children: [
-              Text(title, style: AppText.s(13.5, W.w8)),
-              Text(text, style: AppText.s(12.5, W.w5, color: AppColors.text2, h: 1.45)),
-            ]),
-          ));
+  /// The ? next to a set type: a small card in the middle of the screen with an X to close, like Strong
+  /// (Probid 18 Nov). Tapping outside closes it too.
+  void _tip(BuildContext anchor, String title, String text) {
+    if (!OpenGuard.tap()) return;
+    showGeneralDialog<void>(
+      context: anchor,
+      barrierDismissible: true,
+      barrierLabel: 'Close',
+      barrierColor: AppColors.scrimModal,
+      transitionDuration: Motion.short,
+      pageBuilder: (ctx, _, _) => Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 340),
+            child: Material(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(16),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 8, 20),
+                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Expanded(child: Text(title, style: AppText.s(17, W.w7))),
+                    CaBarIcon(tooltip: 'Close', onTap: () => Navigator.of(ctx).pop(), icon: const AppIcon(AppIcons.close, size: 20, color: AppColors.text)),
+                  ]),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: Text(text, style: AppText.s(14, W.w4, color: AppColors.text2, h: 1.5)),
+                  ),
+                ]),
+              ),
+            ),
+          ),
+        ),
+      ),
+      transitionBuilder: (_, a, _, child) {
+        final c = CurvedAnimation(parent: a, curve: Motion.curve);
+        return FadeTransition(opacity: c, child: ScaleTransition(scale: Tween(begin: .96, end: 1.0).animate(c), child: child));
+      },
+    );
+  }
 
   /// Form video (F41): record or pick a clip for this set; it is sent to the coach when the workout is finished.
   void _formVideo(BuildContext anchor, WorkoutController c, int i, int k) {

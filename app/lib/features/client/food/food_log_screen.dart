@@ -594,6 +594,12 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     }),
   );
 
+  void _pickTab(int i) {
+    _tab = const ['All', 'Recent', 'My foods'][i];
+    _all = false;
+    _search();
+  }
+
   Widget _top() => Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
     Padding(padding: const EdgeInsets.only(top: 2), child: CaBackBtn(tooltip: 'Back to meal plan', onTap: _leave)),
     Expanded(
@@ -829,13 +835,13 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
       TwoTabs(
         labels: const ['All', 'Recent', 'My foods'],
         index: const ['All', 'Recent', 'My foods'].indexOf(_tab),
-        onPick: (i) {
-          _tab = const ['All', 'Recent', 'My foods'][i];
-          _all = false;
-          _search();
-        },
+        onPick: _pickTab,
       ),
-      if (scroll) Flexible(child: _listCard(scroll: true)) else _listCard(),
+      // a flick left / right moves between the tabs (Probid 18 Nov)
+      if (scroll)
+        Flexible(child: CaSwipe(index: const ['All', 'Recent', 'My foods'].indexOf(_tab), count: 3, onPick: _pickTab, child: _listCard(scroll: true)))
+      else
+        CaSwipe(index: const ['All', 'Recent', 'My foods'].indexOf(_tab), count: 3, onPick: _pickTab, child: _listCard()),
     ];
   }
 
@@ -865,14 +871,13 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
         else if (_error != null)
           Padding(padding: const EdgeInsets.symmetric(vertical: 12), child: Text(_error!, textAlign: TextAlign.center, style: AppText.s(13, W.w4, color: AppColors.muted)))
         else if (_foods.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Text(
-              q.isNotEmpty ? 'Nothing found. Try Quick add or create a custom food.' : (_tab == 'My foods' ? 'You have not created a food yet.' : 'No foods here yet.'),
-              textAlign: TextAlign.center,
-              style: AppText.s(13, W.w4, color: AppColors.muted),
-            ),
-          )
+          q.isNotEmpty
+              ? CaEmpty(icon: AppIcons.search, title: 'Nothing found for "$q"', sub: 'Check the spelling, or use Quick add or create a custom food.')
+              : _tab == 'My foods'
+                  ? const CaEmpty(icon: AppIcons.food, title: 'No foods of your own yet', sub: 'Foods you create show up here, ready to log again.')
+                  : _tab == 'Recent'
+                      ? const CaEmpty(icon: AppIcons.clock, title: 'Nothing logged recently', sub: 'Foods you log show up here, so you can add them again in one tap.')
+                      : const CaEmpty(icon: AppIcons.food, title: 'No foods here yet', sub: 'Search above to find a food.')
         else
           for (final f in rows) _foodRow(f, _sel.any((x) => x.food == f.id) || added.any((e) => '${e.j['food']}' == f.id)),
         if (!showAll && _count > 8 && _error == null)

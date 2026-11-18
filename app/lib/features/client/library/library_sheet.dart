@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -65,10 +66,15 @@ class LbThumb extends StatelessWidget {
 
 /// `lb-nt`: "Note from Aman".
 class LbNoteTag extends StatelessWidget {
-  const LbNoteTag(this.coach, {super.key});
+  const LbNoteTag(this.coach, {super.key, this.iconOnly = false});
   final String coach;
+
+  /// Only the note icon (the Library list, Probid 18 Nov).
+  final bool iconOnly;
   @override
-  Widget build(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, spacing: 4, children: [
+  Widget build(BuildContext context) => iconOnly
+      ? Semantics(label: 'Note from $coach', child: AppIcon(AppIcons.doc, size: 14, color: AppColors.amberDeep))
+      : Row(mainAxisSize: MainAxisSize.min, spacing: 4, children: [
         AppIcon(AppIcons.doc, size: 13, color: AppColors.amberDeep),
         Flexible(child: CutText('Note from $coach', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w7, color: AppColors.amberDeep))),
       ]);
@@ -154,36 +160,38 @@ Future<void> showLibraryItem(BuildContext context, LibraryController c, String i
   await showAppSheet(
     context,
     title: x.title,
-    sub: '${lbKind(x.kind)} · ${x.length} · ${x.source}',
+    sub: '${lbKind(x.kind)} · ${x.length}', // no "By Vimal" (Probid 18 Nov)
     webWidth: 600,
     footerStretch: true,
     listen: c,
     builder: (_) => _ItemView(c: c, x: x),
     footer: (ctx) => [
-      Row(spacing: 8, children: [
-        Expanded(
-          child: _SheetBtn(
-            x.saved ? 'Saved' : 'Save for later',
-            icon: AppIcons.bookmark,
-            fill: x.saved,
-            bg: x.saved ? AppColors.accentSoft : null,
-            line: x.saved ? AppColors.accentRing : null,
-            fg: x.saved ? AppColors.accentText : AppColors.text,
-            iconColor: x.saved ? AppColors.accentText : AppColors.text,
-            onTap: () => lbToggleSave(ctx, c, x),
-          ),
-        ),
-        Expanded(
-          child: x.done
-              ? _SheetBtn('Done · undo', icon: AppIcons.check, fg: AppColors.okText, iconColor: AppColors.okSolid, stroke: 2.6, onTap: () => lbToggleDone(ctx, c, x))
-              : CaButton('Mark as done', icon: AppIcons.check, onPressed: () => lbToggleDone(ctx, c, x)),
-        ),
-      ]),
+      // Save for later is off for now (Probid 18 Nov); Mark as done is a small button on the right.
+      // Expanded(
+      //   child: _SheetBtn(
+      //     x.saved ? 'Saved' : 'Save for later',
+      //     icon: AppIcons.bookmark,
+      //     fill: x.saved,
+      //     bg: x.saved ? AppColors.accentSoft : null,
+      //     line: x.saved ? AppColors.accentRing : null,
+      //     fg: x.saved ? AppColors.accentText : AppColors.text,
+      //     iconColor: x.saved ? AppColors.accentText : AppColors.text,
+      //     onTap: () => lbToggleSave(ctx, c, x),
+      //   ),
+      // ),
+      Align(
+        alignment: Alignment.centerRight,
+        child: x.done
+            ? CaButton('Done · undo', kind: CaBtnKind.out, icon: AppIcons.check, small: true, expand: false, onPressed: () => lbToggleDone(ctx, c, x))
+            : CaButton('Mark as done', icon: AppIcons.check, small: true, expand: false, onPressed: () => lbToggleDone(ctx, c, x)),
+      ),
     ],
   );
 }
 
 /// Outline `ca-btn` with its own colours (lb-on / lb-ok).
+// kept for Save for later, which is commented out above (Probid 18 Nov)
+// ignore_for_file: unused_element, unused_element_parameter
 class _SheetBtn extends StatelessWidget {
   const _SheetBtn(this.label, {required this.icon, required this.onTap, this.bg, this.line, this.fg = AppColors.text, this.iconColor = AppColors.text, this.fill = false, this.stroke = 1.8});
   final String label;
@@ -266,38 +274,83 @@ class _ItemView extends StatelessWidget {
       );
 }
 
-/// `lb-art`: the guide's text, set for reading: 15 / 1.7, at most ~70 characters a line on wide screens.
-/// A paragraph that starts with "## " is a heading and lines that start with "- " are bullets.
+/// `lb-art`: the guide's text, set for reading (Probid 18 Nov: it looked plain). 16 / 1.65 body at most ~70
+/// characters a line, the first paragraph a little larger as a lead, and light markdown: "# " / "## " / "### "
+/// headings, "- " or "* " bullets, "1. " numbered steps, "> " a quote with a blue bar, **bold** and *italic* inside a
+/// line.
 class _ArticleBody extends StatelessWidget {
   const _ArticleBody(this.paras);
   final List<String> paras;
 
-  static final _p = AppText.s(15, W.w5, color: AppColors.text, h: 1.7);
+  static final _p = AppText.s(15.5, W.w4, color: AppColors.text2, h: 1.65);
+  static final _lead = AppText.s(17, W.w5, color: AppColors.text, h: 1.55);
+
+  /// **bold** and *italic* inside a line.
+  static TextSpan _inline(String t, TextStyle base) {
+    final out = <TextSpan>[];
+    final re = RegExp(r'\*\*(.+?)\*\*|\*(.+?)\*');
+    var at = 0;
+    for (final m in re.allMatches(t)) {
+      if (m.start > at) out.add(TextSpan(text: t.substring(at, m.start)));
+      out.add(m.group(1) != null
+          ? TextSpan(text: m.group(1), style: const TextStyle(fontWeight: W.w7, color: AppColors.text))
+          : TextSpan(text: m.group(2), style: const TextStyle(fontStyle: FontStyle.italic)));
+      at = m.end;
+    }
+    if (at < t.length) out.add(TextSpan(text: t.substring(at)));
+    return TextSpan(style: base, children: out);
+  }
+
+  static bool _all(String p, bool Function(String) f) => p.split('\n').every(f);
+  static final _num = RegExp(r'^\d+[.)] ');
+
+  Widget _bullets(List<String> lines, {required bool numbered}) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
+        for (final (k, l) in lines.indexed)
+          Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
+            numbered
+                ? Container(
+                    width: 22,
+                    height: 22,
+                    margin: const EdgeInsets.only(top: 2),
+                    alignment: Alignment.center,
+                    decoration: const BoxDecoration(color: AppColors.accentSoft, shape: BoxShape.circle),
+                    child: Text('${k + 1}', style: AppText.s(11.5, W.w8, color: AppColors.accentText)),
+                  )
+                : Container(width: 6, height: 6, margin: const EdgeInsets.only(top: 10, left: 4, right: 2), decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle)),
+            Expanded(child: Text.rich(_inline(numbered ? l.replaceFirst(_num, '') : l.substring(2), _p))),
+          ]),
+      ]);
 
   @override
   Widget build(BuildContext context) => Align(
         alignment: Alignment.topLeft,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 620),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [
-            for (final p in paras)
-              if (p.startsWith('## '))
-                Padding(padding: const EdgeInsets.only(top: 4), child: Text(p.substring(3), style: AppText.s(16.5, W.w8, h: 1.35)))
-              else if (p.split('\n').every((l) => l.startsWith('- ')))
-                Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
-                  for (final l in p.split('\n'))
-                    Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
-                      Container(
-                        width: 6,
-                        height: 6,
-                        margin: const EdgeInsets.only(top: 10),
-                        decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle),
-                      ),
-                      Expanded(child: Text(l.substring(2), style: _p)),
-                    ]),
-                ])
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 16, children: [
+            for (final (n, p) in paras.indexed)
+              if (p.startsWith('### '))
+                Text(p.substring(4), style: AppText.s(15.5, W.w8, h: 1.35))
+              else if (p.startsWith('## ') || p.startsWith('# '))
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(p.substring(p.indexOf(' ') + 1), style: AppText.s(p.startsWith('# ') ? 20 : 18, W.w8, ls: -0.2, h: 1.3)),
+                )
+              else if (_all(p, (l) => l.startsWith('- ') || l.startsWith('* ')))
+                _bullets(p.split('\n'), numbered: false)
+              else if (_all(p, (l) => _num.hasMatch(l)))
+                _bullets(p.split('\n'), numbered: true)
+              else if (p.startsWith('> '))
+                Container(
+                  padding: const EdgeInsets.fromLTRB(14, 10, 12, 10),
+                  decoration: const BoxDecoration(
+                    color: AppColors.accentSoft,
+                    border: Border(left: BorderSide(color: AppColors.accent, width: 3)),
+                    borderRadius: BorderRadius.horizontal(right: Radius.circular(8)),
+                  ),
+                  child: Text.rich(_inline(p.split('\n').map((l) => l.startsWith('> ') ? l.substring(2) : l).join('\n'), AppText.s(15, W.w5, color: AppColors.text, h: 1.55))),
+                )
               else
-                Text(p, style: _p),
+                Text.rich(_inline(p, n == 0 ? _lead : _p)),
           ]),
         ),
       );
@@ -427,6 +480,20 @@ class _Pdf extends StatefulWidget {
 class _PdfState extends State<_Pdf> {
   int pg = 0;
 
+  /// The pages slide under the finger, left / right (Probid 18 Nov); the arrows move it too.
+  final _pages = PageController();
+
+  @override
+  void dispose() {
+    _pages.dispose();
+    super.dispose();
+  }
+
+  void _go(int to) {
+    setState(() => pg = to);
+    if (_pages.hasClients) _pages.animateToPage(to, duration: const Duration(milliseconds: 260), curve: Curves.easeOutCubic);
+  }
+
   @override
   Widget build(BuildContext context) {
     final x = widget.x;
@@ -438,22 +505,39 @@ class _PdfState extends State<_Pdf> {
       Container(
         padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
         decoration: const BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.vertical(top: Radius.circular(12))),
-        child: pics.isNotEmpty ? _picture(x, pics, i) : _outline(x, i),
+        child: pics.isNotEmpty
+            ? _pager(x, pics)
+            : CaSwipe(index: i, count: count, onPick: _go, child: _outline(x, i)),
       ),
       Padding(
         padding: const EdgeInsets.only(top: 8),
         child: Row(spacing: 8, children: [
-          Opacity(opacity: i > 0 ? 1 : .4, child: CaIconBtn(AppIcons.chevronLeft, tooltip: 'Previous page', onTap: i > 0 ? () => setState(() => pg = i - 1) : null)),
+          Opacity(opacity: i > 0 ? 1 : .4, child: CaIconBtn(AppIcons.chevronLeft, tooltip: 'Previous page', onTap: i > 0 ? () => _go(i - 1) : null)),
           Expanded(child: Text('Page ${i + 1} of $count', textAlign: TextAlign.center, style: AppText.s(12.5, W.w7, color: AppColors.text2))),
           Opacity(
             opacity: i < count - 1 ? 1 : .4,
-            child: CaIconBtn(AppIcons.chevronRight, tooltip: 'Next page', onTap: i < count - 1 ? () => setState(() => pg = i + 1) : null),
+            child: CaIconBtn(AppIcons.chevronRight, tooltip: 'Next page', onTap: i < count - 1 ? () => _go(i + 1) : null),
           ),
-          CaButton('Download', kind: CaBtnKind.out, small: true, expand: false, icon: AppIcons.downloadLine, onPressed: () => _download(context, x, 'Downloaded', '${x.fileName} · saved to your files')),
+          // Download is off for now (Probid 18 Nov)
+          // CaButton('Download', kind: CaBtnKind.out, small: true, expand: false, icon: AppIcons.downloadLine, onPressed: () => _download(context, x, 'Downloaded', '${x.fileName} · saved to your files')),
         ]),
       ),
     ]);
   }
+
+  /// All pages side by side: a swipe moves to the next / previous one.
+  Widget _pager(LbItem x, List<String> pics) => LayoutBuilder(builder: (context, box) {
+        final h = math.min(CaWeb.of(context) ? 440.0 : 500.0, box.maxWidth * 1.414);
+        return SizedBox(
+          height: h,
+          child: PageView.builder(
+            controller: _pages,
+            itemCount: pics.length,
+            onPageChanged: (p) => setState(() => pg = p),
+            itemBuilder: (_, p) => _picture(x, pics, p),
+          ),
+        );
+      });
 
   /// The real page (drawn by the server), tap for full screen with zoom and swipe.
   Widget _picture(LbItem x, List<String> pics, int i) => Semantics(

@@ -410,6 +410,20 @@ E51. ✅ Admin/trainer client Logs (Daily, Weekly, Habits, Supplements) aur clie
 52p. ✅ Strong jaisa header (phone): upar sirf Back + bina box wale icons (tap par splash), page ka bada title content ke andar scroll ke saath. More, Notifications, Profile, Activity, Train, Food, Progress, Habits, Check-ins, Library, About. Train History, Food Log food, Progress past logs / Log weight, Mark all read ab icons (Probid 18 Nov).
 52q. ✅ Debug: logger band hone par "Null check operator" (dispose me MediaQuery) fix (Probid 18 Nov).
 52r. ✅ Back button: chevron "<" ki jagah poora ← arrow, bina box, tap par splash, har sub page (Probid 18 Nov).
+52s. ✅ Mark all read: icon nahi, text button (bina box), tap par splash (Probid 18 Nov).
+52t. ✅ Chhote tabs (text jitni width) + left/right swipe se tab badle: Habits Day/Week, Check-ins past check-ins, Food My plan / Food log, Food log page, Progress weight/body (Probid 18 Nov).
+52u. ✅ Food log khali ho to accha empty state (icon + title + line), Food page aur Food log page dono (Probid 18 Nov).
+52v. ✅ Library: 'Try' quick chips hataye, list me "note from ..." text nahi sirf icon, "by Vimal / Aman" line hataye (Probid 18 Nov).
+52w. ✅ PDF sheet: pages haath se left/right swipe; Download aur Save for later comment out; Mark as done chhota button (Probid 18 Nov).
+52x. ✅ Article text sundar: lead para, headings, bullets, numbered steps, quote, bold/italic (Probid 18 Nov).
+52y. ✅ Sheet upar tap se band karte waqt thoda upar jaake band hota tha: tab bar sheet jaane ke baad wapas aata hai, ab seedha neeche band (Probid 18 Nov).
+52z. ⬜ App khula ho tab phone notification bhi dikhana (abhi sirf in-app toast) — Probid ka jawab baaki. Library 'Saved' filter rakhna ya nahi — Probid ka jawab baaki.
+53a. ✅ Phone pages: scroll par top bar ke neeche halki shadow; bada page title scroll ke saath bar me chhota title ban jaata (Strong) (Probid 18 Nov).
+53b. ✅ Kisi page se Home jaate waqt jaata hua page upar status bar ke neeche khisak jaata tha: ab har page apna status bar gap khud rakhta hai (Probid 18 Nov).
+53c. ✅ Notifications aur Library list phone par screen ke edge tak (card margin nahi, sirf upar-neeche line, CaBleed); andar ki padding pehle jaisi. Page ka bada title scroll ke saath 1:1 upar khisakta aur chhota hota, bar me pahunch kar left me ruk jaata (Strong History jaisa, Probid 18 Nov).
+53d. ✅ Top bar shadow sirf jab title poora bar me aa jaaye, sirf neeche; title 29, kam bold (Strong); Android edge stretch in pages par band, smooth (size / side ka step ease); sub line content me hi (Probid 18 Nov).
+53e. ✅ Library: chhoti list bhi scroll hoti (title bar me jaa sake), list rows thode chhote (Probid 18 Nov).
+53f. ✅ Logger set type (Warm up / Drop set / Failure) ka ? ab beech me card, X se band (Strong) (Probid 18 Nov).
 51l. ⏸️ Baad me (Probid 17 Nov: "abhi nahi"): exercises ke beech ka rest. Coach plan me do exercises ke beech rest rakhe; tab last set ke baad exercise ka rest nahi, ye beech wala chale.
 51a. ⬜ Kal ka workout (Food jaisa, Probid 17 Nov): week strip me kal chuno to kal ka workout log kar sake (chhoot gaya ho to) ya kal ka kiya hua edit kar sake. Usse purane din sirf dekh sakte.
 52. ⬜ Editable: exercises, sets, weight, reps, set type, rest timers, start aur end time.

@@ -161,7 +161,9 @@ class _AppShellState extends State<AppShell> {
       // Toasts sit 10 above the bar, measured (it grows with the phone's bottom inset); the host adds that inset
       // itself, so it is taken off here. Before, a fixed 75 left a gap that changed from phone to phone.
       final inset = MediaQuery.paddingOf(context).bottom;
-      final top = !(isClient ? widget.location == '/home' : me.role == Role.trainer && widget.location == '/dashboard');
+      // The status bar inset is kept by each page itself (router `_page`), not here: when it changed with the location,
+      // the page sliding out to Home jumped up under the status bar (Probid 18 Nov).
+      const top = false;
       if (isClient) {
         // Client phone: the workout logger is one panel over the page, under the tab bar (Strong, Probid 17 Nov).
         return Scaffold(

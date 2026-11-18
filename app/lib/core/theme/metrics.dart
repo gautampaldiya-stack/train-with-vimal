@@ -10,6 +10,8 @@ abstract final class AppRadius {
 }
 
 abstract final class AppShadows {
+  /// Under a phone page's top bar once the page has scrolled (Probid 18 Nov).
+  static const topBar = [BoxShadow(color: Color(0x1F171717), offset: Offset(0, 3), blurRadius: 6, spreadRadius: -2)];
   /// Phone: the left edge of a page sliding in over another page.
   static const pageEdge = [BoxShadow(color: Color(0x1F171717), offset: Offset(-2, 0), blurRadius: 16)];
   static const menu = [

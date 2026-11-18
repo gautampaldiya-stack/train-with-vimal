@@ -124,13 +124,13 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
         ]),
       ),
     );
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(4, 4, 6, 0),
-        child: CaTopBar(onBack: h.onBack, backTip: 'Back to More', actions: h.actions),
-      ),
-      Expanded(child: list),
-    ]);
+    // keyed by view: Profile / Notifications / Activity each start with the bar flat and no small title
+    return CaPinned(
+      key: ValueKey(_view),
+      titleTop: 2,
+      head: CaTopBar(title: h.title, onBack: h.onBack, backTip: 'Back to More', actions: h.actions),
+      body: list,
+    );
   }
 
   /// A pull to refresh is running: the notifications list shows two skeleton rows on top until the new page is in
@@ -621,7 +621,7 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
       Opacity(
         opacity: d.unread > 0 ? 1 : 0.45,
         // phone top bar: a bare icon like the gear (Strong, Probid 18 Nov)
-        child: web ? chSm('Mark all read', readAll, icon: AppIcons.check) : CaIconBtn(AppIcons.checkCircle, plain: true, tooltip: 'Mark all read', onTap: readAll),
+        child: web ? chSm('Mark all read', readAll, icon: AppIcons.check) : CaBarText('Mark all read', onTap: readAll),
       ),
       web
           ? SizedBox(width: 34, height: 34, child: CaIconBtn(AppIcons.gear, tooltip: 'Notification settings', onTap: () => showReminderSheet(context, c)))
@@ -640,15 +640,15 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
                     ? moEmpty('All caught up', 'You have read everything. New notifications show up here.', icon: AppIcons.check)
                     : moEmpty('No notifications', 'Reminders and updates from ${d.coachFirst} show up here.'),
               ])
-            : Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
+            : _noticeBox(
+                web: web,
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   if (_pulling) const Skeleton(child: Column(children: [SkelRow(first: true), SkelRow()])),
                   for (final (i, n) in list.indexed) _noticeRow(n, first: i == 0 && !_pulling, last: i == list.length - 1),
                   if (c.loadingMore) const Padding(padding: EdgeInsets.all(12), child: Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent)))),
                 ]),
               );
+
     if (web) {
       return [
         Row(spacing: 12, children: [SizedBox(width: 280, child: tabs), const Spacer(), ...actions.expand((a) => [a, const SizedBox(width: 6)]).take(3)]),
@@ -657,6 +657,22 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
     }
     return [_pageHead('Notifications', sub, actions: [actions[0], actions[1]]), tabs, body];
   }
+
+  /// Web: the white card. Phone: the list runs edge to edge like Strong's, only a line above and below (Probid 18 Nov:
+  /// "margin hatao, screen touch honi chahiye list").
+  Widget _noticeBox({required bool web, required Widget child}) => web
+      ? Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
+          child: child,
+        )
+      : CaBleed(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: const BoxDecoration(color: AppColors.white, border: Border.symmetric(horizontal: BorderSide(color: AppColors.line))),
+            child: child,
+          ),
+        );
 
   Widget _noticeRow(MoNotice n, {required bool first, required bool last}) {
     final (ic, tone) = noticeLook(n.event);
