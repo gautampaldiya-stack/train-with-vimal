@@ -1,3 +1,4 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -31,7 +32,7 @@ class PlanEvent {
   final String client, kind; // kind: edit · dup
 }
 
-class PlanEvents extends ChangeNotifier {
+class PlanEvents extends SafeNotifier {
   PlanEvents._();
   static final instance = PlanEvents._();
   PlanEvent? last;

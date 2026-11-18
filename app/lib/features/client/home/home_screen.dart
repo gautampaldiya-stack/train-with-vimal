@@ -356,12 +356,12 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
   /// inside the card work as before. The old "Edit home" button at the bottom of Home is gone (Probid 2026-11-04).
   Widget? _held(Widget? card, HomeData d) => card == null
       ? null
-      : _HeldCard(onLongPress: () => _askEdit(d), onSecondaryTap: () => _setEdit([...d.layout]), child: card);
+      : _HeldCard(onLongPress: () => _askEdit(d), onSecondaryTap: () => _setEdit([...d.shownLayout]), child: card);
 
   void _askEdit(HomeData d) {
     if (_edit != null || _ask) return;
     HapticFeedback.mediumImpact();
-    if (!context.isPhone) return _setEdit([...d.layout]); // no bottom tabs on the web: straight to Edit home
+    if (!context.isPhone) return _setEdit([...d.shownLayout]); // no bottom tabs on the web: straight to Edit home
     setState(() => _ask = true);
     hideBottomBar.value = true;
   }
@@ -394,7 +394,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
           CaButton('Cancel', kind: CaBtnKind.out, expand: false, onPressed: _closeAsk),
           CaButton('Edit home', expand: false, onPressed: () {
             setState(() => _ask = false);
-            _setEdit([...d.layout]);
+            _setEdit([...d.shownLayout]);
           }),
         ]),
       );
@@ -414,33 +414,42 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
         ]),
       );
 
-  /// Add card: the cards taken off Home, each with what it shows.
-  void _addCard(List<String> off) => showAppSheet(
+  /// Add card: every card that fits, the ones on Home ticked; a tap puts a card on or takes it off (Probid 18 Nov:
+  /// the default Check-ins card shows ticked here and can be unticked).
+  void _addCard(List<String> all) => showAppSheet(
         context,
         title: 'Add card',
-        sub: 'Pick a card to put back on Home',
-        builder: (ctx) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          for (final (i, k) in off.indexed)
-            Hover(
-              onTap: () {
-                Navigator.of(ctx).pop();
-                setState(() => _edit!.add(k));
-              },
-              builder: (_, h, _) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
-                decoration: BoxDecoration(
-                  color: h ? AppColors.sub : null,
-                  border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line)),
-                ),
-                child: Row(spacing: 12, children: [
-                  ChIcon(_cardIcon[k]!.$1, tone: _cardIcon[k]!.$2),
-                  Expanded(child: ChTwoLine(homeCards[k]!, _cardSub[k]!)),
-                  const AppIcon(AppIcons.plus, size: 18, color: AppColors.accentText),
-                ]),
-              ),
-            ),
-        ]),
+        sub: 'Pick the cards to show on Home',
+        builder: (ctx) => StatefulBuilder(
+          builder: (ctx, set) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            for (final (i, k) in all.indexed)
+              Builder(builder: (_) {
+                final on = _edit!.contains(k);
+                return Hover(
+                  onTap: () {
+                    setState(() => on ? _edit!.remove(k) : _edit!.add(k));
+                    set(() {});
+                  },
+                  builder: (_, h, _) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: h ? AppColors.sub : null,
+                      border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line)),
+                    ),
+                    child: Row(spacing: 12, children: [
+                      ChIcon(_cardIcon[k]!.$1, tone: _cardIcon[k]!.$2),
+                      Expanded(child: ChTwoLine(_cardName(k), _cardSub[k]!)),
+                      AppIcon(on ? AppIcons.checkCircle : AppIcons.plus, size: 18, color: on ? AppColors.okText : AppColors.accentText),
+                    ]),
+                  ),
+                );
+              }),
+          ]),
+        ),
       );
+
+  /// The card's name in Edit home; Check-ins says it is the default card.
+  static String _cardName(String k) => k == 'checkin' ? '${homeCards[k]} (default)' : homeCards[k]!;
 
   static const _cardIcon = {
     'workout': (AppIcons.dumbbell, ChTone.green),
@@ -469,7 +478,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
 
   Widget _editor(HomeData d, {required bool web}) {
     final order = _edit!.where((k) => _fits(k, d, web)).toList();
-    final off = [for (final k in homeCards.keys) if (!_edit!.contains(k) && _fits(k, d, web)) k];
+    final all = [for (final k in homeCards.keys) if (_fits(k, d, web)) k];
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
       if (web)
         Container(
@@ -509,7 +518,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                         child: Padding(padding: EdgeInsets.all(8), child: AppIcon(AppIcons.drag, size: 18, color: AppColors.muted)),
                       ),
                     ),
-                    Expanded(child: Text(homeCards[k]!, style: AppText.s(13, W.w7, color: AppColors.text2))),
+                    Expanded(child: Text(_cardName(k), style: AppText.s(13, W.w7, color: AppColors.text2))),
                     CaIconBtn(AppIcons.close, tooltip: 'Remove ${homeCards[k]}', onTap: () => setState(() => _edit!.remove(k))),
                   ]),
                   IgnorePointer(child: Opacity(opacity: .75, child: _card(k, d, web: web, editing: true) ?? const SizedBox.shrink())),
@@ -531,7 +540,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
             style: AppText.s(12.5, W.w6, color: AppColors.amberText),
           ),
         ),
-      if (off.isNotEmpty) CaButton('Add card', kind: CaBtnKind.out, icon: AppIcons.plus, onPressed: () => _addCard(off)),
+      CaButton('Add card', kind: CaBtnKind.out, icon: AppIcons.plus, onPressed: () => _addCard(all)),
     ]);
   }
 
@@ -1021,6 +1030,14 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     ));
 
     final body = <Widget>[];
+    // One button (D-87): Continue once a workout has started, else Start opens the logger on today's workout. As wide
+    // as its text, on the right (Probid 18 Nov).
+    final going = day.inProgress || day.exercisesDone > 0;
+    final Widget? startBtn = !(today && !day.rest) || (day.done && !day.rest)
+        ? null
+        : CaButton(going ? 'Continue workout' : 'Start workout', icon: AppIcons.play, small: true, expand: false,
+            onPressed: () => openWorkout(context, going ? '' : '?start=${d.dayId ?? ''}'));
+    var btnPlaced = false;
     // C18 (Probid): the day's exercises right on the card (first 3, numbered), "+ N more" opens them all; a started
     // workout shows how far it is.
     if (!day.rest && n > 0) {
@@ -1037,6 +1054,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
           ]),
         ));
       }
+      btnPlaced = startBtn != null;
       body.add(Padding(
         padding: const EdgeInsets.only(top: 8),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -1061,18 +1079,27 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                 Flexible(fit: FlexFit.tight, child: CutText(e.line, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.right, style: AppText.s(12, W.w5, color: AppColors.muted))),
               ]),
             ),
-          Hover(
-              // See all opens the Train page on that day (Probid 2026-11-03)
-              onTap: () => context.go(today ? '/train' : '/train?date=${DateFormat('yyyy-MM-dd').format(day.date)}'),
-              builder: (_, h, _) => Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
-                child: Row(spacing: 6, children: [
-                  Text(n > 3 ? '+ ${n - 3} more · See all' : 'See all in Train', style: AppText.s(12.5, W.w7, color: h ? AppColors.accent : AppColors.accentText)),
-                  AppIcon(AppIcons.chevronRight, size: 14, color: AppColors.accentText),
-                ]),
+          // See all on the left (top), Start / Continue on the right of the same row: no empty space left of and
+          // above the button (Probid 18 Nov)
+          Container(
+            decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
+            padding: EdgeInsets.only(top: startBtn == null ? 0 : 8),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Hover(
+                // See all opens the Train page on that day (Probid 2026-11-03)
+                onTap: () => context.go(today ? '/train' : '/train?date=${DateFormat('yyyy-MM-dd').format(day.date)}'),
+                builder: (_, h, _) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Row(mainAxisSize: MainAxisSize.min, spacing: 6, children: [
+                    Text('See all in Train', style: AppText.s(12.5, W.w7, color: h ? AppColors.accent : AppColors.accentText)),
+                    AppIcon(AppIcons.chevronRight, size: 14, color: AppColors.accentText),
+                  ]),
+                ),
               ),
-            ),
+              const Spacer(),
+              ?startBtn,
+            ]),
+          ),
         ]),
       ));
     }
@@ -1121,18 +1148,9 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
         padding: const EdgeInsets.only(top: 10),
         child: ChNote(icon: AppIcons.checkCircle, bg: AppColors.okBg, fg: AppColors.okText, child: Text(day.doneLine, style: AppText.s(13, W.w7, color: AppColors.okText))),
       ));
-    } else if (today && !day.rest) {
-      // One button (D-87): Continue once a workout has started, else Start opens the logger on today's workout.
-      final going = day.inProgress || day.exercisesDone > 0;
-      body.add(Padding(
-        padding: const EdgeInsets.only(top: 12),
-        // on the right, as wide as its text (Probid 18 Nov)
-        child: Align(
-          alignment: Alignment.centerRight,
-          child: CaButton(going ? 'Continue workout' : 'Start workout', icon: AppIcons.play, expand: false,
-              onPressed: () => openWorkout(context, going ? '' : '?start=${d.dayId ?? ''}')),
-        ),
-      ));
+    } else if (startBtn != null && !btnPlaced) {
+      // no exercise list (so no See all row): the button on its own row, on the right
+      body.add(Padding(padding: const EdgeInsets.only(top: 12), child: Align(alignment: Alignment.centerRight, child: startBtn)));
     }
     // The border is drawn on top (foregroundDecoration), so the tinted header stays inside the rounded corners
     // instead of covering them (Probid 2026-11-04).

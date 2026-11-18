@@ -1,3 +1,4 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'dart:convert';
 import 'dart:ui' as ui;
 
@@ -752,7 +753,7 @@ const _faq = [
   ('What happens when my program ends?', '{program} ends on {end}. {coach} sets your next plan before that and it shows up in Train.'),
 ];
 
-class _Hp extends ChangeNotifier {
+class _Hp extends SafeNotifier {
   int open = -1;
   bool report = false, attach = false, busy = false;
   String? cat;

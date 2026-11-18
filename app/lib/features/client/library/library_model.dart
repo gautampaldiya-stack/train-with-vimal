@@ -1,6 +1,6 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 
 import '../../../app/services.dart';
 import '../../../core/api/api_error.dart';
@@ -51,7 +51,7 @@ String lbClock(int s) => '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
 /// Filters: id, label (board order).
 const lbFilters = [('all', 'All'), ('video', 'Videos'), ('pdf', 'PDFs'), ('image', 'Images'), ('article', 'Articles'), ('link', 'Links'), ('saved', 'Saved')];
 
-class LibraryController extends ChangeNotifier {
+class LibraryController extends SafeNotifier {
   LibraryController() {
     _rt = Services.realtime.events.where((e) => e.event == 'notification').listen((_) => load());
   }

@@ -400,6 +400,13 @@ E51. ✅ Admin/trainer client Logs (Daily, Weekly, Habits, Supplements) aur clie
 52f. ✅ Start / Continue / Log more sets button right me, text jitna (Train + Home) (Probid 18 Nov).
 52g. ✅ Home workout rows ke sets × reps aur Train "Strength" ke saamne "2 exercises · 7 sets" right edge par (Probid 18 Nov).
 52h. ✅ Coach client profile: meal aur exercise drawer me ‹ › dabane par upar ka heading bhi badle (Probid 18 Nov).
+52i. ✅ Notifications: pull to refresh sach me server se laata; ab refresh ke waqt upar 2 skeleton rows, phir naya data (Probid 18 Nov).
+52j. ✅ Workout ka chhota bar sirf main tab pages (Home, Train, Food, Progress, More) par; andar ke pages par sirf jab panel khula ho (Probid 18 Nov).
+52k. ✅ Train day card: button ke left me "x of y exercises done" + progress bar, ek hi row; Start / Continue button chhota (small) Train + Home par (Probid 18 Nov).
+52l. ✅ Home workout card: "+ N more" nahi, hamesha "See all in Train" left me aur Start / Continue button right me, ek row (Probid 18 Nov).
+52m. ✅ Home Edit / Add card: Check-ins "(default)" drag list me, Add card sheet me ticked, wahin untick / tick; Add card button hamesha (Probid 18 Nov).
+52n. ✅ Debug run me "used after being disposed" errors: sab page controllers SafeNotifier (Probid 18 Nov).
+52o. ✅ flutter run (debug) me workout sounds nahi aate the: iOS audio setting (ambient + mixWithOthers) debug assert me fail; mixWithOthers hataya (Probid 18 Nov).
 51l. ⏸️ Baad me (Probid 17 Nov: "abhi nahi"): exercises ke beech ka rest. Coach plan me do exercises ke beech rest rakhe; tab last set ke baad exercise ka rest nahi, ye beech wala chale.
 51a. ⬜ Kal ka workout (Food jaisa, Probid 17 Nov): week strip me kal chuno to kal ka workout log kar sake (chhoot gaya ho to) ya kal ka kiya hua edit kar sake. Usse purane din sirf dekh sakte.
 52. ⬜ Editable: exercises, sets, weight, reps, set type, rest timers, start aur end time.

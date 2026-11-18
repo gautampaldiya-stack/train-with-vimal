@@ -1,6 +1,6 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
 import '../../../app/services.dart';
@@ -89,7 +89,7 @@ class ApFilter {
 
 /// Approvals (boards `Approvals` + `ApprovalsMobile`): Waiting and History tabs, search, Filter with chips,
 /// 20 a page. Waiting is oldest first, people moved back on top.
-class ApprovalsController extends ChangeNotifier {
+class ApprovalsController extends SafeNotifier {
   static const pageSize = 20;
 
   String tab = 'waiting', search = '';

@@ -1,3 +1,4 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'dart:async';
 
 import 'package:desktop_drop/desktop_drop.dart';
@@ -515,7 +516,7 @@ const _ext = {
 const _limitMb = {'video': 500, 'pdf': 25, 'image': 10};
 const _readTimes = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30];
 
-class _Ed extends ChangeNotifier {
+class _Ed extends SafeNotifier {
   _Ed({this.old, required this.cats, String? cat, String? kind, required this.canEveryone}) {
     final o = old;
     this.kind = o != null ? '${o['kind']}' : (ctEditKinds.any((k) => k.$1 == kind) ? kind! : 'video');

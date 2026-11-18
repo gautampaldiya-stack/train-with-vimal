@@ -1,3 +1,4 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -9,7 +10,7 @@ import '../home/home_model.dart' show clock, dayShort, inNum, litres;
 
 /// Check-ins page (`GET me/checkins/?tab=&before=`): the daily and weekly cards, the numbers on top and
 /// past check-ins. Sending, editing and Undo go through the outbox, so they work offline too.
-class CheckinsController extends ChangeNotifier {
+class CheckinsController extends SafeNotifier {
   CheckinsController() {
     _sent = () {
       if (Services.outbox.pending.value == 0 && _dirty) {

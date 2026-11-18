@@ -341,13 +341,17 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
     } else {
       final label = live != null ? 'Continue workout' : (d.finished ? 'Log more sets' : 'Start workout');
       body.addAll([
-        Row(spacing: 10, children: [
-          Expanded(child: ChBar(n == 0 ? 0 : doneN / n, color: AppColors.okSolid)),
-          Text('$doneN of $n exercises done', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
-        ]),
         if (live == null && _rate(d) != null) _rate(d)!,
-        // on the right, as wide as its text (Probid 18 Nov)
-        Align(alignment: Alignment.centerRight, child: CaButton(label, icon: AppIcons.play, expand: false, onPressed: n == 0 ? null : () => _go(d))),
+        // the button on the right, as wide as its text; the progress fills the space on its left (Probid 18 Nov)
+        Row(spacing: 14, children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 6, children: [
+              Text('$doneN of $n exercises done', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
+              ChBar(n == 0 ? 0 : doneN / n, color: AppColors.okSolid),
+            ]),
+          ),
+          CaButton(label, icon: AppIcons.play, small: true, expand: false, onPressed: n == 0 ? null : () => _go(d)),
+        ]),
       ]);
     }
     if (s != null) {

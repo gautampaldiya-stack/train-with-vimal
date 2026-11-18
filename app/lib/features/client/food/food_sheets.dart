@@ -1,3 +1,4 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'dart:math' as math;
 import 'dart:convert';
 
@@ -273,7 +274,7 @@ String amtGrams(Map<String, dynamic> food, num grams) {
   return '${grams.round()} g';
 }
 
-class _Swap extends ChangeNotifier {
+class _Swap extends SafeNotifier {
   _Swap(this.meal, this.item);
   final FMeal meal;
   FItem item;

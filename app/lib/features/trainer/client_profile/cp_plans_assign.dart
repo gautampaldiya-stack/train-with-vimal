@@ -1,3 +1,4 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -340,7 +341,7 @@ class _Pv {
   final List<String> diff;
 }
 
-class _Assign extends ChangeNotifier {
+class _Assign extends SafeNotifier {
   _Assign(this.c, this.slot, {required this.replace, required this.next});
   final CpController c;
   final String slot;

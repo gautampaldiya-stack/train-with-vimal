@@ -1,6 +1,6 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 
 import '../../../app/services.dart';
 import '../../../app/shell/app_shell.dart' show NavCounts;
@@ -48,7 +48,7 @@ class TcRow {
 
 /// Check-ins page (boards `TrainerCheckins` + `TrainerCheckinsMobile`): To review / Reviewed / All, type chips,
 /// search, a list (newest first, Show more) and the open check-in on the right (its own page on a phone).
-class TcController extends ChangeNotifier {
+class TcController extends SafeNotifier {
   String tab = 'to_review', kind = 'all', search = '';
   List<TcRow> rows = [];
   Map counts = const {};

@@ -1,6 +1,6 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 
 import '../../../app/services.dart';
 import '../../../core/api/api_error.dart';
@@ -13,7 +13,7 @@ import 'nu_common.dart';
 /// the meals with `PUT meal-plans/<id>/structure/`, the targets and permissions with `PATCH`, then
 /// `POST publish/` (clients and their trainers get a notice). Discard reloads the saved plan. Undo puts back a
 /// copy of the draft from before the change.
-class MealBuilderModel extends ChangeNotifier {
+class MealBuilderModel extends SafeNotifier {
   MealBuilderModel(this.id);
   final String id;
 

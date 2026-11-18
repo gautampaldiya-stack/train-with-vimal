@@ -1,3 +1,4 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -367,7 +368,7 @@ class _InlineLink extends StatelessWidget {
 }
 
 /// Counts down the 30 s before "Resend email" works again.
-class ResendClock extends ChangeNotifier {
+class ResendClock extends SafeNotifier {
   ResendClock({this.seconds = 30});
   final int seconds;
   int left = 0;

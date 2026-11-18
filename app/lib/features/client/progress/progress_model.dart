@@ -1,6 +1,6 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
 import '../../../app/services.dart';
@@ -268,7 +268,7 @@ class PxData {
 }
 
 /// Loads `me/progress/` (cached for offline) and does the tab's writes through the outbox.
-class ProgressController extends ChangeNotifier {
+class ProgressController extends SafeNotifier {
   ProgressController() {
     _results = Services.outbox.results.listen((r) {
       if (r.error == null && data != null && (r.tag.startsWith('progress:') || r.tag.startsWith('checkin'))) load();
@@ -413,7 +413,7 @@ class PxDay {
 }
 
 /// History page: `GET me/history/?range=&type=&offset=&limit=`, newest day first, 7 days then 10 more at a time.
-class HistoryController extends ChangeNotifier {
+class HistoryController extends SafeNotifier {
   HistoryController({this.type});
 
   static const ranges = [('week', 'This week'), ('month', 'Month'), ('3months', '3 months')];

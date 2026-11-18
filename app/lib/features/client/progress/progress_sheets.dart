@@ -1,3 +1,4 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -83,7 +84,7 @@ class PxQuick extends StatelessWidget {
 
 // ─────────────────────────────── Log weight
 
-class _Lw extends ChangeNotifier {
+class _Lw extends SafeNotifier {
   _Lw(this.kg, this.day);
   double kg;
   DateTime day;
@@ -312,7 +313,7 @@ Future<void> showPhotoSheet(BuildContext context, ProgressController c, PxSet se
 /// A photo picked in the Add photos sheet, not saved yet.
 typedef _Pick = ({String src, String image, String? file});
 
-class _Ap extends ChangeNotifier {
+class _Ap extends SafeNotifier {
   _Ap(this.pose);
   String pose;
 
@@ -521,7 +522,7 @@ Future<void> showHistoryDay(BuildContext context, PxDay day) {
 
 // ─────────────────────────────── Log measurements
 
-class _Lm extends ChangeNotifier {
+class _Lm extends SafeNotifier {
   _Lm(this.day);
   DateTime day;
   final values = <String, double>{}; // only what was typed is saved

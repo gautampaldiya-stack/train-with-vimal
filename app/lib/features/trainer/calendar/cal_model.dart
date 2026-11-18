@@ -1,5 +1,5 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'package:flutter/painting.dart';
-import 'package:flutter/foundation.dart';
 
 import '../../../app/services.dart';
 import '../../../core/api/api_error.dart';
@@ -159,7 +159,7 @@ class CalCheck {
   final (int, int)? hours;
 }
 
-class CalendarController extends ChangeNotifier {
+class CalendarController extends SafeNotifier {
   CalendarController({required bool phone, this.admin = false}) : view = phone ? 'day' : 'week' {
     final now = DateTime.now();
     week = calMonday(now);

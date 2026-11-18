@@ -1,3 +1,4 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -46,7 +47,7 @@ Future<bool> showEditMyDetails(BuildContext context, MeController c) async {
   return true;
 }
 
-class _EditForm extends ChangeNotifier {
+class _EditForm extends SafeNotifier {
   _EditForm(this.c) {
     final m = c.me, p = c.profile;
     t('full_name', '${m['full_name'] ?? ''}');

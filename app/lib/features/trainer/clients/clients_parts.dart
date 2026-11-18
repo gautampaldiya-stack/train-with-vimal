@@ -1,3 +1,4 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -32,7 +33,7 @@ const _choices = ['experience', 'activity_level'];
 const _multis = ['injury_areas', 'conditions'];
 const _bools = ['doctor_ok', 'takes_supplements', 'takes_medicines'];
 
-class _EditState extends ChangeNotifier {
+class _EditState extends SafeNotifier {
   bool loaded = false, busy = false;
   String gender = '', goal = '';
   DateTime? dob, target;

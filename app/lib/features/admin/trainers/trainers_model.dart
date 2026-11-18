@@ -1,6 +1,6 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
 import '../../../app/services.dart';
@@ -62,7 +62,7 @@ class TrFilter {
 
 /// Admin → Trainers (boards `Trainers` + `TrainersMobile`, D-48): sub-line and 4 stats from `trainers/summary/`,
 /// tabs All / Active / Full / Inactive, search, Filter with chips, 20 a page (owner first, then by name).
-class TrainersController extends ChangeNotifier {
+class TrainersController extends SafeNotifier {
   static const pageSize = 20;
 
   static const groups = [

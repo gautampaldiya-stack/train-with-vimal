@@ -1,3 +1,4 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart' show DateUtils;
@@ -10,7 +11,7 @@ import '../home/home_model.dart' show hoursMin, inNum, litres;
 
 /// Habits & supplements (`GET me/habits/?date=`): the picked day, its Mon–Sun week grid and every
 /// write the page makes. Writes change the screen at once and go through the outbox (offline too).
-class HabitsController extends ChangeNotifier {
+class HabitsController extends SafeNotifier {
   HabitsController() {
     _sent = () {
       if (Services.outbox.pending.value == 0 && _dirty) {

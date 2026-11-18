@@ -1,3 +1,4 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'dart:typed_data';
 
 import 'package:desktop_drop/desktop_drop.dart';
@@ -177,7 +178,7 @@ Future<void> showUploadDocument(BuildContext context, MeController c, {Map<Strin
   }
 }
 
-class _UpForm extends ChangeNotifier {
+class _UpForm extends SafeNotifier {
   _UpForm(this.old, this.api) {
     if (kIsWeb) _unwatch = watchDrops(onOver: (v) => _set(() => dragging = v), onFile: _take);
     final o = old;

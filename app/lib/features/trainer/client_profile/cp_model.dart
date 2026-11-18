@@ -1,3 +1,4 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../app/services.dart';
@@ -6,7 +7,7 @@ import '../../../core/api/api_error.dart';
 /// Client profile (boards `TrainerClientProfile` + `TrainerClientProfileMobile`): the header, the 4 stats and the
 /// Overview come from `clients/<id>/`, `stats/` and `overview/`. Every other tab loads its own data when opened
 /// and calls [refresh] after a change so the header and the counts stay right.
-class CpController extends ChangeNotifier {
+class CpController extends SafeNotifier {
   CpController(this.id, {this.admin = false});
   final String id;
 

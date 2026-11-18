@@ -1,7 +1,7 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 
 import '../../../app/services.dart';
 import '../../../core/api/api_error.dart';
@@ -12,7 +12,7 @@ import '../lib_common.dart';
 /// reaches clients until Save changes sends the tree with `PUT programs/<id>/structure/` (D-43); Discard reloads
 /// the saved program. Undo puts back a copy of the tree from before the change. Ids from the server keep logged
 /// workouts linked to their day.
-class BuilderModel extends ChangeNotifier {
+class BuilderModel extends SafeNotifier {
   BuilderModel(this.id);
   final String id;
 

@@ -1,7 +1,7 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart' show DateUtils;
-import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
 import '../../../app/services.dart';
@@ -10,7 +10,7 @@ import '../home/home_model.dart';
 
 /// Data of the Train tab (`GET me/train/`): the week, today's workout with targets, last time and
 /// PRs, and the workout that is running. Kept in the read cache so the tab opens offline.
-class TrainController extends ChangeNotifier {
+class TrainController extends SafeNotifier {
   TrainController() {
     _sub = Services.realtime.events.where((e) => _reloadOn.contains(e.event)).listen((_) => load());
     Services.outbox.pending.addListener(_sent);

@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:twv/core/safe_notifier.dart';
 
 import '../../../app/services.dart';
 import '../../../core/api/api_error.dart';
@@ -11,7 +11,7 @@ import 'cp_model.dart';
 /// APIs: `clients/<id>/programs/` (+ `custom-structure/`, master `programs/<id>/`), `clients/<id>/meal-plans/`
 /// (+ `<assignment>/meals/`: the client's own copy or the master), `clients/<id>/supplement-plans/`,
 /// `clients/<id>/habit-plan/`, `clients/<id>/habits/`.
-class PlansData extends ChangeNotifier {
+class PlansData extends SafeNotifier {
   PlansData(this.c);
   final CpController c;
 

@@ -1,3 +1,4 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -138,7 +139,7 @@ abstract interface class NoticesSource implements Listenable {
   Future<void> readAll();
 }
 
-class TrainerHomeController extends ChangeNotifier implements NoticesSource {
+class TrainerHomeController extends SafeNotifier implements NoticesSource {
   TrainerHome? data;
 
   @override

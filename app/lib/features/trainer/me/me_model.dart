@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:twv/core/safe_notifier.dart';
 import 'package:intl/intl.dart';
 
 import '../../../app/services.dart';
@@ -10,7 +10,7 @@ import '../../../core/api/api_error.dart';
 ///
 /// With [id] it is the admin's Trainer profile (boards `TrainerProfile` / `TrainerProfileMobile`, D-48): the same
 /// page for one trainer, read from `trainers/<id>/` (same shape as `trainers/me/`), with the admin tabs.
-class MeController extends ChangeNotifier {
+class MeController extends SafeNotifier {
   MeController({String? tab, this.id}) {
     if (tab != null && tabList.any((t) => t.$1 == tab)) this.tab = tab;
   }

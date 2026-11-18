@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+## 2026-11-18 · Home / Train card rows, workout bar only on tabs, Add card ticks, refresh skeleton
+- **Pehle:** Workout ka chhota bar har page par. Train / Home par button akela row me, left khali. Home par "+ 1 more · See all". Check-ins default card Add card sheet me unticked aur drag list me nahi. Refresh par sirf ghoomta icon. Tab jaldi badalne par debug me "used after being disposed".
+- **Ab:** Bar sirf main tabs par (andar ke page par sirf panel khula ho tab). Train: progress left, button right. Home: "See all in Train" left, button right. Add card sheet me har card, jo Home par hai wo ticked, tap se on / off; Check-ins "(default)". Notifications refresh par upar skeleton rows. `SafeNotifier` (core/safe_notifier.dart) sab feature controllers ka base.
+- **Kyun:** Probid (18 Nov) phone test.
+- **Updated:** app_shell.dart, train_screen.dart, home_screen.dart, more_screen.dart, core/safe_notifier.dart, sab `extends ChangeNotifier` controllers.
+
 ## 2026-11-18 · Tabs slide, workout notification after app close, logger toast, Train / Home buttons
 - **Pehle:** Tab badalne par page ek dum badal jaata (go_router ki key sab tabs ke liye ek, isliye transition hi nahi). App swipe karke band karne ke baad notification shade se hatao to wapas nahi aati (Dart engine screen ke saath band). Logger me toast bahut upar. Rate baaki workout ka bar neeche rehta. Day card par equipment pin icon ke saath. Start workout button full width. Home / Train ke right wale text beech me.
 - **Ab:** Page key = matchedLocation; tabs order ke hisaab se left / right slide (320 ms), purana tab doosri taraf jaata. MainActivity cached FlutterEngine (screen band hone par engine nahi marta), workout service process ko zinda rakhti, to har second wala notification check chalta rehta. Logger panel khula ho to toast WorkoutPanel.lift par. Finished workout ka bar nahi. Dumbbell icon. Button right, text jitna. Right text FlexFit.tight. Coach ke meal / exercise drawer ka heading ‹ › ke saath badalta (showAppDrawer `at` + `titleAt`).

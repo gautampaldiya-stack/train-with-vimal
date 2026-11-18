@@ -1,3 +1,4 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -25,7 +26,7 @@ import '../../../core/widgets/tooltip.dart';
 /// "her" / "his" / "their" from the client's gender (board copy says "her meals").
 String cpTheir(CpController c) => switch ('${c.detail['gender']}') { 'female' => 'her', 'male' => 'his', _ => 'their' };
 
-class _Nav extends ChangeNotifier {
+class _Nav extends SafeNotifier {
   _Nav(this.rows, this.i);
   final List<Map> rows;
   int i;

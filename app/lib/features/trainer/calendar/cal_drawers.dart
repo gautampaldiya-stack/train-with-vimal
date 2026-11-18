@@ -1,3 +1,4 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -316,7 +317,7 @@ Future<bool?> confirmCancelSession(BuildContext context, CalSession s) {
 
 // ─────────────────────────────── New session / Move session drawer
 
-class _Form extends ChangeNotifier {
+class _Form extends SafeNotifier {
   _Form(this.c, this.move) {
     final now = DateTime.now(), today = calDay(now);
     if (move != null) {

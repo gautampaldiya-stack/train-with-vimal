@@ -1,3 +1,4 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -22,7 +23,7 @@ import 'supp_editor.dart';
 
 /// The page's data: both lists, the picked habit / plan with its unsaved copy (draft), who is on it, and what this
 /// person may do (`habits/counts/` → `can`, D-39). Editors in the page and in the phone sheet both listen to it.
-class HbCtl extends ChangeNotifier {
+class HbCtl extends SafeNotifier {
   HbCtl(this.tab);
   String tab; // 'h' habits, 's' supplements
   List<Map> habits = [], plans = [], quick = [];

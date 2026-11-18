@@ -39,7 +39,9 @@ class WorkoutFeel {
   static final _players = <String, Future<AudioPlayer?>>{};
   static final _ctx = AudioContext(
     android: const AudioContextAndroid(usageType: AndroidUsageType.media, contentType: AndroidContentType.sonification, audioFocus: AndroidAudioFocus.none),
-    iOS: AudioContextIOS(category: AVAudioSessionCategory.ambient, options: const {AVAudioSessionOptions.mixWithOthers}),
+    // ambient already mixes with other audio and keeps the silent switch; adding mixWithOthers failed an assert in
+    // debug runs, so no sound played there at all (Probid's `flutter run`, 18 Nov; release builds skip asserts)
+    iOS: AudioContextIOS(category: AVAudioSessionCategory.ambient),
   );
   static const _files = {'set_done': 'set_done.wav', 'rest_skip': 'rest_skip.wav', 'rest_over': 'rest_over.mp3'};
 

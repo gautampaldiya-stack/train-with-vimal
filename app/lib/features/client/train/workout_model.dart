@@ -1,3 +1,4 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -159,7 +160,7 @@ enum FocusMetric {
 /// ([WorkoutController.current]), so collapsing the logger to the mini bar, going to another tab or turning the
 /// phone off does not stop it (tracker F33/F34). Every change is saved on the phone at once and sent through the
 /// outbox (`PUT me/workouts/<id>/state/`), so it works offline; a workout started offline is sent when finished.
-class WorkoutController extends ChangeNotifier {
+class WorkoutController extends SafeNotifier {
   WorkoutController(this.plan);
 
   static const _cacheKey = 'workout:live';

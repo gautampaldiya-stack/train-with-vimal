@@ -130,10 +130,24 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
     ]);
   }
 
+  /// A pull to refresh is running: the notifications list shows two skeleton rows on top until the new page is in
+  /// (Probid 18 Nov: "refresh hota hai...? thoda skeleton dikhe"). At least half a second, so it is seen.
+  bool _pulling = false;
+
   Future<void> _refresh() async {
-    await c.load();
-    if (_view == 'notifications') await c.loadNotices();
-    if (_view == 'activity') await c.loadActivity(c.actKind);
+    if (mounted) setState(() => _pulling = true);
+    try {
+      await Future.wait([
+        Future.delayed(const Duration(milliseconds: 500)),
+        () async {
+          await c.load();
+          if (_view == 'notifications') await c.loadNotices();
+          if (_view == 'activity') await c.loadActivity(c.actKind);
+        }(),
+      ]);
+    } finally {
+      if (mounted) setState(() => _pulling = false);
+    }
   }
 
   Widget _webTitle(MoData d, int tab) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 18, children: [
@@ -634,7 +648,8 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  for (final (i, n) in list.indexed) _noticeRow(n, first: i == 0, last: i == list.length - 1),
+                  if (_pulling) const Skeleton(child: Column(children: [SkelRow(first: true), SkelRow()])),
+                  for (final (i, n) in list.indexed) _noticeRow(n, first: i == 0 && !_pulling, last: i == list.length - 1),
                   if (c.loadingMore) const Padding(padding: EdgeInsets.all(12), child: Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent)))),
                 ]),
               );

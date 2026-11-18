@@ -1,6 +1,6 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 
 import '../../../app/services.dart';
 import '../../../app/shell/app_shell.dart' show NavCounts;
@@ -99,7 +99,7 @@ class AdEvent {
   }
 }
 
-class AdminHomeController extends ChangeNotifier implements NoticesSource {
+class AdminHomeController extends SafeNotifier implements NoticesSource {
   AdminHome? data;
   ApiError? error;
 

@@ -1,6 +1,6 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
 import '../../../app/services.dart';
@@ -130,7 +130,7 @@ const moReminderKeys = [
   ('progress', 'star', 'amber', 'Progress and personal bests', 'New bests, streaks and milestones'),
 ];
 
-class MoreController extends ChangeNotifier {
+class MoreController extends SafeNotifier {
   MoreController() {
     _rt = Services.realtime.events.where((e) => e.event == 'notification' || e.event == 'unread').listen((_) {
       load();

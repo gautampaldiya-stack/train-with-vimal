@@ -1,6 +1,6 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 
 import '../../../app/services.dart';
 import '../../../core/api/api_error.dart';
@@ -58,7 +58,7 @@ const mcFilters = [
 
 /// My clients (boards `TrainerClients` + `TrainerClientsMobile`): tabs with counts, search, Filter, 8 a page,
 /// selection for Export.
-class MyClientsController extends ChangeNotifier {
+class MyClientsController extends SafeNotifier {
   static const pageSize = 8;
 
   List<McRow> rows = [];

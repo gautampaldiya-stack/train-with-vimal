@@ -1,3 +1,4 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -47,7 +48,7 @@ String _cap(String s) => s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}
 
 // ─────────────────────────────── Add a trainer
 
-class _AddState extends ChangeNotifier {
+class _AddState extends SafeNotifier {
   bool busy = false, invite = true, giveClients = false;
   String access = 'assigned', gender = '';
   DateTime joined = DateTime.now();
@@ -332,7 +333,7 @@ Future<bool> showDeactivateTrainer(BuildContext context, {required String id, re
 
 // ─────────────────────────────── Move clients to another trainer
 
-class _MoveState extends ChangeNotifier {
+class _MoveState extends SafeNotifier {
   List<Map>? trainers;
   ApiError? error;
   String? pick;
@@ -446,7 +447,7 @@ Future<int?> showMoveTrainerClients(BuildContext context, {required String id, r
 
 // ─────────────────────────────── Assign clients
 
-class _AssignState extends ChangeNotifier {
+class _AssignState extends SafeNotifier {
   List<Map>? rows;
   ApiError? error;
   String kind = 'none', q = '';

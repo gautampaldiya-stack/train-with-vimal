@@ -1,3 +1,4 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -261,7 +262,7 @@ String _ymd(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
 
 // ─────────────────────────────── Assign content drawer
 
-class _Assign extends ChangeNotifier {
+class _Assign extends SafeNotifier {
   _Assign(this.c);
   final CpController c;
   String kind = 'all', q = '', how = 'always';

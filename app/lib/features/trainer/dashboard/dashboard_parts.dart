@@ -1,3 +1,4 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -533,7 +534,7 @@ Future<NewSession?> showNewSessionModal(BuildContext context, TrainerHomeControl
   });
 }
 
-class _NsState extends ChangeNotifier {
+class _NsState extends SafeNotifier {
   _NsState({required this.day, required this.time});
   TdPerson? client;
   int day, len = 2, where = 0;

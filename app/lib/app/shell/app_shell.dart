@@ -168,6 +168,7 @@ class _AppShellState extends State<AppShell> {
           backgroundColor: AppColors.caBg,
           body: _WorkoutPanelHost(
             bar: bar,
+            tab: AppBack.isTab(widget.location, me.role),
             nav: _BottomBar(items: bottomFor(me.role), location: widget.location),
             page: (bottomSafe) => SafeArea(bottom: bottomSafe, top: top, child: widget.child),
           ),
@@ -511,8 +512,12 @@ class WorkoutMiniBar extends StatelessWidget {
 /// screen (the tab bar slides away under it) and back down (the logger goes behind the tab bar, its top bar turns
 /// back into the small bar). The logger stays built the whole time, so nothing is lost going up and down.
 class _WorkoutPanelHost extends StatefulWidget {
-  const _WorkoutPanelHost({required this.bar, required this.nav, required this.page});
+  const _WorkoutPanelHost({required this.bar, required this.tab, required this.nav, required this.page});
   final bool bar;
+
+  /// A main page (a bottom tab): only these show the small workout bar; an inner page shows the panel only while it
+  /// is up (Probid 18 Nov).
+  final bool tab;
   final Widget nav;
   final Widget Function(bool bottomSafe) page;
 
@@ -533,7 +538,10 @@ class _WorkoutPanelHostState extends State<_WorkoutPanelHost> with SingleTickerP
 
   /// Only a running workout (or one just opened) keeps the panel. A finished one waiting for its rating does not
   /// keep a bar any more: the "Rate it" button on Train opens the rating (Probid 18 Nov, was 17 Nov's bar).
-  bool get _shown => _req != null || _live;
+  bool get _shown => (_req != null || _live) && (widget.tab || _up);
+
+  /// The panel is up or on its way up / down (opened from anywhere); false once it is fully down.
+  bool _up = false;
 
   @override
   void initState() {
@@ -575,20 +583,33 @@ class _WorkoutPanelHostState extends State<_WorkoutPanelHost> with SingleTickerP
     if (!mounted) return;
     setState(() {
       if (q.isNotEmpty || _req == null) _req = q;
+      _up = true;
     });
     _t.animateTo(1, curve: Curves.easeOutCubic);
   }
 
   void _down() => _t.animateTo(0, curve: Curves.easeOutCubic).then((_) {
-        if (mounted && !_live && _t.value == 0) setState(() => _req = null);
+        if (!mounted || _t.value != 0) return;
+        setState(() {
+          _up = false;
+          if (!_live) _req = null;
+        });
       });
 
   void _close() {
     _t.value = 0;
-    if (mounted) setState(() => _req = null);
+    if (mounted) {
+      setState(() {
+        _req = null;
+        _up = false;
+      });
+    }
   }
 
-  void _dragBy(double dy) => _t.value = (_t.value - dy / _travel).clamp(0.0, 1.0);
+  void _dragBy(double dy) {
+    if (!_up) setState(() => _up = true);
+    _t.value = (_t.value - dy / _travel).clamp(0.0, 1.0);
+  }
 
   void _dragEnd(double v) {
     if (v < -400 || (v.abs() <= 400 && _t.value > .5)) {

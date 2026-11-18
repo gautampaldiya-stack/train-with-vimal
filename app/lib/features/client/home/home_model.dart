@@ -1,6 +1,6 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -9,7 +9,7 @@ import '../../../core/api/api_error.dart';
 
 /// Data of the client Home (`GET me/home/`) and every write it makes. Writes change the
 /// numbers on screen at once and go through the outbox, so they also work offline.
-class HomeController extends ChangeNotifier {
+class HomeController extends SafeNotifier {
   HomeController() {
     _sub = Services.realtime.events.where((e) => _reloadOn.contains(e.event)).listen((_) => load());
     // A check-in, workout or meal sent from another page: refresh the cards.

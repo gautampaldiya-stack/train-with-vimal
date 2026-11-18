@@ -1,3 +1,4 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
@@ -48,7 +49,7 @@ class SetupExtra {
 }
 
 /// Profile setup answers (9 steps). Loaded from / saved to `me/onboarding/` (decisions D-14, D-36).
-class SetupState extends ChangeNotifier {
+class SetupState extends SafeNotifier {
   SetupState._();
   static final instance = SetupState._();
 

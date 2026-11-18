@@ -1,3 +1,4 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -26,7 +27,7 @@ class CpSendResult {
   final CpSendOpts? opts;
 }
 
-class _Send extends ChangeNotifier {
+class _Send extends SafeNotifier {
   String? form;
   String q = '', mode = 'once', send = 'now', by = 'push_whatsapp', every = '6', time = '18:00', until = '';
   int days = 2;

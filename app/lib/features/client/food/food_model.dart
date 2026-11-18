@@ -1,6 +1,6 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
 import '../../../app/services.dart';
@@ -9,7 +9,7 @@ import '../home/home_model.dart' show clock, inNum;
 
 /// Food tab (`GET me/food/?date=`): the day's ring and macros, the plan's meals, the food log, water and the
 /// week. Every write goes through the outbox, so it works offline; the screen changes at once.
-class FoodController extends ChangeNotifier {
+class FoodController extends SafeNotifier {
   FoodController() {
     // Something sent from another page (Log food, Home): show it here too.
     _results = Services.outbox.results.listen((r) {

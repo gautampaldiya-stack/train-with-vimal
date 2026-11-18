@@ -1,3 +1,4 @@
+import 'package:twv/core/safe_notifier.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -143,7 +144,7 @@ Widget _unit(String u) => Text(u, style: AppText.s(13, W.w6, color: AppColors.mu
 
 // ─────────────────────────────── Add a client
 
-class _AddState extends ChangeNotifier {
+class _AddState extends SafeNotifier {
   bool busy = false, sendLink = true, askParq = true;
   String mode = 'active', gender = '', goal = '';
   String? trainer, program, mealPlan;
@@ -412,7 +413,7 @@ Future<Map?> showAddClientDrawer(BuildContext context) {
 
 // ─────────────────────────────── Change trainer
 
-class _MoveState extends ChangeNotifier {
+class _MoveState extends SafeNotifier {
   Map? data;
   ApiError? error;
   String? pick;
