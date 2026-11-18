@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+## 2026-11-18 · Workout edit (H), kal ka workout, tray notification, Library Saved hataya
+- **Pehle:** Finish hua workout badal nahi sakte the; kal chhoota workout baad me log nahi hota tha; app khula ho to push sirf in-app toast; Library me "Saved" filter + bookmark.
+- **Ab:** Train / History se "Edit workout" sheet: start-end time, sets, KG/reps, set type, rest; save par nayi version (`WorkoutEdit`, purani values rakhi) aur duration / volume / sets dobara. Kal ka chhoota workout "Log this workout" se (sirf kal). Coach ko workout detail me "Edited · version N" + changes. App khula ho to Android tray notification bhi (tap → wahi page), iOS foreground banner. Library se Saved hataya.
+- **Kyun:** Probid 18 Nov: H complete karo; tray notification haan; Saved ki need nahi.
+- **Updated:** backend/apps/training (models, migration 0010, services, serializers, views), tests/test_workout_edit_h.py, app train/workout_edit.dart, train_screen, train_parts, cp_logs_detail, library, core/live, core/push, main.dart, docs/architecture/api-endpoints.md, data-model.md, WORK-TRACKER
+
 ## 2026-11-18 · Chhote swipe tabs, empty states, Library / PDF / article, sheet close
 - **Pehle:** Tabs poori width ke, swipe nahi; Food log khali par sirf ek line; Library me Try chips, "note from ..." text, "by ..." line; PDF me Download / Save for later, bada Mark as done; article plain text; sheet upar tap se band hote waqt thoda upar jump karta tha; Mark all read icon tha.
 - **Ab:** Tabs text jitne chhote + left/right swipe (CaSwipe: Habits, Check-ins history, Food, Food log, Progress). Food / Food log par CaEmpty. Library me sirf note icon, no source line, Try nahi. PDF pages swipe (PageView), Download / Save for later commented out, chhota Mark as done. Article: headings, bullets, steps, quote, bold/italic. Sheet seedha neeche band (trackSheet tab bar ko sheet jaane ke baad wapas laata). Mark all read text button.

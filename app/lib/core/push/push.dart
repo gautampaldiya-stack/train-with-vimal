@@ -5,6 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
 import '../api/api_client.dart';
+import '../live/live_notice.dart';
 import 'sw_routes_stub.dart' if (dart.library.js_interop) 'sw_routes_web.dart';
 
 // The server sends to FCM registration tokens (HTTP v1 `token`), so this keeps getToken /
@@ -90,6 +91,18 @@ class Push {
       rethrow;
     }
     _subs.add(FirebaseMessaging.onMessageOpenedApp.listen(_open));
+    // the app is open: Android shows nothing in the tray for a push, so it is shown here as well (Probid 18 Nov)
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+      // iOS shows it itself when asked to
+      await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(alert: true, badge: true, sound: true);
+    } else if (!kIsWeb) {
+      _subs.add(FirebaseMessaging.onMessage.listen((m) {
+        final n = m.notification;
+        final title = n?.title ?? '${m.data['title'] ?? ''}';
+        if (title.isEmpty) return;
+        unawaited(LiveNotice.message(title: title, body: n?.body ?? '${m.data['body'] ?? ''}', route: '${m.data['route'] ?? ''}'));
+      }));
+    }
     if (kIsWeb) listenSwRoutes((r) => onOpen?.call(r));
     _subs.add(FirebaseMessaging.instance.onTokenRefresh.listen((t) => _register(t, platform)));
     final first = await FirebaseMessaging.instance.getInitialMessage();

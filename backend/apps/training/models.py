@@ -214,6 +214,22 @@ class WorkoutLog(TimeStampedModel):
         indexes = [models.Index(fields=["client", "-date"]), models.Index(fields=["client", "status"])]
 
 
+class WorkoutEdit(models.Model):
+    """One save of "Edit workout" on a finished workout (tracker H51-H56). The workout keeps the new values; this
+    keeps what it was before, so every version can be looked back at, and the coach sees what changed."""
+
+    workout = models.ForeignKey(WorkoutLog, on_delete=models.CASCADE, related_name="edits")
+    number = models.PositiveSmallIntegerField()  # 1 = the first edit (version 2 of the workout)
+    edited_at = models.DateTimeField(auto_now_add=True)
+    by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    before = models.JSONField(default=dict, blank=True)  # the workout as it was (times and every set)
+    changes = models.JSONField(default=list, blank=True)  # ["Start and end time", "Bench Press: 3 → 4 sets"]
+
+    class Meta:
+        ordering = ["number"]
+        constraints = [models.UniqueConstraint(fields=["workout", "number"], name="one_edit_number_per_workout")]
+
+
 class SetType(models.TextChoices):
     NORMAL = "normal", "Work set"
     WARMUP = "warmup", "Warm up"

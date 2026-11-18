@@ -277,10 +277,8 @@ class _ClientLibraryScreenState extends State<ClientLibraryScreen> {
                   ]),
                 ]),
               ),
-              Column(crossAxisAlignment: CrossAxisAlignment.end, spacing: 6, children: [
-                if (x.isNew) const CaPill('New', tone: CaTone.blue) else if (x.done) const LbDonePill(),
-                LbMark(on: x.saved, onTap: () => lbToggleSave(context, c, x)),
-              ]),
+              // no bookmark: Save for later is off (Probid 18 Nov)
+              if (x.isNew) const CaPill('New', tone: CaTone.blue) else if (x.done) const LbDonePill(),
             ]),
           ),
         ),
@@ -337,13 +335,6 @@ class _ClientLibraryScreenState extends State<ClientLibraryScreen> {
                     if (x.note.isNotEmpty) LbNoteTag(x.noteBy.isEmpty ? c.coach : x.noteBy, iconOnly: true),
                   ]),
                   const Spacer(),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Row(spacing: 8, children: [
-                      const Spacer(),
-                      LbMark(on: x.saved, onTap: () => lbToggleSave(context, c, x)),
-                    ]),
-                  ),
                 ]),
               ),
             ),

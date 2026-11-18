@@ -1410,6 +1410,19 @@ One workout the client did (or is doing) — the logger screen.
 | `paused_at` | DateTimeField | optional |
 | `reopened_at` | DateTimeField | optional |
 
+### WorkoutEdit
+
+One save of "Edit workout" on a finished workout (tracker H51-H56). The workout keeps the new values; this row keeps the workout as it was before.
+
+| Field | Type | Notes |
+|---|---|---|
+| `workout` | ForeignKey | → WorkoutLog; related_name `edits`; indexed |
+| `number` | PositiveSmallIntegerField | 1 = first edit; unique per workout |
+| `edited_at` | DateTimeField | auto |
+| `by` | ForeignKey | → User; optional |
+| `before` | JSONField | the workout before this edit (times and every set) |
+| `changes` | JSONField | words for the coach: "Start and end time", "Bench Press: 3 → 4 sets" |
+
 ### SetLog
 
 

@@ -10,6 +10,10 @@ class LiveNotice {
 
   static Future<void> init() async {}
 
+  static void Function(String route)? onRoute;
+
+  static Future<void> message({required String title, required String body, String route = ''}) async {}
+
   static Future<void> workout({required String title, required String body, required DateTime startedAt, bool paused = false, List<String> actions = const []}) async {}
 
   static Future<void> rest({required String title, required String body, required DateTime endsAt, required int total, required int left, bool paused = false}) async {}

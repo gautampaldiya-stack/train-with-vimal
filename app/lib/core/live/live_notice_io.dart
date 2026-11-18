@@ -29,6 +29,39 @@ class LiveNotice {
   /// The notification itself was tapped: open the logger.
   static void Function()? onOpen;
 
+  /// A message notification shown while the app was open ([message]) was tapped: open this page.
+  static void Function(String route)? onRoute;
+  static int _msgId = 7200;
+
+  /// A push that came while the app was open: Android does not put it in the tray by itself (only the in-app toast
+  /// showed), so it is shown here too, like Strong (Probid 18 Nov).
+  static Future<void> message({required String title, required String body, String route = ''}) async {
+    if (!_android) return;
+    if (!_ready) await init();
+    if (!_ready) return;
+    try {
+      _msgId = _msgId >= 7299 ? 7200 : _msgId + 1;
+      await _plugin.show(
+        id: _msgId,
+        title: title,
+        body: body,
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'twv_messages',
+            'Messages and reminders',
+            channelDescription: 'Reminders and messages from your coach',
+            icon: 'ic_stat_notify',
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+        ),
+        payload: 'msg:$route',
+      );
+    } catch (e) {
+      debugPrint('Message notification: $e');
+    }
+  }
+
   static final _plugin = FlutterLocalNotificationsPlugin();
   static bool _ready = false;
   static String? _last;
@@ -69,6 +102,12 @@ class LiveNotice {
         settings: const InitializationSettings(android: AndroidInitializationSettings('ic_stat_notify')),
         onDidReceiveNotificationResponse: (r) {
           final a = r.actionId;
+          final p = r.payload ?? '';
+          if (p.startsWith('msg:')) {
+            // a push shown while the app was open (below): open its page
+            onRoute?.call(p.substring(4));
+            return;
+          }
           if (a == null || a.isEmpty) {
             onOpen?.call();
           } else {

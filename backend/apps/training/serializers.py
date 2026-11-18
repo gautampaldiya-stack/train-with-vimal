@@ -412,17 +412,24 @@ class SetLogSerializer(serializers.ModelSerializer):
 class WorkoutLogSerializer(serializers.ModelSerializer):
     sets = SetLogSerializer(many=True, read_only=True)
     form_videos = serializers.SerializerMethodField()
+    edits = serializers.SerializerMethodField()
 
     class Meta:
         model = WorkoutLog
         fields = ["id", "assignment", "program_day", "name", "date", "status", "started_at", "finished_at",
                   "duration_seconds", "time_breakdown", "effort", "note", "sets_done", "sets_planned", "auto_saved",
-                  "paused_at", "reopened_at", "segments", "sets", "form_videos"]
+                  "paused_at", "reopened_at", "segments", "sets", "form_videos", "edits"]
         read_only_fields = ["status", "finished_at", "sets_done", "sets_planned", "auto_saved", "assignment",
                             "started_at", "paused_at", "reopened_at", "segments"]
 
     def get_form_videos(self, obj):
         return [form_video_json(v, self.context.get("request")) for v in obj.form_videos.select_related("exercise")]
+
+    def get_edits(self, obj):
+        """Every "Edit workout" save, oldest first: when, by whom and what changed (H56). The old values stay on the
+        server (`WorkoutEdit.before`) and are not sent here."""
+        return [{"number": e.number, "edited_at": e.edited_at, "by": e.by.full_name if e.by else "",
+                 "changes": e.changes} for e in obj.edits.select_related("by")]
 
 
 def form_video_json(v, request=None):
@@ -442,7 +449,14 @@ class WorkoutRowSerializer(serializers.ModelSerializer):
     class Meta:
         model = WorkoutLog
         fields = ["id", "name", "date", "status", "duration_seconds", "effort", "sets_done", "sets_planned",
-                  "finished_at", "note", "program_day", "exercises", "has_pr"]
+                  "finished_at", "note", "program_day", "exercises", "has_pr", "edited"]
+
+    edited = serializers.SerializerMethodField()
+
+    def get_edited(self, obj):
+        """How many times the client edited it after finishing (0 = never)."""
+        n = getattr(obj, "edit_count", None)
+        return n if n is not None else obj.edits.count()
 
     def _sets(self, obj):
         cache = getattr(obj, "_prefetched_objects_cache", {})
@@ -504,6 +518,27 @@ class StateSerializer(serializers.Serializer):
         if len(v) > 200:
             raise serializers.ValidationError("Send up to 200 sets.")
         return v
+
+
+class EditWorkoutSerializer(serializers.Serializer):
+    """"Edit workout" on a finished workout: start, end and every set that stays (H51-H53)."""
+
+    started_at = serializers.DateTimeField()
+    finished_at = serializers.DateTimeField()
+    sets = StateSetSerializer(many=True)
+
+    def validate_sets(self, v):
+        if len(v) > 200:
+            raise serializers.ValidationError("Send up to 200 sets.")
+        return v
+
+
+class PastWorkoutSerializer(EditWorkoutSerializer):
+    """A missed workout logged the next day (H51a)."""
+
+    date = serializers.DateField()
+    program_day = serializers.IntegerField(required=False, allow_null=True)
+    name = serializers.CharField(max_length=80, required=False, allow_blank=True)
 
 
 class FeedbackSerializer(serializers.Serializer):

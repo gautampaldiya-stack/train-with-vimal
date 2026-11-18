@@ -49,7 +49,7 @@ String lbKind(String k) => const {'video': 'Video', 'pdf': 'PDF', 'image': 'Imag
 String lbClock(int s) => '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
 
 /// Filters: id, label (board order).
-const lbFilters = [('all', 'All'), ('video', 'Videos'), ('pdf', 'PDFs'), ('image', 'Images'), ('article', 'Articles'), ('link', 'Links'), ('saved', 'Saved')];
+const lbFilters = [('all', 'All'), ('video', 'Videos'), ('pdf', 'PDFs'), ('image', 'Images'), ('article', 'Articles'), ('link', 'Links')]; // 'saved' off with Save for later (Probid 18 Nov)
 
 class LibraryController extends SafeNotifier {
   LibraryController() {

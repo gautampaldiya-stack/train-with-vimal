@@ -257,6 +257,8 @@ Widget _workout(CpController c, Map r, Map d, _Nav nav) {
       }(),
     if (order.isEmpty) const EmptyState('No sets logged'),
     if (note.isNotEmpty) cpQuote('${c.first}’s note', note),
+    // H56: every time the client edited this workout after finishing it, and what changed
+    for (final e in [for (final x in (d['edits'] as List? ?? const [])) x as Map]) _editRow(c, e),
     for (final v in videos) _FormVideoRow(v),
     CpReplyBox(
       hint: 'Comment on this workout…',
@@ -264,6 +266,23 @@ Widget _workout(CpController c, Map r, Map d, _Nav nav) {
       onSend: (t) => Services.api.post('clients/${c.id}/logs/comment/', {'about': 'workout', 'date': '${r['date']}', 'text': t}),
     ),
   ]);
+}
+
+Widget _editRow(CpController c, Map e) {
+  final at = cpParse(e['edited_at']);
+  final changes = [for (final x in (e['changes'] as List? ?? const [])) '$x'];
+  return Container(
+    margin: const EdgeInsets.only(top: 10),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(10)),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 4, children: [
+      Row(spacing: 8, children: [
+        AppBadge('Edited · version ${(e['number'] as num? ?? 1).toInt() + 1}', tone: Tone.info),
+        if (at != null) Text(DateFormat('d MMM, h:mm a').format(at), style: AppText.s(12, W.w5, color: AppColors.muted)),
+      ]),
+      Text(changes.isEmpty ? '${c.first} saved it with no changes' : changes.join(' · '), style: AppText.s(12.5, W.w5, color: AppColors.text2)),
+    ]),
+  );
 }
 
 // ─────────────────────────────── Meals

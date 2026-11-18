@@ -367,7 +367,7 @@ E51. ✅ Admin/trainer client Logs (Daily, Weekly, Habits, Supplements) aur clie
 
 ### H. Workout Edit aur Timing
 
-51. ⬜ Complete hua workout usi din dobara khol ke edit ho sake. Changes nayi version ke roop me save.
+51. ✅ Complete hua workout dobara khol ke edit ho sake (Train par "Edit workout"). Har save nayi version (WorkoutEdit: purani values + kya badla), khali save par version nahi (Probid 18 Nov).
 51b. ✅ Logger ek Strong panel (Probid 17 Nov): neeche head tab bar ke upar, ungli se upar / neeche, status bar me nahi, band nahi hota; set tick / skip / delete / rest khatam pe sound; khali KG pe tick button shake; notification aate hi sound.
 51c. ✅ Notification Strong jaisi (Probid 17 Nov): khali box → Add values + Open; exercise poora → agla; set baaki → us exercise ka naam + Open; sab done → Workout finished + Finish workout / Return to workout. Set tick par rest sheet nahi khulti.
 51d. ✅ Rest: top bar me sirf chhota rest time + neeche patli progress line; set line par bada timer nahi; aakhri 3 sec 3 buzz, phir ring bell sound (Probid 17 Nov).
@@ -417,7 +417,7 @@ E51. ✅ Admin/trainer client Logs (Daily, Weekly, Habits, Supplements) aur clie
 52w. ✅ PDF sheet: pages haath se left/right swipe; Download aur Save for later comment out; Mark as done chhota button (Probid 18 Nov).
 52x. ✅ Article text sundar: lead para, headings, bullets, numbered steps, quote, bold/italic (Probid 18 Nov).
 52y. ✅ Sheet upar tap se band karte waqt thoda upar jaake band hota tha: tab bar sheet jaane ke baad wapas aata hai, ab seedha neeche band (Probid 18 Nov).
-52z. ⬜ App khula ho tab phone notification bhi dikhana (abhi sirf in-app toast) — Probid ka jawab baaki. Library 'Saved' filter rakhna ya nahi — Probid ka jawab baaki.
+52z. ✅ App khula ho tab toast ke saath phone tray me bhi notification (Android channel "Messages and reminders", tap par wahi page; iOS foreground banner). Library 'Saved' filter aur bookmark button hata diye, need nahi thi (Probid 18 Nov).
 53a. ✅ Phone pages: scroll par top bar ke neeche halki shadow; bada page title scroll ke saath bar me chhota title ban jaata (Strong) (Probid 18 Nov).
 53b. ✅ Kisi page se Home jaate waqt jaata hua page upar status bar ke neeche khisak jaata tha: ab har page apna status bar gap khud rakhta hai (Probid 18 Nov).
 53c. ✅ Notifications aur Library list phone par screen ke edge tak (card margin nahi, sirf upar-neeche line, CaBleed); andar ki padding pehle jaisi. Page ka bada title scroll ke saath 1:1 upar khisakta aur chhota hota, bar me pahunch kar left me ruk jaata (Strong History jaisa, Probid 18 Nov).
@@ -427,12 +427,12 @@ E51. ✅ Admin/trainer client Logs (Daily, Weekly, Habits, Supplements) aur clie
 53g. ✅ Food "+ Log food" aur Progress "+ Log weight" bar me naam ke saath (sirf icon se samajh nahi aata tha); page title upar, icons ke theek neeche (khali jagah kam) (Probid 18 Nov).
 53h. ✅ Train exercise list phone par bina card border, screen ke edge tak, sirf upar / neeche / beech me line (Probid 18 Nov).
 51l. ⏸️ Baad me (Probid 17 Nov: "abhi nahi"): exercises ke beech ka rest. Coach plan me do exercises ke beech rest rakhe; tab last set ke baad exercise ka rest nahi, ye beech wala chale.
-51a. ⬜ Kal ka workout (Food jaisa, Probid 17 Nov): week strip me kal chuno to kal ka workout log kar sake (chhoot gaya ho to) ya kal ka kiya hua edit kar sake. Usse purane din sirf dekh sakte.
-52. ⬜ Editable: exercises, sets, weight, reps, set type, rest timers, start aur end time.
-53. ⬜ Start/end badalne par duration aur saari dependent stats recalculate.
-54. ⬜ Client History page se bhi edit kar sake.
-55. ⬜ Finish ke baad add kiye sets alag timed segment. Total exercise time = session time + addition.
-56. ⬜ Client ka har edit admin ko dikhe (client profile: workouts aur activity).
+51a. ✅ Kal ka workout (Food jaisa, Probid 17 Nov): strip me kal chuno, chhoota ho to "Log this workout" (start/end + sets), kiya hua ho to "Edit workout". Naya log sirf kal ka (backend bhi rokta hai); purana kiya hua History se edit ho sakta.
+52. ✅ Editable: sets (add / remove, exercise ke saare sets hata do to exercise hat jaati), weight, reps, set type (SET pe tap), rest, start aur end time. Naya exercise client nahi jodta (rule).
+53. ✅ Start/end badalne par duration, date, time breakdown, sets done, volume dobara.
+54. ✅ History (Train ki ghadi → Past workouts) me workout kholo → "Edit". List me "· edited".
+55. ✅ Finish ke baad "Log more sets" alag segment (pehle se tha); Edit sheet me segments ka note. Time edit karne par ek segment ban jaata.
+56. ✅ Coach ko client profile ke workout me "Edited · version N" + kya badla, activity me "edited a workout", live update bhi.
 
 ### I. History aur Exercise Details
 

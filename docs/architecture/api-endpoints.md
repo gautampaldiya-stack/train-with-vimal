@@ -363,6 +363,8 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `me/workouts/<pk>/clear-sets/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/<pk>/discard/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/<pk>/feedback/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
+| `me/workouts/<pk>/edit/` | PUT | MyWorkoutViewSet | Edit a finished workout: `started_at`, `finished_at`, `sets` (every set that stays). New version (`WorkoutEdit`), time / sets / bests worked out again, coach sees it (H51-H54, H56). |
+| `me/workouts/past/` | POST | MyWorkoutViewSet | Log yesterday's missed workout afterwards: `date` (yesterday only), `program_day`, `name`, `started_at`, `finished_at`, `sets` (H51a). |
 | `me/workouts/<pk>/form-video/` | POST | MyWorkoutViewSet | Logger set menu → Send a form video. Multipart `file`, `exercise`, `set_number`, `note`. Tells the trainer (`form_video`); shows in the client profile Logs → workout detail (`form_videos`). D-46 |
 | `me/workouts/<pk>/finish/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |
 | `me/workouts/<pk>/pause/` | POST | MyWorkoutViewSet | The logger. Start → tick sets → finish (or discard / restart / clear). |

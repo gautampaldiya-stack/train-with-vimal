@@ -17,6 +17,7 @@ from .models import (
     ProgramExercise,
     ProgramWeek,
     SetLog,
+    WorkoutEdit,
     WorkoutLog,
 )
 
@@ -615,3 +616,149 @@ def can_edit_program(user, program):
     if tp.has_perm("training.edit_templates"):
         return True
     return program.created_by_id == user.id and tp.has_perm("training.use_templates")
+
+
+# ─────────────────────────────── Edit a finished workout (tracker H51-H56)
+
+def _shown_start(wl):
+    """The start the app shows for a finished workout: its end minus its time (with "Log more sets" parts the
+    stored start is the last part's, so it is worked out the same way the total is)."""
+    if wl.finished_at is None:
+        return wl.started_at
+    return wl.finished_at - timedelta(seconds=int(wl.duration_seconds or 0))
+
+
+def _json(data):
+    import json
+
+    from rest_framework.utils.encoders import JSONEncoder
+
+    return json.loads(json.dumps(data, cls=JSONEncoder))
+
+
+def _check_times(start, end, *, day=None):
+    if start is None or end is None:
+        raise ValidationError({"started_at": ["Pick the start and end time."]})
+    if end <= start:
+        raise ValidationError({"finished_at": ["The end must be after the start."]})
+    if (end - start).total_seconds() > 12 * 3600:
+        raise ValidationError({"finished_at": ["A workout can be up to 12 hours long."]})
+    if end > timezone.now() + timedelta(minutes=1):
+        raise ValidationError({"finished_at": ["The end can not be in the future."]})
+    if day is not None and timezone.localdate(start) != day:
+        raise ValidationError({"started_at": ["The start must be on the day of the workout."]})
+
+
+def _summary(sets):
+    """{exercise id: (name, [(type, weight, reps, seconds, bpm, rest)...])} of the ticked sets."""
+    out = {}
+    for s in sets:
+        if not s.get("done"):
+            continue
+        out.setdefault(str(s["exercise"]), [s.get("exercise_name") or "", []])[1].append(
+            (s.get("set_type") or "normal", str(s.get("weight_kg")), s.get("reps"), s.get("seconds"), s.get("bpm"),
+             s.get("rest_seconds")))
+    return out
+
+
+def _changes(before, after, times_changed):
+    """What an edit changed, in words for the coach: ["Start and end time", "Bench Press: 3 → 4 sets", ...]."""
+    out = ["Start and end time"] if times_changed else []
+    a, b = _summary(before), _summary(after)
+    for k, (name, rows) in a.items():
+        if k not in b:
+            out.append(f"{name}: removed")
+        elif len(rows) != len(b[k][1]):
+            out.append(f"{name}: {len(rows)} → {len(b[k][1])} sets")
+        elif rows != b[k][1]:
+            out.append(f"{name}: sets changed")
+    for k, (name, rows) in b.items():
+        if k not in a:
+            out.append(f"{name}: added")
+    return out
+
+
+@transaction.atomic
+def edit_workout(wl, *, started_at, finished_at, sets, actor):
+    """Save "Edit workout": new start / end and every set. The workout before the change is kept as a version
+    (`WorkoutEdit`), time, sets, volume and bests are worked out again, and the coach is told (H51-H53, H56)."""
+    from .serializers import SetLogSerializer, WorkoutLogSerializer
+
+    wl = WorkoutLog.objects.select_for_update().get(id=wl.id)
+    if wl.status != WorkoutLog.Status.COMPLETED:
+        raise ValidationError({"workout": ["Only a finished workout can be edited."]})
+    _check_times(started_at, finished_at)
+    before = _json({k: v for k, v in WorkoutLogSerializer(wl).data.items() if k != "form_videos"})
+    old_start, old_end = _shown_start(wl), wl.finished_at
+    for row in sets:  # the edit page lists only what was done
+        row["done"] = True
+        row.setdefault("done_at", None)
+    save_state(wl, {"sets": sets})
+    # sets added on the edit page count as done at the end of the workout, not now
+    wl.sets.filter(done=True, done_at__gt=finished_at).update(done_at=finished_at)
+    times_changed = (abs((started_at - old_start).total_seconds()) >= 60
+                     or abs((finished_at - old_end).total_seconds()) >= 60)
+    if times_changed:
+        old_total = max(1, int(wl.duration_seconds or 0))
+        total = int((finished_at - started_at).total_seconds())
+        # one timed part now; the working / rest split keeps its share of the new time (H53)
+        wl.time_breakdown = {k: round(int(v) * total / old_total) for k, v in (wl.time_breakdown or {}).items()
+                             if str(v).lstrip("-").isdigit()}
+        wl.segments = [{"seconds": total, "finished_at": finished_at.isoformat(), "edited": True}]
+        wl.duration_seconds = total
+        wl.started_at, wl.finished_at = started_at, finished_at
+        wl.date = timezone.localdate(started_at)
+    wl.sets_done = wl.sets.filter(done=True, is_warmup=False).count()
+    wl.sets_planned = max(wl.sets_planned, wl.sets.filter(is_warmup=False).count())
+    wl.save()
+    after = [_json(SetLogSerializer(s).data) for s in wl.sets.select_related("exercise")]
+    changes = _changes(before.get("sets") or [], after, times_changed)
+    if not changes:
+        return wl  # saved with nothing changed: no new version, nothing to tell the coach
+    n = (wl.edits.aggregate(m=Max("number"))["m"] or 0) + 1
+    WorkoutEdit.objects.create(workout=wl, number=n, by=actor, before=before, changes=changes)
+    client = wl.client
+    activity_log("edited a workout", "workout", actor=actor, target=wl, target_label=wl.name, client=client,
+                 meta={"version": n + 1, "changes": changes})
+    trainer = getattr(getattr(client, "client_profile", None), "trainer", None)
+    if trainer:
+        from apps.notifications.realtime import send_to_user
+
+        transaction.on_commit(lambda: send_to_user(trainer.id, "client_activity", {
+            "client": str(client.id), "kind": "workout_edited", "workout": str(wl.id)}))
+    return wl
+
+
+@transaction.atomic
+def log_past_workout(user, *, day, program_day, name, started_at, finished_at, sets):
+    """A workout missed yesterday, logged afterwards (Probid 17 Nov, tracker H51a): the client fills the sets
+    and the start / end time, and it is saved finished, as if done then."""
+    _check_times(started_at, finished_at, day=day)
+    if WorkoutLog.objects.filter(client=user, date=day, status=WorkoutLog.Status.COMPLETED,
+                                 program_day=program_day).exists():
+        raise ValidationError({"date": ["This workout is already logged for that day. Edit it instead."]})
+    pa, _, _, _ = today_plan(user, day)
+    wl = WorkoutLog.objects.create(
+        client=user, assignment=pa, program_day=program_day, date=day, started_at=started_at,
+        name=(name or (program_day.name if program_day else "Workout"))[:80],
+        status=WorkoutLog.Status.COMPLETED, finished_at=finished_at,
+        sets_planned=sum(e.sets for e in program_day.exercises.all()) if program_day else 0)
+    for row in sets:
+        row["done"] = True
+        row["done_at"] = finished_at
+    save_state(wl, {"sets": sets})
+    total = int((finished_at - started_at).total_seconds())
+    wl.segments = [{"seconds": total, "finished_at": finished_at.isoformat()}]
+    wl.duration_seconds = total
+    wl.sets_done = wl.sets.filter(done=True, is_warmup=False).count()
+    wl.sets_planned = max(wl.sets_planned, wl.sets.filter(is_warmup=False).count())
+    wl.save()
+    activity_log("logged a past workout", "workout", actor=user, target=wl, target_label=wl.name, client=user,
+                 meta={"date": day.isoformat(), "sets_done": wl.sets_done})
+    trainer = getattr(getattr(user, "client_profile", None), "trainer", None)
+    if trainer:
+        from apps.notifications.realtime import send_to_user
+
+        transaction.on_commit(lambda: send_to_user(trainer.id, "client_activity", {
+            "client": str(user.id), "kind": "workout_done", "workout": str(wl.id)}))
+    return wl

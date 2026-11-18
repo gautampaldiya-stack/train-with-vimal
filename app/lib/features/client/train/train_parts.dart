@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
@@ -15,6 +17,7 @@ import '../../../core/widgets/responsive.dart';
 import '../home/home_parts.dart';
 import 'body_map_svg.dart';
 import 'train_model.dart';
+import 'workout_edit.dart';
 import '../../../core/widgets/tooltip.dart';
 
 /// Pieces shared by the Train tab and the workout logger: exercise tile, exercise guide with the
@@ -719,7 +722,23 @@ class _PastSheetState extends State<_PastSheet> {
             },
           ),
         ),
-      if (sel != null) _back(),
+      if (sel != null)
+        Row(children: [
+          Expanded(child: _back()),
+          // H54: History → workout → Edit, like Strong
+          if (_det != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: CaBarText('Edit', icon: AppIcons.edit, onTap: () async {
+                if (!await showEditWorkout(context, sel.id) || !mounted) return;
+                _pages.clear();
+                _rows.clear();
+                _pageNo.clear();
+                unawaited(_load());
+                unawaited(_open(sel));
+              }),
+            ),
+        ]),
       Flexible(
         child: SingleChildScrollView(
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: sel == null ? _list(rows, p) : _detail(sel)),
@@ -773,7 +792,7 @@ class _PastSheetState extends State<_PastSheet> {
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
                           Text(r.name, style: AppText.s(13.5, W.w7)),
-                          CutText('${r.minutes} min · ${r.exercises} exercises · ${r.sets} sets', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
+                          CutText('${r.minutes} min · ${r.exercises} exercises · ${r.sets} sets${r.edited > 0 ? ' · edited' : ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w4, color: AppColors.muted)),
                         ]),
                       ),
                       if (r.pr) const PrFlag('PR'),

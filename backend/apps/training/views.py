@@ -35,6 +35,8 @@ from .models import (
     WorkoutLog,
 )
 from .serializers import (
+    EditWorkoutSerializer,
+    PastWorkoutSerializer,
     AssignmentSerializer,
     AssignSerializer,
     ExerciseMiniSerializer,
@@ -669,7 +671,8 @@ class ClientWorkoutLogViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, 
             from django.http import Http404
 
             raise Http404
-        return WorkoutLog.objects.filter(client=client).exclude(status="discarded").prefetch_related("sets__exercise")
+        return (WorkoutLog.objects.filter(client=client).exclude(status="discarded").prefetch_related("sets__exercise")
+                .annotate(edit_count=Count("edits", distinct=True)).order_by("-date", "-started_at"))
 
     def get_serializer_class(self):
         return WorkoutLogSerializer if self.action == "retrieve" else WorkoutRowSerializer
@@ -851,7 +854,8 @@ class MyWorkoutViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewset
     def get_queryset(self):
         qs = WorkoutLog.objects.filter(client=self.request.user)
         if self.action == "list":
-            qs = qs.filter(status="completed").prefetch_related("sets")
+            qs = (qs.filter(status="completed").prefetch_related("sets")
+                  .annotate(edit_count=Count("edits", distinct=True)).order_by("-date", "-started_at"))
             name = (self.request.query_params.get("name") or "").strip()
             return qs.filter(name=name) if name else qs
         return qs.prefetch_related("sets__exercise")
@@ -972,6 +976,37 @@ class MyWorkoutViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewset
             sets.setdefault(st.workout_id, []).append(SetLogSerializer(st).data)
         rows = [{"id": str(w.id), "date": w.date, "name": w.name, "sets": sets.get(w.id, [])} for w in page]
         return self.get_paginated_response(rows)
+
+    @extend_schema(request=EditWorkoutSerializer)
+    @action(detail=True, methods=["put"])
+    def edit(self, request, pk=None):
+        """Edit a finished workout (Train / History → Edit, tracker H51-H54): start, end and every set. Saves a new
+        version; time, sets and bests are worked out again; the coach sees the change."""
+        wl = get_object_or_404(WorkoutLog, id=pk, client=request.user, status="completed")
+        s = EditWorkoutSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+        services.edit_workout(wl, actor=request.user, **s.validated_data)
+        return Response(WorkoutLogSerializer(self.get_queryset().get(id=wl.id), context={"request": request}).data)
+
+    @extend_schema(request=PastWorkoutSerializer)
+    @action(detail=False, methods=["post"])
+    def past(self, request):
+        """Log yesterday's workout afterwards (missed on the day, H51a). Older days can only be looked at."""
+        s = PastWorkoutSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+        d = dict(s.validated_data)
+        day = d.pop("date")
+        if day != timezone.localdate() - timedelta(days=1):
+            raise serializers.ValidationError({"date": ["Only yesterday's workout can be logged afterwards."]})
+        pa, _, _, _ = services.today_plan(request.user, day)
+        pd = None
+        if d.get("program_day"):
+            pd = get_object_or_404(ProgramDay, id=d["program_day"],
+                                   week__program__in=[pa.effective_program] if pa else [])
+        d.pop("program_day", None)
+        wl = services.log_past_workout(request.user, day=day, program_day=pd, name=d.pop("name", ""), **d)
+        return Response(WorkoutLogSerializer(self.get_queryset().get(id=wl.id), context={"request": request}).data,
+                        status=201)
 
     @action(detail=True, methods=["post"])
     def reopen(self, request, pk=None):

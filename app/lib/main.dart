@@ -6,6 +6,7 @@ import 'package:flutter_web_plugins/url_strategy.dart';
 import 'app/app.dart';
 import 'app/router.dart';
 import 'app/services.dart';
+import 'core/live/live_notice.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,6 +15,7 @@ Future<void> main() async {
   usePathUrlStrategy();
   await _portraitOnPhones();
   Services.push.onOpen = (route) => appRouter.go(route); // tapped push → its page
+  LiveNotice.onRoute = (route) => route.startsWith('/') ? appRouter.go(route) : null; // push shown while open
   await Services.session.restore();
   runApp(const TwvApp());
 }

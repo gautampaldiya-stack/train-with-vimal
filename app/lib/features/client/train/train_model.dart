@@ -432,10 +432,14 @@ class PastRow {
         sets = _n(j['sets_done']).toInt(),
         effort = _nn(j['effort'])?.toInt(),
         note = '${j['note'] ?? ''}',
-        pr = j['has_pr'] == true;
+        pr = j['has_pr'] == true,
+        edited = _n(j['edited']).toInt();
   final String id, name, note;
   final DateTime date;
   final int seconds, exercises, sets;
+
+  /// Times the client edited it after finishing (H52).
+  final int edited;
   final int? effort;
   final bool pr;
   int get minutes => (seconds / 60).round();
