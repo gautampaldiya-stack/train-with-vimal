@@ -409,6 +409,7 @@ E51. ✅ Admin/trainer client Logs (Daily, Weekly, Habits, Supplements) aur clie
 52o. ✅ flutter run (debug) me workout sounds nahi aate the: iOS audio setting (ambient + mixWithOthers) debug assert me fail; mixWithOthers hataya (Probid 18 Nov).
 52p. ✅ Strong jaisa header (phone): upar sirf Back + bina box wale icons (tap par splash), page ka bada title content ke andar scroll ke saath. More, Notifications, Profile, Activity, Train, Food, Progress, Habits, Check-ins, Library, About. Train History, Food Log food, Progress past logs / Log weight, Mark all read ab icons (Probid 18 Nov).
 52q. ✅ Debug: logger band hone par "Null check operator" (dispose me MediaQuery) fix (Probid 18 Nov).
+52r. ✅ Back button: chevron "<" ki jagah poora ← arrow, bina box, tap par splash, har sub page (Probid 18 Nov).
 51l. ⏸️ Baad me (Probid 17 Nov: "abhi nahi"): exercises ke beech ka rest. Coach plan me do exercises ke beech rest rakhe; tab last set ke baad exercise ka rest nahi, ye beech wala chale.
 51a. ⬜ Kal ka workout (Food jaisa, Probid 17 Nov): week strip me kal chuno to kal ka workout log kar sake (chhoot gaya ho to) ya kal ka kiya hua edit kar sake. Usse purane din sirf dekh sakte.
 52. ⬜ Editable: exercises, sets, weight, reps, set type, rest timers, start aur end time.
