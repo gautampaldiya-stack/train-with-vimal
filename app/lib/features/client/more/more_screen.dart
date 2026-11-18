@@ -7,6 +7,7 @@ import '../../../app/services.dart';
 import '../../../app/unread.dart';
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
+import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/overlays.dart';
@@ -70,12 +71,33 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
         listenable: Listenable.merge([c, Services.session]),
         builder: (context, _) {
           final d = c.data;
-          if (d == null) return pxLoading(c.error, c.load, 'your account');
+          if (d == null) return c.error == null ? _skeleton() : pxLoading(c.error, c.load, 'your account');
           return RepaintBoundary(key: _shot, child: context.isPhone ? _phone(d) : _web(d));
         },
       );
 
   Me get _me => Services.session.me!;
+
+  // ─────────────────────────────── Loading (Probid 18 Nov: skeletons, not a spinner)
+
+  Widget _skelList() => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
+        child: Skeleton(child: Column(children: [for (var i = 0; i < 6; i++) SkelRow(first: i == 0)])),
+      );
+
+  /// The page's shape before the account has loaded once on this phone.
+  Widget _skeleton() => SafeArea(
+        bottom: false,
+        child: SingleChildScrollView(
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [
+            const Skeleton(child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 8, children: [SkelBox(width: 160, height: 22, radius: 8), SkelBox(width: 220, height: 11)])),
+            if (_view == 'notifications' || _view == 'activity') _skelList() else const Skeleton(child: Column(spacing: 12, children: [SkelCard(lines: 2), SkelCard(lines: 3), SkelCard(lines: 2)])),
+          ]),
+        ),
+      );
 
   // ─────────────────────────────── Layouts
 
@@ -601,7 +623,7 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
       onPick: (i) => c.pickNoticeTab(i == 1),
     );
     final body = list == null
-        ? const Padding(padding: EdgeInsets.all(30), child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.accent))))
+        ? _skelList()
         : list.isEmpty
             ? ChCard(children: [
                 c.unreadTab
@@ -687,7 +709,7 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
     if (list == null) {
       out.add(c.actError != null
           ? pxLoading(c.actError, () => c.loadActivity(c.actKind), 'your activity')
-          : const Padding(padding: EdgeInsets.all(30), child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.accent)))));
+          : _skelList());
       return out;
     }
     if (list.isEmpty) {

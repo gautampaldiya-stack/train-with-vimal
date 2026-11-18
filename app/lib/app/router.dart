@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/icons/app_icons.dart';
 import '../core/leave/leave_guard.dart';
+import '../core/theme/colors.dart';
 import '../core/theme/metrics.dart';
 import '../core/theme/motion.dart';
 import '../core/widgets/button.dart';
@@ -293,22 +294,45 @@ final appRouter = GoRouter(
   ],
 );
 
-/// Page and tab changes fade in with a short rise (Phase 5, 250 ms); nothing moves when the phone asks for no
-/// animations. A change of the query only (a tab inside a page) keeps the page, so it does not animate again.
-Page<void> _page(GoRouterState st, Widget child) => CustomTransitionPage<void>(
-      key: st.pageKey,
-      child: child,
-      transitionDuration: Motion.medium,
-      reverseTransitionDuration: Motion.short,
-      transitionsBuilder: (context, a, _, child) {
-        if (Motion.off(context)) return child;
+/// Page changes (Probid 18 Nov: "mobile me aaram se left ya right se aate hai, back karte hai to vese hi jate hai").
+/// Phone: a page opened from another page (`/more/notifications` over `/more`) slides in from the right while the
+/// page under it moves a little to the left, and Back plays it the other way; a tab change (one part path) fades.
+/// Wider screens keep the short fade with a small rise. Nothing moves when the phone asks for no animations.
+/// A change of the query only (a tab inside a page) keeps the page, so it does not animate again.
+Page<void> _page(GoRouterState st, Widget child) {
+  final sub = st.uri.pathSegments.length > 1;
+  return CustomTransitionPage<void>(
+    key: st.pageKey,
+    child: child,
+    transitionDuration: sub ? Motion.page : Motion.medium,
+    reverseTransitionDuration: sub ? Motion.pageBack : Motion.short,
+    transitionsBuilder: (context, a, under, child) {
+      if (Motion.off(context)) return child;
+      if (MediaQuery.sizeOf(context).width >= Breakpoints.tablet) {
         final c = CurvedAnimation(parent: a, curve: Motion.curve);
         return FadeTransition(
           opacity: c,
           child: SlideTransition(position: Tween(begin: const Offset(0, .02), end: Offset.zero).animate(c), child: child),
         );
-      },
-    );
+      }
+      // the page has its own background, so the one under it does not show through while it slides
+      final bg = Services.session.me?.role == Role.client ? AppColors.caBg : AppColors.panel;
+      Widget w = ColoredBox(color: bg, child: child);
+      // a page opened over this one: it moves a quarter to the left under the new page
+      w = SlideTransition(
+        position: Tween(begin: Offset.zero, end: const Offset(-.25, 0))
+            .animate(CurvedAnimation(parent: under, curve: Curves.easeOutCubic, reverseCurve: Curves.easeInCubic)),
+        child: w,
+      );
+      if (!sub) return FadeTransition(opacity: CurvedAnimation(parent: a, curve: Motion.curve), child: w);
+      return SlideTransition(
+        position: Tween(begin: const Offset(1, 0), end: Offset.zero)
+            .animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic, reverseCurve: Curves.easeInCubic)),
+        child: DecoratedBox(decoration: const BoxDecoration(boxShadow: AppShadows.pageEdge), child: w),
+      );
+    },
+  );
+}
 
 bool _phoneWide() {
   final views = WidgetsBinding.instance.platformDispatcher.views;

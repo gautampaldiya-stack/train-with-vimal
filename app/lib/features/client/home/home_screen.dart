@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import '../../../app/unread.dart';
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
+import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/badge.dart';
 import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hero_status.dart';
@@ -73,10 +74,9 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
           final d = c.data;
           if (d == null) {
             final e = c.error;
+            if (e == null) return context.isPhone ? _phoneSkeleton() : _webSkeleton();
             return Center(
-              child: e == null
-                  ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.accent))
-                  : Padding(
+              child: Padding(
                       padding: const EdgeInsets.all(24),
                       child: Column(mainAxisSize: MainAxisSize.min, spacing: 10, children: [
                         Text(e.offline ? 'You are offline' : 'Could not load this', style: AppText.s(15, W.w7)),
@@ -88,6 +88,86 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
           }
           return context.isPhone ? _phone(d) : _web(d);
         },
+      );
+
+  // ─────────────────────────────── Loading (Probid 18 Nov: skeletons, not a spinner)
+
+  /// The phone Home's shape while it loads: the blue hero with its lines, the week strip, three cards.
+  Widget _phoneSkeleton() {
+    final top = MediaQuery.paddingOf(context).top;
+    return HeroStatus(
+      bg: AppColors.caBg,
+      builder: (scroll) => SingleChildScrollView(
+        controller: scroll,
+        physics: const NeverScrollableScrollPhysics(),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Container(
+            padding: EdgeInsets.fromLTRB(18, top + 4, 18, 46),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(begin: Alignment(-0.35, -1), end: Alignment(0.35, 1), colors: AppColors.homeHero, stops: [0, .55, 1]),
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
+            ),
+            child: const Skeleton(
+              onColor: true,
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                SizedBox(height: 44, child: Row(children: [SkelBox(width: 150, height: 11), Spacer(), SkelBox(width: 36, height: 36, radius: 12)])),
+                SizedBox(height: 10),
+                SkelBox(width: 170, height: 26, radius: 8),
+                SizedBox(height: 12),
+                SkelBox(width: 210, height: 11),
+                SizedBox(height: 8),
+                SkelBox(width: 160, height: 11),
+                SizedBox(height: 46),
+              ]),
+            ),
+          ),
+          Transform.translate(
+            offset: const Offset(0, -34),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Skeleton(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(8, 10, 8, 10),
+                    decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
+                    child: Row(children: [
+                      for (var i = 0; i < 7; i++)
+                        const Expanded(child: Column(spacing: 6, children: [SkelBox(width: 14, height: 9), SkelBox(width: 18, height: 14), SkelBox(height: 14, circle: true)])),
+                    ]),
+                  ),
+                  const SkelCard(lines: 3),
+                  const SkelCard(height: 54),
+                  const SkelCard(lines: 2),
+                ]),
+              ),
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _webSkeleton() => CaWeb(
+        web: true,
+        child: SingleChildScrollView(
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(32, 32, 32, 72),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1080),
+              child: const Skeleton(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 18, children: [
+                  SkelBox(width: 260, height: 28, radius: 8),
+                  SkelBox(width: 180, height: 12),
+                  Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 18, children: [
+                    Expanded(child: Column(spacing: 18, children: [SkelCard(height: 44), SkelCard(lines: 3), SkelCard(lines: 2)])),
+                    Expanded(child: Column(spacing: 18, children: [SkelCard(height: 90), SkelCard(lines: 2)])),
+                  ]),
+                ]),
+              ),
+            ),
+          ),
+        ),
       );
 
   // ─────────────────────────────── Layouts

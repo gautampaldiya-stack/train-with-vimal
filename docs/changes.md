@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+## 2026-11-18 · Phone page transitions; loading skeletons
+- **Pehle:** Har page ek saath fade + halka upar aata; phone par andar ke page (jaise More → Notifications) ek dum khulte, Back par bhi. Load hote waqt Home / More beech me ghoomta spinner; Notifications har baar khaali spinner se shuru.
+- **Ab:** Phone: andar ka page right se slide hota (320 ms), neeche wala page chauthai left jaata; Back par ulta (260 ms); tabs ke beech chhota fade. Tablet / web pehle jaisa. Animations band ho to kuch nahi hilta. Load ke waqt skeleton (saans lete grey shapes): Home ka hero + week strip + cards, More, Notifications / My activity ki rows. Notifications ki pichli list cache se turant dikhti, nayi aate hi badal jaati.
+- **Kyun:** Probid (18 Nov): "mobile me aaram se left ya right se aate hai... notification page attakta hai... skeleton daal sakte hai".
+- **Updated:** app/lib/app/router.dart (`_page`), core/theme (Motion.page / pageBack, AppShadows.pageEdge, AppColors.skelBase / skelHi), core/widgets/skeleton.dart (new), client home_screen, more_screen, more_model (notifications cache).
+
 ## 2026-11-17 · Logger: Finish with unfinished sets (Strong); today's workout fully discard / restart after Log more sets
 - **Pehle:** Finish par untick sets seedhe skipped save hote. "Log more sets" wale workout me Cancel sirf naye sets hatata ("Discard added sets") aur Restart sab sets untick karta par pehle ka finished hissa server par reh jaata.
 - **Ab:** Finish par agar untick sets me values hain (likhi ya box me dikh rahi): Strong jaisa "Complete unfinished sets" (sab tick, jaisa dikh raha), "Discard unfinished sets" (sirf ticked save), "Cancel"; teen button upar-neeche. Log more sets (sirf aaj ka): Cancel sheet me "Discard whole workout" bhi (`POST discard {"all": true}`), aur Restart pura workout naya karta (`POST restart {"fresh": true}`: reopened_at, segments, time saaf; Undo nahi). Kal / pichle din ka workout logger me khulta hi nahi, isliye wahan discard / restart nahi.

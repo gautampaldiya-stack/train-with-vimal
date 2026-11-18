@@ -141,7 +141,7 @@ class MoreController extends ChangeNotifier {
     });
   }
 
-  static const _cacheKey = 'me/account';
+  static const _cacheKey = 'me/account', _noticesKey = 'me/notifications';
   late final StreamSubscription _rt, _results;
   MoData? data;
   ApiError? error;
@@ -193,12 +193,21 @@ class MoreController extends ChangeNotifier {
   Future<void> loadNotices({bool more = false}) async {
     if (more && (_next == null || loadingMore)) return;
     loadingMore = more;
+    // the last first page shows at once while the new one loads (Probid 18 Nov: the page stuck on opening)
+    if (!more && notices == null && !unreadTab) {
+      final c = await Services.cache.read(_noticesKey);
+      if (c is List && notices == null) {
+        notices = [for (final r in c) if (r is Map) MoNotice(r.cast<String, dynamic>())];
+        notifyListeners();
+      }
+    }
     try {
       final j = more
           ? await Services.api.get<Map<String, dynamic>>(_next!.substring(_next!.indexOf('notifications/')))
           : await Services.api.get<Map<String, dynamic>>('notifications/', query: {'page_size': 30, if (unreadTab) 'unread': 1});
       final rows = [for (final r in (j['results'] as List)) MoNotice((r as Map).cast<String, dynamic>())];
       notices = more ? [...?notices, ...rows] : rows;
+      if (!more && !unreadTab) unawaited(Services.cache.write(_noticesKey, j['results']));
       _next = j['next'] as String?;
     } on ApiError catch (e) {
       error = e;

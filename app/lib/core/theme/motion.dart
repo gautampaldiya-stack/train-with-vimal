@@ -12,6 +12,9 @@ abstract final class Motion {
   /// Pages, tabs, sheets, dialogs.
   static const medium = Duration(milliseconds: 250);
 
+  /// Phone: a page sliding in from the right over another page, and back out (Probid 18 Nov).
+  static const page = Duration(milliseconds: 320), pageBack = Duration(milliseconds: 260);
+
   /// Bottom sheets opening (closing uses [short]).
   static const sheet = Duration(milliseconds: 280);
 

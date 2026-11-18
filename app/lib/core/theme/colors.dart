@@ -21,6 +21,8 @@ abstract final class AppColors {
   static const linkHover = Color(0xFF1E3A8A); // `a:hover` on the boards
   static const accentRing = Color(0xFFBFD3FB);
   static const white = Color(0xFFFFFFFF);
+  /// Loading placeholders (core/widgets/skeleton.dart): the shape and the light that runs over it.
+  static const skelBase = Color(0xFFEDEDE9), skelHi = Color(0xFFE0E0DA);
   static const black = Color(0xFF000000);
 
   static const okBg = Color(0xFFE8F6EE), okText = Color(0xFF11663D), okSolid = Color(0xFF22C55E);
