@@ -116,7 +116,8 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
   // ─────────────────────────────── Layouts
 
   Widget _phone(FoodDay d) => CaPinned(
-    head: _top(d),
+    // Strong (Probid 18 Nov): the bar keeps only the Log food icon, the title scrolls with the page
+    head: CaTopBar(actions: [CaIconBtn(AppIcons.plus, plain: true, tooltip: 'Log food', onTap: _logFood)]),
     body: RefreshIndicator(
       onRefresh: c.load,
       color: AppColors.accent,
@@ -124,6 +125,7 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+          Padding(padding: const EdgeInsets.only(bottom: 4), child: CaPageTitle('Food', sub: _topSub(d))),
           _strip(d, web: false),
           ..._left(d),
           _tabs(d),
@@ -210,9 +212,13 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
 
   // ─────────────────────────────── Header and strip
 
-  Widget _top(FoodDay d) {
+  String _topSub(FoodDay d) {
     final shown = _future(d) ? d.planned[0] : d.eaten[0];
-    final sub = '${fdDay(d.date)}${d.isToday ? ' · today' : ''}${d.hasPlan ? ' · ${inNum(shown)} of ${inNum(d.target[0])} kcal' : ''}';
+    return '${fdDay(d.date)}${d.isToday ? ' · today' : ''}${d.hasPlan ? ' · ${inNum(shown)} of ${inNum(d.target[0])} kcal' : ''}';
+  }
+
+  Widget _top(FoodDay d) {
+    final sub = _topSub(d);
     return Padding(
       padding: const EdgeInsets.only(top: 2),
       child: Row(spacing: 10, children: [

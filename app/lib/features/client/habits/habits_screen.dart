@@ -66,7 +66,7 @@ class _ClientHabitsScreenState extends State<ClientHabitsScreen> {
   // ─────────────────────────────── Layouts
 
   Widget _phone(HabitsData d) => CaPinned(
-      head: _top(d, web: false),
+      head: CaTopBar(backTip: 'Back to More', onBack: () => context.go('/more')),
       body: RefreshIndicator(
         onRefresh: c.load,
         color: AppColors.accent,
@@ -74,6 +74,7 @@ class _ClientHabitsScreenState extends State<ClientHabitsScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+            Padding(padding: const EdgeInsets.only(bottom: 4), child: CaPageTitle('Habits & supplements', sub: d.by)),
             _tabs(web: false),
             if (!_week) ...[
               _strip(d, web: false),

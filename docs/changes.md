@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+## 2026-11-18 · Strong-style page headers on the phone
+- **Pehle:** Har page ka title + buttons upar fixed header me; bell / gear dabbe (border) wale buttons.
+- **Ab:** Phone par upar sirf top bar: Back (andar ke pages) aur bina box wale icons, tap par gol splash (CaTopBar, CaBarIcon, CaIconBtn plain, ChBell plain). Bada title (CaPageTitle) content ke andar, scroll ke saath upar jaata. Train History, Food Log food, Progress past logs / Log weight, Notifications Mark all read icons ban gaye. Web pehle jaisa. Logger dispose me context nahi.
+- **Kyun:** Probid (18 Nov), Strong ke History / Exercises screenshots ke saath.
+- **Updated:** core/widgets/client.dart, more_screen.dart, home_parts.dart (ChBell), train / food / progress / habits / checkins / library / about screens, workout_screen.dart.
+
 ## 2026-11-18 · Home / Train card rows, workout bar only on tabs, Add card ticks, refresh skeleton
 - **Pehle:** Workout ka chhota bar har page par. Train / Home par button akela row me, left khali. Home par "+ 1 more · See all". Check-ins default card Add card sheet me unticked aur drag list me nahi. Refresh par sirf ghoomta icon. Tab jaldi badalne par debug me "used after being disposed".
 - **Ab:** Bar sirf main tabs par (andar ke page par sirf panel khula ho tab). Train: progress left, button right. Home: "See all in Train" left, button right. Add card sheet me har card, jo Home par hai wo ticked, tap se on / off; Check-ins "(default)". Notifications refresh par upar skeleton rows. `SafeNotifier` (core/safe_notifier.dart) sab feature controllers ka base.

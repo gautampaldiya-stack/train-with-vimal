@@ -108,9 +108,9 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
       'activity' => _activityPage(web: false),
       _ => _mainPhone(d),
     };
-    // The page header stays put, only the content scrolls (Probid). Notifications and My activity also keep
-    // their tabs / filters fixed (Gautam).
-    final fixed = _view == 'notifications' || _view == 'activity' ? 2 : 1;
+    // Strong (Probid 18 Nov): only the top bar (Back, action icons) stays put; the title, the tabs and the content
+    // scroll together under it.
+    final h = children.first as _Head;
     final list = RefreshIndicator(
       onRefresh: _refresh,
       color: AppColors.accent,
@@ -118,13 +118,16 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
         controller: _scroll,
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 2, 16, 20),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: children.sublist(fixed)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+          Padding(padding: const EdgeInsets.only(bottom: 4), child: CaPageTitle(h.title, sub: h.sub)),
+          ...children.sublist(1),
+        ]),
       ),
     );
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: children.sublist(0, fixed)),
+        padding: const EdgeInsets.fromLTRB(4, 4, 6, 0),
+        child: CaTopBar(onBack: h.onBack, backTip: 'Back to More', actions: h.actions),
       ),
       Expanded(child: list),
     ]);
@@ -264,14 +267,8 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
   // ─────────────────────────────── Phone menu
 
   List<Widget> _mainPhone(MoData d) => [
-        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('More', style: AppText.s(26, W.w8, ls: -0.26, h: 1.2)),
-              Text('Your account, coach and settings', style: AppText.s(13, W.w5, color: AppColors.muted)),
-            ]),
-          ),
-          UnreadCount(fallback: d.unread, builder: (_, n) => ChBell(count: n, onTap: () => context.go('/more/notifications'))),
+        _Head(title: 'More', sub: 'Your account, coach and settings', actions: [
+          UnreadCount(fallback: d.unread, builder: (_, n) => ChBell(count: n, plain: true, onTap: () => context.go('/more/notifications'))),
         ]),
         if (d.deletionOn != null) _deletionBanner(d),
         _profileCard(d),
@@ -482,16 +479,10 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
 
   // ─────────────────────────────── Profile (phone page, web Overview left)
 
-  Widget _pageHead(String title, String sub, {List<Widget> actions = const []}) => Row(spacing: 10, children: [
-        CaBackBtn(tooltip: 'Back to More', onTap: () => context.go('/more')),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-            FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(title, maxLines: 1, style: AppText.s(21, W.w8, h: 1.2))),
-            CutText(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.muted)),
-          ]),
-        ),
-        ...actions,
-      ]);
+  /// A phone page's head (Strong, Probid 18 Nov): Back and the action icons go in the top bar, the title and its
+  /// line go into the scrolling content.
+  Widget _pageHead(String title, String sub, {List<Widget> actions = const []}) =>
+      _Head(title: title, sub: sub, actions: actions, onBack: () => context.go('/more'));
 
   Widget _details(MoData d) {
     final m = _me;
@@ -618,18 +609,23 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
     final list = c.notices;
     final total = list?.length ?? 0;
     final sub = d.unread > 0 ? '${d.unread} unread${c.unreadTab ? '' : ' · $total${c.hasMoreNotices ? '+' : ''} in all'}' : total > 0 && !c.unreadTab ? 'All caught up · $total${c.hasMoreNotices ? '+' : ''} in all' : 'All caught up';
+    Future<void> readAll() async {
+      if (d.unread == 0) return;
+      final n = d.unread;
+      final was = await c.readAll();
+      if (!mounted) return;
+      showToast(context, 'All marked as read', sub: '$n notification${n == 1 ? '' : 's'}', kind: ToastKind.ok, action: 'Undo', onAction: () => c.undoReadAll(was));
+    }
+
     final actions = [
       Opacity(
         opacity: d.unread > 0 ? 1 : 0.45,
-        child: chSm('Mark all read', () async {
-          if (d.unread == 0) return;
-          final n = d.unread;
-          final was = await c.readAll();
-          if (!mounted) return;
-          showToast(context, 'All marked as read', sub: '$n notification${n == 1 ? '' : 's'}', kind: ToastKind.ok, action: 'Undo', onAction: () => c.undoReadAll(was));
-        }, icon: AppIcons.check),
+        // phone top bar: a bare icon like the gear (Strong, Probid 18 Nov)
+        child: web ? chSm('Mark all read', readAll, icon: AppIcons.check) : CaIconBtn(AppIcons.checkCircle, plain: true, tooltip: 'Mark all read', onTap: readAll),
       ),
-      SizedBox(width: 34, height: 34, child: CaIconBtn(AppIcons.gear, tooltip: 'Notification settings', onTap: () => showReminderSheet(context, c))),
+      web
+          ? SizedBox(width: 34, height: 34, child: CaIconBtn(AppIcons.gear, tooltip: 'Notification settings', onTap: () => showReminderSheet(context, c)))
+          : CaIconBtn(AppIcons.gear, plain: true, tooltip: 'Notification settings', onTap: () => showReminderSheet(context, c)),
     ];
     final tabs = MoTabs(
       labels: ['All', d.unread > 0 ? 'Unread · ${d.unread}' : 'Unread'],
@@ -789,4 +785,15 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
 
 extension on String {
   String ifEmpty(String other) => isEmpty ? other : this;
+}
+
+/// A phone page's head, split by the page into its top bar ([onBack], [actions]) and its title in the content.
+class _Head extends StatelessWidget {
+  const _Head({required this.title, required this.sub, this.actions = const [], this.onBack});
+  final String title, sub;
+  final List<Widget> actions;
+  final VoidCallback? onBack;
+
+  @override
+  Widget build(BuildContext context) => CaPageTitle(title, sub: sub);
 }

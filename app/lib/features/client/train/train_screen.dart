@@ -126,7 +126,10 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
     final live = d.live;
     return Stack(children: [
       CaPinned(
-        head: _top(d),
+        // Strong (Probid 18 Nov): the bar keeps only the History icon, the title scrolls with the page
+        head: CaTopBar(actions: [
+          CaIconBtn(AppIcons.clock, plain: true, tooltip: 'History', onTap: () => showPastWorkouts(context, thisName: d.rest || d.dayName.isEmpty ? null : d.dayName)),
+        ]),
         body: RefreshIndicator(
         onRefresh: c.load,
         color: AppColors.accent,
@@ -134,6 +137,7 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.fromLTRB(16, 4, 16, live == null ? 20 : 84),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+            Padding(padding: const EdgeInsets.only(bottom: 4), child: CaPageTitle('Train', sub: d.programLine)),
             if (d.strip.isNotEmpty) _week(d, web: false),
             _today(d),
             ?_note(d, web: false),

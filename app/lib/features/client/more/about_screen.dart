@@ -92,10 +92,15 @@ class _ClientAboutScreenState extends State<ClientAboutScreen> {
     );
     if (phone) {
       return CaPinned(
-        head: _head(),
+        head: CaTopBar(backTip: 'Back to More', onBack: () => context.go('/more')),
         body: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [...left, ...right, made]),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+            Padding(padding: const EdgeInsets.only(bottom: 4), child: CaPageTitle('About', sub: '${_s('name')} · Version $appVersion')),
+            ...left,
+            ...right,
+            made,
+          ]),
         ),
       );
     }

@@ -107,7 +107,7 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
   // ─────────────────────────────── Layouts
 
   Widget _phone(CheckinsData d) => CaPinned(
-    head: _top(d, web: false),
+    head: CaTopBar(backTip: 'Back to More', onBack: () => context.go('/more')),
     body: RefreshIndicator(
       onRefresh: c.load,
       color: AppColors.accent,
@@ -118,7 +118,7 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           spacing: 12,
-          children: [?_setup(d), _cells(d), ?_daily(d), ?_weekly(d), ..._forms(d), _history(d)],
+          children: [Padding(padding: const EdgeInsets.only(bottom: 4), child: CaPageTitle('Check-ins', sub: d.subShort)), ?_setup(d), _cells(d), ?_daily(d), ?_weekly(d), ..._forms(d), _history(d)],
         ),
       ),
     ),

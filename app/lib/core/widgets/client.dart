@@ -30,12 +30,19 @@ class CaPinned extends StatelessWidget {
   final bool web;
   final double maxWidth;
 
+  /// Phone: [head] is a [CaTopBar] (Back, icons), the title is in [body] (Strong, Probid 18 Nov).
+  bool get _bar => !web && head is CaTopBar;
+
   @override
   Widget build(BuildContext context) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: web ? const EdgeInsets.fromLTRB(32, 32, 32, 14) : const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            padding: web
+                ? const EdgeInsets.fromLTRB(32, 32, 32, 14)
+                : _bar
+                    ? const EdgeInsets.fromLTRB(4, 4, 6, 0)
+                    : const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: web
                 ? Center(child: ConstrainedBox(constraints: BoxConstraints(maxWidth: maxWidth), child: head))
                 : head,
@@ -101,14 +108,18 @@ class CaButton extends StatelessWidget {
 
 /// `ca-ib sm`: square white icon button with a border.
 class CaIconBtn extends StatelessWidget {
-  const CaIconBtn(this.icon, {super.key, required this.onTap, this.size = 34, this.tooltip});
+  const CaIconBtn(this.icon, {super.key, required this.onTap, this.size = 34, this.tooltip, this.plain = false});
   final AppIconData icon;
   final VoidCallback? onTap;
   final double size;
   final String? tooltip;
 
+  /// Only the icon, no box or border; a round splash on tap (page top bars, like Strong, Probid 18 Nov).
+  final bool plain;
+
   @override
   Widget build(BuildContext context) {
+    if (plain) return CaBarIcon(icon: AppIcon(icon, size: 21, color: AppColors.text2), onTap: onTap, tooltip: tooltip);
     final b = Hover(
       onTap: onTap == null ? null : () => OpenGuard.tap() ? onTap!() : null,
       builder: (_, h, _) => Container(
@@ -121,6 +132,70 @@ class CaIconBtn extends StatelessWidget {
     );
     return tooltip == null ? b : Semantics(label: tooltip, button: true, child: b);
   }
+}
+
+/// A bare icon in a page's top bar: 44 tap target, no box or border, a round ink splash on tap (Probid 18 Nov, like
+/// Strong). [icon] can carry a badge (the bell's unread count).
+class CaBarIcon extends StatelessWidget {
+  const CaBarIcon({super.key, required this.icon, required this.onTap, this.tooltip});
+  final Widget icon;
+  final VoidCallback? onTap;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        label: tooltip,
+        button: true,
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkResponse(
+            onTap: onTap == null ? null : () => OpenGuard.tap() ? onTap!() : null,
+            radius: 22,
+            splashColor: AppColors.line2,
+            highlightColor: AppColors.logField,
+            hoverColor: AppColors.logFieldHover,
+            child: SizedBox(width: 44, height: 44, child: Center(child: icon)),
+          ),
+        ),
+      );
+}
+
+/// A page's top bar on the phone (Strong): Back on the left when there is one, bare action icons on the right, no
+/// title. The page's title sits in the content under it and scrolls away with it (Probid 18 Nov).
+class CaTopBar extends StatelessWidget {
+  const CaTopBar({super.key, this.onBack, this.backTip = 'Back', this.actions = const []});
+  final VoidCallback? onBack;
+  final String backTip;
+  final List<Widget> actions;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: 48,
+        child: Row(children: [
+          if (onBack != null) CaBackBtn(tooltip: backTip, onTap: onBack),
+          const Spacer(),
+          ...actions,
+        ]),
+      );
+}
+
+/// A page's big title and line under it, inside the scrolling content (Strong, Probid 18 Nov).
+class CaPageTitle extends StatelessWidget {
+  const CaPageTitle(this.title, {super.key, this.sub, this.trailing});
+  final String title;
+  final String? sub;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) => Row(crossAxisAlignment: CrossAxisAlignment.end, spacing: 10, children: [
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: AppText.s(30, W.w8, ls: -0.4, h: 1.15)),
+            if (sub != null && sub!.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 2), child: Text(sub!, style: AppText.s(13, W.w5, color: AppColors.muted))),
+          ]),
+        ),
+        ?trailing,
+      ]);
 }
 
 /// The back button of a sub-page (Probid 2026-11-03): a plain ← arrow, no box. 40 px tap target, a soft round

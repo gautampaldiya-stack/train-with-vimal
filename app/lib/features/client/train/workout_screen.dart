@@ -179,9 +179,13 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     });
   }
 
+  /// Where the last lift went (the panel or the page), kept for dispose(), where context may not be used.
+  bool _liftPanel = false;
+
   void _lift(double? v) {
     if (_lifted == v) return;
     _lifted = v;
+    _liftPanel = _inPanel;
     Timer.run(() {
       if (!mounted) return;
       if (_inPanel) {
@@ -195,7 +199,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   @override
   void dispose() {
     if (_lifted != null) {
-      final panel = _inPanel;
+      final panel = _liftPanel; // no context in dispose (debug: null check in MediaQuery, Probid 18 Nov)
       Timer.run(() => panel ? WorkoutPanel.lift.value = null : ToastHost.bottomOffset.value = 75);
     }
     final c = w;

@@ -65,10 +65,7 @@ class _ClientLibraryScreenState extends State<ClientLibraryScreen> {
   // ─────────────────────────────── Layouts
 
   Widget _phone() => CaPinned(
-      head: Row(spacing: 10, children: [
-        CaBackBtn(tooltip: 'Back to More', onTap: () => context.go('/more')),
-        Expanded(child: _title()),
-      ]),
+      head: CaTopBar(backTip: 'Back to More', onBack: () => context.go('/more')),
       body: RefreshIndicator(
         onRefresh: c.load,
         color: AppColors.accent,
@@ -76,6 +73,7 @@ class _ClientLibraryScreenState extends State<ClientLibraryScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+            Padding(padding: const EdgeInsets.only(bottom: 4), child: CaPageTitle('Library', sub: 'Videos, PDFs and guides from ${c.coach}')),
             _progress(),
             ..._search(),
             _filters(phone: true),

@@ -183,11 +183,23 @@ class ChSection extends StatelessWidget {
 
 /// `.ca-ib`: 38px icon button with the unread count (the bell).
 class ChBell extends StatelessWidget {
-  const ChBell({super.key, required this.count, required this.onTap});
+  const ChBell({super.key, required this.count, required this.onTap, this.plain = false});
   final int count;
   final VoidCallback onTap;
+
+  /// Only the bell with its count, no box (a page's top bar, Probid 18 Nov).
+  final bool plain;
   @override
-  Widget build(BuildContext context) => Semantics(
+  Widget build(BuildContext context) => plain
+      ? CaBarIcon(
+          tooltip: 'Notifications',
+          onTap: onTap,
+          icon: Stack(alignment: Alignment.center, clipBehavior: Clip.none, children: [
+            const AppIcon(AppIcons.bell, size: 21, color: AppColors.text2),
+            if (count > 0) Positioned(top: -6, right: -8, child: BellCount(count)),
+          ]),
+        )
+      : Semantics(
         label: 'Notifications',
         button: true,
         child: Hover(
