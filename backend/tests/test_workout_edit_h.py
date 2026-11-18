@@ -121,3 +121,16 @@ def test_coach_sees_the_edit(client_user, trainer):
     r = trainer.get(f"/api/v1/clients/{wl.client_id}/workouts/{wl.id}/")
     assert r.status_code == 200, r.content
     assert r.json()["edits"][0]["changes"] == ["Romanian Deadlift: removed"]
+
+
+def test_older_workouts_can_not_be_edited(client_user):
+    e = _rdl()
+    w = _finished(client_user, [{"key": "a", "exercise": e, "set_number": 1, "weight_kg": "60", "reps": 8,
+                                 "done": True}])
+    old = timezone.localdate() - timedelta(days=3)
+    WorkoutLog.objects.filter(id=w["id"]).update(date=old)
+    start = timezone.make_aware(timezone.datetime(old.year, old.month, old.day, 18, 0))
+    r = client_user.put(f"{W}{w['id']}/edit/", {"started_at": start.isoformat(),
+                                               "finished_at": (start + timedelta(minutes=30)).isoformat(),
+                                               "sets": []}, format="json")
+    assert r.status_code == 400

@@ -348,23 +348,23 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
       ));
       final r = _rate(d);
       if (r != null) body.add(r);
-      // H51a: yesterday's missed workout can be logged afterwards; a done one can be edited (H52). Older days only show.
+      // H51a: only yesterday: a missed workout can be logged afterwards, a done one edited (H52). Older days only show.
       final yesterday = DateUtils.isSameDay(d.date, DateTime.now().subtract(const Duration(days: 1)));
-      if (d.finished) {
-        body.add(CaButton('Edit workout', icon: AppIcons.edit, kind: CaBtnKind.out, onPressed: () => _edit(d)));
-      } else if (yesterday && n > 0) {
-        body.add(CaButton('Log this workout', icon: AppIcons.plus, onPressed: () async {
-          if (await showLogPastWorkout(context, d)) this.c.load();
-        }));
-      }
-      body.add(CaButton('Back to today', kind: CaBtnKind.out, onPressed: () => this.c.pick(DateTime.now())));
+      // small buttons like Start workout: Back to today on the left, Edit / Log on the right (Probid 18 Nov)
+      final back = CaButton('Back to today', kind: CaBtnKind.out, small: true, expand: false, onPressed: () => this.c.pick(DateTime.now()));
+      final Widget? act = d.finished && yesterday
+          ? CaButton('Edit workout', icon: AppIcons.edit, small: true, expand: false, onPressed: () => _edit(d))
+          : (yesterday && n > 0
+              ? CaButton('Log this workout', icon: AppIcons.plus, small: true, expand: false, onPressed: () async {
+                  if (await showLogPastWorkout(context, d)) this.c.load();
+                })
+              : null);
+      body.add(Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [back, ?act]));
     } else {
       final label = live != null ? 'Continue workout' : (d.finished ? 'Log more sets' : 'Start workout');
       body.addAll([
         if (live == null && _rate(d) != null) _rate(d)!,
-        // a finished workout can be edited the same day (H51), like Strong
-        if (live == null && d.finished)
-          Align(alignment: Alignment.centerLeft, child: CaBarText('Edit workout', icon: AppIcons.edit, onTap: () => _edit(d))),
+        // today is changed in the logger itself (Log more sets); Edit is only for yesterday (Probid 18 Nov)
         // the button on the right, as wide as its text; the progress fills the space on its left (Probid 18 Nov)
         Row(spacing: 14, children: [
           Expanded(

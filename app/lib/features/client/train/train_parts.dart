@@ -17,7 +17,7 @@ import '../../../core/widgets/responsive.dart';
 import '../home/home_parts.dart';
 import 'body_map_svg.dart';
 import 'train_model.dart';
-import 'workout_edit.dart';
+import 'workout_model.dart' show SetKind;
 import '../../../core/widgets/tooltip.dart';
 
 /// Pieces shared by the Train tab and the workout logger: exercise tile, exercise guide with the
@@ -722,23 +722,8 @@ class _PastSheetState extends State<_PastSheet> {
             },
           ),
         ),
-      if (sel != null)
-        Row(children: [
-          Expanded(child: _back()),
-          // H54: History → workout → Edit, like Strong
-          if (_det != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: CaBarText('Edit', icon: AppIcons.edit, onTap: () async {
-                if (!await showEditWorkout(context, sel.id) || !mounted) return;
-                _pages.clear();
-                _rows.clear();
-                _pageNo.clear();
-                unawaited(_load());
-                unawaited(_open(sel));
-              }),
-            ),
-        ]),
+      // only today and yesterday can be edited, from the Train page (Probid 18 Nov); history only shows
+      if (sel != null) _back(),
       Flexible(
         child: SingleChildScrollView(
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: sel == null ? _list(rows, p) : _detail(sel)),
@@ -811,84 +796,90 @@ class _PastSheetState extends State<_PastSheet> {
 
   List<Widget> _detail(PastRow sel) {
     final d = _det;
+    if (d == null) {
+      return const [Padding(padding: EdgeInsets.all(24), child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.accent))))];
+    }
+    final volume = d.groups.fold<double>(0, (t, g) => t + g.sets.fold<double>(0, (u, s) => u + ((s['volume'] as num?)?.toDouble() ?? 0)));
+    final prs = d.groups.where((g) => g.pr).length;
+    Widget stat(AppIconData icon, String text) => Row(mainAxisSize: MainAxisSize.min, spacing: 5, children: [
+          AppIcon(icon, size: 15, color: AppColors.muted),
+          Text(text, style: AppText.s(13, W.w6, color: AppColors.text2, tabular: true)),
+        ]);
+    Widget head(String t, {TextAlign align = TextAlign.left}) => Text(t, textAlign: align, style: AppText.s(11, W.w7, color: AppColors.muted, ls: 0.4));
     return [
-      if (d == null)
-        const Padding(padding: EdgeInsets.all(24), child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.accent))))
-      else ...[
-        Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: Row(spacing: 6, children: [
-            for (final (l, v) in [('Time', '${sel.minutes} min'), ('Exercises', '${d.groups.length} of ${d.groups.length}'), ('Effort', sel.effort == null ? '—' : '${sel.effort} / 10')])
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(10)),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                    Text(l, style: AppText.s(11, W.w4, color: AppColors.muted)),
-                    Text(v, style: AppText.s(14, W.w7)),
-                  ]),
-                ),
-              ),
-          ]),
-        ),
-        if (sel.note.isNotEmpty)
-          Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(color: AppColors.infoBg, borderRadius: BorderRadius.circular(10)),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-              Text('Your note', style: AppText.s(11, W.w7, color: AppColors.infoText)),
-              Text(sel.note, style: AppText.s(12.5, W.w4, color: AppColors.text2)),
-            ]),
-          ),
+      // Strong history card: a line of numbers, then each exercise with its sets as plain rows
+      Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Wrap(spacing: 16, runSpacing: 6, children: [
+          stat(AppIcons.clock, '${sel.minutes} min'),
+          if (volume > 0) stat(AppIcons.dumbbell, '${NumberFormat.decimalPattern().format(volume.round())} kg'),
+          if (prs > 0) stat(AppIcons.star, '$prs ${prs == 1 ? 'PR' : 'PRs'}'),
+          if (sel.effort != null) stat(AppIcons.flame, 'Effort ${sel.effort}/10'),
+        ]),
+      ),
+      if (sel.note.isNotEmpty)
         Container(
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.line)),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            for (final (i, gr) in d.groups.indexed)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                decoration: i == 0 ? null : const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
-                  Row(spacing: 6, children: [
-                    // name (+ New best) takes the room, the set count sits at the right edge
-                    Expanded(
-                      child: Row(spacing: 6, children: [
-                        Flexible(child: Text(gr.name, style: AppText.s(13.5, W.w7))),
-                        if (gr.pr) const PrFlag('New best'),
-                      ]),
-                    ),
-                    Text('${gr.sets.length} ${gr.sets.length == 1 ? 'set' : 'sets'}', style: AppText.s(12, W.w4, color: AppColors.muted)),
-                  ]),
-                  Wrap(spacing: 5, runSpacing: 5, children: [
-                    for (final (k, s) in gr.sets.indexed)
-                      Container(
-                        padding: const EdgeInsets.fromLTRB(4, 3, 8, 3),
-                        decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(8)),
-                        child: Row(mainAxisSize: MainAxisSize.min, spacing: 5, children: [
-                          Container(
-                            width: 16,
-                            height: 16,
-                            alignment: Alignment.center,
-                            decoration: const BoxDecoration(color: AppColors.white, shape: BoxShape.circle),
-                            child: Text('${k + 1}', style: AppText.s(10, W.w7, color: AppColors.muted)),
-                          ),
-                          Text(PastDetail.setText(gr.logType, s), style: AppText.s(12.5, W.w6)),
-                          // rested / timer (tracker G49)
-                          if (s['rest_actual'] != null)
-                            Text(
-                              '· rest ${clockText((s['rest_actual'] as num).toInt())}${(s['rest_planned'] as num? ?? 0) > 0 ? ' / ${clockText((s['rest_planned'] as num).toInt())}' : ''}',
-                              style: AppText.s(12, W.w5, color: AppColors.muted, tabular: true),
-                            ),
-                        ]),
-                      ),
-                  ]),
-                ]),
-              ),
-            if (d.groups.isEmpty) Padding(padding: const EdgeInsets.all(14), child: Text('No sets were ticked in this workout.', style: AppText.s(13, W.w4, color: AppColors.muted))),
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          decoration: BoxDecoration(color: AppColors.infoBg, borderRadius: BorderRadius.circular(10)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+            Text('Your note', style: AppText.s(11, W.w7, color: AppColors.infoText)),
+            Text(sel.note, style: AppText.s(13, W.w4, color: AppColors.text2)),
           ]),
         ),
-      ],
+      if (d.groups.isEmpty)
+        Padding(padding: const EdgeInsets.symmetric(vertical: 14), child: Text('No sets were ticked in this workout.', style: AppText.s(13, W.w4, color: AppColors.muted))),
+      for (final (i, gr) in d.groups.indexed)
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: i == 0 ? null : const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 4, children: [
+            Row(spacing: 6, children: [
+              Flexible(child: Text(gr.name, style: AppText.s(15, W.w7, color: AppColors.accent))),
+              if (gr.pr) const PrFlag('New best'),
+            ]),
+            Padding(
+              padding: const EdgeInsets.only(top: 2, bottom: 2),
+              child: Row(children: [
+                SizedBox(width: 34, child: head('SET')),
+                Expanded(child: head(gr.logType == 'distance' ? 'TIME' : (gr.logType == 'time' ? 'TIME' : 'KG × REPS'))),
+                if (gr.sets.any((s) => s['rest_actual'] != null)) SizedBox(width: 70, child: head('REST', align: TextAlign.right)),
+              ]),
+            ),
+            for (final (k, s) in gr.sets.indexed) _pastSet(gr, k, s),
+          ]),
+        ),
     ];
+  }
+
+  Widget _pastSet(({String name, String logType, bool pr, List<Map<String, dynamic>> sets}) gr, int k, Map<String, dynamic> s) {
+    final kind = SetKind.of(s['set_type'] as String?);
+    final n = gr.sets.take(k + 1).where((x) => SetKind.of(x['set_type'] as String?) == SetKind.normal).length;
+    final color = switch (kind) {
+      SetKind.warmup => AppColors.amberText,
+      SetKind.drop => AppColors.purpleText,
+      SetKind.failure => AppColors.badText,
+      SetKind.normal => AppColors.text,
+    };
+    final rest = s['rest_actual'] as num?;
+    final anyRest = gr.sets.any((x) => x['rest_actual'] != null);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(children: [
+        SizedBox(width: 34, child: Text(kind == SetKind.normal ? '$n' : kind.letter, style: AppText.s(14, W.w8, color: color))),
+        Expanded(
+          child: Row(spacing: 6, children: [
+            Flexible(child: Text(PastDetail.setText(gr.logType, s), style: AppText.s(14, W.w5, tabular: true))),
+            if (s['is_pr'] == true) const AppIcon(AppIcons.star, size: 13, color: AppColors.amberText),
+          ]),
+        ),
+        if (anyRest)
+          SizedBox(
+            width: 70,
+            child: Text(rest == null ? '—' : clockText(rest.toInt()), textAlign: TextAlign.right, style: AppText.s(13, W.w5, color: AppColors.muted, tabular: true)),
+          ),
+      ]),
+    );
   }
 }
 

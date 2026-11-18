@@ -367,7 +367,7 @@ E51. ✅ Admin/trainer client Logs (Daily, Weekly, Habits, Supplements) aur clie
 
 ### H. Workout Edit aur Timing
 
-51. ✅ Complete hua workout dobara khol ke edit ho sake (Train par "Edit workout"). Har save nayi version (WorkoutEdit: purani values + kya badla), khali save par version nahi (Probid 18 Nov).
+51. ✅ Sirf kal ka finish hua workout edit ho sakta (Train strip me kal → "Edit workout"); aaj ka logger me hi (Log more sets), purane din sirf dekhna (Probid 18 Nov). Har save nayi version (WorkoutEdit: purani values + kya badla), khali save par version nahi (Probid 18 Nov).
 51b. ✅ Logger ek Strong panel (Probid 17 Nov): neeche head tab bar ke upar, ungli se upar / neeche, status bar me nahi, band nahi hota; set tick / skip / delete / rest khatam pe sound; khali KG pe tick button shake; notification aate hi sound.
 51c. ✅ Notification Strong jaisi (Probid 17 Nov): khali box → Add values + Open; exercise poora → agla; set baaki → us exercise ka naam + Open; sab done → Workout finished + Finish workout / Return to workout. Set tick par rest sheet nahi khulti.
 51d. ✅ Rest: top bar me sirf chhota rest time + neeche patli progress line; set line par bada timer nahi; aakhri 3 sec 3 buzz, phir ring bell sound (Probid 17 Nov).
@@ -425,12 +425,13 @@ E51. ✅ Admin/trainer client Logs (Daily, Weekly, Habits, Supplements) aur clie
 53e. ✅ Library: chhoti list bhi scroll hoti (title bar me jaa sake), list rows thode chhote (Probid 18 Nov).
 53f. ✅ Logger set type (Warm up / Drop set / Failure) ka ? ab beech me card, X se band (Strong) (Probid 18 Nov).
 53g. ✅ Food "+ Log food" aur Progress "+ Log weight" bar me naam ke saath (sirf icon se samajh nahi aata tha); page title upar, icons ke theek neeche (khali jagah kam) (Probid 18 Nov).
+53i. ✅ Train par purane din ke buttons chhote (Start workout jaise): "Back to today" left, "Edit workout" / "Log this workout" right, ek row me; akela ho to Back to today chhota (Probid 18 Nov).
 53h. ✅ Train exercise list phone par bina card border, screen ke edge tak, sirf upar / neeche / beech me line (Probid 18 Nov).
 51l. ⏸️ Baad me (Probid 17 Nov: "abhi nahi"): exercises ke beech ka rest. Coach plan me do exercises ke beech rest rakhe; tab last set ke baad exercise ka rest nahi, ye beech wala chale.
 51a. ✅ Kal ka workout (Food jaisa, Probid 17 Nov): strip me kal chuno, chhoota ho to "Log this workout" (start/end + sets), kiya hua ho to "Edit workout". Naya log sirf kal ka (backend bhi rokta hai); purana kiya hua History se edit ho sakta.
 52. ✅ Editable: sets (add / remove, exercise ke saare sets hata do to exercise hat jaati), weight, reps, set type (SET pe tap), rest, start aur end time. Naya exercise client nahi jodta (rule).
 53. ✅ Start/end badalne par duration, date, time breakdown, sets done, volume dobara.
-54. ✅ History (Train ki ghadi → Past workouts) me workout kholo → "Edit". List me "· edited".
+54. ✅ Probid 18 Nov: History se Edit nahi (sirf kal, Train se). History ka workout detail Strong jaisa: upar time / volume / PR / effort line, har exercise ka naam aur sets seedhi rows (SET, KG × REPS, REST), W/D/F rang ke saath. List me "· edited".
 55. ✅ Finish ke baad "Log more sets" alag segment (pehle se tha); Edit sheet me segments ka note. Time edit karne par ek segment ban jaata.
 56. ✅ Coach ko client profile ke workout me "Edited · version N" + kya badla, activity me "edited a workout", live update bhi.
 

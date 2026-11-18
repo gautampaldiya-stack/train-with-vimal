@@ -980,11 +980,15 @@ class MyWorkoutViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewset
     @extend_schema(request=EditWorkoutSerializer)
     @action(detail=True, methods=["put"])
     def edit(self, request, pk=None):
-        """Edit a finished workout (Train / History → Edit, tracker H51-H54): start, end and every set. Saves a new
+        """Edit today's or yesterday's finished workout (Train → Edit workout, tracker H51-H53): start, end and every set. Saves a new
         version; time, sets and bests are worked out again; the coach sees the change."""
         wl = get_object_or_404(WorkoutLog, id=pk, client=request.user, status="completed")
         s = EditWorkoutSerializer(data=request.data)
         s.is_valid(raise_exception=True)
+        # only today's and yesterday's workouts can be edited (Probid 18 Nov); older ones are history
+        yesterday = timezone.localdate() - timedelta(days=1)
+        if wl.date < yesterday or timezone.localdate(s.validated_data["started_at"]) < yesterday:
+            raise serializers.ValidationError({"started_at": ["Only today's and yesterday's workouts can be edited."]})
         services.edit_workout(wl, actor=request.user, **s.validated_data)
         return Response(WorkoutLogSerializer(self.get_queryset().get(id=wl.id), context={"request": request}).data)
 

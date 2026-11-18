@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+## 2026-11-18 · Edit sirf kal ka; History detail Strong jaisa; chhote buttons
+- **Pehle:** History se koi bhi purana workout edit ho sakta tha, aaj ka bhi Train par Edit; past day par bade full-width buttons.
+- **Ab:** Edit / Log sirf kal ka (Train strip me kal); backend bhi kal se purana edit 400 deta. History ka workout detail: stats line (time, volume, PR, effort) + har exercise ke sets seedhi rows. Past day buttons chhote, ek row me (Back to today left, Edit / Log right).
+- **Kyun:** Probid 18 Nov: "sirf yesterday ka edit", "btns chote ho", Food jaisa.
+- **Updated:** train_parts.dart, train_screen.dart, training/views.py, tests/test_workout_edit_h.py, WORK-TRACKER
+
 ## 2026-11-18 · Workout edit (H), kal ka workout, tray notification, Library Saved hataya
 - **Pehle:** Finish hua workout badal nahi sakte the; kal chhoota workout baad me log nahi hota tha; app khula ho to push sirf in-app toast; Library me "Saved" filter + bookmark.
 - **Ab:** Train / History se "Edit workout" sheet: start-end time, sets, KG/reps, set type, rest; save par nayi version (`WorkoutEdit`, purani values rakhi) aur duration / volume / sets dobara. Kal ka chhoota workout "Log this workout" se (sirf kal). Coach ko workout detail me "Edited · version N" + changes. App khula ho to Android tray notification bhi (tap → wahi page), iOS foreground banner. Library se Saved hataya.
