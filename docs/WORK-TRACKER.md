@@ -424,6 +424,7 @@ E51. ✅ Admin/trainer client Logs (Daily, Weekly, Habits, Supplements) aur clie
 53d. ✅ Top bar shadow sirf jab title poora bar me aa jaaye, sirf neeche; title 29, kam bold (Strong); Android edge stretch in pages par band, smooth (size / side ka step ease); sub line content me hi (Probid 18 Nov).
 53e. ✅ Library: chhoti list bhi scroll hoti (title bar me jaa sake), list rows thode chhote (Probid 18 Nov).
 53f. ✅ Logger set type (Warm up / Drop set / Failure) ka ? ab beech me card, X se band (Strong) (Probid 18 Nov).
+53g. ✅ Food "+ Log food" aur Progress "+ Log weight" bar me naam ke saath (sirf icon se samajh nahi aata tha); page title upar, icons ke theek neeche (khali jagah kam) (Probid 18 Nov).
 51l. ⏸️ Baad me (Probid 17 Nov: "abhi nahi"): exercises ke beech ka rest. Coach plan me do exercises ke beech rest rakhe; tab last set ke baad exercise ka rest nahi, ye beech wala chale.
 51a. ⬜ Kal ka workout (Food jaisa, Probid 17 Nov): week strip me kal chuno to kal ka workout log kar sake (chhoot gaya ho to) ya kal ka kiya hua edit kar sake. Usse purane din sirf dekh sakte.
 52. ⬜ Editable: exercises, sets, weight, reps, set type, rest timers, start aur end time.

@@ -117,7 +117,7 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
 
   Widget _phone(FoodDay d) => CaPinned(
     // Strong (Probid 18 Nov): the bar keeps only the Log food icon, the title scrolls with the page
-    head: CaTopBar(title: 'Food', actions: [CaIconBtn(AppIcons.plus, plain: true, tooltip: 'Log food', onTap: _logFood)]),
+    head: CaTopBar(title: 'Food', actions: [CaBarText('Log food', icon: AppIcons.plus, onTap: _logFood)]),
     body: RefreshIndicator(
       onRefresh: c.load,
       color: AppColors.accent,

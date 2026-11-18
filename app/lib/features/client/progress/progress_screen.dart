@@ -58,10 +58,10 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
   // ─────────────────────────────── Layouts
 
   Widget _phone(PxData d) => CaPinned(
-    // Strong (Probid 18 Nov): past logs and Log weight as icons in the bar, the title scrolls with the page
+    // Strong (Probid 18 Nov): past logs icon and "+ Log weight" (with its name) in the bar, the title scrolls with the page
     head: CaTopBar(title: 'Progress', actions: [
       CaIconBtn(AppIcons.clock, plain: true, tooltip: 'View past logs', onTap: () => context.go('/progress/history')),
-      CaIconBtn(AppIcons.plus, plain: true, tooltip: 'Log weight', onTap: () => showLogWeight(context, c, onSaved: (day) => setState(() {
+      CaBarText('Log weight', icon: AppIcons.plus, onTap: () => showLogWeight(context, c, onSaved: (day) => setState(() {
         _tab = 'Weight';
         _sel = day;
       }))),

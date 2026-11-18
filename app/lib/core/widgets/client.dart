@@ -66,7 +66,7 @@ class _CaPinnedState extends State<CaPinned> {
     // it rides with the page (y one to one) while the size and the step right to Back ease in and out, so the
     // change looks soft, not stepped (Probid 18 Nov: "thoda smooth")
     final q = Curves.easeInOut.transform(p);
-    final y = CaTopBar.height + widget.titleTop - travel * p;
+    final y = _bodyTop + widget.titleTop - travel * p;
     final scale = 1 - (1 - endScale) * q;
     // the step right (next to Back) only in the last part, once the title is up at the bar; before that it stays
     // in line with the line under it
@@ -89,8 +89,13 @@ class _CaPinnedState extends State<CaPinned> {
   /// the list's top padding) up to the middle of the bar's 48 px row (which starts 4 down).
   double get _travel {
     const endH = CaPageTitle.size * CaPageTitle.lineH * CaPageTitle.barSize / CaPageTitle.size;
-    return CaTopBar.height + widget.titleTop - (4 + 24 - endH / 2);
+    return _bodyTop + widget.titleTop - (4 + 24 - endH / 2);
   }
+
+  /// Where the page starts. With a title it starts 14 up into the bar (under the icons, which end about 40 down), so
+  /// the title sits right under the icons with no empty band above it (Probid 18 Nov: "title thoda upar"). The bar is
+  /// clear at rest and fills in as soon as the page moves.
+  double get _bodyTop => (widget.head as CaTopBar).title == null ? CaTopBar.height : CaTopBar.height - 14;
 
   @override
   Widget build(BuildContext context) {
@@ -100,7 +105,7 @@ class _CaPinnedState extends State<CaPinned> {
       final title = bar.title;
       return Stack(children: [
         Positioned.fill(
-          top: CaTopBar.height,
+          top: _bodyTop,
           child: NotificationListener<ScrollNotification>(
             onNotification: _onScroll,
             // No Android edge stretch on these pages: it squeezed the page under the bar and cut the big title, or slid
@@ -317,9 +322,12 @@ class CaSwipe extends StatelessWidget {
 
 /// A text action in a page's top bar ("Mark all read"): blue text, no box, a soft ink splash on tap (Probid 18 Nov).
 class CaBarText extends StatelessWidget {
-  const CaBarText(this.label, {super.key, required this.onTap});
+  const CaBarText(this.label, {super.key, required this.onTap, this.icon});
   final String label;
   final VoidCallback? onTap;
+
+  /// An icon before the words ("+ Log food"): an icon alone did not say what it does (Probid 18 Nov).
+  final AppIconData? icon;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -336,7 +344,10 @@ class CaBarText extends StatelessWidget {
               height: 40,
               alignment: Alignment.center,
               padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Text(label, style: AppText.s(13.5, W.w7, color: onTap == null ? AppColors.muted : AppColors.accentText)),
+              child: Row(mainAxisSize: MainAxisSize.min, spacing: 5, children: [
+                if (icon != null) AppIcon(icon!, size: 16, color: onTap == null ? AppColors.muted : AppColors.accentText, stroke: 2.2),
+                Text(label, style: AppText.s(13.5, W.w7, color: onTap == null ? AppColors.muted : AppColors.accentText)),
+              ]),
             ),
           ),
         ),
@@ -377,7 +388,8 @@ class CaTopBar extends StatelessWidget {
       final s = ((off - from) / 8).clamp(0.0, 1.0);
       return DecoratedBox(
         decoration: BoxDecoration(
-          color: AppColors.caBg,
+          // clear at rest (the page's title sits partly under it), filled once the page moves
+          color: off > 0 || from == 0 ? AppColors.caBg : AppColors.caBg.withValues(alpha: 0),
           boxShadow: s == 0 ? null : [for (final b in AppShadows.topBar) b.copyWith(color: b.color.withValues(alpha: b.color.a * s))],
         ),
         child: Padding(padding: const EdgeInsets.fromLTRB(4, 4, 6, 0), child: row(off)),
