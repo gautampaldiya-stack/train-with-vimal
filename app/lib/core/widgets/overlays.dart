@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
@@ -329,7 +330,11 @@ Future<T?> showAppDrawer<T>(
   bool fixedBody = false,
   double? width,
   bool footerLine = true,
+  ValueListenable<int>? at,
+  String Function(int)? titleAt,
 }) {
+  // [at] + [titleAt]: a drawer with ‹ › that moves through items keeps its title on the item shown (Probid 18 Nov:
+  // the meal drawer said "Lunch" while it showed the snack).
   // [footerLine]: false drops the line above the footer (Edit exercise drawer, Probid tracker F43).
   // [fixedBody]: the body does not scroll as a whole. It gets a bounded height, so a builder can keep a
   // header (search, tabs) fixed and scroll only its list (`Expanded(ListView)`), as `.pb-pk` boards do.
@@ -365,7 +370,10 @@ Future<T?> showAppDrawer<T>(
                 if (leading != null) leading else if (icon != null) IconTile(icon, size: 32, radius: 8, iconSize: 17),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                    Text(title, style: AppText.s(15, W.w8, ls: -0.15, h: 1.3)),
+                    if (at != null && titleAt != null)
+                      ValueListenableBuilder(valueListenable: at, builder: (_, int n, _) => Text(titleAt(n), style: AppText.s(15, W.w8, ls: -0.15, h: 1.3)))
+                    else
+                      Text(title, style: AppText.s(15, W.w8, ls: -0.15, h: 1.3)),
                     if (sub != null) CutText(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted, h: 1.4)),
                   ]),
                 ),

@@ -1058,7 +1058,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                       : Text('${i + 1}', style: AppText.s(11.5, W.w8, color: AppColors.text2)),
                 ),
                 Expanded(child: CutText(e.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13.5, W.w7))),
-                Flexible(child: CutText(e.line, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.right, style: AppText.s(12, W.w5, color: AppColors.muted))),
+                Flexible(fit: FlexFit.tight, child: CutText(e.line, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.right, style: AppText.s(12, W.w5, color: AppColors.muted))),
               ]),
             ),
           Hover(
@@ -1126,8 +1126,12 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
       final going = day.inProgress || day.exercisesDone > 0;
       body.add(Padding(
         padding: const EdgeInsets.only(top: 12),
-        child: CaButton(going ? 'Continue workout' : 'Start workout', icon: AppIcons.play,
-            onPressed: () => openWorkout(context, going ? '' : '?start=${d.dayId ?? ''}')),
+        // on the right, as wide as its text (Probid 18 Nov)
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: CaButton(going ? 'Continue workout' : 'Start workout', icon: AppIcons.play, expand: false,
+              onPressed: () => openWorkout(context, going ? '' : '?start=${d.dayId ?? ''}')),
+        ),
       ));
     }
     // The border is drawn on top (foregroundDecoration), so the tinted header stays inside the rounded corners

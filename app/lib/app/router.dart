@@ -64,6 +64,7 @@ import '../features/trainer/client_profile/cp_screen.dart';
 import '../features/trainer/clients/clients_screen.dart';
 import '../features/trainer/dashboard/dashboard_screen.dart';
 import 'services.dart';
+import 'shell/nav_items.dart';
 import 'shell/app_shell.dart';
 import 'shell/page.dart';
 
@@ -296,16 +297,22 @@ final appRouter = GoRouter(
 
 /// Page changes (Probid 18 Nov: "mobile me aaram se left ya right se aate hai, back karte hai to vese hi jate hai").
 /// Phone: a page opened from another page (`/more/notifications` over `/more`) slides in from the right while the
-/// page under it moves a little to the left, and Back plays it the other way; a tab change (one part path) fades.
-/// Wider screens keep the short fade with a small rise. Nothing moves when the phone asks for no animations.
-/// A change of the query only (a tab inside a page) keeps the page, so it does not animate again.
+/// page under it moves a little to the left, and Back plays it the other way. The main pages (the bottom tabs) slide
+/// side by side like a pager, in the order of the tabs: a tab to the right comes in from the right and pushes the old
+/// one out to the left (they only faded before, and the shell showed through in the middle: a blink). A one-part page
+/// that is not a tab (Habits, Check-ins) counts as right of the tabs. Wider screens keep the short fade with a small
+/// rise. Nothing moves when the phone asks for no animations. A change of the query only (a tab inside a page) keeps
+/// the page, so it does not animate again.
 Page<void> _page(GoRouterState st, Widget child) {
   final sub = st.uri.pathSegments.length > 1;
+  if (!sub) _tabMove(st);
   return CustomTransitionPage<void>(
-    key: st.pageKey,
+    // one key per place: go_router's own key is the pattern (`/:section`), so every tab was the same page and a tab
+    // change swapped it in place with no transition at all (the blink, Probid 18 Nov)
+    key: ValueKey(st.matchedLocation),
     child: child,
-    transitionDuration: sub ? Motion.page : Motion.medium,
-    reverseTransitionDuration: sub ? Motion.pageBack : Motion.short,
+    transitionDuration: Motion.page,
+    reverseTransitionDuration: sub ? Motion.pageBack : Motion.page,
     transitionsBuilder: (context, a, under, child) {
       if (Motion.off(context)) return child;
       if (MediaQuery.sizeOf(context).width >= Breakpoints.tablet) {
@@ -324,7 +331,15 @@ Page<void> _page(GoRouterState st, Widget child) {
             .animate(CurvedAnimation(parent: under, curve: Curves.easeOutCubic, reverseCurve: Curves.easeInCubic)),
         child: w,
       );
-      if (!sub) return FadeTransition(opacity: CurvedAnimation(parent: a, curve: Motion.curve), child: w);
+      if (!sub) {
+        // coming in: from the side of the new tab; going out (the old tab, its animation running back): to the other
+        final out = a.status == AnimationStatus.reverse;
+        final d = out ? -_tabDir : _tabDir;
+        return SlideTransition(
+          position: Tween(begin: Offset(d, 0), end: Offset.zero).animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic, reverseCurve: Curves.easeOutCubic.flipped)),
+          child: w,
+        );
+      }
       return SlideTransition(
         position: Tween(begin: const Offset(1, 0), end: Offset.zero)
             .animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic, reverseCurve: Curves.easeInCubic)),
@@ -377,4 +392,23 @@ Future<void> confirmLogOut(BuildContext context) async {
   if (!ok) return;
   SetupState.instance.reset();
   await Services.session.signOut();
+}
+
+/// Which way the last main page change went: 1 = the new page came from the right, -1 = from the left.
+double _tabDir = 1;
+String? _lastTop;
+
+/// A one-part page shown: sets [_tabDir] from the tab order (built again for the same page: nothing changes).
+void _tabMove(GoRouterState st) {
+  final path = st.matchedLocation;
+  if (path == _lastTop) return;
+  final role = Services.session.me?.role;
+  int order(String? p) {
+    if (p == null || role == null) return 0;
+    final i = bottomFor(role).indexWhere((t) => t.path == p);
+    return i < 0 ? 10 : i;
+  }
+  final from = order(_lastTop), to = order(path);
+  if (_lastTop != null && from != to) _tabDir = to > from ? 1 : -1;
+  _lastTop = path;
 }

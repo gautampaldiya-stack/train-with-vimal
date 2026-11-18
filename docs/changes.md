@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+## 2026-11-18 · Tabs slide, workout notification after app close, logger toast, Train / Home buttons
+- **Pehle:** Tab badalne par page ek dum badal jaata (go_router ki key sab tabs ke liye ek, isliye transition hi nahi). App swipe karke band karne ke baad notification shade se hatao to wapas nahi aati (Dart engine screen ke saath band). Logger me toast bahut upar. Rate baaki workout ka bar neeche rehta. Day card par equipment pin icon ke saath. Start workout button full width. Home / Train ke right wale text beech me.
+- **Ab:** Page key = matchedLocation; tabs order ke hisaab se left / right slide (320 ms), purana tab doosri taraf jaata. MainActivity cached FlutterEngine (screen band hone par engine nahi marta), workout service process ko zinda rakhti, to har second wala notification check chalta rehta. Logger panel khula ho to toast WorkoutPanel.lift par. Finished workout ka bar nahi. Dumbbell icon. Button right, text jitna. Right text FlexFit.tight. Coach ke meal / exercise drawer ka heading ‹ › ke saath badalta (showAppDrawer `at` + `titleAt`).
+- **Kyun:** Probid (18 Nov) phone test.
+- **Updated:** app/lib/app/router.dart, app/android/.../MainActivity.kt, app_shell.dart (_WorkoutPanelHost), workout_screen.dart, train_screen.dart, home_screen.dart, trainer_profile_tabs.dart, core/widgets/overlays.dart, cp_plans_parts.dart.
+
 ## 2026-11-18 · No grey error box when the session is missing
 - **Pehle:** App start / sign out ke beech ek frame me `session.me` khaali hota to AppShell crash karke grey box dikhata (phone log 10:52).
 - **Ab:** Us frame me plain background page; agle frame me sahi page.

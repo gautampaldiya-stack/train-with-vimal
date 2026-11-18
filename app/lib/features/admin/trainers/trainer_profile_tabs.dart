@@ -462,7 +462,7 @@ class _TpAccessTabState extends State<TpAccessTab> {
           decoration: BoxDecoration(border: first ? null : const Border(top: BorderSide(color: AppColors.line))),
           child: Row(spacing: 12, children: [
             Expanded(child: Text(k, style: AppText.s(13, W.w5, color: AppColors.muted))),
-            Flexible(child: Text(v, textAlign: TextAlign.right, style: AppText.s(13, W.w7, color: color ?? AppColors.text))),
+            Flexible(fit: FlexFit.tight, child: Text(v, textAlign: TextAlign.right, style: AppText.s(13, W.w7, color: color ?? AppColors.text))),
           ]),
         );
     final summary = MeCard(

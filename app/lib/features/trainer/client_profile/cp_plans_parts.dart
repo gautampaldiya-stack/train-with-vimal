@@ -465,6 +465,8 @@ Future<void> showExerciseDrawer(BuildContext context,
   return showAppDrawer(
     context,
     title: exName(list[start]),
+    at: i,
+    titleAt: (n) => exName(list[n]),
     sub: dayLabel,
     icon: AppIcons.dumbbell,
     headerAction: ValueListenableBuilder(
@@ -692,6 +694,8 @@ Future<void> showMealDrawer(BuildContext context,
   return showAppDrawer(
     context,
     title: '${meals[start]['name']} · ${mealTime(meals[start]['time'])}',
+    at: i,
+    titleAt: (n) => '${meals[n]['name']} · ${mealTime(meals[n]['time'])}',
     sub: sub,
     icon: AppIcons.apple,
     headerAction: Row(mainAxisSize: MainAxisSize.min, children: [

@@ -53,6 +53,10 @@ abstract final class WorkoutPanel {
   static void Function(double velocity)? dragEnd;
   static bool Function()? isOpen;
   static bool get here => show != null;
+
+  /// How high toasts sit while the panel is open (just above Cancel workout, or above the keypad). The shell uses it
+  /// only while the panel is up; its own value (above the tabs / mini bar) kept winning before (Probid 18 Nov).
+  static final lift = ValueNotifier<double?>(null);
 }
 
 /// Opens the logger: the panel on a phone, the logger page in the panel on wider screens.
@@ -179,13 +183,21 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     if (_lifted == v) return;
     _lifted = v;
     Timer.run(() {
-      if (mounted) ToastHost.bottomOffset.value = v ?? (context.isPhone ? 75 : 20);
+      if (!mounted) return;
+      if (_inPanel) {
+        WorkoutPanel.lift.value = v;
+      } else {
+        ToastHost.bottomOffset.value = v ?? (context.isPhone ? 75 : 20);
+      }
     });
   }
 
   @override
   void dispose() {
-    if (_lifted != null) Timer.run(() => ToastHost.bottomOffset.value = 75);
+    if (_lifted != null) {
+      final panel = _inPanel;
+      Timer.run(() => panel ? WorkoutPanel.lift.value = null : ToastHost.bottomOffset.value = 75);
+    }
     final c = w;
     if (c != null) {
       c.removeListener(_onW);

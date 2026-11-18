@@ -304,7 +304,7 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
             child: Wrap(spacing: 14, runSpacing: 6, children: [
               if (d.minutes > 0) _meta(AppIcons.clock, 'About ${d.minutes} min'),
               _meta(AppIcons.dumbbell, '$n ${n == 1 ? 'exercise' : 'exercises'} · ${d.totalSets} sets'),
-              if (d.kit.isNotEmpty) _meta(AppIcons.pin, d.kit),
+              if (d.kit.isNotEmpty) _meta(AppIcons.dumbbell, d.kit),
             ]),
           ),
       ]),
@@ -346,7 +346,8 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
           Text('$doneN of $n exercises done', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
         ]),
         if (live == null && _rate(d) != null) _rate(d)!,
-        CaButton(label, icon: AppIcons.play, onPressed: n == 0 ? null : () => _go(d)),
+        // on the right, as wide as its text (Probid 18 Nov)
+        Align(alignment: Alignment.centerRight, child: CaButton(label, icon: AppIcons.play, expand: false, onPressed: n == 0 ? null : () => _go(d))),
       ]);
     }
     if (s != null) {
@@ -449,7 +450,7 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 2),
           child: Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, spacing: 8, children: [
             Expanded(child: Text(b.name, style: AppText.s(15, W.w8))),
-            Flexible(child: Text(b.sub, textAlign: TextAlign.right, style: AppText.s(12.5, W.w6, color: AppColors.muted))),
+            Flexible(fit: FlexFit.tight, child: Text(b.sub, textAlign: TextAlign.right, style: AppText.s(12.5, W.w6, color: AppColors.muted))),
           ]),
         ),
         Container(

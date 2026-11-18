@@ -392,6 +392,14 @@ E51. ✅ Admin/trainer client Logs (Daily, Weekly, Habits, Supplements) aur clie
 51x. ✅ Phone par page transition native jaisa: andar ka page right se slide, neeche wala thoda left; Back par ulta; tab change fade (Probid 18 Nov).
 51y. ✅ Skeletons: Home (hero, week strip, cards), More / Notifications / My activity; notifications ki pichli list turant dikhe (Probid 18 Nov).
 51z. ✅ App start / sign out: session na ho us frame me grey error box nahi, plain page (phone log 18 Nov).
+52a. ✅ App swipe karke band ho aur workout chal raha ho: notification shade se hatane par bhi wapas aaye (app ka Dart engine screen ke baad bhi chalta, MainActivity cached engine) (Probid 18 Nov). Phone check baaki.
+52b. ✅ Logger me toast Cancel workout ke theek upar (shell ki mini bar wali value jeet rahi thi) (Probid 18 Nov).
+52c. ✅ Main tabs (Home, Train, Food, Progress, More) blink nahi: tab order me left / right se slide (Probid 18 Nov).
+52d. ✅ Rate baaki workout ka neeche bar / drawer nahi; Train ka "Rate it" button hi rating kholta (Probid 18 Nov).
+52e. ✅ Train day card par equipment ka icon dumbbell (pin location jaisa lagta tha) (Probid 18 Nov).
+52f. ✅ Start / Continue / Log more sets button right me, text jitna (Train + Home) (Probid 18 Nov).
+52g. ✅ Home workout rows ke sets × reps aur Train "Strength" ke saamne "2 exercises · 7 sets" right edge par (Probid 18 Nov).
+52h. ✅ Coach client profile: meal aur exercise drawer me ‹ › dabane par upar ka heading bhi badle (Probid 18 Nov).
 51l. ⏸️ Baad me (Probid 17 Nov: "abhi nahi"): exercises ke beech ka rest. Coach plan me do exercises ke beech rest rakhe; tab last set ke baad exercise ka rest nahi, ye beech wala chale.
 51a. ⬜ Kal ka workout (Food jaisa, Probid 17 Nov): week strip me kal chuno to kal ka workout log kar sake (chhoot gaya ho to) ya kal ka kiya hua edit kar sake. Usse purane din sirf dekh sakte.
 52. ⬜ Editable: exercises, sets, weight, reps, set type, rest timers, start aur end time.

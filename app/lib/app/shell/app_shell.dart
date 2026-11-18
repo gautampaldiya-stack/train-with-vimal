@@ -531,12 +531,9 @@ class _WorkoutPanelHostState extends State<_WorkoutPanelHost> with SingleTickerP
     return c != null && c.ready && !c.finished;
   }
 
-  /// A finished workout keeps its small bar ("Workout finished") until the effort / note is sent to the coach
-  /// (Probid 17 Nov); then going down lets it go.
-  bool get _shown {
-    final c = WorkoutController.live.value;
-    return _req != null || _live || (c != null && c.finished && !c.sent);
-  }
+  /// Only a running workout (or one just opened) keeps the panel. A finished one waiting for its rating does not
+  /// keep a bar any more: the "Rate it" button on Train opens the rating (Probid 18 Nov, was 17 Nov's bar).
+  bool get _shown => _req != null || _live;
 
   @override
   void initState() {
@@ -612,8 +609,11 @@ class _WorkoutPanelHostState extends State<_WorkoutPanelHost> with SingleTickerP
     final head = _head + (widget.bar ? 0 : inset);
     final navH = widget.bar ? _navH : 0.0;
     final q = Uri.parse('x${_req ?? ''}').queryParameters;
-    return ToastOffset(
-      offset: (widget.bar && _navH > 0 ? _navH - inset : 0) + (shown ? head : 0) + 10,
+    final double below = (widget.bar && _navH > 0 ? _navH - inset : 0.0) + (shown ? head : 0) + 10;
+    return AnimatedBuilder(
+      animation: Listenable.merge([_t, WorkoutPanel.lift]),
+      // panel up: toasts sit where the logger asks (above Cancel workout / the keypad), not above the hidden tabs
+      builder: (_, child) => ToastOffset(offset: shown && _t.value > .5 ? (WorkoutPanel.lift.value ?? 10) : below, child: child!),
       child: LayoutBuilder(builder: (context, box) {
         final h = box.maxHeight;
         _travel = math.max(1, h - navH - head);
