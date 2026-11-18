@@ -21,8 +21,5 @@ class LiveNotice {
 
   static Future<void> keep() async {}
 
-  /// Web: no notification; a workout is never paused for it.
-  static Future<bool> showing() async => true;
-
   static Future<void> clear() async {}
 }

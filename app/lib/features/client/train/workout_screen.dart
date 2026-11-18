@@ -168,10 +168,6 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
   void _then(WorkoutController c) {
     if (!c.ready || c.finished) return;
-    if (c.pausedWhileClosed) {
-      c.pausedWhileClosed = false;
-      _toast('Workout paused', sub: 'The app was closed at ${clockText(c.elapsed)}. Resume it from ⋯ next to the workout name.', kind: ToastKind.info);
-    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (widget.then == 'finish') _askFinish(c);

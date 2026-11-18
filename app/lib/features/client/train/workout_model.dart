@@ -4,7 +4,6 @@ import 'dart:math' as math;
 import 'package:dio/dio.dart' show FormData, MultipartFile;
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../app/services.dart';
@@ -427,9 +426,6 @@ class WorkoutController extends ChangeNotifier {
       final snap = await Services.cache.read(_cacheKey);
       if (snap is Map && ('${snap['id']}' == '$id' || (local && snap['local'] == true))) _restoreRest(snap);
     }
-    // App closed (swiped away / killed) while the workout ran: if its notification is gone too, the clock stops
-    // where the app last was, as paused (Probid 17 Nov: "notification rahe ya pause ho jae timer").
-    if (ready && reopen == null && !paused && !finished) await _pauseIfClosed();
     if (ready) {
       await _loadVideos();
       lastActive = math.max(lastActive, _lastTick() ?? 0);
@@ -668,46 +664,8 @@ class WorkoutController extends ChangeNotifier {
 
   // ─────────────────────────────── Every second: rest, hold
 
-  // ─────────────────────────────── App closed while running
-
-  static const _beatKey = 'twv.workout.beat';
-  static SharedPreferences? _prefs;
-  int _beatAt = 0;
-
-  /// Every few seconds while the clock runs: "this workout was alive at this time".
-  void _beat() {
-    final now = DateTime.now().millisecondsSinceEpoch;
-    if (now - _beatAt < 5000) return;
-    _beatAt = now;
-    final key = id ?? 'local';
-    unawaited(() async {
-      try {
-        _prefs ??= await SharedPreferences.getInstance();
-        await _prefs!.setString(_beatKey, '$key|$now');
-      } catch (_) {}
-    }());
-  }
-
-  Future<void> _pauseIfClosed() async {
-    try {
-      _prefs ??= await SharedPreferences.getInstance();
-      final v = (_prefs!.getString(_beatKey) ?? '').split('|');
-      if (v.length != 2 || v[0] != (id ?? 'local')) return;
-      final at = DateTime.fromMillisecondsSinceEpoch(int.tryParse(v[1]) ?? 0);
-      if (DateTime.now().difference(at).inSeconds < 45 || at.isBefore(startedAt)) return;
-      if (await LiveNotice.showing()) return; // the notification stayed up: the workout went on
-      pausedAt = at;
-      pausedWhileClosed = true;
-      _push();
-    } catch (_) {}
-  }
-
-  /// Set when [open] paused the clock because the app had been closed; the logger says so once.
-  bool pausedWhileClosed = false;
-
   void _second() {
     if (finished) return;
-    if (!paused) _beat();
     if (!paused) {
       final h = hold;
       if (h != null) {

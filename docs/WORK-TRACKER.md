@@ -388,7 +388,7 @@ E51. ✅ Admin/trainer client Logs (Daily, Weekly, Habits, Supplements) aur clie
 51t. ✅ App exit sheet: workout chal raha ho to sirf bold line "Your workout is still running...", Resume button nahi (Probid 17 Nov).
 51u. ✅ Finish sheet saaf: chhote buttons (34), exercise list bina bahar ke border (sirf rows ke beech line), har row "x of y sets", kuch naya nahi joda (Probid 17 Nov).
 51v. ✅ Phone par logger sound nahi aa rahe the: har sound ka player pehle se taiyar (context, mode, file await), sab media player par, logger khulte hi load. Phone APK par test baaki (Probid 17 Nov).
-51w. ✅ App band (swipe / kill) ho jaye: notification rahe to workout chalta rahe; notification bhi chala jaye to agli baar app khulne par timer us waqt par paused (jab app aakhri baar chal raha tha) + toast "Workout paused" (Probid 17 Nov). Phone test baaki.
+51w. ✅ App band (swipe) ho jaye to bhi workout timer chalta rahe aur notification bana rahe (foreground service); 17 Nov wala "band par pause" Probid ke kehne par hataya (18 Nov). Phone test chal raha.
 51x. ✅ Phone par page transition native jaisa: andar ka page right se slide, neeche wala thoda left; Back par ulta; tab change fade (Probid 18 Nov).
 51y. ✅ Skeletons: Home (hero, week strip, cards), More / Notifications / My activity; notifications ki pichli list turant dikhe (Probid 18 Nov).
 51l. ⏸️ Baad me (Probid 17 Nov: "abhi nahi"): exercises ke beech ka rest. Coach plan me do exercises ke beech rest rakhe; tab last set ke baad exercise ka rest nahi, ye beech wala chale.

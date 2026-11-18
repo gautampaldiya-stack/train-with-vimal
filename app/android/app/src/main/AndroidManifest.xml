@@ -9,6 +9,8 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <!-- the running workout keeps its notification and clock with the app in the background (foreground service) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- logger sounds: audioplayers sets the audio mode / speaker before it plays (it was refused without this) -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <application
         android:label="Train With Vimal"

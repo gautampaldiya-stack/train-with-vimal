@@ -51,20 +51,6 @@ class LiveNotice {
       _checking = false;
     }
   }
-  /// The workout notification is still up (after the app was closed it can stay, held by its service).
-  /// Not Android: true, nothing to check.
-  static Future<bool> showing() async {
-    if (!_android) return true;
-    try {
-      await init();
-      final android = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-      final on = await android?.getActiveNotifications();
-      return on == null || on.any((n) => n.id == _id);
-    } catch (_) {
-      return true;
-    }
-  }
-
   static ReceivePort? _rx;
 
   static bool get _android => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
