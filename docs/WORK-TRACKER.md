@@ -391,6 +391,7 @@ E51. ✅ Admin/trainer client Logs (Daily, Weekly, Habits, Supplements) aur clie
 51w. ✅ App band (swipe) ho jaye to bhi workout timer chalta rahe aur notification bana rahe (foreground service); 17 Nov wala "band par pause" Probid ke kehne par hataya (18 Nov). Phone test chal raha.
 51x. ✅ Phone par page transition native jaisa: andar ka page right se slide, neeche wala thoda left; Back par ulta; tab change fade (Probid 18 Nov).
 51y. ✅ Skeletons: Home (hero, week strip, cards), More / Notifications / My activity; notifications ki pichli list turant dikhe (Probid 18 Nov).
+51z. ✅ App start / sign out: session na ho us frame me grey error box nahi, plain page (phone log 18 Nov).
 51l. ⏸️ Baad me (Probid 17 Nov: "abhi nahi"): exercises ke beech ka rest. Coach plan me do exercises ke beech rest rakhe; tab last set ke baad exercise ka rest nahi, ye beech wala chale.
 51a. ⬜ Kal ka workout (Food jaisa, Probid 17 Nov): week strip me kal chuno to kal ka workout log kar sake (chhoot gaya ho to) ya kal ka kiya hua edit kar sake. Usse purane din sirf dekh sakte.
 52. ⬜ Editable: exercises, sets, weight, reps, set type, rest timers, start aur end time.

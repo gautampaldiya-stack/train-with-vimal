@@ -150,7 +150,10 @@ class _AppShellState extends State<AppShell> {
   );
 
   Widget _build(BuildContext context) {
-    final me = Services.session.me!;
+    // a frame while the session is not there (app start, signing out on the way to /login): a plain page, never a
+    // grey error box (seen on the phone 18 Nov)
+    final me = Services.session.me;
+    if (me == null) return const ColoredBox(color: AppColors.caBg, child: SizedBox.expand());
     final isClient = me.role == Role.client;
     if (context.isPhone) {
       // Client: the bottom bar only on the main tabs; sub-pages and the workout logger have their own back button.

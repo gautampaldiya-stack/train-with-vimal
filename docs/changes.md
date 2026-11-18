@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+## 2026-11-18 · No grey error box when the session is missing
+- **Pehle:** App start / sign out ke beech ek frame me `session.me` khaali hota to AppShell crash karke grey box dikhata (phone log 10:52).
+- **Ab:** Us frame me plain background page; agle frame me sahi page.
+- **Kyun:** Phone test log (18 Nov).
+- **Updated:** app/lib/app/shell/app_shell.dart (`_build`).
+
 ## 2026-11-18 · Phone page transitions; loading skeletons
 - **Pehle:** Har page ek saath fade + halka upar aata; phone par andar ke page (jaise More → Notifications) ek dum khulte, Back par bhi. Load hote waqt Home / More beech me ghoomta spinner; Notifications har baar khaali spinner se shuru.
 - **Ab:** Phone: andar ka page right se slide hota (320 ms), neeche wala page chauthai left jaata; Back par ulta (260 ms); tabs ke beech chhota fade. Tablet / web pehle jaisa. Animations band ho to kuch nahi hilta. Load ke waqt skeleton (saans lete grey shapes): Home ka hero + week strip + cards, More, Notifications / My activity ki rows. Notifications ki pichli list cache se turant dikhti, nayi aate hi badal jaati.
