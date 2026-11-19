@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+## 2026-11-19 (5) · Quick add card, Log food list section, This week card
+- **Pehle:** Quick add ke boxes grey aur saade; search bar aur tabs list card ke bahar, list card ke side margin; This week card me patli bars, rangeen din box aur do summary lines.
+- **Ab:** Quick add card naya (header band, rangeen boxes, Off-plan row, blue Quick add). Phone par foods ek full-width section (header, search, tabs andar). This week: tile header, gol track bars, chuna din kaala gola, ek line din ki.
+- **Kyun:** Probid 19 Nov.
+- **Updated:** food_log_screen.dart (_exCard, _boxes, _foodSection, _listCard bare), food_parts.dart (NumStepper spread: gol buttons, 18 number), food_screen.dart (_weekCard); WORK-TRACKER 53zh–53zj
+
 ## 2026-11-19 (4) · Start sheet numbers, Food meal cards, Today's calories sheet, Log food cards
 - **Pehle:** Start sheet me exercise ka pehla letter; Food meal cards saade (ek grey line me macros); calories sheet me 7 chhote tiles aur neeche do lambi lines; Log food ke cards saade.
 - **Ab:** Start sheet me 1, 2, 3, 4. Meal card: tile, time · kcal, macro chips, food dots. Calories sheet: Eaten / Left bade, bar, Target / Still ahead, macros card, info box. Log food: tiles aur saaf headers.

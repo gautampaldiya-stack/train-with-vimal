@@ -480,15 +480,32 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
     final ago = (DateUtils0.dateOnly(thisMon).difference(DateUtils0.dateOnly(mon)).inDays / 7).round();
     final wkName = ago <= 0 ? 'This week' : ago == 1 ? 'Last week' : 'Week of ${fdDay(mon).split(', ').last}';
     final sm = (wk[sel]['meals'] as num?)?.toInt() ?? 0, sl = (wk[sel]['meals_logged'] as num?)?.toInt() ?? 0;
-    return ChCard(gap: 10, children: [
-      Row(children: [
-        Expanded(child: Text(wkName, style: AppText.s(15, W.w8))),
-        if (tg > 0) Text('Target ${inNum(tg)} kcal', style: AppText.s(12, W.w6, color: AppColors.muted)),
+    // Probid 19 Nov: a new, clean week card. Head (name, average), seven rounded bars with the target line, the
+    // picked day's numbers on one line under them. Nothing else.
+    final dayNums = kc[sel] > 0
+        ? '${inNum(kc[sel])} kcal · $sp g protein${sm > 0 ? ' · $sl/$sm meals' : ''}'
+        : (sd.isAfter(c.today) ? 'Coming up' : (sel == todayAt ? 'Nothing logged yet' : 'Nothing logged'));
+    return ChCard(gap: 14, children: [
+      Row(spacing: 12, children: [
+        histTile(AppIcons.calendar, bg: AppColors.tnBlueBg, fg: AppColors.accent, size: 36),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+            Text(wkName, style: AppText.s(15.5, W.w8)),
+            Text(mine.isEmpty ? 'Nothing logged yet' : 'Avg ${inNum(avgK)} kcal · ${avgP.round()} g protein a day',
+                maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted)),
+          ]),
+        ),
+        if (tg > 0)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(8)),
+            child: Text('Goal ${inNum(tg)}', style: AppText.s(11.5, W.w7, color: AppColors.text2, tabular: true)),
+          ),
       ]),
       SizedBox(
-        height: 104,
+        height: 120,
         child: Stack(children: [
-          Row(spacing: 6, children: [
+          Row(children: [
             for (var i = 0; i < wk.length; i++)
               Expanded(
                 child: Semantics(
@@ -499,42 +516,40 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
                     onTap: () => c.pickWeek(i),
                     builder: (_, h, _) {
                       final on = i == sel, today = i == todayAt, none = kc[i] <= 0, hi = !none && tg > 0 && kc[i] > tg * 1.03;
-                      final color = none
-                          ? AppColors.barTrack
-                          : on
-                          ? (hi ? AppColors.amberSolid : AppColors.accent)
-                          : hi
-                          ? AppColors.wkHi
-                          : today
-                          ? AppColors.wkToday
-                          : AppColors.wkBar;
-                      return Opacity(opacity: last[i] && !on ? .55 : 1, child: Column(spacing: 4, children: [
-                        Expanded(
-                          child: Container(
-                            width: double.infinity,
-                            decoration: BoxDecoration(color: on ? AppColors.sub : (h ? AppColors.outlineHover : null), borderRadius: BorderRadius.circular(6)),
+                      final color = hi ? (on ? AppColors.amberSolid : AppColors.wkHi) : (on ? AppColors.accent : (today ? AppColors.wkToday : AppColors.wkBar));
+                      return Opacity(
+                        opacity: last[i] && !on ? .5 : 1,
+                        child: Column(spacing: 6, children: [
+                          Expanded(
                             child: LayoutBuilder(builder: (_, b) {
-                              final hh = none ? 4.0 : (kc[i] / top * b.maxHeight).clamp(4.0, b.maxHeight);
-                              return Align(
+                              final w = (b.maxWidth * .55).clamp(10.0, 24.0);
+                              final hh = none ? 0.0 : (kc[i] / top * b.maxHeight).clamp(w, b.maxHeight);
+                              // a soft full-height track, the day's calories filling it from the bottom
+                              return Container(
+                                width: w,
+                                decoration: BoxDecoration(color: h && !on ? AppColors.outlineHover : AppColors.sub, borderRadius: BorderRadius.circular(99)),
                                 alignment: Alignment.bottomCenter,
                                 child: AnimatedContainer(
                                   duration: const Duration(milliseconds: 300),
-                                  width: (b.maxWidth * .7).clamp(0, 30),
+                                  width: w,
                                   height: hh,
-                                  decoration: BoxDecoration(color: color, borderRadius: const BorderRadius.vertical(top: Radius.circular(5), bottom: Radius.circular(2))),
+                                  decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(99)),
                                 ),
                               );
                             }),
                           ),
-                        ),
-                        SizedBox(
-                          height: 14,
-                          child: Text(
-                            fdWd[DateTime.parse('${wk[i]['date']}').weekday - 1][0],
-                            style: AppText.s(11, W.w7, color: on ? AppColors.text : (today ? AppColors.accentText : AppColors.muted)),
+                          Container(
+                            width: 22,
+                            height: 22,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(color: on ? AppColors.text : null, shape: BoxShape.circle),
+                            child: Text(
+                              fdWd[DateTime.parse('${wk[i]['date']}').weekday - 1][0],
+                              style: AppText.s(11.5, W.w7, color: on ? AppColors.white : (today ? AppColors.accentText : AppColors.muted)),
+                            ),
                           ),
-                        ),
-                      ]));
+                        ]),
+                      );
                     },
                   ),
                 ),
@@ -542,7 +557,7 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
           ]),
           if (tg > 0)
             Positioned.fill(
-              bottom: 18,
+              bottom: 28,
               child: IgnorePointer(
                 child: LayoutBuilder(builder: (_, b) => Stack(children: [
                   Positioned(left: 0, right: 0, bottom: (tg / top * b.maxHeight).clamp(0, b.maxHeight), child: const _DashLine()),
@@ -552,50 +567,19 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
         ]),
       ),
       Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(color: AppColors.nextBg, borderRadius: BorderRadius.circular(10)),
+        padding: const EdgeInsets.only(top: 12),
+        decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
         // one line, never wrapped (Probid 2026-11-03): the day, then its numbers shrinking to fit
         child: Row(spacing: 10, children: [
-          Text('${fdDay(sd)}${sel == todayAt ? ' · today' : last[sel] ? ' · last wk' : ''}', maxLines: 1, style: AppText.s(12.5, W.w8)),
+          Text('${fdDay(sd)}${sel == todayAt ? ' · today' : last[sel] ? ' · last wk' : ''}', maxLines: 1, style: AppText.s(13, W.w8)),
           Expanded(
             child: Align(
               alignment: Alignment.centerRight,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: kc[sel] > 0
-                    ? Row(spacing: 6, children: [
-                        Text('${inNum(kc[sel])} kcal', style: AppText.s(12.5, W.w8)),
-                        Text('·', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
-                        Text('$sp g P', style: AppText.s(12.5, W.w6, color: AppColors.text2)),
-                        if (sm > 0) ...[
-                          Text('·', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
-                          Text('$sl/$sm meals', style: AppText.s(12.5, W.w6, color: AppColors.text2)),
-                        ],
-                      ])
-                    : Text(sd.isAfter(c.today) ? 'Coming up' : (sel == todayAt ? 'Nothing logged yet' : 'Nothing logged'),
-                        maxLines: 1, style: AppText.s(12.5, W.w6, color: AppColors.text2)),
-              ),
+              child: FittedBox(fit: BoxFit.scaleDown, child: Text(dayNums, maxLines: 1, style: AppText.s(12.5, W.w6, color: AppColors.text2, tabular: true))),
             ),
           ),
         ]),
       ),
-      // the week's summary, its label in bold (Probid 2026-11-03)
-      Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-        Text.rich(TextSpan(children: [
-          TextSpan(text: '$wkName  ', style: AppText.s(13, W.w8)),
-          TextSpan(
-            text: mine.isEmpty
-                ? 'nothing logged yet'
-                : 'avg ${inNum(avgK)} kcal · ${avgP.round()} g protein',
-            style: AppText.s(13, W.w6, color: AppColors.text2),
-          ),
-        ])),
-        if (mine.isNotEmpty || last.contains(true))
-          Text(
-            '${mine.isEmpty ? '' : 'on ${mine.length} logged ${mine.length == 1 ? 'day' : 'days'}'}${mine.isNotEmpty && last.contains(true) ? ' · ' : ''}${last.contains(true) ? 'first 2 bars are last Sat and Sun' : ''}',
-            style: AppText.s(11.5, W.w5, color: AppColors.muted),
-          ),
-      ]),
     ]);
   }
 

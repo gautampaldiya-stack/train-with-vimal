@@ -83,7 +83,7 @@ class _NumStepperState extends State<NumStepper> {
 
   @override
   Widget build(BuildContext context) {
-    final fs = widget.big ? 22.0 : (widget.spread ? 15.0 : 13.5);
+    final fs = widget.big ? 22.0 : (widget.spread ? 18.0 : 13.5);
     final style = AppText.s(fs, W.w8);
     final Widget number = _typing
         ? SizedBox(
@@ -147,8 +147,10 @@ class _NumStepperState extends State<NumStepper> {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: h ? AppColors.outlineHover : AppColors.white,
-            borderRadius: BorderRadius.circular(r),
-            border: Border.all(color: AppColors.line),
+            // round, no border, in a tinted box (Quick add, Probid 19 Nov)
+            borderRadius: BorderRadius.circular(widget.spread ? 99 : r),
+            border: widget.spread ? null : Border.all(color: AppColors.line),
+            boxShadow: widget.spread ? AppShadows.tab : null,
           ),
           child: AppIcon(i, size: widget.big ? 19 : 16, color: AppColors.text2),
         ),

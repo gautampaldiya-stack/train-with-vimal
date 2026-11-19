@@ -104,6 +104,14 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
   final _qa = [0.0, 0.0, 0.0, 0.0];
   static const _qaSteps = [25.0, 1.0, 1.0, 1.0];
   static const _qaLabels = ['Calories', 'Protein (g)', 'Carbs (g)', 'Fat (g)'];
+  static const _qaNames = ['Calories', 'Protein', 'Carbs', 'Fat'];
+  // (tint, dot, text) per Quick add number
+  static const _qaTint = [
+    (AppColors.warmBg, AppColors.warm, AppColors.text2),
+    (AppColors.accentSoft, AppColors.accent, AppColors.accentText),
+    (AppColors.amberBg, AppColors.nvCarbs, AppColors.amberText),
+    (AppColors.purpleBg, AppColors.nvFat, AppColors.purpleText),
+  ];
 
   @override
   void initState() {
@@ -533,15 +541,90 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
 
   Widget _phoneScroll() => SingleChildScrollView(
     keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-    padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+    padding: const EdgeInsets.fromLTRB(0, 4, 0, 20),
     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
       // What she added and Quick add first, the food list last, so Show all only grows the end of the page
       // (Probid 2026-10-30). The header above stays put.
-      _addedCard(),
-      _exCard(),
-      ..._searchPart(),
+      Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: _addedCard()),
+      Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: _exCard()),
+      _foodSection(),
     ]),
   );
+
+  /// Phone: the foods as one white section from edge to edge (Probid 19 Nov): its own header (what the list is,
+  /// how many), the search box and the tabs inside it, then the rows.
+  Widget _foodSection() {
+    final q = _q.text.trim();
+    final (title, cnt) = _listTitle();
+    return Container(
+      decoration: const BoxDecoration(color: AppColors.white, border: Border.symmetric(horizontal: BorderSide(color: AppColors.line))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+            Row(spacing: 12, children: [
+              histTile(AppIcons.bowl, bg: AppColors.okBg, fg: AppColors.okText, size: 38),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+                  Text(title, style: AppText.s(16.5, W.w8)),
+                  CutText(cnt, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted)),
+                ]),
+              ),
+            ]),
+            Container(
+              height: 44,
+              padding: const EdgeInsets.only(left: 12, right: 6),
+              decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(12)),
+              child: Row(spacing: 8, children: [
+                const AppIcon(AppIcons.search, size: 17, color: AppColors.muted),
+                Expanded(child: _searchField()),
+                if (q.isNotEmpty) CaIconBtn(AppIcons.close, tooltip: 'Clear search', onTap: () => _setQuery('')),
+              ]),
+            ),
+            TwoTabs(
+              labels: const ['All', 'Recent', 'My foods'],
+              index: const ['All', 'Recent', 'My foods'].indexOf(_tab),
+              onPick: _pickTab,
+            ),
+          ]),
+        ),
+        CaSwipe(index: const ['All', 'Recent', 'My foods'].indexOf(_tab), count: 3, onPick: _pickTab, child: _listCard(bare: true)),
+      ]),
+    );
+  }
+
+  Widget _searchField() => TextField(
+        controller: _q,
+        autofocus: !context.isPhone,
+        onChanged: _onQuery,
+        textInputAction: TextInputAction.search,
+        style: AppText.s(13.5, W.w6),
+        cursorColor: AppColors.accent,
+        decoration: InputDecoration(
+          isCollapsed: true,
+          border: InputBorder.none,
+          hintText: 'Search food, e.g. paneer, dal, roti',
+          hintStyle: AppText.s(13.5, W.w4, color: AppColors.muted),
+        ),
+      );
+
+  /// What the food list is showing, and a line under it.
+  (String, String) _listTitle() {
+    final q = _q.text.trim();
+    final coach = day.data?.coach ?? 'your coach';
+    final String cnt;
+    if (q.isNotEmpty) {
+      cnt = '$_count ${_count == 1 ? 'result' : 'results'} for “$q”';
+    } else if (_tab == 'Recent') {
+      cnt = 'Foods you logged lately';
+    } else if (_tab == 'My foods') {
+      cnt = 'Foods you created';
+    } else {
+      cnt = '${_libCount > 0 ? _libCount : _count} foods in $coach’s library and yours';
+    }
+    final title = q.isNotEmpty ? 'Search results' : switch (_tab) { 'Recent' => 'Recent foods', 'My foods' => 'My foods', _ => 'All foods' };
+    return (title, cnt);
+  }
 
   /// Web: the header, search and tabs stay put; only the food list (and the right column) scroll.
   Widget _web() => CaWeb(
@@ -846,7 +929,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     ];
   }
 
-  Widget _listCard({bool scroll = false}) {
+  Widget _listCard({bool scroll = false, bool bare = false}) {
     final q = _q.text.trim();
     final coach = day.data?.coach ?? 'your coach';
     final String cnt;
@@ -911,6 +994,14 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
       padding: EdgeInsets.fromLTRB(14, 0, right, 0),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: body),
     );
+    // phone: only the rows, 16 from the edges, with a line above the first (the section has the header)
+    if (bare) {
+      return Container(
+        decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: body),
+      );
+    }
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
@@ -1072,59 +1163,74 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
 
   // ─────────────────────────────── Can't find the exact food?
 
-  Widget _exCard() => ChCardLite(gap: 12, children: [
-    Row(spacing: 12, children: [
-      histTile(AppIcons.edit, bg: AppColors.amberBg, fg: AppColors.amberText, size: 38),
-      Expanded(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-          Text('Can’t find the exact food?', style: AppText.s(15.5, W.w8)),
-          Text('Quick add the numbers, or save a custom food for next time.', style: AppText.s(12.5, W.w5, color: AppColors.muted)),
+  /// Quick add (Probid 19 Nov: this card on its own, nicer): a warm header band with its tile, the four tinted
+  /// numbers, Off-plan as a soft switch row, then the two buttons.
+  Widget _exCard() => Container(
+    clipBehavior: Clip.antiAlias,
+    decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.line)),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Container(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        color: AppColors.warmBg,
+        child: Row(spacing: 12, children: [
+          histTile(AppIcons.bolt, bg: AppColors.white, fg: AppColors.warm, size: 38),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+              Text('Quick add', style: AppText.s(15.5, W.w8)),
+              Text('Can’t find the exact food? Add the numbers, or save it as your own food.', style: AppText.s(12.5, W.w5, color: AppColors.text2)),
+            ]),
+          ),
         ]),
       ),
-    ]),
-    _boxes(_qa, (k, v) => setState(() => _qa[k] = v)),
-    Row(spacing: 8, children: [
-      Expanded(child: LayoutBuilder(builder: (_, b) => fdBtn('Create custom food', _customFood, icon: b.maxWidth >= 178 ? AppIcons.plus : null))),
-      Expanded(child: Opacity(opacity: _noPlan ? .45 : 1, child: fdBtn('Quick add', _quickAdd, kind: CaBtnKind.dark))),
-    ]),
-    Semantics(
-      button: true,
-      checked: _offNow,
-      child: Hover(
-        onTap: () {
-          if (_at != null) {
-            showToast(context, 'Other time food is always off-plan', sub: '${day.data?.coach ?? 'Your coach'} sees it in your food log at ${fdClock(_at!)}', kind: ToastKind.info);
-            return;
-          }
-          setState(() {
-            _off = !_off;
-            _why = '';
-          });
-        },
-        builder: (_, h, _) => Container(
-          padding: const EdgeInsets.only(top: 10),
-          decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
-            Padding(padding: const EdgeInsets.only(top: 1), child: CaCheckBox(_offNow)),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                Text('Off-plan meal', style: AppText.s(13.5, W.w7)),
-                Text('Party or eating out: what you add is marked off-plan for ${day.data?.coach ?? 'your coach'}.', style: AppText.s(12, W.w4, color: AppColors.muted)),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+          _boxes(_qa, (k, v) => setState(() => _qa[k] = v)),
+          Semantics(
+            button: true,
+            checked: _offNow,
+            child: Hover(
+              onTap: () {
+                if (_at != null) {
+                  showToast(context, 'Other time food is always off-plan', sub: '${day.data?.coach ?? 'Your coach'} sees it in your food log at ${fdClock(_at!)}', kind: ToastKind.info);
+                  return;
+                }
+                setState(() {
+                  _off = !_off;
+                  _why = '';
+                });
+              },
+              builder: (_, h, _) => Container(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                decoration: BoxDecoration(color: _offNow ? AppColors.amberBg : (h ? AppColors.outlineHover : AppColors.sub), borderRadius: BorderRadius.circular(12)),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
+                  Padding(padding: const EdgeInsets.only(top: 1), child: CaCheckBox(_offNow)),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+                      Text('Off-plan meal', style: AppText.s(13.5, W.w7)),
+                      Text('Party or eating out: what you add is marked off-plan for ${day.data?.coach ?? 'your coach'}.', style: AppText.s(12, W.w4, color: AppColors.muted)),
+                    ]),
+                  ),
+                ]),
+              ),
+            ),
+          ),
+          if (_offNow)
+            Padding(
+              padding: const EdgeInsets.only(left: 2),
+              child: Wrap(spacing: 6, runSpacing: 6, children: [
+                for (final t in const ['Ate out', 'Party', 'Travelling'])
+                  FdChip(t, height: 28, amber: true, on: _why == t, onTap: () => setState(() => _why = _why == t ? '' : t)),
               ]),
             ),
+          Row(spacing: 8, children: [
+            Expanded(child: LayoutBuilder(builder: (_, b) => fdBtn('Create custom food', _customFood, icon: b.maxWidth >= 178 ? AppIcons.plus : null))),
+            Expanded(child: Opacity(opacity: _noPlan ? .45 : 1, child: fdBtn('Quick add', _quickAdd, icon: AppIcons.plus, kind: CaBtnKind.pri))),
           ]),
-        ),
-      ),
-    ),
-    if (_offNow)
-      Padding(
-        padding: const EdgeInsets.only(left: 28),
-        child: Wrap(spacing: 6, runSpacing: 6, children: [
-          for (final t in const ['Ate out', 'Party', 'Travelling'])
-            FdChip(t, height: 28, amber: true, on: _why == t, onTap: () => setState(() => _why = _why == t ? '' : t)),
         ]),
       ),
-  ]);
+    ]),
+  );
 
   /// `fl-qs`: Calories / Protein / Carbs / Fat, each with − + and a number you can type.
   Widget _boxes(List<double> v, void Function(int, double) set) => LayoutBuilder(builder: (_, b) {
@@ -1133,16 +1239,21 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
       for (var k = 0; k < 4; k++)
         Container(
           width: w,
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: AppColors.caWebBg, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.line)),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 4, children: [
-            Text(_qaLabels[k], style: AppText.s(11.5, W.w7, color: AppColors.muted)),
+          padding: const EdgeInsets.fromLTRB(10, 9, 10, 8),
+          // a soft tint per number, like the macro colours everywhere (Probid 19 Nov: boxes looked plain)
+          decoration: BoxDecoration(color: _qaTint[k].$1, borderRadius: BorderRadius.circular(12)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
+            Row(spacing: 6, children: [
+              Container(width: 8, height: 8, decoration: BoxDecoration(color: _qaTint[k].$2, shape: BoxShape.circle)),
+              Expanded(child: Text(_qaNames[k], style: AppText.s(12.5, W.w7, color: _qaTint[k].$3))),
+              Text(k == 0 ? 'kcal' : 'g', style: AppText.s(11.5, W.w6, color: _qaTint[k].$3.withValues(alpha: .7))),
+            ]),
             NumStepper(
               value: v[k],
               step: _qaSteps[k],
               max: k == 0 ? 10000 : 1000,
               spread: true,
-              btn: 28,
+              btn: 30,
               decimals: k != 0,
               name: _qaLabels[k].toLowerCase(),
               label: (x) => x == x.roundToDouble() ? '${x.round()}' : '${(x * 10).round() / 10}',
