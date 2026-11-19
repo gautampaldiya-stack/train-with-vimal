@@ -400,6 +400,13 @@ class PxEntry {
   String get note => '${j['note'] ?? ''}';
   bool get missed => j['missed'] == true;
   String get id => '${j['id'] ?? ''}';
+
+  /// Meal day numbers (Food history look in All history).
+  int get kcal => (j['kcal'] as num?)?.round() ?? 0;
+  int get protein => (j['protein'] as num?)?.round() ?? 0;
+  int get carbs => (j['carbs'] as num?)?.round() ?? 0;
+  int get fat => (j['fat'] as num?)?.round() ?? 0;
+  int get foods => (j['foods'] as num?)?.toInt() ?? 0;
   List<(String, String)> get detail => [for (final r in (j['detail'] as List? ?? const [])) ('${(r as List)[0]}', '${r[1]}')];
 }
 

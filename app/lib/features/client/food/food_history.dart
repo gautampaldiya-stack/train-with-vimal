@@ -10,7 +10,7 @@ import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../home/home_model.dart' show inNum, litres, mealTime;
-import '../train/train_history.dart' show HistPill, HistSkeleton, histPage, histTile;
+import '../train/train_history.dart' show HistPill, HistSkeleton, HistStat, HistStats, histPage, histTile;
 import 'food_model.dart';
 
 /// Food history (Probid 19 Nov, like Train's Workout history): a page, not a sheet. Each past day a card: how many
@@ -34,15 +34,15 @@ class _Day {
   bool get empty => foods == 0 && logged == 0;
 }
 
-/// Macro pills shared by the list and the day page: protein blue, carbs yellow, fat pink.
-Widget _macros(num p, num c, num f) => Wrap(spacing: 8, runSpacing: 6, children: [
+/// Macro pills shared by Food history and All history (Progress): protein blue, carbs yellow, fat pink.
+Widget foodMacros(num p, num c, num f) => Wrap(spacing: 8, runSpacing: 6, children: [
       HistPill(AppIcons.bolt, '${p.round()} g protein', bg: AppColors.accentSoft, fg: AppColors.accentText),
       HistPill(AppIcons.apple, '${c.round()} g carbs', bg: AppColors.amberBg, fg: AppColors.amberText),
       HistPill(AppIcons.flame, '${f.round()} g fat', bg: AppColors.purpleBg, fg: AppColors.purpleText),
     ]);
 
 /// kcal eaten against the target: a thick bar, green near the target, amber over it.
-Widget _kcalBar(int kcal, int? target) {
+Widget foodKcalBar(int kcal, int? target) {
   final t = (target ?? 0) > 0 ? target! : 0;
   final f = t == 0 ? 0.0 : kcal / t;
   final over = f > 1.1;
@@ -74,7 +74,7 @@ class _FoodHistoryScreenState extends State<FoodHistoryScreen> {
   final _days = <_Day>[];
   int _count = -1;
   int? _target;
-  int? _avgKcal, _avgProtein;
+  int? _avgKcal, _avgProtein, _ptarget;
   bool _loading = false;
   String? _error;
   final _scroll = ScrollController();
@@ -117,6 +117,7 @@ class _FoodHistoryScreenState extends State<FoodHistoryScreen> {
       _target = (s['kcal_target'] as num?)?.toInt();
       _avgKcal = (s['avg_kcal'] as num?)?.toInt();
       _avgProtein = (s['avg_protein'] as num?)?.toInt();
+      _ptarget = (s['protein_target'] as num?)?.toInt();
       _error = null;
     } on ApiError catch (e) {
       _error = e.offline ? 'You are offline. Connect to see your food history.' : 'Could not load your food history. Try again.';
@@ -174,31 +175,14 @@ class _FoodHistoryScreenState extends State<FoodHistoryScreen> {
     );
   }
 
-  /// The 3-month averages on top, plain: two numbers side by side in one white card (Probid 19 Nov: simple).
-  Widget _averages() {
-    Widget cell(String v, String unit, String l) => Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-            Text.rich(TextSpan(children: [
-              TextSpan(text: v, style: AppText.s(20, W.w8, ls: -0.3, tabular: true)),
-              TextSpan(text: ' $unit', style: AppText.s(13, W.w6, color: AppColors.muted)),
-            ])),
-            Text(l, style: AppText.s(12, W.w5, color: AppColors.muted)),
-          ]),
-        );
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
-      child: IntrinsicHeight(
-        child: Row(spacing: 16, children: [
-          cell(inNum(_avgKcal!), 'kcal', 'Average a day'),
-          if (_avgProtein != null) ...[
-            const VerticalDivider(width: 1, thickness: 1, color: AppColors.line),
-            cell('$_avgProtein', 'g', 'Protein a day'),
-          ],
-        ]),
-      ),
-    );
-  }
+  /// The 3-month averages on top (Probid 19 Nov: nice, not plain): kcal a day and protein a day against the targets.
+  Widget _averages() => HistStats([
+        HistStat(AppIcons.flame, AppColors.warmBg, AppColors.warm, inNum(_avgKcal!), 'Calories a day', unit: 'kcal',
+            of: _target == null ? 'average' : 'avg · target ${inNum(_target!)}', progress: _target == null ? null : _avgKcal! / _target!),
+        if (_avgProtein != null)
+          HistStat(AppIcons.bolt, AppColors.accentSoft, AppColors.accent, '$_avgProtein', 'Protein a day', unit: 'g',
+              of: _ptarget == null ? 'average' : 'avg · target ${_ptarget}g', progress: _ptarget == null ? null : _avgProtein! / _ptarget!),
+      ]);
 
   Widget _card(_Day d) {
     final allLogged = d.planned > 0 && d.logged >= d.planned;
@@ -242,8 +226,8 @@ class _FoodHistoryScreenState extends State<FoodHistoryScreen> {
               const AppIcon(AppIcons.chevronRight, size: 16, color: AppColors.chevron),
             ]),
             if (!d.empty) ...[
-              _kcalBar(d.kcal, _target),
-              _macros(d.protein, d.carbs, d.fat),
+              foodKcalBar(d.kcal, _target),
+              foodMacros(d.protein, d.carbs, d.fat),
             ],
           ]),
         ),
@@ -317,29 +301,17 @@ class _FoodDayHistoryScreenState extends State<FoodDayHistoryScreen> {
   List<Widget> _body(FoodDay d) {
     final e = d.eaten, t = d.target;
     final other = d.log.where((x) => !x.fromPlan).toList();
-    // one plain white card, four columns: number, "of target", a thin bar in the macro's colour (Probid 19 Nov: simple)
-    Widget macro(String label, double v, double target, Color c, String unit) => Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 4, children: [
-            Text(label, style: AppText.s(12, W.w6, color: AppColors.muted)),
-            Text(unit == 'kcal' ? inNum(v) : '${v.round()} g', style: AppText.s(17, W.w8, tabular: true)),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(3),
-              child: LinearProgressIndicator(value: target > 0 ? (v / target).clamp(0.0, 1.0) : 0, minHeight: 4, backgroundColor: AppColors.barTrack, color: c),
-            ),
-            if (target > 0) Text('of ${unit == 'kcal' ? inNum(target) : '${target.round()} g'}', style: AppText.s(11.5, W.w5, color: AppColors.muted)),
-          ]),
-        );
     return [
-      Container(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-        decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 14, children: [
-          macro('Calories', e[0], t[0], AppColors.warm, 'kcal'),
-          macro('Protein', e[1], t[1], AppColors.accent, 'g'),
-          macro('Carbs', e[2], t[2], AppColors.carbs, 'g'),
-          macro('Fat', e[3], t[3], AppColors.fat, 'g'),
-        ]),
-      ),
+      HistStats([
+        for (final (i, l, ic, bg, fg, u) in [
+          (0, 'Calories', AppIcons.flame, AppColors.warmBg, AppColors.warm, ''),
+          (1, 'Protein', AppIcons.bolt, AppColors.accentSoft, AppColors.accent, 'g'),
+          (2, 'Carbs', AppIcons.apple, AppColors.amberBg, AppColors.carbs, 'g'),
+          (3, 'Fat', AppIcons.heart, AppColors.purpleBg, AppColors.fat, 'g'),
+        ])
+          HistStat(ic, bg, fg, i == 0 ? inNum(e[i]) : '${e[i].round()}', l, unit: u,
+              of: t[i] > 0 ? 'of ${i == 0 ? inNum(t[i]) : '${t[i].round()} g'}' : null, progress: t[i] > 0 ? e[i] / t[i] : null),
+      ]),
       const SizedBox(height: 18),
       if (d.meals.isNotEmpty) ...[
         _head('Meals', '${d.meals.where((m) => m.logged).length} of ${d.meals.length} logged'),

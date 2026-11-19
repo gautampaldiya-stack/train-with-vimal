@@ -12,6 +12,7 @@ import '../../../core/widgets/responsive.dart';
 import '../food/food_model.dart' show DateUtils0;
 import '../food/food_parts.dart' show fdTag;
 import '../home/home_parts.dart' show ChCard;
+import '../food/food_history.dart' show foodKcalBar, foodMacros;
 import 'progress_model.dart';
 import 'progress_parts.dart';
 import 'progress_screen.dart' show fdCapPx, pxLoading, pxMRow;
@@ -338,7 +339,17 @@ class _ProgressHistoryScreenState extends State<ProgressHistoryScreen> {
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: hv ? AppColors.line2 : AppColors.line),
                   ),
-                  child: PxEntryRow(e, first: true, chevron: true),
+                  child: e.type == 'meal' && e.foods > 0
+                      // a meal day reads like a Food history card: kcal bar against the target, macro pills (Probid 19 Nov)
+                      ? Padding(
+                          padding: const EdgeInsets.only(bottom: 14),
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+                            PxEntryRow(e, first: true, chevron: true),
+                            foodKcalBar(e.kcal, (h.summary['kcal_target'] as num?)?.toInt()),
+                            foodMacros(e.protein, e.carbs, e.fat),
+                          ]),
+                        )
+                      : PxEntryRow(e, first: true, chevron: true),
                 ),
               ),
             ),

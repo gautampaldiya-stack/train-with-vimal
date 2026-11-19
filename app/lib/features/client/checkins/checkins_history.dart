@@ -7,7 +7,7 @@ import '../../../core/theme/theme.dart';
 import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
 import '../home/home_model.dart' show dayShort;
-import '../train/train_history.dart' show HistPill, HistSkeleton, histPage, histTile;
+import '../train/train_history.dart' show HistPill, HistSkeleton, HistStat, HistStats, histPage, histTile;
 import 'checkins_model.dart';
 import 'checkins_screen.dart' show dayLine, showPastCheckin, weekLine;
 
@@ -131,28 +131,16 @@ class _CheckinHistoryScreenState extends State<CheckinHistoryScreen> {
         },
       );
 
-  /// All, sent and missed of this tab: one plain white card, three numbers (Probid 19 Nov: simple).
+  /// All, sent and missed of this tab, with how many of all were sent as a bar (Probid 19 Nov: nice, not plain).
   Widget _totals() {
-    Widget cell(int n, String l, Color ink) => Expanded(
-          child: Column(spacing: 2, children: [
-            Text('$n', style: AppText.s(20, W.w8, color: ink, tabular: true)),
-            Text(l, style: AppText.s(12, W.w5, color: AppColors.muted)),
-          ]),
-        );
-    const div = VerticalDivider(width: 1, thickness: 1, color: AppColors.line);
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
-      child: IntrinsicHeight(
-        child: Row(children: [
-          cell(c.total, 'In all', AppColors.text),
-          div,
-          cell(c.totalSent, 'Sent', c.totalSent > 0 ? AppColors.okText : AppColors.text),
-          div,
-          cell(c.totalMissed, 'Missed', c.totalMissed > 0 ? AppColors.badText : AppColors.text),
-        ]),
-      ),
-    );
+    final all = c.total == 0 ? 1 : c.total;
+    return HistStats([
+      // In all: a full bar and what it counts, so the cell is not empty (Probid 19 Nov)
+      HistStat(AppIcons.clipboard, AppColors.accentSoft, AppColors.accent, '${c.total}', 'In all', progress: c.total == 0 ? 0 : 1,
+          of: c.tab == 'weekly' ? '${c.total == 1 ? 'week' : 'weeks'} so far' : '${c.total == 1 ? 'day' : 'days'} so far'),
+      HistStat(AppIcons.checkCircle, AppColors.okBg, AppColors.okSolid, '${c.totalSent}', 'Sent', progress: c.totalSent / all, of: '${(c.totalSent * 100 / all).round()}% sent'),
+      HistStat(AppIcons.missed, AppColors.badBg, AppColors.red, '${c.totalMissed}', 'Missed', progress: c.totalMissed / all, of: '${(c.totalMissed * 100 / all).round()}% missed'),
+    ]);
   }
 
   Widget _card(CheckinsData d, int i, CkRow r) {

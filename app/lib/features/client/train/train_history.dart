@@ -497,3 +497,69 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     );
   }
 }
+
+/// One stat in a [HistStats] card.
+class HistStat {
+  const HistStat(this.icon, this.bg, this.fg, this.value, this.label, {this.unit = '', this.of, this.progress});
+  final AppIconData icon;
+  final Color bg, fg;
+  final String value, unit, label;
+
+  /// "of 1,958" under the label, and a thin bar filled to [progress] (0–1) in [fg].
+  final String? of;
+  final double? progress;
+}
+
+/// The stats on top of a history page (Probid 19 Nov: not plain, not loud): one white card, each stat with a small
+/// coloured icon, the number, its label and, when it has a target, a thin bar in the same colour.
+class HistStats extends StatelessWidget {
+  const HistStats(this.stats, {super.key});
+  final List<HistStat> stats;
+
+  @override
+  Widget build(BuildContext context) {
+    // four stats go 2 × 2, so each has room (Probid 19 Nov: four across looked crowded)
+    final cols = stats.length == 4 ? 2 : stats.length;
+    final rows = [for (var i = 0; i < stats.length; i += cols) stats.sublist(i, (i + cols).clamp(0, stats.length))];
+    Widget cell(HistStat s) => Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 7, children: [
+          Row(spacing: 8, children: [
+            histTile(s.icon, bg: s.bg, fg: s.fg, size: 28),
+            Flexible(child: Text(s.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.text2))),
+          ]),
+          Text.rich(
+            TextSpan(children: [
+              TextSpan(text: s.value, style: AppText.s(21, W.w8, ls: -0.3, tabular: true, color: AppColors.text)),
+              if (s.unit.isNotEmpty) TextSpan(text: ' ${s.unit}', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
+            ]),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          if (s.progress != null)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(3),
+              child: LinearProgressIndicator(value: s.progress!.clamp(0.0, 1.0), minHeight: 5, backgroundColor: AppColors.barTrack, color: s.fg),
+            ),
+          if (s.of != null) Text(s.of!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12, W.w5, color: AppColors.muted)),
+        ]);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.line)),
+      child: Column(children: [
+        for (final (r, row) in rows.indexed) ...[
+          if (r > 0) const Divider(height: 1, thickness: 1, color: AppColors.line),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: IntrinsicHeight(
+              child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                for (final (i, s) in row.indexed) ...[
+                  if (i > 0) const Padding(padding: EdgeInsets.symmetric(horizontal: 14), child: VerticalDivider(width: 1, thickness: 1, color: AppColors.line)),
+                  Expanded(child: cell(s)),
+                ],
+              ]),
+            ),
+          ),
+        ],
+      ]),
+    );
+  }
+}
