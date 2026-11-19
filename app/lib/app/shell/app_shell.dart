@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:twv/core/widgets/twv_logo.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -305,7 +305,7 @@ class _Sidebar extends StatelessWidget {
               Padding(
                 padding: mini ? const EdgeInsets.fromLTRB(0, 4, 0, 12) : const EdgeInsets.fromLTRB(8, 4, 8, 16),
                 child: Row(mainAxisAlignment: mini ? MainAxisAlignment.center : MainAxisAlignment.start, spacing: 10, children: [
-                  SvgPicture.asset('assets/logo.svg', width: mini ? 32 : 36, height: mini ? 32 : 36),
+                  TwvLogo(size: mini ? 32 : 36),
                   if (!mini)
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [

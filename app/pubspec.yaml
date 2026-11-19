@@ -88,6 +88,7 @@ flutter:
 
   assets:
     - assets/logo.svg
+    - assets/logo_dark.svg
     - assets/welcome.svg
     - assets/ill/
     - assets/sounds/

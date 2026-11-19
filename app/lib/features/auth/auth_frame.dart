@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:twv/core/widgets/twv_logo.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../core/icons/app_icons.dart';
@@ -647,7 +648,7 @@ class AppLogo extends StatelessWidget {
         height: size,
         padding: EdgeInsets.all(ring ? 2 : 0),
         decoration: ring ? const BoxDecoration(color: AppColors.white, shape: BoxShape.circle) : null,
-        child: SvgPicture.asset('assets/logo.svg'),
+        child: const TwvLogo(),
       );
 }
 

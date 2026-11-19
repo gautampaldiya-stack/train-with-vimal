@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:twv/core/widgets/twv_logo.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -152,7 +152,7 @@ class _ClientAboutScreenState extends State<ClientAboutScreen> {
       );
 
   Widget _appCard() => _card(Row(spacing: 12, children: [
-        SizedBox(width: 52, height: 52, child: SvgPicture.asset('assets/logo.svg')),
+        SizedBox(width: 52, height: 52, child: const TwvLogo()),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
             Text(_s('name'), style: AppText.s(16, W.w8)),

@@ -18,6 +18,13 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+### 2026-11-19 · Brand — dark-theme logo (white letters)
+- **Pehle:** Sirf ek logo tha (kaale letters). Black screen par letters gayab ho jaate the.
+- **Ab:** `assets/logo_dark.svg` (same logo, letters white) add hua. `TwvLogo` widget theme ke hisaab se light/dark logo chunta hai; sidebar, auth frame aur About me use hua. Dark theme abhi park hai, isliye abhi light logo hi dikhta hai.
+- **Kyun:** Probid: dark theme ke liye logo chahiye.
+- **Updated:** app/assets/logo_dark.svg, app/pubspec.yaml, app/lib/core/widgets/twv_logo.dart, app_shell.dart, auth_frame.dart, about_screen.dart
+
+
 ## 2026-11-19 · Strong Edit workout page, Workout History pages, sliding tabs
 - **Pehle:** Edit / log workout ek sheet tha (REST column, Save button neeche); History ek sheet; progress history ka poora din ek sheet me; swipe tabs ek dum badal jaate; bar buttons sirf text; Home ki ghanti box me.
 - **Ab:** Edit workout / Log workout poora page: X (discard confirm) aur ✓ (save), SET · PREVIOUS · KG · REPS · ✓ rows, tick = hari row, sirf tick sets save; aaj aur kal edit, kal ka log. Train → "History" page (Strong cards) aur workout page (sets, 1RM, Personal best), Perform again nahi. Progress → History Strong bar, har log alag (workout page, baaki sheet). Swipe tabs slide (CaSwipe). Bar buttons halka background, 32 high. Home ghanti bina box.
