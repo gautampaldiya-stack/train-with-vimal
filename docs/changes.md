@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+## 2026-11-19 · Strong Edit workout page, Workout History pages, sliding tabs
+- **Pehle:** Edit / log workout ek sheet tha (REST column, Save button neeche); History ek sheet; progress history ka poora din ek sheet me; swipe tabs ek dum badal jaate; bar buttons sirf text; Home ki ghanti box me.
+- **Ab:** Edit workout / Log workout poora page: X (discard confirm) aur ✓ (save), SET · PREVIOUS · KG · REPS · ✓ rows, tick = hari row, sirf tick sets save; aaj aur kal edit, kal ka log. Train → "History" page (Strong cards) aur workout page (sets, 1RM, Personal best), Perform again nahi. Progress → History Strong bar, har log alag (workout page, baaki sheet). Swipe tabs slide (CaSwipe). Bar buttons halka background, 32 high. Home ghanti bina box.
+- **Kyun:** Probid 19 Nov, Strong screenshots.
+- **Updated:** workout_edit.dart (page), train_history.dart (new), train_screen, train_parts (old sheet hataya), train_model, router (/train/history, /train/history/<id>), client.dart (CaSwipe, CaBarText), progress pages / sheets / parts / model, checkins_screen, habits_screen, home_screen; backend training views (GET edit, last_performance before/exclude), serializers (row summary / volume / prs / started_at), checkins/progress.py (workout id), tests; api-endpoints, WORK-TRACKER
+
 ## 2026-11-18 · Edit sirf kal ka; History detail Strong jaisa; chhote buttons
 - **Pehle:** History se koi bhi purana workout edit ho sakta tha, aaj ka bhi Train par Edit; past day par bade full-width buttons.
 - **Ab:** Edit / Log sirf kal ka (Train strip me kal); backend bhi kal se purana edit 400 deta. History ka workout detail: stats line (time, volume, PR, effort) + har exercise ke sets seedhi rows. Past day buttons chhote, ek row me (Back to today left, Edit / Log right).

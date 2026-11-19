@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/icons/app_icons.dart';
 import '../../../core/theme/theme.dart';
@@ -129,7 +130,8 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
       CaPinned(
         // Strong (Probid 18 Nov): the bar keeps only the History icon, the title scrolls with the page
         head: CaTopBar(title: 'Train', actions: [
-          CaIconBtn(AppIcons.clock, plain: true, tooltip: 'History', onTap: () => showPastWorkouts(context, thisName: d.rest || d.dayName.isEmpty ? null : d.dayName)),
+          // a named button like Log food / Log weight, not an icon alone (Probid 19 Nov)
+          CaBarText('History', icon: AppIcons.clock, onTap: () => context.go('/train/history')),
         ]),
         body: RefreshIndicator(
         onRefresh: c.load,
@@ -209,7 +211,7 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
               if (d.programLine.isNotEmpty) Text(d.programLine, style: AppText.s(13, W.w6, color: AppColors.muted)),
             ]),
           ),
-          chSm('History', () => showPastWorkouts(context, thisName: d.rest || d.dayName.isEmpty ? null : d.dayName), icon: AppIcons.clock),
+          chSm('History', () => context.go('/train/history'), icon: AppIcons.clock),
         ]),
       );
 
@@ -348,7 +350,7 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
       ));
       final r = _rate(d);
       if (r != null) body.add(r);
-      // H51a: only yesterday: a missed workout can be logged afterwards, a done one edited (H52). Older days only show.
+      // H51a: yesterday: a missed workout can be logged afterwards, a done one edited (H52). Older days only show.
       final yesterday = DateUtils.isSameDay(d.date, DateTime.now().subtract(const Duration(days: 1)));
       // small buttons like Start workout: Back to today on the left, Edit / Log on the right (Probid 18 Nov)
       final back = CaButton('Back to today', kind: CaBtnKind.out, small: true, expand: false, onPressed: () => this.c.pick(DateTime.now()));
@@ -364,17 +366,27 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
       final label = live != null ? 'Continue workout' : (d.finished ? 'Log more sets' : 'Start workout');
       body.addAll([
         if (live == null && _rate(d) != null) _rate(d)!,
-        // today is changed in the logger itself (Log more sets); Edit is only for yesterday (Probid 18 Nov)
-        // the button on the right, as wide as its text; the progress fills the space on its left (Probid 18 Nov)
-        Row(spacing: 14, children: [
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 6, children: [
-              Text('$doneN of $n exercises done', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
-              ChBar(n == 0 ? 0 : doneN / n, color: AppColors.okSolid),
-            ]),
-          ),
-          CaButton(label, icon: AppIcons.play, small: true, expand: false, onPressed: n == 0 ? null : () => _go(d)),
-        ]),
+        // today's finished workout: Edit workout (the Strong edit page) on the left, Log more sets on the right, small,
+        // one row (Probid 19 Nov); else the progress on the left of the button (Probid 18 Nov)
+        if (live == null && d.finished) ...[
+          Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 6, children: [
+            Text('$doneN of $n exercises done', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
+            ChBar(n == 0 ? 0 : doneN / n, color: AppColors.okSolid),
+          ]),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            CaButton('Edit workout', icon: AppIcons.edit, kind: CaBtnKind.out, small: true, expand: false, onPressed: () => _edit(d)),
+            CaButton(label, icon: AppIcons.play, small: true, expand: false, onPressed: n == 0 ? null : () => _go(d)),
+          ]),
+        ] else
+          Row(spacing: 14, children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 6, children: [
+                Text('$doneN of $n exercises done', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
+                ChBar(n == 0 ? 0 : doneN / n, color: AppColors.okSolid),
+              ]),
+            ),
+            CaButton(label, icon: AppIcons.play, small: true, expand: false, onPressed: n == 0 ? null : () => _go(d)),
+          ]),
       ]);
     }
     if (s != null) {

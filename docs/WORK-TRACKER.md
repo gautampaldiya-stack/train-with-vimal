@@ -425,6 +425,11 @@ E51. ✅ Admin/trainer client Logs (Daily, Weekly, Habits, Supplements) aur clie
 53e. ✅ Library: chhoti list bhi scroll hoti (title bar me jaa sake), list rows thode chhote (Probid 18 Nov).
 53f. ✅ Logger set type (Warm up / Drop set / Failure) ka ? ab beech me card, X se band (Strong) (Probid 18 Nov).
 53g. ✅ Food "+ Log food" aur Progress "+ Log weight" bar me naam ke saath (sirf icon se samajh nahi aata tha); page title upar, icons ke theek neeche (khali jagah kam) (Probid 18 Nov).
+53j. ✅ Edit workout ab Strong jaisa poora page (sheet nahi): upar X (badla ho to "Discard changes?" poochta) aur ✓ (save); har exercise SET · PREVIOUS · KG · REPS · ✓, tick wali row hari, sirf tick sets save; khali set tick karo to PREVIOUS ki values aa jaati; ⋯ / time line se start-end. Aaj ka aur kal ka edit, kal ka chhoota "Log workout" bhi isi page par (Probid 19 Nov).
+53k. ✅ Workout History page (sheet nahi, Train bar me "History" button): mahine ke hisaab se cards — naam, din + time, Sets (3 × Squat) / Best set, time · kg · PRs. Card tap → workout page: har set, 1RM, Personal best badge, neeche time · kg · PRs. "Perform again" nahi (Probid 19 Nov).
+53l. ✅ Progress → History: Strong bar (title upar bar me jaata), har log alag khulta: workout apne page par, meal / check-in / weight chhoti sheet me (Probid 19 Nov).
+53m. ✅ Bar ke "Log food" / "Log weight" / "History" buttons: halka neela background, chhoti height (32). Home ki ghanti bina box (More jaisi) (Probid 19 Nov).
+53n. ✅ Swipe tabs ab slide hote: content ungli ke saath chalta, naya tab side se aata (ek dum nahi badalta) — Progress photos sheet, Add photos, Photos page, Compare, aur Food, Habits, Check-ins, Progress, PDF pages (Probid 19 Nov).
 53i. ✅ Train par purane din ke buttons chhote (Start workout jaise): "Back to today" left, "Edit workout" / "Log this workout" right, ek row me; akela ho to Back to today chhota (Probid 18 Nov).
 53h. ✅ Train exercise list phone par bina card border, screen ke edge tak, sirf upar / neeche / beech me line (Probid 18 Nov).
 51l. ⏸️ Baad me (Probid 17 Nov: "abhi nahi"): exercises ke beech ka rest. Coach plan me do exercises ke beech rest rakhe; tab last set ke baad exercise ka rest nahi, ye beech wala chale.

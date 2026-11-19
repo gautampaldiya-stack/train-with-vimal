@@ -302,22 +302,116 @@ class CaEmpty extends StatelessWidget {
 /// A swipe left / right on [child] moves to the next / previous tab (Probid 18 Nov: Habits Day ⇄ Week, Food,
 /// Progress, Past check-ins). Only a quick flick counts, so lists still scroll up and down and inner sliders keep their
 /// own drags.
-class CaSwipe extends StatelessWidget {
+class CaSwipe extends StatefulWidget {
   const CaSwipe({super.key, required this.index, required this.count, required this.onPick, required this.child});
   final int index, count;
   final ValueChanged<int> onPick;
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onHorizontalDragEnd: (d) {
-          final v = d.primaryVelocity ?? 0;
-          if (v < -350 && index < count - 1) onPick(index + 1);
-          if (v > 350 && index > 0) onPick(index - 1);
+  State<CaSwipe> createState() => _CaSwipeState();
+}
+
+/// The content follows the finger while it is dragged, and a new tab slides in from its side (a tap on a tab too):
+/// it never just jumps to the other tab (Probid 19 Nov: "ache se slide ho, ek dum na aaye").
+class _CaSwipeState extends State<CaSwipe> with SingleTickerProviderStateMixin {
+  late final _back = AnimationController(vsync: this, duration: const Duration(milliseconds: 200));
+  double _dx = 0, _from = 0;
+  int _dir = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    _back.addListener(() => setState(() => _dx = _from * (1 - Curves.easeOut.transform(_back.value))));
+  }
+
+  @override
+  void didUpdateWidget(CaSwipe old) {
+    super.didUpdateWidget(old);
+    if (old.index != widget.index) _dir = widget.index > old.index ? 1 : -1;
+  }
+
+  @override
+  void dispose() {
+    _back.dispose();
+    super.dispose();
+  }
+
+  void _drag(DragUpdateDetails d) {
+    _back.stop();
+    var dx = _dx + d.delta.dx;
+    // no tab on that side: it gives a little, like a page at its end
+    final edge = (widget.index == 0 && dx > 0) || (widget.index >= widget.count - 1 && dx < 0);
+    if (edge) dx = _dx + d.delta.dx * .3;
+    setState(() => _dx = dx);
+  }
+
+  void _end(DragEndDetails d, double width) {
+    final v = d.primaryVelocity ?? 0;
+    final next = (v < -350 || _dx < -width * .28) && widget.index < widget.count - 1;
+    final prev = (v > 350 || _dx > width * .28) && widget.index > 0;
+    if (next || prev) {
+      _dir = next ? 1 : -1;
+      setState(() => _dx = 0);
+      widget.onPick(widget.index + (next ? 1 : -1));
+      return;
+    }
+    _from = _dx;
+    _back.forward(from: 0);
+  }
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, box) {
+          final w = box.maxWidth.isFinite ? box.maxWidth : MediaQuery.sizeOf(context).width;
+          final off = Motion.off(context);
+          return GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onHorizontalDragUpdate: off ? null : _drag,
+            onHorizontalDragEnd: (d) {
+              if (off) {
+                final v = d.primaryVelocity ?? 0;
+                if (v < -350 && widget.index < widget.count - 1) widget.onPick(widget.index + 1);
+                if (v > 350 && widget.index > 0) widget.onPick(widget.index - 1);
+                return;
+              }
+              _end(d, w);
+            },
+            // phone: the content slides out to the screen's edge, not cut at the page padding; wider screens clip it
+            child: ClipRect(
+              clipper: MediaQuery.sizeOf(context).width < Breakpoints.tablet ? const _SideOpen() : null,
+              child: Transform.translate(
+                offset: Offset(_dx, 0),
+                child: off
+                    ? widget.child
+                    : AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 260),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeOutCubic,
+                        layoutBuilder: (cur, prev) => Stack(alignment: Alignment.topCenter, children: [...prev, ?cur]),
+                        transitionBuilder: (child, a) {
+                          final incoming = child.key == ValueKey<int>(widget.index);
+                          final tween = incoming
+                              ? Tween<Offset>(begin: Offset(_dir.toDouble(), 0), end: Offset.zero)
+                              : Tween<Offset>(begin: Offset(-_dir.toDouble(), 0), end: Offset.zero);
+                          return SlideTransition(position: tween.animate(a), child: child);
+                        },
+                        child: KeyedSubtree(key: ValueKey<int>(widget.index), child: widget.child),
+                      ),
+              ),
+            ),
+          );
         },
-        child: child,
       );
+}
+
+/// Clips only top and bottom: the sliding tab content runs out to the screen's sides.
+class _SideOpen extends CustomClipper<Rect> {
+  const _SideOpen();
+  @override
+  Rect getClip(Size size) => Rect.fromLTRB(-4000, 0, size.width + 4000, size.height);
+  @override
+  bool shouldReclip(_SideOpen old) => false;
 }
 
 /// A text action in a page's top bar ("Mark all read"): blue text, no box, a soft ink splash on tap (Probid 18 Nov).
@@ -329,27 +423,32 @@ class CaBarText extends StatelessWidget {
   /// An icon before the words ("+ Log food"): an icon alone did not say what it does (Probid 18 Nov).
   final AppIconData? icon;
 
+  /// A light blue pill, a little lower than the bar's icons, so it reads as a button (Probid 19 Nov).
   @override
   Widget build(BuildContext context) => Semantics(
         button: true,
-        child: Material(
-          type: MaterialType.transparency,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Material(
+          color: onTap == null ? AppColors.sub : AppColors.accentSoft,
+          borderRadius: BorderRadius.circular(9),
           child: InkWell(
             onTap: onTap == null ? null : () => OpenGuard.tap() ? onTap!() : null,
-            borderRadius: BorderRadius.circular(10),
-            splashColor: AppColors.line2,
-            highlightColor: AppColors.logField,
-            hoverColor: AppColors.logFieldHover,
+            borderRadius: BorderRadius.circular(9),
+            splashColor: AppColors.accentRing,
+            highlightColor: AppColors.accentRing.withValues(alpha: .5),
+            hoverColor: AppColors.accentRing.withValues(alpha: .35),
             child: Container(
-              height: 40,
+              height: 32,
               alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 11),
               child: Row(mainAxisSize: MainAxisSize.min, spacing: 5, children: [
                 if (icon != null) AppIcon(icon!, size: 16, color: onTap == null ? AppColors.muted : AppColors.accentText, stroke: 2.2),
                 Text(label, style: AppText.s(13.5, W.w7, color: onTap == null ? AppColors.muted : AppColors.accentText)),
               ]),
             ),
           ),
+        ),
         ),
       );
 }

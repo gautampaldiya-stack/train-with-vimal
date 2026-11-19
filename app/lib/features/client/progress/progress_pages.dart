@@ -172,12 +172,27 @@ class _ProgressHistoryScreenState extends State<ProgressHistoryScreen> {
           ),
         ),
       ];
-      if (h.loading && h.days.isEmpty || h.error != null && h.days.isEmpty) {
+      final empty = h.loading && h.days.isEmpty || h.error != null && h.days.isEmpty;
+      if (!web) {
+        // phone: the Strong page like Train → History (Probid 19 Nov): Back in the bar, the big title scrolls up into it
+        return CaPinned(
+          titleTop: 2,
+          head: CaTopBar(title: 'History', onBack: () => context.go('/progress'), backTip: 'Back to Progress'),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 2, 16, 24),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+              CaPageTitle('History', sub: 'All your logs in one place${_rangeLbl.isEmpty ? '' : ' · $_rangeLbl'}'),
+              ...head.sublist(2),
+              if (empty) SizedBox(height: 240, child: pxLoading(h.loading ? null : h.error, h.load, 'your history')) else ...[_summary(), ..._days()],
+            ]),
+          ),
+        );
+      }
+      if (empty) {
         return pxPage(context, fixed: head.length, [...head, SizedBox(height: 240, child: pxLoading(h.loading ? null : h.error, h.load, 'your history'))]);
       }
       final sum = _summary();
       final days = _days();
-      if (!web) return pxPage(context, fixed: head.length, [...head, sum, ...days]);
       // Web: the top (title, range tabs, chips) and the summary on the right stay put; only the day list
       // scrolls (Gautam 2026-10-16).
       return CaWeb(
@@ -305,23 +320,28 @@ class _ProgressHistoryScreenState extends State<ProgressHistoryScreen> {
                     style: AppText.s(12, W.w8, color: d.score! >= 90 ? AppColors.okText : (d.score! < 75 ? AppColors.amberText : AppColors.text2))),
             ]),
           ),
-          Semantics(
-            button: true,
-            label: 'Open ${pxWdm(d.date)}',
-            child: Hover(
-              onTap: () => showHistoryDay(context, d),
-              builder: (_, hv, _) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: hv ? AppColors.line2 : AppColors.line),
+          // each log opens on its own (Probid 19 Nov): a workout as its page (like Train → History), a meal, check-in
+          // or weigh-in in a short sheet
+          Container(
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              for (final (i, e) in d.entries.indexed)
+                Semantics(
+                  button: true,
+                  label: 'Open ${e.title}',
+                  child: Hover(
+                    onTap: () => e.type == 'workout' && e.id.isNotEmpty
+                        ? context.go('/train/history/${e.id}?from=progress')
+                        : showHistoryEntry(context, d, e),
+                    builder: (_, hv, _) => Container(
+                      color: hv ? AppColors.sub : null,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: PxEntryRow(e, first: i == 0, chevron: true),
+                    ),
+                  ),
                 ),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  for (final (i, e) in d.entries.indexed) PxEntryRow(e, first: i == 0),
-                ]),
-              ),
-            ),
+            ]),
           ),
         ]),
       if (left > 0)
@@ -489,14 +509,22 @@ class _ProgressPhotosScreenState extends State<ProgressPhotosScreen> {
               Expanded(child: Text('Only you and Coach ${d.coach} can see these. Tap two sets to compare.', style: AppText.s(12.5, W.w6, color: AppColors.infoText))),
             ]),
           ),
-          for (final (m, list) in months)
-            Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
-              Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, spacing: 8, children: [
-                Text(m, style: AppText.s(14, W.w8)),
-                Text('${list.length} ${list.length == 1 ? 'set' : 'sets'}', style: AppText.s(12, W.w6, color: AppColors.muted)),
-              ]),
-              grid(list),
+          // a swipe on the photos moves to the next pose; they slide, never jump (Probid 19 Nov)
+          CaSwipe(
+            index: pxPoses.indexOf(_pose),
+            count: pxPoses.length,
+            onPick: (i) => setState(() => _pose = pxPoses[i]),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+              for (final (m, list) in months)
+                Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
+                  Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, spacing: 8, children: [
+                    Text(m, style: AppText.s(14, W.w8)),
+                    Text('${list.length} ${list.length == 1 ? 'set' : 'sets'}', style: AppText.s(12, W.w6, color: AppColors.muted)),
+                  ]),
+                  grid(list),
+                ]),
             ]),
+          ),
           ChCard(padding: const EdgeInsets.all(12), children: [
             Row(spacing: 10, children: [
               Container(
@@ -620,6 +648,8 @@ class _ProgressCompareScreenState extends State<ProgressCompareScreen> {
       final sum = rows.isEmpty
           ? 'No measurements near these dates yet.'
           : 'In $days ${days == 1 ? 'day' : 'days'}: ${rows.take(3).map((r) => '${r.$1.toLowerCase()} ${r.$4}').join(', ')}.';
+      // a swipe on the two photos moves to the next pose; they slide, never jump (Probid 19 Nov)
+      Widget swipe(Widget w) => CaSwipe(index: pxPoses.indexOf(_pose), count: pxPoses.length, onPick: (i) => setState(() => _pose = pxPoses[i]), child: w);
       final photos = Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: web ? 16 : 10, children: [
         Expanded(child: side(a, ai, 'A', false)),
         Expanded(child: side(b, bi, 'B', true)),
@@ -636,13 +666,13 @@ class _ProgressCompareScreenState extends State<ProgressCompareScreen> {
           LayoutBuilder(
             builder: (_, bx) => bx.maxWidth >= 860
                 ? Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 20, children: [
-                    SizedBox(width: 540, child: photos),
+                    SizedBox(width: 540, child: swipe(photos)),
                     Expanded(child: table),
                   ])
-                : Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 16, children: [photos, table]),
+                : Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 16, children: [swipe(photos), table]),
           )
         else ...[
-          photos,
+          swipe(photos),
           table,
         ],
       ]);

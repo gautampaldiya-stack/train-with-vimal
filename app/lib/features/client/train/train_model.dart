@@ -433,8 +433,21 @@ class PastRow {
         effort = _nn(j['effort'])?.toInt(),
         note = '${j['note'] ?? ''}',
         pr = j['has_pr'] == true,
-        edited = _n(j['edited']).toInt();
+        edited = _n(j['edited']).toInt(),
+        prs = _n(j['prs']).toInt(),
+        volume = _n(j['volume']).toDouble(),
+        startedAt = DateTime.tryParse('${j['started_at'] ?? ''}')?.toLocal(),
+        summary = [
+          for (final r in (j['summary'] as List? ?? const []))
+            (name: '${(r as Map)['name'] ?? ''}', sets: _n(r['sets']).toInt(), best: '${r['best'] ?? ''}'),
+        ];
   final String id, name, note;
+
+  /// History card (Strong): PR count, kg lifted, when it started, and per exercise its sets and best set.
+  final int prs;
+  final double volume;
+  final DateTime? startedAt;
+  final List<({String name, int sets, String best})> summary;
   final DateTime date;
   final int seconds, exercises, sets;
 
@@ -465,9 +478,10 @@ Future<PastPage> loadPast({String? name, int page = 1}) async {
 
 /// One finished workout, its sets grouped by exercise in the order done.
 class PastDetail {
-  PastDetail(Map<String, dynamic> j)
+  PastDetail(this.j)
       : row = PastRow({...j, 'exercises': 0, 'has_pr': false}),
         groups = _group(j['sets'] as List? ?? const []);
+  final Map<String, dynamic> j;
   final PastRow row;
   final List<({String name, String logType, bool pr, List<Map<String, dynamic>> sets})> groups;
 

@@ -32,7 +32,9 @@ class ClientCheckinsScreen extends StatefulWidget {
 class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
   final c = CheckinsController();
   final _scroll = ScrollController();
-  final _list = ScrollController(); // past check-ins scroll inside their card
+  // past check-ins scroll inside their card; one list per tab, as Weekly and Daily slide past each other (Probid 19 Nov)
+  final _lists = {'weekly': ScrollController(), 'daily': ScrollController()};
+  ScrollController get _list => _lists[c.tab] ?? _lists['weekly']!;
   bool _opened = false;
   bool _atEnd = false;
 
@@ -42,19 +44,24 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
     // From Home: the open day (today, or yesterday while unsent), not a day picked earlier on the strip.
     if (widget.from == 'home') CheckinsController.pickedDay = null;
     c.start().then((_) => _openFromLink());
-    _list.addListener(() {
-      if (_list.position.extentAfter < 200) c.loadMore();
-      // The fade and "scroll for older" line follow the list's position.
-      final end = _list.position.extentAfter < 4;
-      if (end != _atEnd) setState(() => _atEnd = end);
-    });
+    for (final l in _lists.values) {
+      l.addListener(() {
+        if (l != _list || !l.hasClients) return;
+        if (l.position.extentAfter < 200) c.loadMore();
+        // The fade and "scroll for older" line follow the list's position.
+        final end = l.position.extentAfter < 4;
+        if (end != _atEnd) setState(() => _atEnd = end);
+      });
+    }
   }
 
   @override
   void dispose() {
     c.dispose();
     _scroll.dispose();
-    _list.dispose();
+    for (final l in _lists.values) {
+      l.dispose();
+    }
     _dayCtl?.dispose();
     super.dispose();
   }

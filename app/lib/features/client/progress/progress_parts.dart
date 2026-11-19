@@ -544,14 +544,17 @@ Widget pxNote(AppIconData icon, String t) => Container(
 
 /// `px-e`: one log in a history day — type icon, title, grey line, optional badge.
 class PxEntryRow extends StatelessWidget {
-  const PxEntryRow(this.e, {super.key, this.first = false});
+  const PxEntryRow(this.e, {super.key, this.first = false, this.chevron = false});
   final PxEntry e;
   final bool first;
+
+  /// A › at the end: the row opens its log (Progress → History).
+  final bool chevron;
   @override
   Widget build(BuildContext context) {
     final (ic, bg, fg) = pxTypeIcon(e.type);
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.symmetric(vertical: chevron ? 11 : 8),
       decoration: BoxDecoration(border: first ? null : const Border(top: BorderSide(color: AppColors.line))),
       child: Row(spacing: 10, children: [
         Container(
@@ -568,6 +571,7 @@ class PxEntryRow extends StatelessWidget {
           ]),
         ),
         if (e.badge.isNotEmpty) pxPill(e.badge, e.badgeColor == 'green' ? PxTone.green : (e.badgeColor == 'amber' ? PxTone.amber : PxTone.gray)),
+        if (chevron) const AppIcon(AppIcons.chevronRight, size: 16, color: AppColors.muted),
       ]),
     );
   }

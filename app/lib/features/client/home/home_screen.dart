@@ -253,23 +253,16 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
               child: CutText('${dayShort(d.date)}${d.week != null && d.weeks != null ? ' · Week ${d.week} of ${d.weeks}' : ''}',
                   maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.homeHeroSub)),
             ),
-            Semantics(
-              label: 'Notifications',
-              button: true,
-              child: Hover(
-                onTap: () => showNoticesSheet(context, c),
-                builder: (_, h, _) => Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(color: h ? AppColors.homeHeroSub.withValues(alpha: .3) : AppColors.homeHeroBtn, borderRadius: BorderRadius.circular(12)),
-                  child: UnreadCount(
-                    fallback: d.unread,
-                    builder: (_, n) => Stack(alignment: Alignment.center, clipBehavior: Clip.none, children: [
-                      const AppIcon(AppIcons.bell, size: 18, color: AppColors.white),
-                      if (n > 0) Positioned(top: -2, right: -2, child: BellCount(n, ring: AppColors.homeHeroDotRing)),
-                    ]),
-                  ),
-                ),
+            // the bare bell like More's top bar, no box behind it; a round splash on tap (Probid 19 Nov)
+            CaBarIcon(
+              tooltip: 'Notifications',
+              onTap: () => showNoticesSheet(context, c),
+              icon: UnreadCount(
+                fallback: d.unread,
+                builder: (_, n) => Stack(alignment: Alignment.center, clipBehavior: Clip.none, children: [
+                  const AppIcon(AppIcons.bell, size: 21, color: AppColors.white),
+                  if (n > 0) Positioned(top: -6, right: -8, child: BellCount(n, ring: AppColors.homeHeroDotRing)),
+                ]),
               ),
             ),
           ]),

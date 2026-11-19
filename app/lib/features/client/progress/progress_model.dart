@@ -399,6 +399,7 @@ class PxEntry {
   String get badgeColor => '${j['badge_color'] ?? ''}';
   String get note => '${j['note'] ?? ''}';
   bool get missed => j['missed'] == true;
+  String get id => '${j['id'] ?? ''}';
   List<(String, String)> get detail => [for (final r in (j['detail'] as List? ?? const [])) ('${(r as List)[0]}', '${r[1]}')];
 }
 

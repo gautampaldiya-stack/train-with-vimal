@@ -749,7 +749,8 @@ class MyTrainView(APIView):
         if pd and not pd.is_rest:
             rows = list(pd.exercises.select_related("exercise", "exercise__video"))
             ids = [e.exercise_id for e in rows]
-            last = services.last_performance(u, ids)
+            # a past day shows what was done before it (yesterday's log, H51a)
+            last = services.last_performance(u, ids, before=day if day < timezone.localdate() else None)
             prs = services.personal_bests(u, ids)
             prefs = {p.exercise_id: p for p in ClientExercisePref.objects.filter(client=u, exercise_id__in=ids)}
             for e in rows:
@@ -854,7 +855,7 @@ class MyWorkoutViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewset
     def get_queryset(self):
         qs = WorkoutLog.objects.filter(client=self.request.user)
         if self.action == "list":
-            qs = (qs.filter(status="completed").prefetch_related("sets")
+            qs = (qs.filter(status="completed").prefetch_related("sets__exercise")
                   .annotate(edit_count=Count("edits", distinct=True)).order_by("-date", "-started_at"))
             name = (self.request.query_params.get("name") or "").strip()
             return qs.filter(name=name) if name else qs
@@ -978,11 +979,19 @@ class MyWorkoutViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewset
         return self.get_paginated_response(rows)
 
     @extend_schema(request=EditWorkoutSerializer)
-    @action(detail=True, methods=["put"])
+    @action(detail=True, methods=["get", "put"])
     def edit(self, request, pk=None):
-        """Edit today's or yesterday's finished workout (Train → Edit workout, tracker H51-H53): start, end and every set. Saves a new
-        version; time, sets and bests are worked out again; the coach sees the change."""
+        """Edit today's or yesterday's finished workout (Train → Edit workout, tracker H51-H53): start, end and every
+        set. Saves a new version; time, sets and bests are worked out again; the coach sees the change.
+        GET: the workout and, per exercise, the sets of the workout before it (the PREVIOUS column, Probid 19 Nov)."""
         wl = get_object_or_404(WorkoutLog, id=pk, client=request.user, status="completed")
+        if request.method == "GET":
+            ids = list({s.exercise_id for s in wl.sets.all()})
+            prev = services.last_performance(request.user, ids, before=wl.date + timedelta(days=1), exclude=wl.id)
+            return Response({
+                "workout": WorkoutLogSerializer(self.get_queryset().get(id=wl.id), context={"request": request}).data,
+                "previous": {str(k): v for k, v in prev.items()},
+            })
         s = EditWorkoutSerializer(data=request.data)
         s.is_valid(raise_exception=True)
         # only today's and yesterday's workouts can be edited (Probid 18 Nov); older ones are history

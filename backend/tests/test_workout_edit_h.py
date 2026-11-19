@@ -134,3 +134,18 @@ def test_older_workouts_can_not_be_edited(client_user):
                                                "finished_at": (start + timedelta(minutes=30)).isoformat(),
                                                "sets": []}, format="json")
     assert r.status_code == 400
+
+
+def test_edit_page_gets_previous_and_history_card(client_user):
+    e = _rdl()
+    _finished(client_user, [{"key": "a", "exercise": e, "set_number": 1, "weight_kg": "50", "reps": 8, "done": True}])
+    w = _finished(client_user, [{"key": "b", "exercise": e, "set_number": 1, "weight_kg": "60", "reps": 6, "done": True}])
+    r = client_user.get(f"{W}{w['id']}/edit/")
+    assert r.status_code == 200, r.content
+    d = r.json()
+    assert d["workout"]["id"] == w["id"]
+    # PREVIOUS = the workout before this one, never itself
+    assert float(d["previous"][e][0]["weight_kg"]) == 50.0
+    row = next(x for x in client_user.get(W).json()["results"] if x["id"] == w["id"])
+    assert row["summary"] == [{"name": "Romanian Deadlift", "sets": 1, "best": "60 kg × 6"}]
+    assert row["volume"] == 360 and row["started_at"]

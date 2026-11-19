@@ -12,67 +12,63 @@ import '../../../core/widgets/overlays.dart';
 import 'train_model.dart';
 import 'workout_model.dart' show SetKind;
 
-/// Edit workout (tracker H51-H55, Strong's "Edit workout"): a finished workout's start / end time and every set
-/// (weight, reps, set type, rest; add or remove sets). Saving makes a new version; the coach sees what changed.
-/// Returns true when it was saved.
+/// Edit workout (tracker H51-H55), a page like Strong's "Edit workout" (Probid 19 Nov): X on the left asks before the
+/// changes are thrown away, ✓ on the right saves. Each exercise has SET · PREVIOUS · KG · REPS · ✓ rows; a ticked
+/// set is a green row. Only ticked sets are saved. Start / end time sit behind the workout's ⋯ (and its time line).
+/// Saving makes a new version; the coach sees what changed. Returns true when it was saved.
 Future<bool> showEditWorkout(BuildContext context, String workoutId) async {
-  final r = await showAppSheet<bool>(
-    context,
-    title: 'Edit workout',
-    tall: true,
-    fixedBody: true,
-    builder: (ctx) => _EditBody(id: workoutId),
+  final r = await Navigator.of(context, rootNavigator: true).push<bool>(
+    MaterialPageRoute(builder: (_) => _EditPage(id: workoutId)),
   );
   return r == true;
 }
 
-/// Yesterday's workout, missed on the day, logged afterwards (H51a): the plan's exercises with empty sets, the
-/// client fills them and the start / end time.
+/// Yesterday's workout, missed on the day, logged afterwards (H51a): the same page, with the plan's exercises and
+/// empty sets. The client types and ticks what was done, and sets the start / end time.
 Future<bool> showLogPastWorkout(BuildContext context, TrainData d) async {
-  final r = await showAppSheet<bool>(
-    context,
-    title: 'Log ${d.dayName.isEmpty ? 'workout' : d.dayName}',
-    sub: DateFormat('EEEE, d MMM').format(d.date),
-    tall: true,
-    fixedBody: true,
-    builder: (ctx) => _EditBody(past: d),
+  final r = await Navigator.of(context, rootNavigator: true).push<bool>(
+    MaterialPageRoute(builder: (_) => _EditPage(past: d)),
   );
   return r == true;
 }
 
 class _Set {
-  _Set({this.id, required this.key, this.kind = SetKind.normal, this.bw = false, this.keep = const {}, String kg = '', String reps = '', String secs = '', String bpm = '', String rest = ''})
+  _Set({this.id, required this.key, this.kind = SetKind.normal, this.bw = false, this.done = false, this.keep = const {}, String kg = '', String reps = '', String secs = '', String bpm = ''})
       : kg = TextEditingController(text: kg),
         reps = TextEditingController(text: reps),
         secs = TextEditingController(text: secs),
-        bpm = TextEditingController(text: bpm),
-        rest = TextEditingController(text: rest);
+        bpm = TextEditingController(text: bpm);
   final int? id;
   final String key;
   SetKind kind;
-  bool bw;
+  bool bw, done;
 
-  /// Fields this page does not show (RPE, the rest timer and the rest taken): sent back as they were.
+  /// Fields this page does not show (RPE, rest, the rest timer and the rest taken): sent back as they were.
   final Map<String, dynamic> keep;
-  final TextEditingController kg, reps, secs, bpm, rest;
+  final TextEditingController kg, reps, secs, bpm;
 
-  bool get empty => [kg, reps, secs, bpm].every((c) => c.text.trim().isEmpty);
+  List<TextEditingController> get _all => [kg, reps, secs, bpm];
+  bool get empty => _all.every((c) => c.text.trim().isEmpty);
 
   void dispose() {
-    for (final c in [kg, reps, secs, bpm, rest]) {
+    for (final c in _all) {
       c.dispose();
     }
   }
 }
 
 class _Ex {
-  _Ex({required this.exId, required this.name, required this.logType, this.peId, List<_Set>? sets}) : sets = sets ?? [];
+  _Ex({required this.exId, required this.name, required this.logType, this.peId, this.prev = const [], List<_Set>? sets}) : sets = sets ?? [];
   final String exId, name, logType;
   final int? peId;
+
+  /// The sets of the workout before this one (the PREVIOUS column), working sets in order.
+  final List<Map<String, dynamic>> prev;
   final List<_Set> sets;
   bool get cardio => logType == 'distance';
   bool get timed => logType == 'time';
   bool get body => logType == 'bodyweight_reps';
+  List<String> get cols => cardio ? const ['MIN', 'BPM'] : (timed ? const ['SEC'] : [body ? '+KG' : 'KG', 'REPS']);
 }
 
 String _num(dynamic v) {
@@ -82,15 +78,15 @@ String _num(dynamic v) {
   return kg(n);
 }
 
-class _EditBody extends StatefulWidget {
-  const _EditBody({this.id, this.past});
+class _EditPage extends StatefulWidget {
+  const _EditPage({this.id, this.past});
   final String? id;
   final TrainData? past;
   @override
-  State<_EditBody> createState() => _EditBodyState();
+  State<_EditPage> createState() => _EditPageState();
 }
 
-class _EditBodyState extends State<_EditBody> {
+class _EditPageState extends State<_EditPage> {
   final _ex = <_Ex>[];
   Map<String, dynamic>? _w;
   String? _error;
@@ -98,14 +94,23 @@ class _EditBodyState extends State<_EditBody> {
   late DateTime _start, _end;
   DateTime? _start0, _end0;
   int _keyN = 0;
+  String _first = '';
+  final _scroll = ScrollController();
+  bool _scrolled = false;
 
   bool get _past => widget.past != null;
+  bool get _ready => _past || _w != null;
 
   @override
   void initState() {
     super.initState();
+    _scroll.addListener(() {
+      final s = _scroll.offset > 2;
+      if (s != _scrolled) setState(() => _scrolled = s);
+    });
     if (_past) {
       _fromPlan(widget.past!);
+      _first = _snapshot();
     } else {
       _load();
     }
@@ -113,6 +118,7 @@ class _EditBodyState extends State<_EditBody> {
 
   @override
   void dispose() {
+    _scroll.dispose();
     for (final e in _ex) {
       for (final s in e.sets) {
         s.dispose();
@@ -134,6 +140,7 @@ class _EditBodyState extends State<_EditBody> {
         name: e.name,
         logType: e.logType,
         peId: e.peId,
+        prev: e.lastTime,
         sets: [for (var i = 0; i < (e.sets > 0 ? e.sets : 1); i++) _Set(key: _key(), bw: e.bodyweight)],
       ));
     }
@@ -141,7 +148,9 @@ class _EditBodyState extends State<_EditBody> {
 
   Future<void> _load() async {
     try {
-      final j = await Services.api.get<Map<String, dynamic>>('me/workouts/${widget.id}/');
+      final r = await Services.api.get<Map<String, dynamic>>('me/workouts/${widget.id}/edit/');
+      final j = (r['workout'] as Map).cast<String, dynamic>();
+      final prev = (r['previous'] as Map? ?? const {}).cast<String, dynamic>();
       final end = DateTime.parse('${j['finished_at']}').toLocal();
       final secs = (j['duration_seconds'] as num? ?? 0).toInt();
       _start0 = end.subtract(Duration(seconds: secs));
@@ -154,7 +163,13 @@ class _EditBodyState extends State<_EditBody> {
         if (s['done'] != true) continue;
         final k = '${s['exercise']}';
         final e = by.putIfAbsent(k, () {
-          final x = _Ex(exId: k, name: '${s['exercise_name'] ?? ''}', logType: '${s['log_type'] ?? 'weight_reps'}', peId: (s['program_exercise'] as num?)?.toInt());
+          final x = _Ex(
+            exId: k,
+            name: '${s['exercise_name'] ?? ''}',
+            logType: '${s['log_type'] ?? 'weight_reps'}',
+            peId: (s['program_exercise'] as num?)?.toInt(),
+            prev: [for (final p in (prev[k] as List? ?? const [])) (p as Map).cast<String, dynamic>()],
+          );
           _ex.add(x);
           return x;
         });
@@ -164,51 +179,45 @@ class _EditBodyState extends State<_EditBody> {
           key: '${s['client_key'] ?? ''}'.isEmpty ? _key() : '${s['client_key']}',
           kind: SetKind.of('${s['set_type'] ?? 'normal'}'),
           bw: s['is_bodyweight'] == true,
-          keep: {for (final f in ['rpe', 'rest_planned', 'rest_actual', 'done_at']) f: s[f]},
+          done: true,
+          keep: {for (final f in ['rpe', 'rest_seconds', 'rest_planned', 'rest_actual']) f: s[f]},
           kg: _num(s['weight_kg']),
           reps: s['reps'] == null ? '' : '${s['reps']}',
           secs: secsV == null ? '' : (e.cardio ? kg(secsV / 60) : '$secsV'),
           bpm: s['bpm'] == null ? '' : '${s['bpm']}',
-          rest: s['rest_seconds'] == null ? '' : '${s['rest_seconds']}',
         ));
       }
       _w = j;
       _error = null;
+      _first = _snapshot();
     } on ApiError catch (e) {
       _error = e.offline ? 'You are offline. Connect to edit this workout.' : 'Could not open this workout. Try again.';
     }
     if (mounted) setState(() {});
   }
 
+  // ─────────────────────────────── Data
+
   List<Map<String, dynamic>> get _segments => [for (final s in (_w?['segments'] as List? ?? const [])) (s as Map).cast<String, dynamic>()];
 
   bool get _timesChanged => _start0 == null || _start.difference(_start0!).inSeconds.abs() >= 60 || _end.difference(_end0!).inSeconds.abs() >= 60;
 
-  Future<void> _pickTime(bool start) async {
-    final cur = start ? _start : _end;
-    final t = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(cur), helpText: start ? 'Start time' : 'End time');
-    if (t == null || !mounted) return;
-    setState(() {
-      final base = start ? _start : _end;
-      final next = DateTime(base.year, base.month, base.day, t.hour, t.minute);
-      if (start) {
-        // the length stays when the start moves, like Strong
-        final len = _end.difference(_start);
-        _start = next;
-        _end = next.add(len);
-      } else {
-        _end = next.isBefore(_start) ? next.add(const Duration(days: 1)) : next;
-      }
-    });
-  }
+  /// What the page holds now, to tell whether anything changed (X asks only then).
+  String _snapshot() => [
+        _start.toIso8601String(),
+        _end.toIso8601String(),
+        for (final e in _ex)
+          for (final s in e.sets) '${e.exId}|${s.kind.api}|${s.done}|${s.kg.text}|${s.reps.text}|${s.secs.text}|${s.bpm.text}',
+      ].join(';');
+
+  bool get _dirty => _ready && _snapshot() != _first;
 
   Map<String, dynamic> _row(_Ex e, _Set s, int n) {
     double? d(TextEditingController c) => double.tryParse(c.text.trim().replaceAll(',', '.'));
     int? i(TextEditingController c) => int.tryParse(c.text.trim());
     final minutes = d(s.secs);
     return {
-      for (final k in s.keep.entries)
-        if (k.key != 'done_at') k.key: k.value,
+      ...s.keep,
       if (s.id != null) 'id': s.id,
       'key': s.key,
       'exercise': e.exId,
@@ -220,27 +229,126 @@ class _EditBodyState extends State<_EditBody> {
       'reps': e.cardio || e.timed ? null : i(s.reps),
       'seconds': e.cardio ? (minutes == null ? null : (minutes * 60).round()) : (e.timed ? i(s.secs) : null),
       'bpm': e.cardio ? i(s.bpm) : null,
-      'rest_seconds': i(s.rest)?.clamp(0, 900),
     };
   }
 
+  /// The PREVIOUS set for set [k]: the same working set of the last time (warm-ups count apart).
+  Map<String, dynamic>? _prevOf(_Ex e, int k) {
+    final s = e.sets[k];
+    if (s.kind == SetKind.warmup) return null;
+    final w = e.sets.take(k + 1).where((x) => x.kind != SetKind.warmup).length - 1;
+    final work = e.prev.where((p) => p['type'] != 'warmup').toList();
+    return w >= 0 && w < work.length ? work[w] : null;
+  }
+
+  String _prevText(_Ex e, Map<String, dynamic>? p) {
+    if (p == null) return '';
+    num? n(String k) => p[k] is num ? p[k] as num : num.tryParse('${p[k] ?? ''}');
+    if (e.cardio) {
+      final sec = n('seconds'), bpm = n('bpm');
+      return [if (sec != null) '${(sec / 60).round()} min', if (bpm != null) '$bpm bpm'].join(' · ');
+    }
+    if (e.timed) return n('seconds') == null ? '' : '${n('seconds')} s';
+    final w = n('weight_kg')?.toDouble() ?? 0;
+    return '${p['bw'] == true ? bwText(w) : '${kg(w)} kg'} × ${n('reps') ?? '—'}';
+  }
+
+  /// The values of the PREVIOUS set, as they go in the boxes (KG, REPS / SEC / MIN, BPM).
+  List<String> _prevValues(_Ex e, Map<String, dynamic>? p) {
+    if (p == null) return const [];
+    num? n(String k) => p[k] is num ? p[k] as num : num.tryParse('${p[k] ?? ''}');
+    if (e.cardio) return [n('seconds') == null ? '' : kg(n('seconds')! / 60), n('bpm') == null ? '' : '${n('bpm')}'];
+    if (e.timed) return [n('seconds') == null ? '' : '${n('seconds')}'];
+    return [n('weight_kg') == null ? '' : kg(n('weight_kg')!.toDouble()), n('reps') == null ? '' : '${n('reps')}'];
+  }
+
+  List<TextEditingController> _boxes(_Ex e, _Set s) => e.cardio ? [s.secs, s.bpm] : (e.timed ? [s.secs] : [s.kg, s.reps]);
+
+  /// kg lifted in the ticked working sets of one exercise (the chip beside its name, like Strong).
+  double _volume(_Ex e) {
+    if (e.cardio || e.timed) return 0;
+    var v = 0.0;
+    for (final s in e.sets) {
+      if (!s.done || s.kind == SetKind.warmup) continue;
+      final w = double.tryParse(s.kg.text.trim().replaceAll(',', '.')) ?? 0, r = int.tryParse(s.reps.text.trim()) ?? 0;
+      v += w * r;
+    }
+    return v;
+  }
+
+  // ─────────────────────────────── Actions
+
+  void _tick(_Ex e, int k) {
+    final s = e.sets[k];
+    if (s.done) {
+      setState(() => s.done = false);
+      return;
+    }
+    final boxes = _boxes(e, s);
+    if (boxes.every((c) => c.text.trim().isEmpty)) {
+      // an empty set takes the PREVIOUS values, like Strong; with nothing to take it asks for them
+      final pv = _prevValues(e, _prevOf(e, k));
+      if (pv.every((v) => v.isEmpty)) {
+        HapticFeedback.lightImpact();
+        showToast(context, 'Type the values first', sub: 'Fill the set, then tick it', kind: ToastKind.warn);
+        return;
+      }
+      for (var j = 0; j < boxes.length && j < pv.length; j++) {
+        boxes[j].text = pv[j];
+      }
+    }
+    setState(() => s.done = true);
+  }
+
+  Future<void> _close() async {
+    FocusScope.of(context).unfocus();
+    if (_dirty) {
+      final ok = await confirmAction(
+        context,
+        title: _past ? 'Discard this workout?' : 'Discard changes?',
+        body: _past ? 'Nothing you typed here is saved.' : 'The changes you made now are not saved. The workout stays as it was.',
+        confirm: 'Discard',
+        cancel: 'Keep editing',
+        danger: true,
+      );
+      if (!ok || !mounted) return;
+    }
+    Navigator.of(context).pop(false);
+  }
+
   Future<void> _save() async {
-    if (_saving) return;
+    if (_saving || !_ready) return;
+    FocusScope.of(context).unfocus();
     if (!_end.isAfter(_start)) {
       showToast(context, 'The end must be after the start', kind: ToastKind.warn);
       return;
     }
     final sets = <Map<String, dynamic>>[];
+    var open = 0;
     for (final e in _ex) {
       var n = 0;
       for (final s in e.sets) {
-        if (s.empty) continue; // a set left empty is not saved
+        if (s.empty) continue;
+        if (!s.done) {
+          open++;
+          continue; // only ticked sets are saved
+        }
         sets.add(_row(e, s, ++n));
       }
     }
     if (_past && sets.isEmpty) {
-      showToast(context, 'Fill at least one set', sub: 'Type the weight and reps you did', kind: ToastKind.warn);
+      showToast(context, 'Tick at least one set', sub: 'Type what you did and tick the set', kind: ToastKind.warn);
       return;
+    }
+    if (open > 0) {
+      final ok = await confirmAction(
+        context,
+        title: '$open ${open == 1 ? 'set is' : 'sets are'} not ticked',
+        body: 'Only ticked sets are saved. Tick the sets you did, or save without them.',
+        confirm: 'Save without them',
+        cancel: 'Go back',
+      );
+      if (!ok || !mounted) return;
     }
     setState(() => _saving = true);
     final body = {
@@ -270,187 +378,401 @@ class _EditBodyState extends State<_EditBody> {
     }
   }
 
+  Future<void> _pickTime(bool start, StateSetter sheet) async {
+    final cur = start ? _start : _end;
+    final t = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(cur), helpText: start ? 'Start time' : 'End time');
+    if (t == null || !mounted) return;
+    void apply() {
+      final base = start ? _start : _end;
+      final next = DateTime(base.year, base.month, base.day, t.hour, t.minute);
+      if (start) {
+        // the length stays when the start moves, like Strong
+        final len = _end.difference(_start);
+        _start = next;
+        _end = next.add(len);
+      } else {
+        _end = next.isBefore(_start) ? next.add(const Duration(days: 1)) : next;
+      }
+    }
+
+    setState(apply);
+    sheet(() {});
+  }
+
+  /// Start and end time (the workout's ⋯, or a tap on its time line).
+  Future<void> _timeSheet() => showAppSheet<void>(
+        context,
+        title: 'Workout time',
+        sub: DateFormat('EEEE, d MMM').format(_start),
+        builder: (ctx) => StatefulBuilder(builder: (ctx, sheet) => _times(sheet)),
+      );
+
   // ─────────────────────────────── UI
+
+  String get _title => _past ? 'Log workout' : 'Edit workout';
+
+  String get _name => _past ? (widget.past!.dayName.isEmpty ? 'Workout' : widget.past!.dayName) : '${_w?['name'] ?? 'Workout'}';
+
+  String _len() {
+    final m = _end.difference(_start).inMinutes;
+    return m >= 60 ? '${m ~/ 60} h ${m % 60} min' : '$m min';
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (!_past && _w == null) {
-      return Center(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (did, _) {
+        if (!did) _close();
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.white,
+        body: SafeArea(
+          bottom: false,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            _bar(),
+            Expanded(child: _ready ? _body() : _loading()),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _bar() => AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        height: 56,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(color: AppColors.white, boxShadow: _scrolled ? AppShadows.topBar : null),
+        child: Row(children: [
+          CaBarIcon(icon: const AppIcon(AppIcons.close, size: 22, color: AppColors.text, stroke: 2), tooltip: 'Close', onTap: _close),
+          const SizedBox(width: 8),
+          Expanded(child: Text(_title, style: AppText.s(18, W.w6))),
+          CaBarIcon(
+            tooltip: _past ? 'Save workout' : 'Save changes',
+            onTap: _ready && !_saving ? _save : null,
+            icon: _saving
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.accent))
+                : AppIcon(AppIcons.check, size: 24, stroke: 2.4, color: _ready ? AppColors.accent : AppColors.muted),
+          ),
+        ]),
+      );
+
+  Widget _loading() => Center(
         child: _error != null
-            ? Column(mainAxisSize: MainAxisSize.min, spacing: 10, children: [
-                Text(_error!, textAlign: TextAlign.center, style: AppText.s(13, W.w5, color: AppColors.muted)),
-                CaButton('Try again', kind: CaBtnKind.out, small: true, expand: false, onPressed: () {
-                  setState(() => _error = null);
-                  _load();
-                }),
-              ])
+            ? Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(mainAxisSize: MainAxisSize.min, spacing: 10, children: [
+                  Text(_error!, textAlign: TextAlign.center, style: AppText.s(13, W.w5, color: AppColors.muted)),
+                  CaButton('Try again', kind: CaBtnKind.out, small: true, expand: false, onPressed: () {
+                    setState(() => _error = null);
+                    _load();
+                  }),
+                ]),
+              )
             : const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.accent)),
       );
-    }
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Expanded(
-        child: ListView(padding: const EdgeInsets.only(bottom: 16), children: [
-          if (!_past) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('${_w!['name'] ?? 'Workout'}', style: AppText.s(15, W.w7))),
-          _times(),
-          ?_versions(),
-          for (final e in _ex) _exercise(e),
-          if (_ex.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Text('No sets left in this workout. Save to keep only the time.', textAlign: TextAlign.center, style: AppText.s(13, W.w5, color: AppColors.muted)),
+
+  Widget _body() {
+    final edits = [for (final e in (_w?['edits'] as List? ?? const [])) (e as Map).cast<String, dynamic>()];
+    return ListView(
+      controller: _scroll,
+      padding: EdgeInsets.only(top: 14, bottom: 40 + MediaQuery.paddingOf(context).bottom),
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(spacing: 6, children: [
+            Flexible(child: Text(_name, style: AppText.s(22, W.w7, ls: -0.3))),
+            _dots(_timeSheet, 'Workout time'),
+          ]),
+        ),
+        // the time line opens the start / end times too
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 2, 16, 0),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Hover(
+              onTap: _timeSheet,
+              builder: (_, h, _) => Text.rich(
+                TextSpan(children: [
+                  TextSpan(text: _len(), style: AppText.s(15, W.w5, color: AppColors.text2, tabular: true)),
+                  TextSpan(
+                    text: '   ${DateFormat('EEE, d MMM').format(_start)} · ${DateFormat('h:mm').format(_start)} – ${DateFormat('h:mm a').format(_end)}',
+                    style: AppText.s(13.5, W.w5, color: h ? AppColors.accentText : AppColors.muted),
+                  ),
+                ]),
+              ),
             ),
-        ]),
-      ),
-      Padding(
-        padding: const EdgeInsets.only(top: 8, bottom: 6),
-        child: CaButton(_past ? 'Save workout' : 'Save changes', loading: _saving, onPressed: _save),
-      ),
+          ),
+        ),
+        if (edits.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+            child: Text(
+              'Edited ${edits.length} ${edits.length == 1 ? 'time' : 'times'}',
+              style: AppText.s(12.5, W.w5, color: AppColors.muted),
+            ),
+          ),
+        for (final e in _ex) _exercise(e),
+        if (_ex.isEmpty)
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text('No sets left in this workout. Save to keep only the time.', textAlign: TextAlign.center, style: AppText.s(13, W.w5, color: AppColors.muted)),
+          ),
+      ],
+    );
+  }
+
+  Widget _dots(VoidCallback onTap, String label) => Semantics(
+        button: true,
+        label: label,
+        child: Hover(
+          onTap: onTap,
+          builder: (_, h, _) => Container(
+            width: 36,
+            height: 30,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: h ? AppColors.accentSoft : null, borderRadius: BorderRadius.circular(8)),
+            child: const AppIcon(AppIcons.dots, size: 20, color: AppColors.accent),
+          ),
+        ),
+      );
+
+  /// SET 40 · PREVIOUS flex 5 · value boxes flex 4 each · ✓ 40 (the logger's grid).
+  Widget _grid(_Ex e, List<Widget> cells) {
+    final n = e.cols.length;
+    return Row(spacing: 6, children: [
+      for (final (k, w) in cells.indexed)
+        if (k == 0 || k == cells.length - 1)
+          SizedBox(width: 40, child: w)
+        else if (k == 1)
+          Expanded(flex: n == 1 ? 6 : 5, child: w)
+        else
+          Expanded(flex: 4, child: w),
     ]);
   }
 
-  Widget _times() {
-    final mins = _end.difference(_start).inMinutes;
-    final segs = _segments;
-    Widget line(String label, String value, VoidCallback onTap) => Hover(
-          onTap: onTap,
-          builder: (_, h, _) => Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-            child: Row(children: [
-              Expanded(child: Text(label, style: AppText.s(13.5, W.w6))),
-              Text(value, style: AppText.s(13.5, W.w7, color: h ? AppColors.accentText : AppColors.accent)),
-            ]),
-          ),
-        );
-    return Container(
-      margin: const EdgeInsets.only(top: 6, bottom: 12),
-      decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.line)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        line('Start', '${DateFormat('EEE, d MMM').format(_start)} · ${DateFormat('h:mm a').format(_start)}', () => _pickTime(true)),
-        const Divider(height: 1, color: AppColors.line),
-        line('End', DateFormat('h:mm a').format(_end), () => _pickTime(false)),
-        const Divider(height: 1, color: AppColors.line),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 3, children: [
-            Row(children: [
-              Expanded(child: Text('Duration', style: AppText.s(13.5, W.w6))),
-              Text(mins >= 60 ? '${mins ~/ 60} h ${mins % 60} min' : '$mins min', style: AppText.s(13.5, W.w7)),
-            ]),
-            // sets added after finishing ("Log more sets") were timed on their own (H55)
-            if (segs.length > 1 && !_timesChanged)
-              Text(
-                'Workout ${(((segs.first['seconds'] as num?) ?? 0) / 60).round()} min + added sets ${[for (final s in segs.skip(1)) '${(((s['seconds'] as num?) ?? 0) / 60).round()} min'].join(' + ')}',
-                style: AppText.s(12, W.w5, color: AppColors.muted),
-              ),
-            if (segs.length > 1 && _timesChanged)
-              Text('The new start and end become the whole workout time.', style: AppText.s(12, W.w5, color: AppColors.muted)),
-          ]),
-        ),
-      ]),
-    );
-  }
-
-  Widget? _versions() {
-    final edits = [for (final e in (_w?['edits'] as List? ?? const [])) (e as Map).cast<String, dynamic>()];
-    if (edits.isEmpty) return null;
-    final last = DateTime.tryParse('${edits.last['edited_at']}')?.toLocal();
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Text(
-        'Edited ${edits.length} ${edits.length == 1 ? 'time' : 'times'}${last == null ? '' : ' · last ${DateFormat('d MMM, h:mm a').format(last)}'}',
-        style: AppText.s(12, W.w5, color: AppColors.muted),
-      ),
-    );
-  }
+  Widget _th(String t) => Text(t, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.clip, style: AppText.s(11, W.w7, color: AppColors.text, ls: 1.2));
 
   Widget _exercise(_Ex e) {
-    final cols = e.cardio ? ['MIN', 'BPM'] : (e.timed ? ['SEC'] : [e.body ? '+KG' : 'KG', 'REPS']);
-    Widget head(String t, {double? w, bool flex = false}) {
-      final c = Text(t, textAlign: TextAlign.center, style: AppText.s(11, W.w8, color: AppColors.muted, ls: .5));
-      return flex ? Expanded(child: c) : SizedBox(width: w, child: c);
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
-        Text(e.name, style: AppText.s(14.5, W.w7, color: AppColors.accentText)),
-        Row(spacing: 8, children: [
-          head('SET', w: 36),
-          for (final c in cols) head(c, flex: true),
-          head('REST', w: 56),
-          const SizedBox(width: 36),
-        ]),
-        for (final (i, s) in e.sets.indexed) _setRow(e, s, i),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: CaBarText('Add set', icon: AppIcons.plus, onTap: () => setState(() {
+    final vol = _volume(e);
+    return Padding(
+      padding: const EdgeInsets.only(top: 22),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(spacing: 8, children: [
+            Expanded(child: Text(e.name, style: AppText.s(16, W.w6, color: AppColors.accentText))),
+            if (vol > 0)
+              Container(
+                height: 30,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(8)),
+                child: Text('${NumberFormat.decimalPattern().format(vol.round())} kg', style: AppText.s(14, W.w6, color: AppColors.accentText, tabular: true)),
+              ),
+          ]),
+        ),
+        const SizedBox(height: 10),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: _grid(e, [
+            _th('SET'),
+            _th('PREVIOUS'),
+            for (final c in e.cols) _th(c),
+            const Center(child: AppIcon(AppIcons.check, size: 16, color: AppColors.text2, stroke: 2.4)),
+          ]),
+        ),
+        const SizedBox(height: 4),
+        for (var k = 0; k < e.sets.length; k++) KeyedSubtree(key: ValueKey(e.sets[k].key), child: _setRow(e, k)),
+        const SizedBox(height: 4),
+        Center(
+          child: Semantics(
+            button: true,
+            label: 'Add set to ${e.name}',
+            child: Hover(
+              onTap: () => setState(() {
                 final last = e.sets.isEmpty ? null : e.sets.last;
-                e.sets.add(_Set(key: _key(), bw: last?.bw ?? e.body, rest: last?.rest.text ?? ''));
-              })),
+                e.sets.add(_Set(key: _key(), bw: last?.bw ?? e.body, keep: {if (last?.keep['rest_seconds'] != null) 'rest_seconds': last!.keep['rest_seconds']}));
+              }),
+              builder: (_, h, _) => Container(
+                height: 40,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: h ? AppColors.accentSoft : null, borderRadius: BorderRadius.circular(10)),
+                child: Text('ADD SET', style: AppText.s(14, W.w6, color: AppColors.accentText, ls: 1)),
+              ),
+            ),
+          ),
         ),
       ]),
     );
   }
 
-  Widget _setRow(_Ex e, _Set s, int i) {
-    final n = e.sets.take(i + 1).where((x) => x.kind == SetKind.normal).length;
+  Widget _setRow(_Ex e, int k) {
+    final s = e.sets[k];
+    final n = e.sets.take(k + 1).where((x) => x.kind == SetKind.normal).length;
+    final label = s.kind == SetKind.normal ? '$n' : s.kind.letter;
     final color = switch (s.kind) {
       SetKind.warmup => AppColors.amberText,
       SetKind.drop => AppColors.purpleText,
       SetKind.failure => AppColors.badText,
       SetKind.normal => AppColors.text,
     };
-    Widget box(TextEditingController c, {bool decimal = false}) => Expanded(
-          child: Container(
-            height: 32,
-            decoration: BoxDecoration(color: AppColors.logField, borderRadius: BorderRadius.circular(7)),
-            alignment: Alignment.center,
-            child: TextField(
-              controller: c,
-              textAlign: TextAlign.center,
-              keyboardType: TextInputType.numberWithOptions(decimal: decimal),
-              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(decimal ? r'[0-9.,-]' : r'[0-9]')), LengthLimitingTextInputFormatter(6)],
-              style: AppText.s(14, W.w7, tabular: true),
-              decoration: const InputDecoration(isDense: true, border: InputBorder.none, contentPadding: EdgeInsets.symmetric(vertical: 7)),
+    final p = _prevOf(e, k);
+    final pt = _prevText(e, p);
+    final pv = _prevValues(e, p);
+    final fail = p?['type'] == 'failure';
+    final boxes = _boxes(e, s);
+    Widget box(int j) {
+      final c = boxes[j];
+      final decimal = !(e.cols[j] == 'REPS' || e.cols[j] == 'BPM' || e.cols[j] == 'SEC');
+      return Container(
+        height: 30,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(color: s.done ? Colors.transparent : AppColors.logField, borderRadius: BorderRadius.circular(6)),
+        child: TextField(
+          controller: c,
+          textAlign: TextAlign.center,
+          keyboardType: TextInputType.numberWithOptions(decimal: decimal, signed: e.body && j == 0),
+          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(decimal ? r'[0-9.,-]' : r'[0-9]')), LengthLimitingTextInputFormatter(6)],
+          onChanged: (_) => setState(() {}),
+          style: AppText.s(16, W.w6, tabular: true),
+          decoration: InputDecoration(
+            isDense: true,
+            border: InputBorder.none,
+            hintText: j < pv.length && pv[j].isNotEmpty ? pv[j] : null,
+            hintStyle: AppText.s(16, W.w6, color: AppColors.valPh, tabular: true),
+            contentPadding: const EdgeInsets.symmetric(vertical: 5),
+          ),
+        ),
+      );
+    }
+
+    final row = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      color: s.done ? AppColors.logDoneRow : AppColors.white,
+      child: _grid(e, [
+        // tap the set number to change its type: work → warm up → drop → failure (the logger's W / D / F)
+        Semantics(
+          button: true,
+          label: 'Set $label type',
+          child: Hover(
+            onTap: () => setState(() => s.kind = SetKind.values[(s.kind.index + 1) % SetKind.values.length]),
+            builder: (_, h, _) => Container(
+              height: 30,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(color: h ? AppColors.logFieldHover : null, borderRadius: BorderRadius.circular(6)),
+              child: Text(label, style: AppText.s(15, W.w6, color: color)),
             ),
           ),
+        ),
+        // PREVIOUS: tap to put those values in the boxes
+        Semantics(
+          button: true,
+          label: pt.isEmpty ? 'No previous set' : 'Previous $pt',
+          child: Hover(
+            onTap: () {
+              if (pv.isEmpty || s.done) return;
+              setState(() {
+                for (var j = 0; j < boxes.length && j < pv.length; j++) {
+                  boxes[j].text = pv[j];
+                }
+              });
+            },
+            builder: (_, _, _) => Container(
+              height: 30,
+              alignment: Alignment.center,
+              child: pt.isEmpty
+                  ? Container(width: 16, height: 2.5, decoration: BoxDecoration(color: AppColors.tickOff, borderRadius: BorderRadius.circular(2)))
+                  : FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text.rich(
+                        TextSpan(text: pt, children: [
+                          if (fail) TextSpan(text: ' [F]', style: AppText.s(14, W.w5, color: AppColors.badText)),
+                        ]),
+                        maxLines: 1,
+                        style: AppText.s(14, W.w4, color: s.done ? AppColors.valPh : AppColors.text),
+                      ),
+                    ),
+            ),
+          ),
+        ),
+        for (var j = 0; j < boxes.length; j++) box(j),
+        Semantics(
+          button: true,
+          label: s.done ? 'Untick set $label' : 'Tick set $label',
+          child: Hover(
+            onTap: () => _tick(e, k),
+            builder: (_, h, _) => Container(
+              height: 30,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: s.done ? AppColors.logDoneTick : (h ? AppColors.logFieldHover : AppColors.logField),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: AppIcon(AppIcons.check, size: 18, stroke: 2.4, color: s.done ? AppColors.white : (h ? AppColors.logDoneTick : AppColors.valPh)),
+            ),
+          ),
+        ),
+      ]),
+    );
+    // swipe left to delete the set (the logger's way)
+    return Dismissible(
+      key: ValueKey('d-${s.key}'),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        color: AppColors.red,
+        child: const AppIcon(AppIcons.trash, size: 20, color: AppColors.white),
+      ),
+      onDismissed: (_) => setState(() {
+        e.sets.remove(s);
+        s.dispose();
+        if (e.sets.isEmpty) _ex.remove(e);
+      }),
+      child: row,
+    );
+  }
+
+  Widget _times(StateSetter sheet) {
+    final segs = _segments;
+    Widget line(String label, String value, VoidCallback onTap) => Hover(
+          onTap: onTap,
+          builder: (_, h, _) => Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            child: Row(children: [
+              Expanded(child: Text(label, style: AppText.s(14, W.w6))),
+              Text(value, style: AppText.s(14, W.w7, color: h ? AppColors.accentText : AppColors.accent)),
+            ]),
+          ),
         );
-    return Row(spacing: 8, children: [
-      // tap the set number to change its type: work → warm up → drop → failure (the logger's W / D / F)
-      Semantics(
-        button: true,
-        label: 'Set type',
-        child: Hover(
-          onTap: () => setState(() => s.kind = SetKind.values[(s.kind.index + 1) % SetKind.values.length]),
-          builder: (_, h, _) => Container(
-            width: 36,
-            height: 32,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(color: h ? AppColors.logFieldHover : AppColors.logField, borderRadius: BorderRadius.circular(7)),
-            child: Text(s.kind == SetKind.normal ? '$n' : s.kind.letter, style: AppText.s(14, W.w8, color: color)),
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
+      Container(
+        decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.line)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          line('Start', DateFormat('h:mm a').format(_start), () => _pickTime(true, sheet)),
+          const Divider(height: 1, color: AppColors.line),
+          line('End', DateFormat('h:mm a').format(_end), () => _pickTime(false, sheet)),
+          const Divider(height: 1, color: AppColors.line),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            child: Row(children: [
+              Expanded(child: Text('Duration', style: AppText.s(14, W.w6))),
+              Text(_len(), style: AppText.s(14, W.w7)),
+            ]),
           ),
-        ),
+        ]),
       ),
-      if (e.cardio) ...[box(s.secs, decimal: true), box(s.bpm)] else if (e.timed) box(s.secs) else ...[box(s.kg, decimal: true), box(s.reps)],
-      SizedBox(width: 56, child: Row(children: [box(s.rest)])),
-      Semantics(
-        button: true,
-        label: 'Remove set',
-        child: Hover(
-          onTap: () => setState(() {
-            e.sets.remove(s);
-            s.dispose();
-            if (e.sets.isEmpty) _ex.remove(e);
-          }),
-          builder: (_, h, _) => Container(
-            width: 36,
-            height: 32,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(color: h ? AppColors.logField : null, shape: BoxShape.circle),
-            child: const AppIcon(AppIcons.close, size: 16, color: AppColors.muted),
-          ),
+      // sets added after finishing ("Log more sets") were timed on their own (H55)
+      if (segs.length > 1 && !_timesChanged)
+        Text(
+          'Workout ${(((segs.first['seconds'] as num?) ?? 0) / 60).round()} min + added sets ${[for (final s in segs.skip(1)) '${(((s['seconds'] as num?) ?? 0) / 60).round()} min'].join(' + ')}',
+          style: AppText.s(12.5, W.w5, color: AppColors.muted),
         ),
-      ),
+      if (segs.length > 1 && _timesChanged)
+        Text('The new start and end become the whole workout time.', style: AppText.s(12.5, W.w5, color: AppColors.muted)),
+      Text('Moving the start keeps the length; change the end to make it longer or shorter.', style: AppText.s(12.5, W.w4, color: AppColors.muted)),
     ]);
   }
 }

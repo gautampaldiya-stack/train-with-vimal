@@ -245,21 +245,27 @@ Future<void> showPhotoSheet(BuildContext context, ProgressController c, PxSet se
       final photo = set.of(p.value);
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
         PxTabs(labels: pxPoses, index: pxPoses.indexOf(p.value), onPick: (i) => p.value = pxPoses[i]),
-        Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 250),
-            child: Semantics(
-              button: photo != null,
-              label: photo == null ? null : 'Open ${p.value} photo',
-              child: Hover(
-                onTap: photo == null || photo.image.isEmpty ? null : () => showPhotoViewer(ctx, [('${pxDm(set.date)} · ${p.value}', photo.image)], 0),
-                builder: (_, _, _) => PxTile(
-                  set: set,
-                  pose: p.value,
-                  aspect: 3 / 4,
-                  figure: .38,
-                  label: '${pxDm(set.date)} · ${p.value}',
-                  noPhoto: 'No ${p.value.toLowerCase()} photo in this set',
+        // a swipe on the photo moves to the next pose, sliding (Probid 19 Nov)
+        CaSwipe(
+          index: pxPoses.indexOf(p.value),
+          count: pxPoses.length,
+          onPick: (i) => p.value = pxPoses[i],
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 250),
+              child: Semantics(
+                button: photo != null,
+                label: photo == null ? null : 'Open ${p.value} photo',
+                child: Hover(
+                  onTap: photo == null || photo.image.isEmpty ? null : () => showPhotoViewer(ctx, [('${pxDm(set.date)} · ${p.value}', photo.image)], 0),
+                  builder: (_, _, _) => PxTile(
+                    set: set,
+                    pose: p.value,
+                    aspect: 3 / 4,
+                    figure: .38,
+                    label: '${pxDm(set.date)} · ${p.value}',
+                    noPhoto: 'No ${p.value.toLowerCase()} photo in this set',
+                  ),
                 ),
               ),
             ),
@@ -418,51 +424,59 @@ Future<void> showAddPhotos(BuildContext context, ProgressController c, {String? 
           index: pxPoses.indexOf(p),
           onPick: (i) => s.set(() => s.pose = pxPoses[i]),
         ),
-        Text(_poseHow[p]!, style: AppText.s(12.5, W.w4, color: AppColors.text2)),
-        Row(crossAxisAlignment: CrossAxisAlignment.center, spacing: 12, children: [
-          SizedBox(width: 96, child: PxTile(set: shown, pose: p, aspect: 3 / 4, noPhoto: '')),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
-              for (final n in const ['Take photo', 'Choose from gallery'])
-                Semantics(
-                  button: true,
-                  selected: mine?.src == n,
-                  child: Hover(
-                    onTap: () => pick(ctx, n),
-                    builder: (_, h, _) => Container(
-                      height: 38,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: mine?.src == n ? AppColors.text : (h ? AppColors.outlineHover : AppColors.white),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: mine?.src == n ? AppColors.text : AppColors.line),
+        // a swipe here moves to the next pose, sliding (Probid 19 Nov)
+        CaSwipe(
+          index: pxPoses.indexOf(p),
+          count: pxPoses.length,
+          onPick: (i) => s.set(() => s.pose = pxPoses[i]),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
+            Text(_poseHow[p]!, style: AppText.s(12.5, W.w4, color: AppColors.text2)),
+            Row(crossAxisAlignment: CrossAxisAlignment.center, spacing: 12, children: [
+              SizedBox(width: 96, child: PxTile(set: shown, pose: p, aspect: 3 / 4, noPhoto: '')),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
+                  for (final n in const ['Take photo', 'Choose from gallery'])
+                    Semantics(
+                      button: true,
+                      selected: mine?.src == n,
+                      child: Hover(
+                        onTap: () => pick(ctx, n),
+                        builder: (_, h, _) => Container(
+                          height: 38,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: mine?.src == n ? AppColors.text : (h ? AppColors.outlineHover : AppColors.white),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: mine?.src == n ? AppColors.text : AppColors.line),
+                          ),
+                          child: Text(n, style: AppText.s(13, W.w7, color: mine?.src == n ? AppColors.white : AppColors.text)),
+                        ),
                       ),
-                      child: Text(n, style: AppText.s(13, W.w7, color: mine?.src == n ? AppColors.white : AppColors.text)),
                     ),
-                  ),
-                ),
-              Row(children: [
-                Expanded(
-                  child: CutText(
-                    mine != null
-                        ? '$p photo ready · ${mine.file ?? 'taken just now'}'
-                        : had != null
-                        ? 'Added today · a new one replaces it'
-                        : 'No photo yet',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppText.s(12, W.w6, color: AppColors.muted),
-                  ),
-                ),
-                if (mine != null)
-                  Hover(
-                    onTap: () => s.set(() => s.picks.remove(p)),
-                    builder: (_, h, _) => Text('Remove', style: AppText.s(12, W.w7, color: h ? AppColors.redHover : AppColors.red)),
-                  ),
-              ]),
+                  Row(children: [
+                    Expanded(
+                      child: CutText(
+                        mine != null
+                            ? '$p photo ready · ${mine.file ?? 'taken just now'}'
+                            : had != null
+                            ? 'Added today · a new one replaces it'
+                            : 'No photo yet',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.s(12, W.w6, color: AppColors.muted),
+                      ),
+                    ),
+                    if (mine != null)
+                      Hover(
+                        onTap: () => s.set(() => s.picks.remove(p)),
+                        builder: (_, h, _) => Text('Remove', style: AppText.s(12, W.w7, color: h ? AppColors.redHover : AppColors.red)),
+                      ),
+                  ]),
+                ]),
+              ),
             ]),
-          ),
-        ]),
+          ]),
+        ),
         fdCap('Same spot, same light, in the morning before eating. Only you and $coach can see it.'),
       ]);
     },
@@ -508,6 +522,47 @@ Future<void> showHistoryDay(BuildContext context, PxDay day) {
                 child: Text(e.note, style: AppText.s(12.5, W.w6, color: AppColors.okText, h: 1.4)),
               ),
           ]),
+        ),
+    ]),
+    footer: pxFooter((ctx) => [
+      CaButton('Close', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop()),
+      CaButton(go, onPressed: () {
+        Navigator.of(ctx).pop();
+        context.go(path);
+      }),
+    ]),
+  );
+}
+
+/// One log of a History day (a meal day, a check-in, a weigh-in): what was logged, in a short sheet. A workout opens
+/// its own page instead (Probid 19 Nov).
+Future<void> showHistoryEntry(BuildContext context, PxDay day, PxEntry e) {
+  final (go, path) = switch (e.type) {
+    'workout' => ('Open training', '/train'),
+    'checkin' => ('Open check-ins', e.id.isEmpty ? '/checkins' : '/checkins/${e.id}'),
+    'meal' => ('Open meal plan', '/food'),
+    _ => ('Open progress', '/progress'),
+  };
+  return showAppSheet(
+    context,
+    title: e.title,
+    sub: '${pxWdm(day.date)} · ${e.sub}',
+    webWidth: 480,
+    footerStretch: true,
+    builder: (_) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
+      if (e.detail.isNotEmpty)
+        Container(
+          padding: const EdgeInsets.fromLTRB(12, 2, 12, 2),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.line)),
+          child: pxKvs(e.detail),
+        )
+      else
+        Text('Nothing more was logged here.', style: AppText.s(13, W.w4, color: AppColors.muted)),
+      if (e.note.isNotEmpty)
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(color: AppColors.okBg, borderRadius: BorderRadius.circular(10)),
+          child: Text(e.note, style: AppText.s(13, W.w6, color: AppColors.okText, h: 1.4)),
         ),
     ]),
     footer: pxFooter((ctx) => [

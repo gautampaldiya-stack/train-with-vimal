@@ -302,7 +302,8 @@ def history(client, *, rng="week", kind=None, offset=0, limit=7):
             mins = round(w.duration_seconds / 60) if w.duration_seconds else None
             bits = ["Done"] + ([f"{mins} min"] if mins else []) + \
                 [f"{len(by_ex)} of {max(planned_ex, len(by_ex))} exercises"]
-            es.append({"type": "workout", "title": w.name or (pd.name if pd else "Workout"), "sub": " · ".join(bits),
+            es.append({"type": "workout", "id": str(w.id), "title": w.name or (pd.name if pd else "Workout"),
+                       "sub": " · ".join(bits),
                        "detail": [[ex.name, _sets_line(ss)] for ex, ss in by_ex.items()] +
                                  ([["Time", f"{mins} min"]] if mins else [])})
         if pd and not pd.is_rest:

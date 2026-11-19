@@ -449,9 +449,62 @@ class WorkoutRowSerializer(serializers.ModelSerializer):
     class Meta:
         model = WorkoutLog
         fields = ["id", "name", "date", "status", "duration_seconds", "effort", "sets_done", "sets_planned",
-                  "finished_at", "note", "program_day", "exercises", "has_pr", "edited"]
+                  "started_at", "finished_at", "note", "program_day", "exercises", "has_pr", "edited", "prs",
+                  "volume", "summary"]
 
     edited = serializers.SerializerMethodField()
+    prs = serializers.SerializerMethodField()
+    volume = serializers.SerializerMethodField()
+    summary = serializers.SerializerMethodField()
+
+    def get_prs(self, obj):
+        return sum(1 for s in self._sets(obj) if s.done and s.is_pr)
+
+    def get_volume(self, obj):
+        """kg lifted (done working sets), bodyweight sets with the body weight of that day, like the detail."""
+        from apps.common.calc import set_volume
+
+        from .services import body_weights
+
+        sets = [s for s in self._sets(obj) if s.done]
+        body = None
+        if any(s.is_bodyweight for s in sets):
+            cache = self.context.setdefault("_body_weights", {}) if isinstance(self.context, dict) else {}
+            if obj.client_id not in cache:
+                cache[obj.client_id] = body_weights(obj.client_id)
+            body = cache[obj.client_id](obj.date)
+        return round(sum(set_volume(s, body if s.is_bodyweight else None) for s in sets))
+
+    def get_summary(self, obj):
+        """History card (Strong): per exercise in the order done, the sets and the best set
+        [{name, sets, best}] where best is the heaviest working set ("55 kg × 5", "BW × 12", "45 s", "20 min")."""
+        order, by = [], {}
+        for s in sorted(self._sets(obj), key=lambda x: (x.done_at or obj.finished_at or obj.started_at, x.set_number)):
+            if not s.done:
+                continue
+            if s.exercise_id not in by:
+                order.append(s.exercise_id)
+                by[s.exercise_id] = []
+            by[s.exercise_id].append(s)
+        out = []
+        for ex in order:
+            ss = by[ex]
+            work = [s for s in ss if not s.is_warmup] or ss
+            e = ss[0].exercise
+            if e.log_type == "distance":
+                b = max(work, key=lambda s: s.seconds or 0)
+                best = f"{round((b.seconds or 0) / 60)} min" + (f" · {b.bpm} bpm" if b.bpm else "")
+            elif e.log_type == "time":
+                b = max(work, key=lambda s: s.seconds or 0)
+                best = f"{b.seconds or 0} s"
+            else:
+                b = max(work, key=lambda s: (float(s.weight_kg or 0), s.reps or 0))
+                w = float(b.weight_kg or 0)
+                kg = f"{w:g}"
+                load = ("BW" if not w else (f"BW+{kg}" if w > 0 else f"BW−{-w:g}")) if b.is_bodyweight else f"{kg} kg"
+                best = f"{load} × {b.reps or 0}"
+            out.append({"name": e.name, "sets": len(ss), "best": best})
+        return out
 
     def get_edited(self, obj):
         """How many times the client edited it after finishing (0 = never)."""

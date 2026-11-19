@@ -73,22 +73,25 @@ class _ClientHabitsScreenState extends State<ClientHabitsScreen> {
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-          child: CaSwipe(
-            index: _week ? 1 : 0,
-            count: 2,
-            onPick: (i) => setState(() => _week = i == 1),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-              Padding(padding: const EdgeInsets.only(bottom: 4), child: CaPageTitle('Habits & supplements', sub: d.by)),
-              _tabs(web: false),
-              if (!_week) ...[
-                _strip(d, web: false),
-                _dayLine(d),
-                ..._habitCards(d),
-                _supps(d),
-              ] else
-                ..._weekView(d, two: false),
-            ]),
-          ),
+          // the title and tabs stay; only Day / Week below them slides (Probid 19 Nov)
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+            Padding(padding: const EdgeInsets.only(bottom: 4), child: CaPageTitle('Habits & supplements', sub: d.by)),
+            _tabs(web: false),
+            CaSwipe(
+              index: _week ? 1 : 0,
+              count: 2,
+              onPick: (i) => setState(() => _week = i == 1),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+                if (!_week) ...[
+                  _strip(d, web: false),
+                  _dayLine(d),
+                  ..._habitCards(d),
+                  _supps(d),
+                ] else
+                  ..._weekView(d, two: false),
+              ]),
+            ),
+          ]),
         ),
       ));
 

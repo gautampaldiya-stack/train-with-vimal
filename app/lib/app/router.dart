@@ -42,6 +42,7 @@ import '../features/client/home/home_screen.dart';
 import '../features/client/library/library_screen.dart';
 import '../features/client/more/about_screen.dart';
 import '../features/client/more/more_screen.dart';
+import '../features/client/train/train_history.dart';
 import '../features/client/train/train_screen.dart';
 import '../features/client/train/workout_screen.dart';
 import '../features/library/content/content_screen.dart';
@@ -127,7 +128,11 @@ final Map<String, Widget Function(GoRouterState)> screens = {
         discarded: int.tryParse(st.uri.queryParameters['discarded'] ?? '') ?? 0,
         date: DateTime.tryParse(st.uri.queryParameters['date'] ?? ''),
       ),
-  '/train/:id': (st) => WorkoutScreen(
+  // Workout history and one past workout: pages like Strong's (Probid 19 Nov)
+  '/train/history/:sub': (st) => WorkoutDetailScreen(key: ValueKey(st.uri.toString()), id: st.pathParameters['sub']!, from: st.uri.queryParameters['from']),
+  '/train/:id': (st) => st.pathParameters['id'] == 'history'
+      ? const WorkoutHistoryScreen()
+      : WorkoutScreen(
         key: ValueKey(st.uri.toString()),
         start: int.tryParse(st.uri.queryParameters['start'] ?? ''),
         reopen: st.uri.queryParameters['reopen'],

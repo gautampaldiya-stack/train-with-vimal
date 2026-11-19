@@ -378,11 +378,18 @@ def today_plan(client, day=None):
     return pa, pd, strip, week
 
 
-def last_performance(client, exercise_ids):
-    """'Prev' column and 'Last time: 40 kg × 6': the best working set of the last workout per exercise."""
+def last_performance(client, exercise_ids, *, before=None, exclude=None):
+    """'Prev' column and 'Last time: 40 kg × 6': the best working set of the last workout per exercise.
+    `before` (a date) keeps only workouts before that day and `exclude` leaves one workout out: Edit workout and
+    yesterday's log show what was done before that workout, not after it (Probid 19 Nov)."""
     out = {}
-    rows = (SetLog.objects.filter(workout__client=client, workout__status=WorkoutLog.Status.COMPLETED,
-                                  exercise_id__in=exercise_ids, done=True, is_warmup=False)
+    rows = SetLog.objects.filter(workout__client=client, workout__status=WorkoutLog.Status.COMPLETED,
+                                 exercise_id__in=exercise_ids, done=True, is_warmup=False)
+    if before is not None:
+        rows = rows.filter(workout__date__lt=before)
+    if exclude is not None:
+        rows = rows.exclude(workout_id=exclude)
+    rows = (rows
             .order_by("exercise_id", "-workout__date", "set_number")
             .values("exercise_id", "workout_id", "set_number", "weight_kg", "reps", "seconds", "bpm", "rpe",
                     "set_type", "is_bodyweight", "workout__date"))
