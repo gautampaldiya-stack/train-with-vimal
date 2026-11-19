@@ -634,11 +634,15 @@ class PrFlag extends StatelessWidget {
 
 /// `tabs` (pw-f): grey track, the picked tab white with a hairline ring. [fit]: compact, as wide as the labels.
 class TwoTabs extends StatelessWidget {
-  const TwoTabs({super.key, required this.labels, required this.index, required this.onPick, this.fit = true});
+  const TwoTabs({super.key, required this.labels, required this.index, required this.onPick, this.fit = true, this.solid = false});
   final List<String> labels;
   final int index;
   final ValueChanged<int> onPick;
   final bool fit;
+
+  /// On a white section: a white track with a line and the picked tab filled blue, so it never reads as
+  /// see-through grey (Log food, Probid 19 Nov).
+  final bool solid;
   @override
   Widget build(BuildContext context) {
     Widget tab(int i, String l) => Hover(
@@ -648,16 +652,19 @@ class TwoTabs extends StatelessWidget {
             alignment: Alignment.center,
             padding: EdgeInsets.symmetric(horizontal: fit ? 16 : 14),
             decoration: BoxDecoration(
-              color: i == index ? AppColors.white : null,
+              color: i == index ? (solid ? AppColors.accent : AppColors.white) : null,
               borderRadius: BorderRadius.circular(6),
-              boxShadow: i == index ? const [BoxShadow(color: AppColors.shadowSoft, blurRadius: 2, offset: Offset(0, 1)), BoxShadow(color: AppColors.line, spreadRadius: 1)] : null,
+              boxShadow: i == index && !solid ? const [BoxShadow(color: AppColors.shadowSoft, blurRadius: 2, offset: Offset(0, 1)), BoxShadow(color: AppColors.line, spreadRadius: 1)] : null,
             ),
-            child: CutText(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(fit ? 12.5 : 13, W.w6, color: i == index || h ? AppColors.text : AppColors.text2)),
+            child: CutText(l, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: AppText.s(fit ? 12.5 : 13, W.w6, color: i == index ? (solid ? AppColors.white : AppColors.text) : (h ? AppColors.text : AppColors.text2))),
           ),
         );
     final track = Container(
       padding: EdgeInsets.all(fit ? 3 : 4),
-      decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(8)),
+      decoration: solid
+          ? BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.line))
+          : BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(8)),
       child: Row(mainAxisSize: fit ? MainAxisSize.min : MainAxisSize.max, spacing: fit ? 2 : 0, children: [
         for (final (i, l) in labels.indexed) fit ? tab(i, l) : Expanded(child: tab(i, l)),
       ]),

@@ -146,11 +146,10 @@ class _NumStepperState extends State<NumStepper> {
           height: widget.big ? 38 : widget.btn,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: h ? AppColors.outlineHover : AppColors.white,
-            // round, no border, in a tinted box (Quick add, Probid 19 Nov)
+            color: h ? AppColors.outlineHover : (widget.spread ? AppColors.sub : AppColors.white),
+            // round, no border, light grey (Quick add, Probid 19 Nov)
             borderRadius: BorderRadius.circular(widget.spread ? 99 : r),
             border: widget.spread ? null : Border.all(color: AppColors.line),
-            boxShadow: widget.spread ? AppShadows.tab : null,
           ),
           child: AppIcon(i, size: widget.big ? 19 : 16, color: AppColors.text2),
         ),

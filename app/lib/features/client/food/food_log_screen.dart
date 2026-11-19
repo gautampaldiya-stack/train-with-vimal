@@ -574,9 +574,15 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
             Container(
               height: 44,
               padding: const EdgeInsets.only(left: 12, right: 6),
-              decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(12)),
+              // white with a line: the grey fill read as see-through on the white section (Probid 19 Nov)
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.line2),
+                boxShadow: AppShadows.tab,
+              ),
               child: Row(spacing: 8, children: [
-                const AppIcon(AppIcons.search, size: 17, color: AppColors.muted),
+                const AppIcon(AppIcons.search, size: 17, color: AppColors.text2),
                 Expanded(child: _searchField()),
                 if (q.isNotEmpty) CaIconBtn(AppIcons.close, tooltip: 'Clear search', onTap: () => _setQuery('')),
               ]),
@@ -585,6 +591,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
               labels: const ['All', 'Recent', 'My foods'],
               index: const ['All', 'Recent', 'My foods'].indexOf(_tab),
               onPick: _pickTab,
+              solid: true,
             ),
           ]),
         ),
@@ -1167,17 +1174,20 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
   /// numbers, Off-plan as a soft switch row, then the two buttons.
   Widget _exCard() => Container(
     clipBehavior: Clip.antiAlias,
-    decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.line)),
+    // the line is drawn on top, so the header band never covers the rounded corners (Probid 19 Nov)
+    decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(16)),
+    foregroundDecoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.line)),
     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Container(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-        color: AppColors.warmBg,
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
+        // white header too (Probid 19 Nov: white, not pink); the tile keeps the colour
+        color: AppColors.white,
         child: Row(spacing: 12, children: [
-          histTile(AppIcons.bolt, bg: AppColors.white, fg: AppColors.warm, size: 38),
+          histTile(AppIcons.bolt, bg: AppColors.warmBg, fg: AppColors.warm, size: 38),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
               Text('Quick add', style: AppText.s(15.5, W.w8)),
-              Text('Can’t find the exact food? Add the numbers, or save it as your own food.', style: AppText.s(12.5, W.w5, color: AppColors.text2)),
+              Text('Can’t find the exact food? Add the numbers, or save it as your own food.', style: AppText.s(12.5, W.w5, color: AppColors.muted)),
             ]),
           ),
         ]),
@@ -1202,7 +1212,12 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
               },
               builder: (_, h, _) => Container(
                 padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-                decoration: BoxDecoration(color: _offNow ? AppColors.amberBg : (h ? AppColors.outlineHover : AppColors.sub), borderRadius: BorderRadius.circular(12)),
+                // white with a line like the boxes above; amber only when it is on (Probid 19 Nov)
+                decoration: BoxDecoration(
+                  color: _offNow ? AppColors.amberBg : (h ? AppColors.outlineHover : AppColors.white),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: _offNow ? AppColors.amberBg : AppColors.line),
+                ),
                 child: Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
                   Padding(padding: const EdgeInsets.only(top: 1), child: CaCheckBox(_offNow)),
                   Expanded(
@@ -1241,12 +1256,13 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
           width: w,
           padding: const EdgeInsets.fromLTRB(10, 9, 10, 8),
           // a soft tint per number, like the macro colours everywhere (Probid 19 Nov: boxes looked plain)
-          decoration: BoxDecoration(color: _qaTint[k].$1, borderRadius: BorderRadius.circular(12)),
+          // plain boxes, colour only in the dot (Probid 19 Nov: "itne color mat do")
+          decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.line)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
             Row(spacing: 6, children: [
               Container(width: 8, height: 8, decoration: BoxDecoration(color: _qaTint[k].$2, shape: BoxShape.circle)),
-              Expanded(child: Text(_qaNames[k], style: AppText.s(12.5, W.w7, color: _qaTint[k].$3))),
-              Text(k == 0 ? 'kcal' : 'g', style: AppText.s(11.5, W.w6, color: _qaTint[k].$3.withValues(alpha: .7))),
+              Expanded(child: Text(_qaNames[k], style: AppText.s(12.5, W.w7, color: AppColors.text2))),
+              Text(k == 0 ? 'kcal' : 'g', style: AppText.s(11.5, W.w6, color: AppColors.muted)),
             ]),
             NumStepper(
               value: v[k],
