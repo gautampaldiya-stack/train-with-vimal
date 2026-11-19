@@ -445,6 +445,10 @@ E51. ✅ Admin/trainer client Logs (Daily, Weekly, Habits, Supplements) aur clie
 53za. ✅ Back wale pages par bada title thoda neeche (back arrow se door) (Probid 19 Nov).
 53zb. ✅ Train → Start workout: sheet ke peeche ab Train dikhta hai (dim), safed nahi; tab bar bhi peeche; Start par wahi logger khulta hai (Probid 19 Nov).
 53zc. ✅ Food din page ka stats card chhota: icon ke saath label + number, neeche patli bar aur "of …" (Probid 19 Nov).
+53zd. ✅ Start workout sheet me exercise ke letter (R / L / W / D) ki jagah number 1, 2, 3, 4 (Probid 19 Nov).
+53ze. ✅ Food page meal cards ache: state ka rangeen tile, naam, time · kcal, protein / carbs / fat chips, har food ke aage dot (eaten hara, skipped amber); Today's calories card ke macros saaf (dot, bold number / target) (Probid 19 Nov).
+53zf. ✅ Today's calories sheet naya: Eaten aur Left bade number, ek bar, Target / Still ahead do lines; macros alag card me; neeche ka description ek chhota info box (Probid 19 Nov).
+53zg. ✅ Log food cards ache: meal card me tile + plan + "+kcal" pill, khali state soft box; "Can't find the exact food?" tile ke saath; har food ke aage tile (apna food purple) (Probid 19 Nov).
 53i. ✅ Train par purane din ke buttons chhote (Start workout jaise): "Back to today" left, "Edit workout" / "Log this workout" right, ek row me; akela ho to Back to today chhota (Probid 18 Nov).
 53h. ✅ Train exercise list phone par bina card border, screen ke edge tak, sirf upar / neeche / beech me line (Probid 18 Nov).
 51l. ⏸️ Baad me (Probid 17 Nov: "abhi nahi"): exercises ke beech ka rest. Coach plan me do exercises ke beech rest rakhe; tab last set ke baad exercise ka rest nahi, ye beech wala chale.

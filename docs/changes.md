@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+## 2026-11-19 (4) · Start sheet numbers, Food meal cards, Today's calories sheet, Log food cards
+- **Pehle:** Start sheet me exercise ka pehla letter; Food meal cards saade (ek grey line me macros); calories sheet me 7 chhote tiles aur neeche do lambi lines; Log food ke cards saade.
+- **Ab:** Start sheet me 1, 2, 3, 4. Meal card: tile, time · kcal, macro chips, food dots. Calories sheet: Eaten / Left bade, bar, Target / Still ahead, macros card, info box. Log food: tiles aur saaf headers.
+- **Kyun:** Probid 19 Nov.
+- **Updated:** workout_screen.dart, food_screen.dart, food_sheets.dart (showCaloriesSheet), food_log_screen.dart; WORK-TRACKER 53zd–53zg
+
 ## 2026-11-19 (3) · Edit / Log workout page like the logger, rest in workout history, Start sheet over Train
 - **Pehle:** Edit / kal ka Log page par set number toggle tha, ⋯ aur volume chip, sound nahi, khali set par toast, bar shadow list ke neeche chhup jaata, rest nahi tha. Workout history me rest nahi, refresh par kuch nahi dikhta, kal ka workout edit karne ka rasta nahi. Back pages par title back arrow ke bahut paas. Start workout sheet ke peeche safed screen. Food din stats card lamba.
 - **Ab:** Edit page: set number menu (set type + ?, rest after this set, delete), focus metric chip (logger jaisa, exercise-prefs me save), WorkoutFeel sound, khali tick / PREVIOUS par vibrate + shake, rest line + rest sheet (RestStepper), rest_actual save. Workout history: set ke neeche rest, pull to refresh skeleton, kal ke workout par ⋯ Edit this workout. CaPinned: Back wale page 10 px neeche se shuru. Start sheet: panel see-through, Train + tabs peeche dim, GlobalKey se wahi screen logger banti hai. HistStats 2×2 chhota.

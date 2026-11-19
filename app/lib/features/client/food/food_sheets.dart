@@ -143,85 +143,99 @@ Future<void> showCaloriesSheet(BuildContext context, FoodController c) {
   // the foods of today's open meals not logged or skipped yet, summed unrounded and rounded once, so with nothing
   // eaten it equals Left (it read 1,960 against 1,958 from per-food rounding, Probid 2026-11-03)
   final ahead = d.meals.where((m) => m.open).fold(0.0, (a, m) => a + m.items.where((i) => i.state.isEmpty).fold(0.0, (b, i) => b + i.kcalExact)).round();
-  String g(double v, double tg) => '${v.round()} / ${tg.round()} g';
-  // Two tiles a row (Probid 2026-11-03): name, the number, one short line on what it means.
   double r(double v, double tg) => tg > 0 ? (v / tg).clamp(0.0, 1.0) : 0;
-  // (name, value, one-line meaning, colour of its dot / bar, value colour, bar ratio or null) — a little colour,
-  // matching the card's ring and bars (Probid 2026-11-03)
-  final tiles = <(String, String, String, Color, Color, double?)>[
-    if (future) ...[
-      ('Planned', '${inNum(p[0])} kcal', 'Foods in this day’s plan', AppColors.accent, AppColors.accentText, r(p[0], t[0])),
-      ('Target', '${inNum(t[0])} kcal', 'Set by ${d.coach}', AppColors.line2, AppColors.text, null),
-      ('Protein', g(p[1], t[1]), 'Planned / target', AppColors.accent, AppColors.text, r(p[1], t[1])),
-      ('Carbs', g(p[2], t[2]), 'Planned / target', AppColors.nvCarbs, AppColors.text, r(p[2], t[2])),
-      ('Fat', g(p[3], t[3]), 'Planned / target', AppColors.nvFat, AppColors.text, r(p[3], t[3])),
-    ] else ...[
-      ('Eaten', '${inNum(e[0])} kcal', 'Everything logged ${d.isToday ? 'today' : 'that day'}', AppColors.accent, AppColors.accentText, r(e[0], t[0])),
-      over
-          ? ('Over', '${inNum(left.abs())} kcal', 'Eaten above your target', AppColors.amberSolid, AppColors.amberText, null)
-          : (d.isToday ? 'Left' : 'Under', '${inNum(left.abs())} kcal', 'Target minus eaten', AppColors.okSolid, AppColors.okText, null),
-      if (d.isToday) ('Still ahead', '${inNum(ahead)} kcal', 'Planned foods not logged or skipped yet', AppColors.warm, AppColors.text, null),
-      ('Target', '${inNum(t[0])} kcal', 'Set by ${d.coach}', AppColors.line2, AppColors.text, null),
-      ('Protein', g(e[1], t[1]), 'Eaten / target', AppColors.accent, AppColors.text, r(e[1], t[1])),
-      ('Carbs', g(e[2], t[2]), 'Eaten / target', AppColors.nvCarbs, AppColors.text, r(e[2], t[2])),
-      ('Fat', g(e[3], t[3]), 'Eaten / target', AppColors.nvFat, AppColors.text, r(e[3], t[3])),
-    ],
-  ];
-  // no boxes (Probid 2026-11-03): plain cells, a line between the two of a row and between rows
-  Widget tile((String, String, String, Color, Color, double?) x) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-          Row(spacing: 6, children: [
-            Container(width: 8, height: 8, decoration: BoxDecoration(color: x.$4, shape: BoxShape.circle)),
-            Text(x.$1.toUpperCase(), style: AppText.s(10.5, W.w8, color: AppColors.muted, ls: .5)),
+  final m = future ? p : e;
+  Widget bar(double v, Color col, {double h = 6}) => ClipRRect(
+        borderRadius: BorderRadius.circular(99),
+        child: SizedBox(
+          height: h,
+          child: Stack(children: [
+            const Positioned.fill(child: ColoredBox(color: AppColors.barTrack)),
+            FractionallySizedBox(widthFactor: v, heightFactor: 1, child: ColoredBox(color: col)),
           ]),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(x.$2, maxLines: 1, style: AppText.s(17, W.w8, color: x.$5)),
-          ),
-          if (x.$6 != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(99),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 4,
-                  child: Stack(children: [
-                    const Positioned.fill(child: ColoredBox(color: AppColors.barTrack)),
-                    FractionallySizedBox(widthFactor: x.$6!, heightFactor: 1, child: ColoredBox(color: x.$4)),
-                  ]),
-                ),
-              ),
-            ),
-          Text(x.$3, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w5, color: AppColors.muted)),
-        ]),
+        ),
       );
+  // one big number with its name above (Probid 19 Nov: simple, not crowded)
+  Widget big(String name, String value, Color col, {bool end = false}) => Column(
+        crossAxisAlignment: end ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        spacing: 2,
+        children: [
+          Text(name, style: AppText.s(12.5, W.w6, color: AppColors.muted)),
+          Text.rich(
+            TextSpan(children: [
+              TextSpan(text: value, style: AppText.s(26, W.w8, ls: -0.4, color: col, tabular: true)),
+              TextSpan(text: ' kcal', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
+            ]),
+          ),
+        ],
+      );
+  Widget line(String l, String v) => Row(children: [
+        Expanded(child: Text(l, style: AppText.s(13, W.w5, color: AppColors.text2))),
+        Text(v, style: AppText.s(13, W.w7, tabular: true)),
+      ]);
+  final (leftName, leftCol) = over ? ('Over', AppColors.amberText) : (d.isToday ? 'Left' : 'Under', AppColors.okText);
   return showAppSheet(
     context,
     title: calHead(d, c.today),
     sub: 'Target ${inNum(t[0])} kcal · set by ${d.coach}',
     webWidth: 460,
     footerStretch: true,
-    builder: (_) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
-      Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        for (var i = 0; i < tiles.length; i += 2)
-          Container(
-            decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: AppColors.line))),
-            child: IntrinsicHeight(
-              child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                Expanded(child: tile(tiles[i])),
-                const Padding(padding: EdgeInsets.symmetric(vertical: 10), child: VerticalDivider(width: 21, thickness: 1, color: AppColors.line)),
-                Expanded(child: i + 1 < tiles.length ? tile(tiles[i + 1]) : const SizedBox.shrink()),
+    builder: (_) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [
+      // calories: eaten (or planned) and what is left, one bar against the target, then two plain lines
+      Container(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(16)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Expanded(child: big(future ? 'Planned' : 'Eaten', inNum(m[0]), AppColors.accentText)),
+            if (!future) big(leftName, inNum(left.abs()), leftCol, end: true),
+          ]),
+          bar(r(m[0], t[0]), over && !future ? AppColors.amberSolid : AppColors.accent, h: 8),
+          Column(spacing: 6, children: [
+            line('Target', '${inNum(t[0])} kcal'),
+            if (!future && d.isToday) line('Still ahead in your plan', '${inNum(ahead)} kcal'),
+          ]),
+        ]),
+      ),
+      // macros: name, eaten of target, a thin bar in its colour
+      Container(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+        decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.line)),
+        child: Column(children: [
+          for (final (i, (name, col)) in const [('Protein', AppColors.accent), ('Carbs', AppColors.nvCarbs), ('Fat', AppColors.nvFat)].indexed) ...[
+            if (i > 0) const Divider(height: 1, thickness: 1, color: AppColors.line),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 11),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 7, children: [
+                Row(spacing: 8, children: [
+                  Container(width: 8, height: 8, decoration: BoxDecoration(color: col, shape: BoxShape.circle)),
+                  Expanded(child: Text(name, style: AppText.s(14, W.w6))),
+                  Text.rich(TextSpan(children: [
+                    TextSpan(text: '${m[i + 1].round()}', style: AppText.s(14, W.w8, tabular: true)),
+                    TextSpan(text: ' / ${t[i + 1].round()} g', style: AppText.s(13, W.w5, color: AppColors.muted, tabular: true)),
+                  ])),
+                ]),
+                bar(r(m[i + 1], t[i + 1]), col, h: 5),
               ]),
             ),
+          ],
+        ]),
+      ),
+      // what the numbers mean, short, in one soft box (Probid 19 Nov: the text at the bottom did not look good)
+      Container(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+        decoration: BoxDecoration(color: AppColors.infoBg, borderRadius: BorderRadius.circular(12)),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 8, children: [
+          const Padding(padding: EdgeInsets.only(top: 1), child: AppIcon(AppIcons.info, size: 15, color: AppColors.infoText)),
+          Expanded(
+            child: Text(
+              '${!future && d.isToday ? 'Still ahead is what your plan has left to eat today. ' : ''}'
+              'Your target comes from ${d.coach}’s plan. Workout calories are not added back.',
+              style: AppText.s(12.5, W.w5, color: AppColors.text2, h: 1.4),
+            ),
           ),
-      ]),
-      // what the numbers mean, in plain words (Probid A2, 2026-11-03)
-      if (!future && d.isToday)
-        fdCap('Left and Still ahead are the same until you skip a food, add a food outside the plan or change a portion.'),
-      fdCap('Your target comes from the plan your coach set. Calories burned in workouts are not added back.'),
+        ]),
+      ),
     ]),
   );
 }

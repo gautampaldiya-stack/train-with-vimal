@@ -15,6 +15,7 @@ import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
 import '../home/home_model.dart' show inNum, mealTime;
 import '../train/train_parts.dart' show TwoTabs;
+import '../train/train_history.dart' show histTile;
 import 'food_model.dart';
 import 'food_parts.dart';
 import '../../../core/widgets/tooltip.dart';
@@ -942,7 +943,8 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     constraints: const BoxConstraints(minHeight: 58),
     padding: const EdgeInsets.symmetric(vertical: 8),
     decoration: BoxDecoration(border: identical(f, _foods.firstOrNull) ? null : const Border(top: BorderSide(color: AppColors.line))),
-    child: Row(spacing: 10, children: [
+    child: Row(spacing: 12, children: [
+      histTile(f.mine ? AppIcons.person : AppIcons.bowl, bg: f.mine ? AppColors.purpleBg : AppColors.sub, fg: f.mine ? AppColors.purpleText : AppColors.text2, size: 36),
       Expanded(
         child: Semantics(
           button: true,
@@ -992,15 +994,23 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     final m = meal, pm = _mealOf(m);
     final add = _added(m);
     final k = add.fold(0, (a, e) => a + e.kcal);
-    return ChCardLite(children: [
-      Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 8, children: [
+    // Probid 19 Nov: nicer cards, a coloured tile and the meal like the Food page
+    return ChCardLite(gap: 10, children: [
+      Row(spacing: 12, children: [
+        histTile(add.isEmpty ? AppIcons.food : AppIcons.checkCircle,
+            bg: add.isEmpty ? AppColors.tnBlueBg : AppColors.okBg, fg: add.isEmpty ? AppColors.accent : AppColors.okText, size: 38),
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-            Text(pm == null ? m : '$m · ${mealTime(pm.timeRaw)}', style: AppText.s(15, W.w8)),
-            if (pm != null) Text('Plan: ${pm.foods} · ${inNum(pm.kcal)} kcal', style: AppText.s(12, W.w4, color: AppColors.muted)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+            Text(pm == null ? m : '$m · ${mealTime(pm.timeRaw)}', style: AppText.s(15.5, W.w8)),
+            if (pm != null) Text('Plan: ${pm.foods} · ${inNum(pm.kcal)} kcal', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted)),
           ]),
         ),
-        if (add.isNotEmpty) Text('+${inNum(k)} kcal', style: AppText.s(14, W.w8, color: AppColors.accentText)),
+        if (add.isNotEmpty)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(8)),
+            child: Text('+${inNum(k)} kcal', style: AppText.s(12.5, W.w8, color: AppColors.accentText, tabular: true)),
+          ),
       ]),
       if (_sel.isNotEmpty) ...[
         _addedHead('Picked · not added yet', _sel.length, _sel.fold(0, (a, x) => a + x.kcal), AppColors.accentText),
@@ -1010,9 +1020,13 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
         if (!context.isPhone) _addBtn(),
       ],
       if (add.isEmpty && _sel.isEmpty)
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Text('Nothing added yet. Tap + on a food below.', textAlign: TextAlign.center, style: AppText.s(13, W.w4, color: AppColors.muted)),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(12)),
+          child: Row(spacing: 8, children: [
+            const AppIcon(AppIcons.plus, size: 15, color: AppColors.muted),
+            Expanded(child: Text('Nothing added yet. Tap + on a food below.', style: AppText.s(13, W.w5, color: AppColors.text2))),
+          ]),
         )
       else if (add.isNotEmpty) ...[
         if (_sel.isNotEmpty) _addedHead('Added to $m', add.length, k, AppColors.okText),
@@ -1058,9 +1072,16 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
 
   // ─────────────────────────────── Can't find the exact food?
 
-  Widget _exCard() => ChCardLite(gap: 10, children: [
-    Text('Can’t find the exact food?', style: AppText.s(15, W.w8)),
-    Pull(top: -4, child: fdCap('Quick add the numbers, or save a custom food for next time.')),
+  Widget _exCard() => ChCardLite(gap: 12, children: [
+    Row(spacing: 12, children: [
+      histTile(AppIcons.edit, bg: AppColors.amberBg, fg: AppColors.amberText, size: 38),
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+          Text('Can’t find the exact food?', style: AppText.s(15.5, W.w8)),
+          Text('Quick add the numbers, or save a custom food for next time.', style: AppText.s(12.5, W.w5, color: AppColors.muted)),
+        ]),
+      ),
+    ]),
     _boxes(_qa, (k, v) => setState(() => _qa[k] = v)),
     Row(spacing: 8, children: [
       Expanded(child: LayoutBuilder(builder: (_, b) => fdBtn('Create custom food', _customFood, icon: b.maxWidth >= 178 ? AppIcons.plus : null))),

@@ -364,7 +364,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         Flexible(
           child: SingleChildScrollView(
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              for (final x in d.exercises)
+              for (final (xi, x) in d.exercises.indexed)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 7),
                   child: Row(spacing: 12, children: [
@@ -373,7 +373,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                       height: 40,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(10)),
-                      child: Text(x.name.isEmpty ? '?' : x.name[0].toUpperCase(), style: AppText.s(17, W.w8, color: AppColors.text2)),
+                      // the exercise's place in the workout (Probid 19 Nov: numbers, not the first letter)
+                      child: Text('${xi + 1}', style: AppText.s(16, W.w8, color: AppColors.text2, tabular: true)),
                     ),
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [

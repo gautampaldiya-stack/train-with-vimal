@@ -12,6 +12,7 @@ import '../../../core/widgets/overlays.dart';
 import '../../../core/widgets/responsive.dart';
 import '../home/home_model.dart' show inNum, mealTime;
 import '../home/home_parts.dart';
+import '../train/train_history.dart' show histTile;
 import '../train/train_parts.dart' show TwoTabs;
 import 'food_model.dart';
 import 'food_parts.dart';
@@ -381,11 +382,15 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
                 child: Column(spacing: 9, children: [
                   for (final (i, (name, color)) in const [('Protein', AppColors.accent), ('Carbs', AppColors.nvCarbs), ('Fat', AppColors.nvFat)].indexed)
                     Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                      Row(children: [
-                        Expanded(child: Text(name, style: AppText.s(12.5, W.w6, color: AppColors.muted))),
-                        Text('${shown[i + 1].round()} / ${t[i + 1].round()} g', style: AppText.s(12.5, W.w7)),
+                      Row(spacing: 6, children: [
+                        Container(width: 7, height: 7, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+                        Expanded(child: Text(name, style: AppText.s(13, W.w6, color: AppColors.text2))),
+                        Text.rich(TextSpan(children: [
+                          TextSpan(text: '${shown[i + 1].round()}', style: AppText.s(13, W.w8, tabular: true)),
+                          TextSpan(text: ' / ${t[i + 1].round()} g', style: AppText.s(12, W.w5, color: AppColors.muted, tabular: true)),
+                        ])),
                       ]),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 5),
                       ChBar(t[i + 1] > 0 ? shown[i + 1] / t[i + 1] : 0, color: color),
                     ]),
                 ]),
@@ -676,6 +681,13 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
         : m.line;
     final lock = d.isToday && m.open && m.locked;
     final swaps = today && m.open && d.allowSwaps && !lock;
+    final (AppIconData, Color, Color) tile = m.logged
+        ? (AppIcons.checkCircle, AppColors.okBg, AppColors.okText)
+        : m.skipped || (_past(d) && !m.logged)
+            ? (AppIcons.close, AppColors.amberBg, AppColors.amberText)
+            : next
+                ? (AppIcons.food, AppColors.accent, AppColors.white)
+                : (AppIcons.food, AppColors.tnBlueBg, AppColors.accent);
     final card = Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
@@ -684,24 +696,35 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
         border: Border.all(color: next ? AppColors.accentRing : AppColors.line),
         boxShadow: next ? const [BoxShadow(color: AppColors.accentSoft, spreadRadius: 3)] : null,
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
-        Row(spacing: 8, children: [
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 10, children: [
+        // a coloured tile by state, the name, time · kcal, then the state pill and the menu (Probid 19 Nov: nicer
+        // meal cards, like Food history)
+        Row(spacing: 12, children: [
+          histTile(tile.$1, bg: tile.$2, fg: tile.$3, size: 38),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-              CutText.rich(
-                TextSpan(children: [
-                  TextSpan(text: m.name, style: AppText.s(15, W.w8)),
-                  TextSpan(text: '  · ${mealTime(m.timeRaw)}', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
-                ]),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              Text(line, style: AppText.s(12, W.w6, color: AppColors.muted)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+              Text(m.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(15.5, W.w8)),
+              Text(m.logged || m.skipped || m.partly ? line : '${mealTime(m.timeRaw)} · ${inNum(m.kcal)} kcal',
+                  maxLines: 2, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted)),
             ]),
           ),
           fdPill(pill),
           if (today) CaIconBtn(AppIcons.dots, tooltip: 'Meal options', onTap: () => lock ? _lockedToast(m) : _menu(m)),
         ]),
+        // what the meal gives, as three small coloured chips (not one grey line)
+        if (!m.logged && !m.skipped && !m.partly)
+          Row(spacing: 6, children: [
+            for (final (v, l, bg, fg) in [
+              (m.protein, 'protein', AppColors.accentSoft, AppColors.accentText),
+              (m.carbs, 'carbs', AppColors.amberBg, AppColors.amberText),
+              (m.fat, 'fat', AppColors.purpleBg, AppColors.purpleText),
+            ])
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+                child: Text('${v.round()} g $l', style: AppText.s(11.5, W.w7, color: fg, tabular: true)),
+              ),
+          ]),
         Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           for (final it in m.items) _itemRow(d, m, it, swaps: swaps),
         ]),
@@ -744,14 +767,24 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
   /// One planned food: its amount, an Edited tag when today's portion is not the planned one, and its own state
   /// (Eaten / Skipped). On today a tap opens what she can do with just this food.
   Widget _itemRow(FoodDay d, FMeal m, FItem it, {required bool swaps}) {
+    final eaten = it.state == 'eaten' || (m.logged && it.state.isEmpty);
     final row = Container(
-      padding: const EdgeInsets.symmetric(vertical: 7),
+      padding: const EdgeInsets.symmetric(vertical: 9),
       decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
-      child: Row(spacing: 8, children: [
+      child: Row(spacing: 10, children: [
+        // a small dot: green eaten, amber skipped, grey still to log
+        Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(
+            color: eaten ? AppColors.okSolid : (it.state == 'skipped' ? AppColors.amberSolid : AppColors.line2),
+            shape: BoxShape.circle,
+          ),
+        ),
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
             // a food already decided (eaten or skipped) reads lighter than the ones still to log (Probid 2026-10-30)
-            Text(it.name, style: AppText.s(13.5, W.w7, color: it.state.isEmpty && !m.logged ? AppColors.text : AppColors.muted)),
+            Text(it.name, style: AppText.s(14, W.w6, color: it.state.isEmpty && !m.logged ? AppColors.text : AppColors.text2)),
             Row(children: [
               Flexible(child: Text(it.amount, style: AppText.s(12, W.w4, color: AppColors.muted))),
               if (it.edited) fdTag('Edited'),
@@ -762,10 +795,10 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
           ]),
         ),
         // a logged meal shows Eaten on each food it counted too (Probid 2026-10-30)
-        if (it.state == 'eaten' || (m.logged && it.state.isEmpty)) fdPill('Eaten', small: true),
+        if (eaten) fdPill('Eaten', small: true),
         if (it.state == 'skipped' && !m.skipped) fdPill('Skipped', small: true),
         Text('${inNum(it.kcal)} kcal',
-            style: AppText.s(12, W.w7, color: AppColors.text2).copyWith(decoration: it.state == 'skipped' ? TextDecoration.lineThrough : null)),
+            style: AppText.s(13, W.w6, color: AppColors.text2, tabular: true).copyWith(decoration: it.state == 'skipped' ? TextDecoration.lineThrough : null)),
       ]),
     );
     return Semantics(
