@@ -9,7 +9,9 @@ import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/skeleton.dart';
+import 'logger_menus.dart';
 import 'train_model.dart';
+import 'workout_edit.dart' show showEditWorkout;
 import 'workout_model.dart' show SetKind;
 
 /// Workout History (Probid 19 Nov, Strong's History): a page, not a sheet. Months with their workouts; each workout a
@@ -174,6 +176,18 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
 
   bool get _more => _last == null || _last!.next != null;
 
+  /// Pull to refresh, like Notifications (Probid 19 Nov): two skeleton cards on top until the new page is in,
+  /// for at least half a second so it is seen.
+  bool _pulling = false;
+  Future<void> _refresh() async {
+    setState(() => _pulling = true);
+    try {
+      await Future.wait([Future.delayed(const Duration(milliseconds: 500)), _load(again: true)]);
+    } finally {
+      if (mounted) setState(() => _pulling = false);
+    }
+  }
+
   Future<void> _load({bool again = false}) async {
     if (_loading || (!again && !_more)) return;
     setState(() => _loading = true);
@@ -201,6 +215,7 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
       months.last.$2.add(r);
     }
     final children = <Widget>[
+      if (_pulling && _rows.isNotEmpty) const Padding(padding: EdgeInsets.only(bottom: 12), child: HistSkeleton(cards: 2, header: false)),
       if (_rows.isEmpty && _error != null)
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 24),
@@ -232,11 +247,11 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
         ),
         for (final r in rows) Padding(padding: const EdgeInsets.only(bottom: 12), child: _card(r)),
       ],
-      if (_loading && _rows.isNotEmpty) const HistSkeleton(cards: 1, header: false),
+      if (_loading && _rows.isNotEmpty && !_pulling) const HistSkeleton(cards: 1, header: false),
     ];
     return RefreshIndicator(
       color: AppColors.accent,
-      onRefresh: () => _load(again: true),
+      onRefresh: _refresh,
       child: histPage(
         context,
         title: 'Workout history',
@@ -350,6 +365,38 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     }
   }
 
+  /// Pull to refresh, like Notifications: the exercises turn to skeleton cards until the workout is in again.
+  bool _pulling = false;
+  Future<void> _refresh() async {
+    setState(() => _pulling = true);
+    try {
+      await Future.wait([Future.delayed(const Duration(milliseconds: 500)), _load()]);
+    } finally {
+      if (mounted) setState(() => _pulling = false);
+    }
+  }
+
+  /// Only yesterday's workout can still be edited (H52), so only then the bar has a ⋯ with "Edit this workout".
+  bool get _editable {
+    final d = _d;
+    if (d == null) return false;
+    return DateUtils.isSameDay(d.row.date, DateTime.now().subtract(const Duration(days: 1)));
+  }
+
+  Widget _menuBtn() => Builder(
+        builder: (anchor) => CaIconBtn(AppIcons.dots, plain: true, tooltip: 'Workout options', onTap: () => loggerPopover(
+              anchor,
+              width: 220,
+              right: true,
+              builder: (ctx, close) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                loggerMi('Edit this workout', icon: AppIcons.edit, onTap: () async {
+                  close();
+                  if (await showEditWorkout(context, widget.id)) _load();
+                }),
+              ]),
+            )),
+      );
+
   void _back() => context.go(widget.from == 'progress' ? '/progress/history' : '/train/history');
   String get _backTip => widget.from == 'progress' ? 'All history' : 'Workout history';
 
@@ -385,12 +432,16 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       }
     }
     final edits = (d.j['edits'] as List? ?? const []).length;
-    return histPage(
+    return RefreshIndicator(
+      color: AppColors.accent,
+      onRefresh: _refresh,
+      child: histPage(
       context,
       title: r.name,
       sub: _when(shownStart, r.date),
       backTip: _backTip,
       onBack: _back,
+      action: _editable ? _menuBtn() : null,
       children: [
         // time · kg · PRs on top, then effort and edits as small pills
         Padding(
@@ -403,7 +454,10 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             if (edits > 0) HistPill(AppIcons.edit, 'Edited $edits×', bg: AppColors.purpleBg, fg: AppColors.purpleText),
           ]),
         ),
-        for (final g in d.groups) Padding(padding: const EdgeInsets.only(bottom: 12), child: _exercise(g)),
+        if (_pulling)
+          const Padding(padding: EdgeInsets.only(bottom: 12), child: HistSkeleton(cards: 2, lines: 4, header: false))
+        else
+          for (final g in d.groups) Padding(padding: const EdgeInsets.only(bottom: 12), child: _exercise(g)),
         if (d.groups.isEmpty) Text('No sets were ticked in this workout.', style: AppText.s(14, W.w4, color: AppColors.muted)),
         if (r.note.isNotEmpty)
           Container(
@@ -421,6 +475,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             ]),
           ),
       ],
+      ),
     );
   }
 
@@ -452,7 +507,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           if (rm) SizedBox(width: 50, child: Text('1RM', textAlign: TextAlign.right, style: AppText.s(11, W.w8, color: AppColors.muted, ls: .8))),
         ]),
         const SizedBox(height: 8),
-        for (final s in g.sets) ...[
+        for (final (si, s) in g.sets.indexed) ...[
           () {
             final kind = SetKind.of(s['set_type'] as String?);
             if (kind == SetKind.normal) n++;
@@ -464,7 +519,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             };
             final one = _oneRm(g.logType, s);
             final best = s['is_pr'] == true;
-            return Padding(
+            // rest taken after this set (Probid 19 Nov), a thin line under it like the logger's rest line
+            final rest = ((s['rest_actual'] ?? s['rest_seconds']) as num?)?.toInt();
+            final row = Padding(
               padding: const EdgeInsets.symmetric(vertical: 3),
               child: Row(spacing: 10, children: [
                 Container(
@@ -491,6 +548,19 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 if (rm) SizedBox(width: 50, child: Text(one == null ? '' : '$one', textAlign: TextAlign.right, style: AppText.s(14.5, W.w6, color: AppColors.text2, tabular: true))),
               ]),
             );
+            // not after the last set: that is the walk to the next exercise
+            if (rest == null || rest <= 0 || si == g.sets.length - 1) return row;
+            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              row,
+              Padding(
+                padding: const EdgeInsets.only(left: 34, top: 1, bottom: 3),
+                child: Row(spacing: 6, children: [
+                  const AppIcon(AppIcons.clock, size: 12, color: AppColors.accent),
+                  Text('${clockText(rest)} rest', style: AppText.s(12, W.w6, color: AppColors.accentText, tabular: true)),
+                  Expanded(child: Container(height: 1, color: AppColors.accentSoft)),
+                ]),
+              ),
+            ]);
           }(),
         ],
       ]),
@@ -521,7 +591,38 @@ class HistStats extends StatelessWidget {
     // four stats go 2 × 2, so each has room (Probid 19 Nov: four across looked crowded)
     final cols = stats.length == 4 ? 2 : stats.length;
     final rows = [for (var i = 0; i < stats.length; i += cols) stats.sublist(i, (i + cols).clamp(0, stats.length))];
-    Widget cell(HistStat s) => Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 7, children: [
+    // 2 × 2: icon beside the label and value, smaller, so the card is not tall (Probid 19 Nov: "thodi height kam")
+    final grid = cols == 2 && stats.length == 4;
+    Widget small(HistStat s) => Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 6, children: [
+          Row(spacing: 9, children: [
+            histTile(s.icon, bg: s.bg, fg: s.fg, size: 30),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(s.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(11.5, W.w6, color: AppColors.muted)),
+                Text.rich(
+                  TextSpan(children: [
+                    TextSpan(text: s.value, style: AppText.s(17, W.w8, ls: -0.2, tabular: true, color: AppColors.text)),
+                    if (s.unit.isNotEmpty) TextSpan(text: ' ${s.unit}', style: AppText.s(11.5, W.w6, color: AppColors.muted)),
+                  ]),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ]),
+            ),
+          ]),
+          if (s.progress != null || s.of != null)
+            Row(spacing: 8, children: [
+              if (s.progress != null)
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(3),
+                    child: LinearProgressIndicator(value: s.progress!.clamp(0.0, 1.0), minHeight: 4, backgroundColor: AppColors.barTrack, color: s.fg),
+                  ),
+                ),
+              if (s.of != null) Text(s.of!, maxLines: 1, style: AppText.s(11, W.w5, color: AppColors.muted, tabular: true)),
+            ]),
+        ]);
+    Widget cell(HistStat s) => grid ? small(s) : Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 7, children: [
           Row(spacing: 8, children: [
             histTile(s.icon, bg: s.bg, fg: s.fg, size: 28),
             Flexible(child: Text(s.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w6, color: AppColors.text2))),
@@ -548,7 +649,7 @@ class HistStats extends StatelessWidget {
         for (final (r, row) in rows.indexed) ...[
           if (r > 0) const Divider(height: 1, thickness: 1, color: AppColors.line),
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
+            padding: EdgeInsets.symmetric(vertical: grid ? 10 : 12),
             child: IntrinsicHeight(
               child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 for (final (i, s) in row.indexed) ...[

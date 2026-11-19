@@ -107,7 +107,13 @@ class _CaPinnedState extends State<CaPinned> {
   /// Where the page starts. With a title it starts 14 up into the bar (under the icons, which end about 40 down), so
   /// the title sits right under the icons with no empty band above it (Probid 18 Nov: "title thoda upar"). The bar is
   /// clear at rest and fills in as soon as the page moves.
-  double get _bodyTop => (widget.head as CaTopBar).title == null ? CaTopBar.height : CaTopBar.height - 14;
+  /// A page with Back starts only 4 up, so its title sits a little lower, clear of the Back arrow (Probid 19 Nov:
+  /// "back icon unke title ke kaafi pass lagta hai").
+  double get _bodyTop {
+    final bar = widget.head as CaTopBar;
+    if (bar.title == null) return CaTopBar.height;
+    return bar.onBack != null ? CaTopBar.height - 4 : CaTopBar.height - 14;
+  }
 
   @override
   Widget build(BuildContext context) {

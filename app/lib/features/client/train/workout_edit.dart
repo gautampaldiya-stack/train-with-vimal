@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -9,8 +12,10 @@ import '../../../core/theme/theme.dart';
 import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/overlays.dart';
+import 'logger_menus.dart';
 import 'train_model.dart';
-import 'workout_model.dart' show SetKind;
+import 'workout_feel.dart';
+import 'workout_model.dart' show FocusMetric, SetKind;
 
 /// Edit workout (tracker H51-H55), a page like Strong's "Edit workout" (Probid 19 Nov): X on the left asks before the
 /// changes are thrown away, ✓ on the right saves. Each exercise has SET · PREVIOUS · KG · REPS · ✓ rows; a ticked
@@ -33,7 +38,7 @@ Future<bool> showLogPastWorkout(BuildContext context, TrainData d) async {
 }
 
 class _Set {
-  _Set({this.id, required this.key, this.kind = SetKind.normal, this.bw = false, this.done = false, this.keep = const {}, String kg = '', String reps = '', String secs = '', String bpm = ''})
+  _Set({this.id, required this.key, this.kind = SetKind.normal, this.bw = false, this.done = false, this.rest, this.keep = const {}, String kg = '', String reps = '', String secs = '', String bpm = ''})
       : kg = TextEditingController(text: kg),
         reps = TextEditingController(text: reps),
         secs = TextEditingController(text: secs),
@@ -42,6 +47,9 @@ class _Set {
   final String key;
   SetKind kind;
   bool bw, done;
+
+  /// Rest after this set, in seconds (what was rested; null = none). Saved as the set's rest taken.
+  int? rest;
 
   /// Fields this page does not show (RPE, rest, the rest timer and the rest taken): sent back as they were.
   final Map<String, dynamic> keep;
@@ -58,9 +66,18 @@ class _Set {
 }
 
 class _Ex {
-  _Ex({required this.exId, required this.name, required this.logType, this.peId, this.prev = const [], List<_Set>? sets}) : sets = sets ?? [];
+  _Ex({required this.exId, required this.name, required this.logType, this.peId, this.prev = const [], this.restWork = 0, this.restWarmup, this.restDrop, this.focus = FocusMetric.volume, List<_Set>? sets})
+      : sets = sets ?? [];
   final String exId, name, logType;
   final int? peId;
+
+  /// The coach's rest after a work / warm-up / drop set: what a new set starts with (the logger's rest timers).
+  final int restWork;
+  final int? restWarmup, restDrop;
+  int restOf(SetKind k) => switch (k) { SetKind.warmup => restWarmup ?? restWork, SetKind.drop => restDrop ?? restWork, _ => restWork };
+
+  /// The chip beside the name, like the logger's (Total volume, Volume increase, Total reps, Weight/Reps).
+  FocusMetric focus;
 
   /// The sets of the workout before this one (the PREVIOUS column), working sets in order.
   final List<Map<String, dynamic>> prev;
@@ -101,9 +118,14 @@ class _EditPageState extends State<_EditPage> {
   bool get _past => widget.past != null;
   bool get _ready => _past || _w != null;
 
+  /// The tick or PREVIOUS that shakes (nothing to fill), and a counter so each refused tap shakes again.
+  (String, int)? _shake;
+
   @override
   void initState() {
     super.initState();
+    // the logger's sounds and vibration here too (Probid 19 Nov)
+    unawaited(WorkoutFeel.load().then((_) => WorkoutFeel.warm()));
     _scroll.addListener(() {
       final s = _scroll.offset > 2;
       if (s != _scrolled) setState(() => _scrolled = s);
@@ -141,7 +163,11 @@ class _EditPageState extends State<_EditPage> {
         logType: e.logType,
         peId: e.peId,
         prev: e.lastTime,
-        sets: [for (var i = 0; i < (e.sets > 0 ? e.sets : 1); i++) _Set(key: _key(), bw: e.bodyweight)],
+        restWork: e.rest,
+        restWarmup: e.restWarmup,
+        restDrop: e.restDrop,
+        focus: FocusMetric.of(e.focusMetric),
+        sets: [for (var i = 0; i < (e.sets > 0 ? e.sets : 1); i++) _Set(key: _key(), bw: e.bodyweight, rest: e.rest > 0 ? e.rest : null)],
       ));
     }
   }
@@ -174,13 +200,16 @@ class _EditPageState extends State<_EditPage> {
           return x;
         });
         final secsV = (s['seconds'] as num?)?.toInt();
+        int? n(String f) => (s[f] as num?)?.toInt();
+        final rest = n('rest_actual') ?? n('rest_seconds') ?? n('rest_planned');
         e.sets.add(_Set(
           id: (s['id'] as num?)?.toInt(),
           key: '${s['client_key'] ?? ''}'.isEmpty ? _key() : '${s['client_key']}',
           kind: SetKind.of('${s['set_type'] ?? 'normal'}'),
           bw: s['is_bodyweight'] == true,
           done: true,
-          keep: {for (final f in ['rpe', 'rest_seconds', 'rest_planned', 'rest_actual']) f: s[f]},
+          rest: rest == null || rest <= 0 ? null : rest,
+          keep: {for (final f in ['rpe', 'rest_seconds', 'rest_planned']) f: s[f]},
           kg: _num(s['weight_kg']),
           reps: s['reps'] == null ? '' : '${s['reps']}',
           secs: secsV == null ? '' : (e.cardio ? kg(secsV / 60) : '$secsV'),
@@ -207,7 +236,7 @@ class _EditPageState extends State<_EditPage> {
         _start.toIso8601String(),
         _end.toIso8601String(),
         for (final e in _ex)
-          for (final s in e.sets) '${e.exId}|${s.kind.api}|${s.done}|${s.kg.text}|${s.reps.text}|${s.secs.text}|${s.bpm.text}',
+          for (final s in e.sets) '${e.exId}|${s.kind.api}|${s.done}|${s.kg.text}|${s.reps.text}|${s.secs.text}|${s.bpm.text}|${s.rest}',
       ].join(';');
 
   bool get _dirty => _ready && _snapshot() != _first;
@@ -218,6 +247,8 @@ class _EditPageState extends State<_EditPage> {
     final minutes = d(s.secs);
     return {
       ...s.keep,
+      'rest_actual': s.rest,
+      'rest_planned': s.keep['rest_planned'] ?? s.rest,
       if (s.id != null) 'id': s.id,
       'key': s.key,
       'exercise': e.exId,
@@ -286,18 +317,35 @@ class _EditPageState extends State<_EditPage> {
     }
     final boxes = _boxes(e, s);
     if (boxes.every((c) => c.text.trim().isEmpty)) {
-      // an empty set takes the PREVIOUS values, like Strong; with nothing to take it asks for them
+      // an empty set takes the PREVIOUS values, like Strong; with nothing to take the tick shakes and the phone buzzes
       final pv = _prevValues(e, _prevOf(e, k));
       if (pv.every((v) => v.isEmpty)) {
-        HapticFeedback.lightImpact();
-        showToast(context, 'Type the values first', sub: 'Fill the set, then tick it', kind: ToastKind.warn);
+        _refuse('tick:${s.key}');
         return;
       }
       for (var j = 0; j < boxes.length && j < pv.length; j++) {
         boxes[j].text = pv[j];
       }
     }
+    WorkoutFeel.setDone();
     setState(() => s.done = true);
+  }
+
+  void _refuse(String tag) {
+    WorkoutFeel.refused();
+    setState(() => _shake = (tag, (_shake?.$2 ?? 0) + 1));
+  }
+
+  Widget _shaking(Widget child, String tag) {
+    final sh = _shake;
+    if (sh == null || sh.$1 != tag) return child;
+    return TweenAnimationBuilder<double>(
+      key: ValueKey('$tag:${sh.$2}'),
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 420),
+      builder: (_, v, child) => Transform.translate(offset: Offset(math.sin(v * math.pi * 6) * 6 * (1 - v), 0), child: child),
+      child: child,
+    );
   }
 
   Future<void> _close() async {
@@ -433,9 +481,10 @@ class _EditPageState extends State<_EditPage> {
         backgroundColor: AppColors.white,
         body: SafeArea(
           bottom: false,
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            _bar(),
-            Expanded(child: _ready ? _body() : _loading()),
+          // the bar is drawn over the list, so its shadow shows on the rows under it (Probid 19 Nov)
+          child: Stack(children: [
+            Positioned.fill(top: 56, child: _ready ? _body() : _loading()),
+            Positioned(left: 0, right: 0, top: 0, child: _bar()),
           ]),
         ),
       ),
@@ -557,8 +606,184 @@ class _EditPageState extends State<_EditPage> {
 
   Widget _th(String t) => Text(t, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.clip, style: AppText.s(11, W.w7, color: AppColors.text, ls: 1.2));
 
-  Widget _exercise(_Ex e) {
+  /// Volume (kg × reps) of the PREVIOUS workout's working sets: the base of "Volume increase".
+  double _prevVolume(_Ex e) {
+    var v = 0.0;
+    for (final p in e.prev) {
+      if (p['type'] == 'warmup') continue;
+      num? n(String k) => p[k] is num ? p[k] as num : num.tryParse('${p[k] ?? ''}');
+      v += (n('weight_kg') ?? 0) * (n('reps') ?? 0);
+    }
+    return v;
+  }
+
+  int _reps(_Ex e) => e.sets.where((s) => s.done && s.kind != SetKind.warmup).fold(0, (a, s) => a + (int.tryParse(s.reps.text.trim()) ?? 0));
+
+  /// The focus chip's text for [f], like the logger: "557 kg", "+12%", "21 reps", "26.52 kg".
+  String _focusText(_Ex e, FocusMetric f) {
+    final fmt = NumberFormat.decimalPattern('en_IN');
     final vol = _volume(e);
+    switch (f) {
+      case FocusMetric.volume:
+        return '${fmt.format(vol.round())} kg';
+      case FocusMetric.volumeUp:
+        final last = _prevVolume(e);
+        if (last == 0) return '+0%';
+        final p = ((vol - last) / last * 100).round();
+        return '${p >= 0 ? '+' : ''}$p%';
+      case FocusMetric.reps:
+        return '${_reps(e)} reps';
+      case FocusMetric.weightReps:
+        final r = _reps(e);
+        return '${r == 0 ? '0' : (vol / r).toStringAsFixed(2)} kg';
+    }
+  }
+
+  /// The focus chip: pick what to watch for this exercise (no ⋯ beside it here, Probid 19 Nov).
+  void _focusMenu(BuildContext anchor, _Ex e) => loggerPopover(anchor, width: 260, right: true, builder: (ctx, close) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+          child: Text('FOCUS METRIC', style: AppText.s(11, W.w8, color: AppColors.muted, ls: 1)),
+        ),
+        for (final f in FocusMetric.values)
+          Hover(
+            onTap: () {
+              close();
+              setState(() => e.focus = f);
+              Services.outbox.enqueue('PUT', 'me/exercise-prefs/${e.exId}/', {'focus_metric': f.api}, tag: 'exercise:pref').catchError((_) => null);
+            },
+            builder: (_, h, _) => Container(
+              height: 40,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(color: h ? AppColors.hover : null, borderRadius: BorderRadius.circular(8)),
+              child: Row(spacing: 8, children: [
+                SizedBox(width: 18, child: e.focus == f ? const AppIcon(AppIcons.check, size: 16, color: AppColors.accent, stroke: 2.4) : null),
+                Expanded(child: Text(f.label, style: AppText.s(13.5, W.w6))),
+                Text(_focusText(e, f), style: AppText.s(13, W.w7, color: AppColors.text2, tabular: true)),
+              ]),
+            ),
+          ),
+      ]));
+
+  /// SET box: set type (W / D / F, each with ?), the rest after this set, delete (the logger's set menu).
+  void _setMenu(BuildContext anchor, _Ex e, _Set s) {
+    Widget kind(SetKind t, Color color) {
+      final (name, info) = loggerKindInfo[t]!;
+      final on = s.kind == t;
+      return Builder(
+        builder: (rowCtx) => Hover(
+          onTap: () {
+            Navigator.of(rowCtx).pop();
+            setState(() => s.kind = on ? SetKind.normal : t);
+          },
+          builder: (_, h, _) => Container(
+            height: 40,
+            padding: const EdgeInsets.only(left: 10),
+            decoration: BoxDecoration(color: on ? AppColors.accentSoft : (h ? AppColors.hover : null), borderRadius: BorderRadius.circular(8)),
+            child: Row(spacing: 10, children: [
+              SizedBox(width: 16, child: Text(t.letter, textAlign: TextAlign.center, style: AppText.s(14, W.w8, color: color))),
+              Expanded(child: Text(on ? '$name (tap to undo)' : name, style: AppText.s(13.5, W.w6))),
+              Semantics(
+                button: true,
+                label: 'What is a $name?',
+                child: Hover(
+                  onTap: () => loggerTip(rowCtx, name, info),
+                  builder: (_, hh, _) => Container(
+                    width: 36,
+                    height: 36,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(color: hh ? AppColors.pressed : null, shape: BoxShape.circle),
+                    child: const AppIcon(AppIcons.help, size: 16, color: AppColors.muted),
+                  ),
+                ),
+              ),
+            ]),
+          ),
+        ),
+      );
+    }
+
+    loggerPopover(anchor, width: 260, builder: (ctx, close) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 6, 10, 4),
+            child: Text('SET TYPE', style: AppText.s(11, W.w8, color: AppColors.muted, ls: 1)),
+          ),
+          kind(SetKind.warmup, AppColors.amberText),
+          kind(SetKind.drop, AppColors.purpleText),
+          kind(SetKind.failure, AppColors.badText),
+          const Divider(height: 10, color: AppColors.line),
+          loggerMi('Rest after this set', icon: AppIcons.clockAlt, sub: s.rest == null ? 'No rest' : clockText(s.rest!), onTap: () {
+            close();
+            _restSheet(e, s);
+          }),
+          loggerMi('Delete set', icon: AppIcons.trash, danger: true, onTap: () {
+            close();
+            _deleteSet(e, s);
+          }),
+        ]));
+  }
+
+  void _deleteSet(_Ex e, _Set s) => setState(() {
+        e.sets.remove(s);
+        s.dispose();
+        if (e.sets.isEmpty) _ex.remove(e);
+      });
+
+  /// How long the client rested after a set (the logger's rest sheet, without a timer: this workout is over).
+  Future<void> _restSheet(_Ex e, _Set s) async {
+    var v = s.rest ?? e.restOf(s.kind);
+    final n = e.sets.indexOf(s) + 1;
+    final r = await showAppSheet<int>(
+      context,
+      title: 'Rest after set $n',
+      sub: '${e.name} · how long you rested',
+      builder: (ctx) => StatefulBuilder(builder: (_, set) => RestStepper(value: v, onChanged: (x) => set(() => v = x))),
+      footer: (ctx) => [
+        if (s.rest != null)
+          CaButton('No rest', kind: CaBtnKind.out, onPressed: () => Navigator.of(ctx).pop(0)),
+        CaButton('Save', icon: AppIcons.check, onPressed: () => Navigator.of(ctx).pop(v)),
+      ],
+    );
+    if (r == null || !mounted) return;
+    setState(() => s.rest = r <= 0 ? null : r);
+  }
+
+  /// The thin rest line under a set (the logger's): "1:30" between two lines. Tap = change it; swipe left = no rest.
+  Widget _restLine(_Ex e, _Set s, int n) => Dismissible(
+        key: ValueKey('rest:${s.key}'),
+        direction: DismissDirection.endToStart,
+        background: Container(
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.only(right: 20),
+          color: AppColors.badBg,
+          child: Text('No rest', style: AppText.s(11.5, W.w7, color: AppColors.badText)),
+        ),
+        confirmDismiss: (_) async {
+          WorkoutFeel.restSkipped();
+          setState(() => s.rest = null);
+          return false;
+        },
+        child: Semantics(
+          button: true,
+          label: 'Rest after set $n: ${clockText(s.rest!)}',
+          child: Hover(
+            onTap: () => _restSheet(e, s),
+            builder: (_, h, _) => Container(
+              height: 26,
+              color: s.done ? AppColors.logDoneRow : AppColors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(spacing: 8, children: [
+                Expanded(child: Container(height: 1.5, color: h ? AppColors.accent : AppColors.accentRing)),
+                Text(clockText(s.rest!), style: AppText.s(13, W.w7, color: AppColors.accentText, tabular: true)),
+                Expanded(child: Container(height: 1.5, color: h ? AppColors.accent : AppColors.accentRing)),
+              ]),
+            ),
+          ),
+        ),
+      );
+
+  Widget _exercise(_Ex e) {
+    final weight = !e.cardio && !e.timed;
     return Padding(
       padding: const EdgeInsets.only(top: 22),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -566,13 +791,23 @@ class _EditPageState extends State<_EditPage> {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(spacing: 8, children: [
             Expanded(child: Text(e.name, style: AppText.s(16, W.w6, color: AppColors.accentText))),
-            if (vol > 0)
-              Container(
-                height: 30,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(8)),
-                child: Text('${NumberFormat.decimalPattern().format(vol.round())} kg', style: AppText.s(14, W.w6, color: AppColors.accentText, tabular: true)),
+            // the focus metric chip, as in the logger; no ⋯ beside it (Probid 19 Nov)
+            if (weight)
+              Builder(
+                builder: (bc) => Semantics(
+                  button: true,
+                  label: 'Focus metric ${e.focus.label}',
+                  child: Hover(
+                    onTap: () => _focusMenu(bc, e),
+                    builder: (_, h, _) => Container(
+                      height: 30,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(color: h ? AppColors.accentRing : AppColors.accentSoft, borderRadius: BorderRadius.circular(8)),
+                      child: Text(_focusText(e, e.focus), style: AppText.s(14, W.w6, color: AppColors.accentText, tabular: true)),
+                    ),
+                  ),
+                ),
               ),
           ]),
         ),
@@ -587,7 +822,14 @@ class _EditPageState extends State<_EditPage> {
           ]),
         ),
         const SizedBox(height: 4),
-        for (var k = 0; k < e.sets.length; k++) KeyedSubtree(key: ValueKey(e.sets[k].key), child: _setRow(e, k)),
+        for (var k = 0; k < e.sets.length; k++)
+          KeyedSubtree(
+            key: ValueKey(e.sets[k].key),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              _setRow(e, k),
+              if (e.sets[k].rest != null) _restLine(e, e.sets[k], k + 1),
+            ]),
+          ),
         const SizedBox(height: 4),
         Center(
           child: Semantics(
@@ -596,7 +838,8 @@ class _EditPageState extends State<_EditPage> {
             child: Hover(
               onTap: () => setState(() {
                 final last = e.sets.isEmpty ? null : e.sets.last;
-                e.sets.add(_Set(key: _key(), bw: last?.bw ?? e.body, keep: {if (last?.keep['rest_seconds'] != null) 'rest_seconds': last!.keep['rest_seconds']}));
+                final rest = last?.rest ?? (e.restWork > 0 ? e.restWork : null);
+                e.sets.add(_Set(key: _key(), bw: last?.bw ?? e.body, rest: rest, keep: {if (last?.keep['rest_seconds'] != null) 'rest_seconds': last!.keep['rest_seconds']}));
               }),
               builder: (_, h, _) => Container(
                 height: 40,
@@ -656,12 +899,13 @@ class _EditPageState extends State<_EditPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       color: s.done ? AppColors.logDoneRow : AppColors.white,
       child: _grid(e, [
-        // tap the set number to change its type: work → warm up → drop → failure (the logger's W / D / F)
-        Semantics(
+        // tap the set number for its menu: set type, rest, delete (the logger's, Probid 19 Nov: no toggle)
+        Builder(
+          builder: (bc) => Semantics(
           button: true,
-          label: 'Set $label type',
+          label: 'Set $label options',
           child: Hover(
-            onTap: () => setState(() => s.kind = SetKind.values[(s.kind.index + 1) % SetKind.values.length]),
+            onTap: () => _setMenu(bc, e, s),
             builder: (_, h, _) => Container(
               height: 30,
               alignment: Alignment.center,
@@ -670,20 +914,25 @@ class _EditPageState extends State<_EditPage> {
             ),
           ),
         ),
+        ),
         // PREVIOUS: tap to put those values in the boxes
         Semantics(
           button: true,
           label: pt.isEmpty ? 'No previous set' : 'Previous $pt',
           child: Hover(
             onTap: () {
-              if (pv.isEmpty || s.done) return;
+              // nothing to fill (no previous set, or the set is ticked): it shakes and the phone buzzes
+              if (pv.every((v) => v.isEmpty) || s.done) {
+                _refuse('prev:${s.key}');
+                return;
+              }
               setState(() {
                 for (var j = 0; j < boxes.length && j < pv.length; j++) {
                   boxes[j].text = pv[j];
                 }
               });
             },
-            builder: (_, _, _) => Container(
+            builder: (_, _, _) => _shaking(Container(
               height: 30,
               alignment: Alignment.center,
               child: pt.isEmpty
@@ -698,7 +947,7 @@ class _EditPageState extends State<_EditPage> {
                         style: AppText.s(14, W.w4, color: s.done ? AppColors.valPh : AppColors.text),
                       ),
                     ),
-            ),
+            ), 'prev:${s.key}'),
           ),
         ),
         for (var j = 0; j < boxes.length; j++) box(j),
@@ -707,7 +956,7 @@ class _EditPageState extends State<_EditPage> {
           label: s.done ? 'Untick set $label' : 'Tick set $label',
           child: Hover(
             onTap: () => _tick(e, k),
-            builder: (_, h, _) => Container(
+            builder: (_, h, _) => _shaking(Container(
               height: 30,
               alignment: Alignment.center,
               decoration: BoxDecoration(
@@ -715,7 +964,7 @@ class _EditPageState extends State<_EditPage> {
                 borderRadius: BorderRadius.circular(6),
               ),
               child: AppIcon(AppIcons.check, size: 18, stroke: 2.4, color: s.done ? AppColors.white : (h ? AppColors.logDoneTick : AppColors.valPh)),
-            ),
+            ), 'tick:${s.key}'),
           ),
         ),
       ]),
@@ -730,11 +979,7 @@ class _EditPageState extends State<_EditPage> {
         color: AppColors.red,
         child: const AppIcon(AppIcons.trash, size: 20, color: AppColors.white),
       ),
-      onDismissed: (_) => setState(() {
-        e.sets.remove(s);
-        s.dispose();
-        if (e.sets.isEmpty) _ex.remove(e);
-      }),
+      onDismissed: (_) => _deleteSet(e, s),
       child: row,
     );
   }

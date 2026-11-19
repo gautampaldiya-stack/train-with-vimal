@@ -533,6 +533,11 @@ class _WorkoutPanelHostState extends State<_WorkoutPanelHost> with SingleTickerP
   String? _req; // what opened it (Start / Continue / ⋯ Finish …), null = only the running workout
   double _navH = 0, _travel = 1;
 
+  /// One logger per open: the Start sheet (see-through) and the panel are two places in the tree, so the screen moves
+  /// between them with its state when Start workout is tapped, instead of starting a second one.
+  GlobalKey _screen = GlobalKey();
+  String? _screenFor;
+
   bool get _live {
     final c = WorkoutController.live.value;
     return c != null && c.ready && !c.finished;
@@ -621,6 +626,13 @@ class _WorkoutPanelHostState extends State<_WorkoutPanelHost> with SingleTickerP
     }
   }
 
+  /// The tab bar: it slides away under the panel as it comes up; under the Start sheet it stays (dimmed).
+  Widget _nav(bool shown, {bool slide = true}) => AnimatedBuilder(
+        animation: _t,
+        builder: (_, child) => Positioned(left: 0, right: 0, bottom: shown && slide ? -_navH * _t.value : 0, child: child!),
+        child: _Measure(onHeight: (v) => v != _navH ? setState(() => _navH = v) : null, child: widget.nav),
+      );
+
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
@@ -632,6 +644,13 @@ class _WorkoutPanelHostState extends State<_WorkoutPanelHost> with SingleTickerP
     final head = _head + (widget.bar ? 0 : inset);
     final navH = widget.bar ? _navH : 0.0;
     final q = Uri.parse('x${_req ?? ''}').queryParameters;
+    // Start workout on Train first shows only its sheet (the day and its exercises): the panel is then see-through
+    // and Train stays behind it, dimmed, with the tabs (Probid 19 Nov: "back me white kyu ho raha hai")
+    final preview = q['start'] != null && q['reopen'] == null && c == null;
+    if (_screenFor != _req) {
+      _screenFor = _req;
+      _screen = GlobalKey();
+    }
     final double below = (widget.bar && _navH > 0 ? _navH - inset : 0.0) + (shown ? head : 0) + 10;
     return AnimatedBuilder(
       animation: Listenable.merge([_t, WorkoutPanel.lift]),
@@ -641,8 +660,17 @@ class _WorkoutPanelHostState extends State<_WorkoutPanelHost> with SingleTickerP
         final h = box.maxHeight;
         _travel = math.max(1, h - navH - head);
         return Stack(children: [
-          Positioned(left: 0, right: 0, top: 0, bottom: navH + (shown ? head : 0), child: widget.page(!widget.bar && !shown)),
-          if (shown)
+          Positioned(left: 0, right: 0, top: 0, bottom: navH + (shown && !preview ? head : 0), child: widget.page(!widget.bar && !shown)),
+          if (widget.bar && preview) _nav(shown, slide: false),
+          if (shown && preview)
+            Positioned.fill(
+              child: MediaQuery.removePadding(
+                context: context,
+                removeTop: true,
+                child: WorkoutScreen(key: _screen, start: int.tryParse(q['start'] ?? ''), then: q['then']),
+              ),
+            ),
+          if (shown && !preview)
             AnimatedBuilder(
               animation: _t,
               builder: (context, child) {
@@ -687,7 +715,7 @@ class _WorkoutPanelHostState extends State<_WorkoutPanelHost> with SingleTickerP
                   context: context,
                   removeTop: true,
                   child: WorkoutScreen(
-                    key: ValueKey(_req ?? ''),
+                    key: _screen,
                     start: int.tryParse(q['start'] ?? ''),
                     reopen: q['reopen'],
                     review: q['review'],
@@ -696,12 +724,7 @@ class _WorkoutPanelHostState extends State<_WorkoutPanelHost> with SingleTickerP
                 ),
               ),
             ),
-          if (widget.bar)
-            AnimatedBuilder(
-              animation: _t,
-              builder: (_, child) => Positioned(left: 0, right: 0, bottom: shown ? -_navH * _t.value : 0, child: child!),
-              child: _Measure(onHeight: (v) => v != _navH ? setState(() => _navH = v) : null, child: widget.nav),
-            ),
+          if (widget.bar && !preview) _nav(shown),
         ]);
       }),
     );
