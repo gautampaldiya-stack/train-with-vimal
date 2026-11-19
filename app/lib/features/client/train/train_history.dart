@@ -8,12 +8,14 @@ import '../../../core/theme/theme.dart';
 import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/responsive.dart';
+import '../../../core/widgets/skeleton.dart';
 import 'train_model.dart';
 import 'workout_model.dart' show SetKind;
 
 /// Workout History (Probid 19 Nov, Strong's History): a page, not a sheet. Months with their workouts; each workout a
-/// card with its exercises (sets × name) and best set, then time, kg lifted and PRs. Tap a card for the workout.
-/// Only looking here: edit and log are for yesterday, from the Train strip.
+/// card with its exercises (sets × name) and best set, then time, kg lifted and PRs as coloured pills. Tap a card for
+/// the workout. Only looking here: edit and log are for today / yesterday, from the Train strip.
+/// The page frame, the pills and the skeleton are shared with Food → History and Water history.
 
 String _when(DateTime? at, DateTime day) {
   final d = at ?? day;
@@ -27,27 +29,53 @@ String _hm(int seconds) {
 
 String _kgs(double v) => '${NumberFormat.decimalPattern().format(v.round())} kg';
 
-/// Time · kg lifted · PRs, with icons (the line under a Strong history card and workout).
-Widget _stats(int seconds, double volume, int prs) {
-  Widget stat(AppIconData icon, String text) => Row(mainAxisSize: MainAxisSize.min, spacing: 6, children: [
-        AppIcon(icon, size: 16, color: AppColors.muted),
-        Text(text, style: AppText.s(14, W.w5, color: AppColors.text2, tabular: true)),
-      ]);
-  return Wrap(spacing: 22, runSpacing: 6, children: [
-    stat(AppIcons.clock, _hm(seconds)),
-    if (volume > 0) stat(AppIcons.dumbbell, _kgs(volume)),
-    if (prs > 0) stat(AppIcons.award, '$prs ${prs == 1 ? 'PR' : 'PRs'}'),
-  ]);
+/// A soft coloured pill with a coloured icon: "⏱ 55m", "🏋 4,352 kg", "🏅 3 PRs" (Probid 19 Nov: icons in colour).
+class HistPill extends StatelessWidget {
+  const HistPill(this.icon, this.text, {super.key, required this.bg, required this.fg});
+  final AppIconData icon;
+  final String text;
+  final Color bg, fg;
+
+  static HistPill time(String t) => HistPill(AppIcons.clock, t, bg: AppColors.skySoft, fg: AppColors.skyMid);
+  static HistPill kg(String t) => HistPill(AppIcons.dumbbell, t, bg: AppColors.accentSoft, fg: AppColors.accentText);
+  static HistPill prs(String t) => HistPill(AppIcons.award, t, bg: AppColors.amberBg, fg: AppColors.amberText);
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 28,
+        padding: const EdgeInsets.fromLTRB(8, 0, 10, 0),
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(14)),
+        child: Row(mainAxisSize: MainAxisSize.min, spacing: 5, children: [
+          AppIcon(icon, size: 14, color: fg, stroke: 2.2),
+          Text(text, style: AppText.s(13, W.w6, color: fg, tabular: true)),
+        ]),
+      );
 }
 
+Widget _stats(int seconds, double volume, int prs) => Wrap(spacing: 8, runSpacing: 6, children: [
+      HistPill.time(_hm(seconds)),
+      if (volume > 0) HistPill.kg(_kgs(volume)),
+      if (prs > 0) HistPill.prs('$prs ${prs == 1 ? 'PR' : 'PRs'}'),
+    ]);
+
+/// A round coloured tile with an icon, at the start of a history card.
+Widget histTile(AppIconData icon, {Color bg = AppColors.tnBlueBg, Color fg = AppColors.accent, double size = 40}) => Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(size * .3)),
+      child: AppIcon(icon, size: size * .45, color: fg),
+    );
+
 /// A phone page with the Strong bar (Back, moving title) or, wider, a plain column with a back link.
-Widget _page(BuildContext context, {required String title, String? sub, required String backTip, required VoidCallback onBack, required List<Widget> children, ScrollController? scroll}) {
+Widget histPage(BuildContext context, {required String title, String? sub, required String backTip, required VoidCallback onBack, required List<Widget> children, ScrollController? scroll, Widget? action}) {
   if (context.isPhone) {
     return CaPinned(
       titleTop: 2,
-      head: CaTopBar(title: title, onBack: onBack, backTip: backTip),
+      head: CaTopBar(title: title, onBack: onBack, backTip: backTip, actions: [?action]),
       body: ListView(
         controller: scroll,
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 2, 16, 32),
         children: [
           Padding(padding: const EdgeInsets.only(bottom: 14), child: CaPageTitle(title, sub: sub)),
@@ -64,10 +92,11 @@ Widget _page(BuildContext context, {required String title, String? sub, required
         controller: scroll,
         padding: const EdgeInsets.fromLTRB(32, 24, 32, 48),
         children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: CaBarText(backTip, icon: AppIcons.chevronLeft, onTap: onBack),
-          ),
+          Row(children: [
+            CaBarText(backTip, icon: AppIcons.chevronLeft, onTap: onBack),
+            const Spacer(),
+            ?action,
+          ]),
           Padding(padding: const EdgeInsets.only(top: 6, bottom: 18), child: CaPageTitle(title, sub: sub)),
           ...children,
         ],
@@ -76,10 +105,40 @@ Widget _page(BuildContext context, {required String title, String? sub, required
   );
 }
 
-Widget _spinner() => const Padding(
-      padding: EdgeInsets.all(28),
-      child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.accent))),
-    );
+/// Loading: [cards] grey cards shaped like the real ones, breathing (Probid 19 Nov: skeleton).
+class HistSkeleton extends StatelessWidget {
+  const HistSkeleton({super.key, this.cards = 3, this.lines = 3, this.header = true});
+  final int cards, lines;
+  final bool header;
+  @override
+  Widget build(BuildContext context) => Skeleton(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+          if (header) const Padding(padding: EdgeInsets.only(top: 2, bottom: 2), child: SkelBox(width: 120, height: 18)),
+          for (var i = 0; i < cards; i++)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
+                const Row(spacing: 12, children: [
+                  SkelBox(width: 40, height: 40, radius: 12),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 7, children: [
+                      SkelBox(width: 130, height: 14),
+                      SkelBox(width: 200, height: 11),
+                    ]),
+                  ),
+                ]),
+                for (var k = 0; k < lines; k++)
+                  Row(children: [
+                    Expanded(child: SkelBox(width: 140.0 - k * 18, height: 11)),
+                    const SkelBox(width: 70, height: 11),
+                  ]),
+                const Row(spacing: 8, children: [SkelBox(width: 64, height: 26, radius: 13), SkelBox(width: 84, height: 26, radius: 13)]),
+              ]),
+            ),
+        ]),
+      );
+}
 
 // ─────────────────────────────── History list
 
@@ -150,7 +209,9 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
             CaButton('Try again', kind: CaBtnKind.out, small: true, expand: false, onPressed: () => _load(again: true)),
           ]),
         )
-      else if (_rows.isEmpty && !_loading && _last != null)
+      else if (_rows.isEmpty && _last == null)
+        const HistSkeleton()
+      else if (_rows.isEmpty && !_loading)
         const Padding(
           padding: EdgeInsets.only(top: 24),
           child: CaEmpty(icon: AppIcons.dumbbell, title: 'No workouts yet', sub: 'Finished workouts show here, newest first.'),
@@ -158,24 +219,28 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
       for (final (i, (m, rows)) in months.indexed) ...[
         Padding(
           padding: EdgeInsets.only(top: i == 0 ? 2 : 18, bottom: 10),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Expanded(child: Text(DateFormat(m.year == DateTime.now().year ? 'MMMM' : 'MMMM y').format(m), style: AppText.s(19, W.w6, ls: -0.2))),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.center, spacing: 8, children: [
+            Text(DateFormat(m.year == DateTime.now().year ? 'MMMM' : 'MMMM y').format(m), style: AppText.s(19, W.w7, ls: -0.2)),
             // a month still loading more is not counted yet
             if (i < months.length - 1 || !_more)
-              Text('${rows.length} ${rows.length == 1 ? 'workout' : 'workouts'}', style: AppText.s(13, W.w5, color: AppColors.muted)),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(10)),
+                child: Text('${rows.length} ${rows.length == 1 ? 'workout' : 'workouts'}', style: AppText.s(12, W.w6, color: AppColors.accentText)),
+              ),
           ]),
         ),
         for (final r in rows) Padding(padding: const EdgeInsets.only(bottom: 12), child: _card(r)),
       ],
-      if (_loading) _spinner(),
+      if (_loading && _rows.isNotEmpty) const HistSkeleton(cards: 1, header: false),
     ];
     return RefreshIndicator(
       color: AppColors.accent,
       onRefresh: () => _load(again: true),
-      child: _page(
+      child: histPage(
         context,
-        title: 'History',
-        sub: _last == null ? null : '$n ${n == 1 ? 'workout' : 'workouts'}',
+        title: 'Workout history',
+        sub: _last == null ? 'Your finished workouts' : '$n ${n == 1 ? 'workout' : 'workouts'} done',
         backTip: 'Train',
         onBack: () => context.go('/train'),
         scroll: _scroll,
@@ -193,34 +258,57 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
       child: Hover(
         onTap: () => context.go('/train/history/${r.id}'),
         builder: (_, h, _) => Container(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
           decoration: BoxDecoration(
-            color: h ? AppColors.sub : AppColors.white,
-            borderRadius: BorderRadius.circular(12),
+            color: h ? AppColors.outlineHover : AppColors.white,
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(color: h ? AppColors.line2 : AppColors.line),
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Row(spacing: 8, children: [
-              Expanded(child: Text(r.name, style: AppText.s(16.5, W.w6))),
-              if (r.edited > 0) Text('Edited', style: AppText.s(12, W.w6, color: AppColors.muted)),
+            Row(spacing: 12, children: [
+              histTile(r.pr ? AppIcons.award : AppIcons.dumbbell, bg: r.pr ? AppColors.amberBg : AppColors.tnBlueBg, fg: r.pr ? AppColors.amberText : AppColors.accent),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
+                  Row(spacing: 8, children: [
+                    Flexible(child: Text(r.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(16.5, W.w7))),
+                    if (r.edited > 0)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        decoration: BoxDecoration(color: AppColors.purpleBg, borderRadius: BorderRadius.circular(6)),
+                        child: Text('Edited', style: AppText.s(11, W.w7, color: AppColors.purpleText)),
+                      ),
+                  ]),
+                  Text(_when(r.startedAt, r.date), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted)),
+                ]),
+              ),
+              const AppIcon(AppIcons.chevronRight, size: 16, color: AppColors.chevron),
             ]),
-            Text(_when(r.startedAt, r.date), style: AppText.s(13.5, W.w4, color: AppColors.text2)),
             if (shown.isNotEmpty) ...[
               const SizedBox(height: 12),
               Row(children: [
-                Expanded(flex: 3, child: Text('Sets', style: AppText.s(14, W.w6))),
-                Expanded(flex: 2, child: Text('Best set', style: AppText.s(14, W.w6))),
+                Expanded(flex: 3, child: Text('SETS', style: AppText.s(11, W.w8, color: AppColors.muted, ls: .8))),
+                Expanded(flex: 2, child: Text('BEST SET', style: AppText.s(11, W.w8, color: AppColors.muted, ls: .8))),
               ]),
               const SizedBox(height: 4),
               for (final x in shown)
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  padding: const EdgeInsets.symmetric(vertical: 2.5),
                   child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Expanded(flex: 3, child: Text('${x.sets} × ${x.name}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w4, color: AppColors.text2))),
-                    Expanded(flex: 2, child: Text(x.best, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w4, color: AppColors.text2, tabular: true))),
+                    Expanded(
+                      flex: 3,
+                      child: Text.rich(
+                        TextSpan(children: [
+                          TextSpan(text: '${x.sets} × ', style: AppText.s(14, W.w7, color: AppColors.accentText, tabular: true)),
+                          TextSpan(text: x.name, style: AppText.s(14, W.w5, color: AppColors.text)),
+                        ]),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Expanded(flex: 2, child: Text(x.best, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(14, W.w5, color: AppColors.text2, tabular: true))),
                   ]),
                 ),
-              if (left > 0) Text('and $left more', style: AppText.s(13, W.w5, color: AppColors.muted)),
+              if (left > 0) Text('and $left more', style: AppText.s(12.5, W.w6, color: AppColors.muted)),
             ],
             const SizedBox(height: 12),
             _stats(r.seconds, r.volume, r.prs),
@@ -263,13 +351,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 
   void _back() => context.go(widget.from == 'progress' ? '/progress/history' : '/train/history');
+  String get _backTip => widget.from == 'progress' ? 'All history' : 'Workout history';
 
   @override
   Widget build(BuildContext context) {
     final d = _d;
-    final back = widget.from == 'progress' ? 'History' : 'History';
     if (d == null) {
-      return _page(context, title: 'Workout', backTip: back, onBack: _back, children: [
+      return histPage(context, title: 'Workout', backTip: _backTip, onBack: _back, children: [
         if (_error != null)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 24),
@@ -282,7 +370,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             ]),
           )
         else
-          _spinner(),
+          const HistSkeleton(cards: 3, lines: 4, header: false),
       ]);
     }
     final r = d.row;
@@ -297,33 +385,39 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       }
     }
     final edits = (d.j['edits'] as List? ?? const []).length;
-    return _page(
+    return histPage(
       context,
       title: r.name,
       sub: _when(shownStart, r.date),
-      backTip: back,
+      backTip: _backTip,
       onBack: _back,
       children: [
-        for (final g in d.groups) _exercise(g),
+        // time · kg · PRs on top, then effort and edits as small pills
+        Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: Wrap(spacing: 8, runSpacing: 6, children: [
+            HistPill.time(_hm(r.seconds)),
+            if (volume > 0) HistPill.kg(_kgs(volume)),
+            if (prs > 0) HistPill.prs('$prs ${prs == 1 ? 'PR' : 'PRs'}'),
+            if (r.effort != null) HistPill(AppIcons.flame, 'Effort ${r.effort}/10', bg: AppColors.warmBg, fg: AppColors.warm),
+            if (edits > 0) HistPill(AppIcons.edit, 'Edited $edits×', bg: AppColors.purpleBg, fg: AppColors.purpleText),
+          ]),
+        ),
+        for (final g in d.groups) Padding(padding: const EdgeInsets.only(bottom: 12), child: _exercise(g)),
         if (d.groups.isEmpty) Text('No sets were ticked in this workout.', style: AppText.s(14, W.w4, color: AppColors.muted)),
-        const SizedBox(height: 8),
-        _stats(r.seconds, volume, prs),
-        if (r.effort != null || edits > 0)
-          Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: Text(
-              [if (r.effort != null) 'Effort ${r.effort}/10', if (edits > 0) 'Edited $edits ${edits == 1 ? 'time' : 'times'}'].join(' · '),
-              style: AppText.s(13, W.w5, color: AppColors.muted),
-            ),
-          ),
         if (r.note.isNotEmpty)
           Container(
-            margin: const EdgeInsets.only(top: 14),
+            margin: const EdgeInsets.only(top: 2),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(color: AppColors.infoBg, borderRadius: BorderRadius.circular(10)),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-              Text('Your note', style: AppText.s(11.5, W.w7, color: AppColors.infoText)),
-              Text(r.note, style: AppText.s(13.5, W.w4, color: AppColors.text2)),
+            decoration: BoxDecoration(color: AppColors.infoBg, borderRadius: BorderRadius.circular(12)),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 8, children: [
+              const AppIcon(AppIcons.chatBubble, size: 16, color: AppColors.infoText),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+                  Text('Your note', style: AppText.s(11.5, W.w7, color: AppColors.infoText)),
+                  Text(r.note, style: AppText.s(13.5, W.w4, color: AppColors.text2)),
+                ]),
+              ),
             ]),
           ),
       ],
@@ -341,50 +435,63 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
   Widget _exercise(({String name, String logType, bool pr, List<Map<String, dynamic>> sets}) g) {
     final rm = g.logType == 'weight_reps';
+    final (icon, bg, fg) = switch (g.logType) {
+      'distance' => (AppIcons.heartPulse, AppColors.badBg, AppColors.badText),
+      'time' => (AppIcons.clock, AppColors.amberBg, AppColors.amberText),
+      'bodyweight_reps' => (AppIcons.person, AppColors.okBg, AppColors.okText),
+      _ => (AppIcons.dumbbell, AppColors.tnBlueBg, AppColors.accent),
+    };
     var n = 0;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+      decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Row(children: [
-          Expanded(child: Text(g.name, style: AppText.s(16, W.w6))),
-          if (rm) SizedBox(width: 56, child: Text('1RM', textAlign: TextAlign.right, style: AppText.s(14, W.w6))),
+        Row(spacing: 10, children: [
+          histTile(icon, bg: bg, fg: fg, size: 32),
+          Expanded(child: Text(g.name, style: AppText.s(15.5, W.w7, color: AppColors.accentText))),
+          if (rm) SizedBox(width: 50, child: Text('1RM', textAlign: TextAlign.right, style: AppText.s(11, W.w8, color: AppColors.muted, ls: .8))),
         ]),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         for (final s in g.sets) ...[
           () {
             final kind = SetKind.of(s['set_type'] as String?);
             if (kind == SetKind.normal) n++;
-            final color = switch (kind) {
-              SetKind.warmup => AppColors.amberText,
-              SetKind.drop => AppColors.purpleText,
-              SetKind.failure => AppColors.badText,
-              SetKind.normal => AppColors.text2,
+            final (lbg, lfg) = switch (kind) {
+              SetKind.warmup => (AppColors.amberBg, AppColors.amberText),
+              SetKind.drop => (AppColors.purpleBg, AppColors.purpleText),
+              SetKind.failure => (AppColors.badBg, AppColors.badText),
+              SetKind.normal => (AppColors.sub, AppColors.text2),
             };
             final one = _oneRm(g.logType, s);
+            final best = s['is_pr'] == true;
             return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2.5),
-              child: Row(children: [
-                SizedBox(width: 30, child: Text(kind == SetKind.normal ? '$n' : kind.letter, style: AppText.s(15, W.w5, color: color, tabular: true))),
-                Expanded(child: Text(PastDetail.setText(g.logType, s), style: AppText.s(15, W.w4, color: AppColors.text2, tabular: true))),
-                if (rm) SizedBox(width: 56, child: Text(one == null ? '' : '$one', textAlign: TextAlign.right, style: AppText.s(15, W.w4, color: AppColors.text2, tabular: true))),
+              padding: const EdgeInsets.symmetric(vertical: 3),
+              child: Row(spacing: 10, children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: lbg, borderRadius: BorderRadius.circular(7)),
+                  child: Text(kind == SetKind.normal ? '$n' : kind.letter, style: AppText.s(12.5, W.w7, color: lfg, tabular: true)),
+                ),
+                Expanded(
+                  child: Row(spacing: 8, children: [
+                    Flexible(child: Text(PastDetail.setText(g.logType, s), style: AppText.s(15, W.w5, color: AppColors.text, tabular: true))),
+                    if (best)
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(6, 2, 8, 2),
+                        decoration: BoxDecoration(color: AppColors.amberBg, borderRadius: BorderRadius.circular(10)),
+                        child: Row(mainAxisSize: MainAxisSize.min, spacing: 3, children: [
+                          const AppIcon(AppIcons.award, size: 12, color: AppColors.amberText),
+                          Text('PR', style: AppText.s(11.5, W.w7, color: AppColors.amberText)),
+                        ]),
+                      ),
+                  ]),
+                ),
+                if (rm) SizedBox(width: 50, child: Text(one == null ? '' : '$one', textAlign: TextAlign.right, style: AppText.s(14.5, W.w6, color: AppColors.text2, tabular: true))),
               ]),
             );
           }(),
-          if (s['is_pr'] == true)
-            Padding(
-              padding: const EdgeInsets.only(top: 2, bottom: 4),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(8, 3, 10, 3),
-                  decoration: BoxDecoration(color: AppColors.okBg, borderRadius: BorderRadius.circular(20), border: Border.all(color: AppColors.okText.withValues(alpha: .35))),
-                  child: Row(mainAxisSize: MainAxisSize.min, spacing: 5, children: [
-                    const AppIcon(AppIcons.award, size: 13, color: AppColors.okText),
-                    Text('Personal best', style: AppText.s(12.5, W.w6, color: AppColors.okText)),
-                  ]),
-                ),
-              ),
-            ),
         ],
       ]),
     );

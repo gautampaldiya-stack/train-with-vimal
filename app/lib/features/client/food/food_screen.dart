@@ -117,7 +117,10 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
 
   Widget _phone(FoodDay d) => CaPinned(
     // Strong (Probid 18 Nov): the bar keeps only the Log food icon, the title scrolls with the page
-    head: CaTopBar(title: 'Food', actions: [CaBarText('Log food', icon: AppIcons.plus, onTap: _logFood)]),
+    head: CaTopBar(title: 'Food', actions: [
+      CaBarText('History', icon: AppIcons.clock, onTap: () => context.go('/food/history')),
+      CaBarText('Log food', icon: AppIcons.plus, onTap: _logFood),
+    ]),
     body: RefreshIndicator(
       onRefresh: c.load,
       color: AppColors.accent,
@@ -234,6 +237,7 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
             CutText(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(13, W.w6, color: AppColors.muted)),
           ]),
         ),
+        chSm('History', () => context.go('/food/history'), icon: AppIcons.clock),
         chSm('Log food', _logFood, icon: AppIcons.plus, kind: CaBtnKind.dark),
       ]),
     );
@@ -618,7 +622,7 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
             }));
   }
 
-  Future<void> _waterHistory() => showWaterHistorySheet(context);
+  void _waterHistory() => context.go('/food/water');
 
   // ─────────────────────────────── Tabs and lists
 
@@ -642,7 +646,6 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
     final next = d.isToday ? d.meals.where((m) => m.open).firstOrNull : null;
     return [
       for (final m in d.meals) KeyedSubtree(key: _mealKeys.putIfAbsent(m.id, GlobalKey.new), child: _meal(d, m, next: m == next || _flash == m.id)),
-      if (d.isToday || d.isYesterday) FdElse(d.isToday ? 'Ate something else' : 'Ate something else yesterday', icon: AppIcons.plus, onTap: _logFood),
     ];
   }
 
@@ -1123,7 +1126,7 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
     final ps = _photos[m.id]!;
     Future<void> drop(int i) async {
       // asks first (Probid A3)
-      if (!await confirmAction(context, title: 'Delete this image?', body: 'It comes off ${m.name}. You can add another one.', confirm: 'Delete', danger: true, icon: AppIcons.trash)) return;
+      if (!await confirmAction(context, title: 'Delete this image?', body: 'It comes off ${m.name}. You can add another one.', confirm: 'Delete', danger: true, icon: AppIcons.trash, center: true)) return;
       if (!mounted) return;
       setState(() {
         final left = [...ps]..removeAt(i);
@@ -1507,7 +1510,7 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
   Future<void> _removePhoto(FMeal m) async {
     final n = m.photos.length;
     final ok = n < 2 ||
-        await confirmAction(context, title: 'Remove all $n photos?', body: '${m.name} stays logged.', confirm: 'Remove', danger: true, icon: AppIcons.trash);
+        await confirmAction(context, title: 'Remove all $n photos?', body: '${m.name} stays logged.', confirm: 'Remove', danger: true, icon: AppIcons.trash, center: true);
     if (!ok || !mounted) return;
     final old = m.photo;
     try {

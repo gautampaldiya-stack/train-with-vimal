@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import '../icons/app_icons.dart';
@@ -52,7 +53,18 @@ class _CaPinnedState extends State<CaPinned> {
 
   bool _onScroll(ScrollNotification n) {
     // only the page's own up-down list, not a week strip or a chips row inside it
-    if (n.depth == 0 && n.metrics.axis == Axis.vertical) _scrolled.value = n.metrics.pixels.clamp(0, 400).toDouble();
+    if (n.depth == 0 && n.metrics.axis == Axis.vertical) {
+      final v = n.metrics.pixels.clamp(0, 400).toDouble();
+      // a list that changes size while it is laid out (Progress → History, Weight tab) ends its drag inside layout;
+      // the bar then waits for the next frame instead of rebuilding in the middle of this one (Probid 19 Nov crash)
+      if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _scrolled.value = v;
+        });
+      } else {
+        _scrolled.value = v;
+      }
+    }
     return false;
   }
 

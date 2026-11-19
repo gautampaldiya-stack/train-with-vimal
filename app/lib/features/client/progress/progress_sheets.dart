@@ -283,7 +283,7 @@ Future<void> showPhotoSheet(BuildContext context, ProgressController c, PxSet se
             if (photo != null && photo.id > 0)
               Expanded(
                 child: CaButton('Delete photo', kind: CaBtnKind.out, small: true, icon: AppIcons.trash, onPressed: () async {
-                  final ok = await confirmAction(ctx, title: 'Delete this photo?', body: '${p.value} photo · ${pxDm(set.date)}. You can add a new one today.', confirm: 'Delete', danger: true);
+                  final ok = await confirmAction(ctx, title: 'Delete this photo?', body: '${p.value} photo · ${pxDm(set.date)}. You can add a new one today.', confirm: 'Delete', danger: true, center: true);
                   if (!ok || !ctx.mounted) return;
                   Navigator.of(ctx).pop();
                   try {

@@ -329,7 +329,9 @@ def history(client, *, rng="week", kind=None, offset=0, limit=7):
                 det.append([f"{e.meal_name} · {clock(timezone.localtime(e.logged_at))}", e.name])
             title = f"Meals · {len(logged)} of {len(meals)} logged" if meals else f"Food · {len(rows)} logged"
             if logged or rows or d < today:
-                es.append({"type": "meal", "title": title,
+                es.append({"type": "meal", "title": title, "kcal": kc if rows else 0, "protein": pr if rows else 0,
+                           "carbs": round(tot["carbs"]) if rows else 0, "fat": round(tot["fat"]) if rows else 0,
+                           "logged": len(logged), "planned": len(meals), "foods": len(rows),
                            "sub": f"{kc:,} kcal · {pr} g protein" if rows else "Nothing logged",
                            "detail": det, "partial": d == today})
                 if rows and d < today:

@@ -1172,7 +1172,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
         ml: d.waterMl,
         goal: d.waterGoal,
         onLog: _logWater,
-        onHistory: () => showWaterHistorySheet(context),
+        onHistory: () => context.go('/food/water?from=home'),
       );
 
   // ─────────────────────────────── Food

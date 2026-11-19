@@ -32,11 +32,7 @@ class ClientCheckinsScreen extends StatefulWidget {
 class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
   final c = CheckinsController();
   final _scroll = ScrollController();
-  // past check-ins scroll inside their card; one list per tab, as Weekly and Daily slide past each other (Probid 19 Nov)
-  final _lists = {'weekly': ScrollController(), 'daily': ScrollController()};
-  ScrollController get _list => _lists[c.tab] ?? _lists['weekly']!;
   bool _opened = false;
-  bool _atEnd = false;
 
   @override
   void initState() {
@@ -44,24 +40,12 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
     // From Home: the open day (today, or yesterday while unsent), not a day picked earlier on the strip.
     if (widget.from == 'home') CheckinsController.pickedDay = null;
     c.start().then((_) => _openFromLink());
-    for (final l in _lists.values) {
-      l.addListener(() {
-        if (l != _list || !l.hasClients) return;
-        if (l.position.extentAfter < 200) c.loadMore();
-        // The fade and "scroll for older" line follow the list's position.
-        final end = l.position.extentAfter < 4;
-        if (end != _atEnd) setState(() => _atEnd = end);
-      });
-    }
   }
 
   @override
   void dispose() {
     c.dispose();
     _scroll.dispose();
-    for (final l in _lists.values) {
-      l.dispose();
-    }
     _dayCtl?.dispose();
     super.dispose();
   }
@@ -114,7 +98,13 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
   // ─────────────────────────────── Layouts
 
   Widget _phone(CheckinsData d) => CaPinned(
-    head: CaTopBar(title: 'Check-ins', backTip: 'Back to More', onBack: () => context.go('/more')),
+    head: CaTopBar(
+      title: 'Check-ins',
+      backTip: 'Back to More',
+      onBack: () => context.go('/more'),
+      // Past check-ins are their own page now (Probid 19 Nov)
+      actions: [CaBarText('History', icon: AppIcons.clock, onTap: () => context.go('/checkins/history'))],
+    ),
     body: RefreshIndicator(
       onRefresh: c.load,
       color: AppColors.accent,
@@ -125,7 +115,7 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           spacing: 12,
-          children: [Padding(padding: const EdgeInsets.only(bottom: 4), child: CaPageTitle('Check-ins', sub: d.subShort)), ?_setup(d), _cells(d), ?_daily(d), ?_weekly(d), ..._forms(d), _history(d)],
+          children: [Padding(padding: const EdgeInsets.only(bottom: 4), child: CaPageTitle('Check-ins', sub: d.subShort)), ?_setup(d), _cells(d), ?_daily(d), ?_weekly(d), ..._forms(d)],
         ),
       ),
     ),
@@ -165,7 +155,7 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               spacing: 14,
-                              children: [..._forms(d), _history(d)],
+                              children: [..._forms(d)],
                             ),
                           ),
                         ],
@@ -173,7 +163,6 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
                     else ...[
                       ...left,
                       ..._forms(d),
-                      _history(d),
                     ],
                   ],
                 );
@@ -199,7 +188,12 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
         ),
       ],
     );
-    if (web) return title;
+    if (web) {
+      return Row(spacing: 10, children: [
+        Expanded(child: title),
+        chSm('History', () => context.go('/checkins/history'), icon: AppIcons.clock),
+      ]);
+    }
     return Row(
       spacing: 10,
       children: [
@@ -581,226 +575,6 @@ class _ClientCheckinsScreenState extends State<ClientCheckinsScreen> {
     decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(6)),
     child: Text(t, style: AppText.s(11.5, W.w7, color: AppColors.text2)),
   );
-
-  // ─────────────────────────────── Past check-ins
-
-  /// No cue when the list is at its end, or every row is loaded and fits without scrolling.
-  bool get _scrollEnd {
-    if (_list.hasClients && _list.position.hasContentDimensions) return _list.position.maxScrollExtent <= 0 || _atEnd && !c.hasMore;
-    return !c.hasMore && c.rows.length >= c.total && c.rows.length <= 5;
-  }
-
-  Widget _history(CheckinsData d) {
-    // The list's size is known only after layout: check the cue again once this frame is drawn.
-    final shownEnd = _scrollEnd;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _scrollEnd != shownEnd) setState(() {});
-    });
-    Widget tab(String l, String v) => Hover(
-      onTap: () => c.pickTab(v),
-      builder: (_, h, _) {
-        final on = c.tab == v;
-        return Container(
-          height: 30,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: on ? AppColors.white : null,
-            borderRadius: BorderRadius.circular(6),
-            boxShadow: on
-                ? const [BoxShadow(color: AppColors.shadowSoft, blurRadius: 2, offset: Offset(0, 1)), BoxShadow(color: AppColors.line, spreadRadius: 1)]
-                : null,
-          ),
-          child: Text(l, style: AppText.s(13, W.w6, color: on || h ? AppColors.text : AppColors.text2)),
-        );
-      },
-    );
-    final rows = c.rows;
-    final maxH = context.isPhone ? (MediaQuery.sizeOf(context).height * .6).clamp(320.0, 520.0) : 560.0;
-    // a flick left / right on the card moves Weekly ⇄ Daily (Probid 18 Nov)
-    return CaSwipe(
-      index: c.tab == 'weekly' ? 0 : 1,
-      count: 2,
-      onPick: (i) => c.pickTab(i == 0 ? 'weekly' : 'daily'),
-      child: _historyCard(d, rows, maxH, tab),
-    );
-  }
-
-  Widget _historyCard(CheckinsData d, List rows, double maxH, Widget Function(String, String) tab) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 4, 14, 6),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.line),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Row(
-              spacing: 8,
-              children: [
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-                    Text('Past check-ins', style: AppText.s(15, W.w8)),
-                    // Count of the whole list, so it is clear how many there are before scrolling (Gautam 2026-10-16).
-                    if (c.total > 0)
-                      Text(
-                        '${c.total} ${c.total == 1 ? 'check-in' : 'check-ins'} · ${c.totalSent} sent'
-                        '${c.totalMissed == 0 ? '' : ' · ${c.totalMissed} missed'}',
-                        style: AppText.s(12, W.w4, color: AppColors.muted),
-                      ),
-                  ]),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(8)),
-                  child: Row(mainAxisSize: MainAxisSize.min, spacing: 2, children: [tab('Weekly', 'weekly'), tab('Daily', 'daily')]),
-                ),
-              ],
-            ),
-          ),
-          if (rows.isNotEmpty)
-            ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: maxH),
-              child: Stack(children: [
-                // No scrollbar (E24): the fade and "Scroll for older" show there is more.
-                ScrollConfiguration(
-                  behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-                  child: ListView.builder(
-                controller: _list,
-                shrinkWrap: true,
-                padding: EdgeInsets.zero,
-                itemCount: rows.length + (c.hasMore ? 1 : 0),
-                itemBuilder: (_, i) => i < rows.length
-                    ? _row(d, i, rows[i])
-                    : const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 10),
-                        child: Center(
-                          child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent)),
-                        ),
-                      ),
-                  ),
-                ),
-                // Fade at the bottom while more rows are below: the list scrolls.
-                if (!_scrollEnd)
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    height: 36,
-                    child: IgnorePointer(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [AppColors.white.withValues(alpha: 0), AppColors.white]),
-                        ),
-                      ),
-                    ),
-                  ),
-              ]),
-            ),
-          if (rows.isNotEmpty && !_scrollEnd)
-            Padding(
-              padding: const EdgeInsets.only(top: 6, bottom: 2),
-              child: Row(mainAxisAlignment: MainAxisAlignment.center, spacing: 4, children: [
-                const AppIcon(AppIcons.chevronDown, size: 13, color: AppColors.muted),
-                Text(rows.length < c.total ? 'Scroll for older · ${rows.length} of ${c.total} shown' : 'Scroll for more', style: AppText.s(12, W.w6, color: AppColors.muted)),
-              ]),
-            ),
-          if (rows.isEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: const BoxDecoration(
-                border: Border(top: BorderSide(color: AppColors.line)),
-              ),
-              child: Text(
-                'No check-ins here yet.',
-                textAlign: TextAlign.center,
-                style: AppText.s(13, W.w4, color: AppColors.muted),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _row(CheckinsData d, int i, CkRow r) {
-    final weekly = c.tab == 'weekly';
-    final today = !weekly && DateUtils.isSameDay(r.date, DateTime.now());
-    final title = weekly ? 'Week ${r.week ?? '—'}' : '${dayShortNoYear(r.date)}${today ? ' · today' : ''}';
-    final sub = weekly ? weekLine(r) : dayLine(d, r);
-    final (pill, pbg, pfg) = r.missed
-        ? ('Missed', AppColors.badBg, AppColors.badText)
-        : r.reply.isNotEmpty
-        ? ('Replied', AppColors.okBg, AppColors.okText)
-        : weekly
-        ? (r.reviewed ? ('Reviewed', AppColors.okBg, AppColors.okText) : ('Sent', AppColors.infoBg, AppColors.infoText))
-        : ('Sent', AppColors.sub, AppColors.text2);
-    final wait = weekly && r.waiting;
-    final (ibg, ifg, icon) = r.missed
-        ? (AppColors.badBg, AppColors.badText, AppIcons.close)
-        : wait
-        ? (AppColors.infoBg, AppColors.infoText, AppIcons.clock)
-        : (AppColors.okBg, AppColors.okText, AppIcons.check);
-    return Hover(
-      onTap: () => showPastCheckin(context, c, i),
-      builder: (_, h, _) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: AppColors.line)),
-        ),
-        child: Row(
-          spacing: 10,
-          children: [
-            Container(
-              width: 26,
-              height: 26,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(color: ibg, shape: BoxShape.circle),
-              child: AppIcon(icon, size: 13, color: ifg, stroke: 2.6),
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: 1,
-                children: [
-                  Text(title, style: AppText.s(14, W.w7, color: h ? AppColors.accentText : AppColors.text)),
-                  CutText(
-                    sub,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppText.s(12, W.w4, color: AppColors.muted),
-                  ),
-                  if (r.reply.isNotEmpty)
-                    Container(
-                      margin: const EdgeInsets.only(top: 4),
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-                      decoration: BoxDecoration(color: AppColors.replyBg, borderRadius: BorderRadius.circular(8)),
-                      child: Text.rich(
-                        TextSpan(
-                          children: [
-                            TextSpan(
-                              text: '${d.coachFirst}: ',
-                              style: AppText.s(12, W.w8, color: AppColors.okText),
-                            ),
-                            TextSpan(text: r.reply),
-                          ],
-                        ),
-                        style: AppText.s(12, W.w4, color: AppColors.text2, h: 1.4),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            hkPill(pill, bg: pbg, fg: pfg),
-            const AppIcon(AppIcons.chevronRight, size: 15, color: AppColors.chevron),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 /// "Sun, 4 Oct · 71.6 kg · 3 photos" / "Sun, 20 Sep · not sent"

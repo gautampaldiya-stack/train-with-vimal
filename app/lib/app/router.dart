@@ -31,7 +31,9 @@ import '../features/auth/setup/checklist_screen.dart';
 import '../features/auth/setup/done_screen.dart';
 import '../features/auth/setup/setup_screen.dart';
 import '../features/client/checkins/checkins_form.dart';
+import '../features/client/checkins/checkins_history.dart';
 import '../features/client/checkins/checkins_screen.dart';
+import '../features/client/food/food_history.dart';
 import '../features/client/food/food_log_screen.dart';
 import '../features/client/food/food_screen.dart';
 import '../features/client/habits/habits_screen.dart';
@@ -43,6 +45,7 @@ import '../features/client/library/library_screen.dart';
 import '../features/client/more/about_screen.dart';
 import '../features/client/more/more_screen.dart';
 import '../features/client/train/train_history.dart';
+import '../features/client/water/water.dart' show WaterHistoryScreen;
 import '../features/client/train/train_screen.dart';
 import '../features/client/train/workout_screen.dart';
 import '../features/library/content/content_screen.dart';
@@ -102,12 +105,17 @@ final Map<String, Widget Function(GoRouterState)> screens = {
   '/habits': (_) => const ClientHabitsScreen(),
   '/food': (st) => ClientFoodScreen(key: ValueKey(st.uri.toString()), meal: int.tryParse(st.uri.queryParameters['meal'] ?? ''),
       water: st.uri.queryParameters['water'] == '1'),
-  '/food/:id': (st) => st.pathParameters['id'] == 'log'
-      ? FoodLogScreen(key: ValueKey(st.uri.toString()), meal: st.uri.queryParameters['meal'], at: st.uri.queryParameters['at'], date: st.uri.queryParameters['date'])
-      : const ClientFoodScreen(),
+  '/food/:id': (st) => switch (st.pathParameters['id']) {
+        'log' => FoodLogScreen(key: ValueKey(st.uri.toString()), meal: st.uri.queryParameters['meal'], at: st.uri.queryParameters['at'], date: st.uri.queryParameters['date']),
+        // Food history, Water history: pages (Probid 19 Nov)
+        'history' => const FoodHistoryScreen(),
+        'water' => WaterHistoryScreen(key: ValueKey(st.uri.toString()), from: st.uri.queryParameters['from']),
+        _ => const ClientFoodScreen(),
+      },
+  '/food/history/:sub': (st) => FoodDayHistoryScreen(key: ValueKey(st.uri.toString()), date: st.pathParameters['sub']!),
   '/checkins': (_) => const ClientCheckinsScreen(),
   '/checkins/forms/:sub': (st) => ClientFormScreen(key: ValueKey(st.uri.toString()), id: st.pathParameters['sub']!),
-  '/checkins/:id': (st) => ClientCheckinsScreen(
+  '/checkins/:id': (st) => st.pathParameters['id'] == 'history' ? const CheckinHistoryScreen() : ClientCheckinsScreen(
         key: ValueKey(st.uri.toString()),
         id: st.pathParameters['id'],
         edit: st.uri.queryParameters['edit'] == '1',

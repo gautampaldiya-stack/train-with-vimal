@@ -554,24 +554,25 @@ class PxEntryRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final (ic, bg, fg) = pxTypeIcon(e.type);
     return Container(
-      padding: EdgeInsets.symmetric(vertical: chevron ? 11 : 8),
+      padding: EdgeInsets.symmetric(vertical: chevron ? 13 : 8),
       decoration: BoxDecoration(border: first ? null : const Border(top: BorderSide(color: AppColors.line))),
-      child: Row(spacing: 10, children: [
+      child: Row(spacing: chevron ? 12 : 10, children: [
+        // the history pages show a bigger tile and title (Probid 19 Nov)
         Container(
-          width: 30,
-          height: 30,
+          width: chevron ? 40 : 30,
+          height: chevron ? 40 : 30,
           alignment: Alignment.center,
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(9)),
-          child: AppIcon(ic, size: 15, color: fg),
+          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(chevron ? 12 : 9)),
+          child: AppIcon(ic, size: chevron ? 18 : 15, color: fg),
         ),
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 1, children: [
-            Text(e.title, style: AppText.s(13.5, W.w7)),
-            Text(e.sub, style: AppText.s(12, W.w4, color: AppColors.muted)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: chevron ? 2 : 1, children: [
+            Text(e.title, style: AppText.s(chevron ? 15.5 : 13.5, W.w7)),
+            Text(e.sub, style: AppText.s(chevron ? 12.5 : 12, chevron ? W.w5 : W.w4, color: AppColors.muted)),
           ]),
         ),
         if (e.badge.isNotEmpty) pxPill(e.badge, e.badgeColor == 'green' ? PxTone.green : (e.badgeColor == 'amber' ? PxTone.amber : PxTone.gray)),
-        if (chevron) const AppIcon(AppIcons.chevronRight, size: 16, color: AppColors.muted),
+        if (chevron) const AppIcon(AppIcons.chevronRight, size: 16, color: AppColors.chevron),
       ]),
     );
   }

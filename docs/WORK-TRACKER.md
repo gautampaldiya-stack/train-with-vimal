@@ -430,6 +430,15 @@ E51. ✅ Admin/trainer client Logs (Daily, Weekly, Habits, Supplements) aur clie
 53l. ✅ Progress → History: Strong bar (title upar bar me jaata), har log alag khulta: workout apne page par, meal / check-in / weight chhoti sheet me (Probid 19 Nov).
 53m. ✅ Bar ke "Log food" / "Log weight" / "History" buttons: halka neela background, chhoti height (32). Home ki ghanti bina box (More jaisi) (Probid 19 Nov).
 53n. ✅ Swipe tabs ab slide hote: content ungli ke saath chalta, naya tab side se aata (ek dum nahi badalta) — Progress photos sheet, Add photos, Photos page, Compare, aur Food, Habits, Check-ins, Progress, PDF pages (Probid 19 Nov).
+53o. ✅ Progress → History me Weight tab dabane par crash ("Build scheduled during frame", CaPinned scroll) theek: layout ke beech aayi scroll update agle frame me (Probid 19 Nov).
+53p. ✅ Workout history aur workout page me rang: rangeen icon tiles, time / kg / PR pills, Edited tag, set labels rangeen, loading par skeleton (Probid 19 Nov).
+53q. ✅ Discard / "sets not ticked" / photo delete jaise confirm phone par screen ke beech dialog; baaki sheet hi (`confirmAction(center: true)`) (Probid 19 Nov).
+53r. ✅ Food history page (/food/history, Food bar me "History"): har din ka card (meals logged, kcal bar vs target, protein / carbs / fat pills), din kholo to /food/history/<date> me macros, har meal ke foods, other food, water. Skeleton (Probid 19 Nov).
+53s. ✅ Food page ke neeche "Ate something else" button hataya (Probid 19 Nov).
+53t. ✅ Water history sheet ki jagah page (/food/water, Home se ?from=home): 12 hafte, skeleton (Probid 19 Nov).
+53u. ✅ Check-in history page (/checkins/history, Check-ins bar me "History"): Weekly / Daily (tap ya swipe), total / sent / missed cells, mahine ke hisaab se cards, coach reply. Check-ins page se "Past check-ins" card hataya (Probid 19 Nov).
+53v. ✅ Har history page ka saaf naam: Workout history, Food history, Water history, Check-in history; Progress wala "All history" (Probid 19 Nov).
+53w. ✅ Food history ke upar averages aur din page ke Calories / Protein / Carbs / Fat ek saade white card me; Check-in history ke stats ek card me (In all / Sent / Missed), list items saaf (pill title ke saath, missed grey), tabs poori width thoda andar; All history me har log alag card, bada icon (Probid 19 Nov). Khali din abhi bhi khulte hain (Probid: rehne do).
 53i. ✅ Train par purane din ke buttons chhote (Start workout jaise): "Back to today" left, "Edit workout" / "Log this workout" right, ek row me; akela ho to Back to today chhota (Probid 18 Nov).
 53h. ✅ Train exercise list phone par bina card border, screen ke edge tak, sirf upar / neeche / beech me line (Probid 18 Nov).
 51l. ⏸️ Baad me (Probid 17 Nov: "abhi nahi"): exercises ke beech ka rest. Coach plan me do exercises ke beech rest rakhe; tab last set ke baad exercise ka rest nahi, ye beech wala chale.

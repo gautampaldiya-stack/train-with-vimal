@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:go_router/go_router.dart';
+
 import '../../../app/services.dart';
 import '../../../core/api/api_error.dart';
 import '../../../core/icons/app_icons.dart';
@@ -7,6 +9,8 @@ import '../../../core/theme/theme.dart';
 import '../../../core/widgets/client.dart';
 import '../../../core/widgets/hover.dart';
 import '../../../core/widgets/overlays.dart';
+import '../../../core/widgets/skeleton.dart';
+import '../train/train_history.dart' show histPage;
 import '../food/food_model.dart' show DateUtils0, fdWd;
 import '../food/food_parts.dart' show NumStepper;
 import '../home/home_model.dart' show glasses, inNum, litres;
@@ -201,29 +205,86 @@ class WaterUnitSwitch extends StatelessWidget {
 }
 
 /// Water card → History: this week and the 3 before.
-Future<void> showWaterHistorySheet(BuildContext context) async {
-  final Map<String, dynamic> h;
-  try {
-    h = await Services.api.get<Map<String, dynamic>>('me/food-log/water-history/?weeks=4');
-  } on ApiError catch (e) {
-    if (context.mounted) {
-      showToast(context, e.offline ? 'You are offline' : 'Could not load water history', sub: e.offline ? 'Try again when you are online' : e.message, kind: ToastKind.err);
-    }
-    return;
-  }
-  if (!context.mounted) return;
-  final goal = (h['goal_ml'] as num?)?.toInt() ?? 3000;
-  final weeks = (h['weeks'] as List? ?? []).cast<Map>();
-  await showAppSheet(
-    context,
-    title: 'Water history',
-    sub: 'Target ${litres(goal)} a day (${glasses((goal / 250).round())}) · set by your coach',
-    webWidth: 560,
-    builder: (_) => WaterHistory(goal: goal, weeks: weeks, today: DateUtils0.dateOnly(DateTime.now())),
-  );
+/// Water history (Probid 19 Nov): its own page, not a sheet. Today and yesterday, this week's numbers, then each week
+/// of the last 12 as a bar chart (older weeks folded). [from] `home` sends Back to Home, else to Food.
+class WaterHistoryScreen extends StatefulWidget {
+  const WaterHistoryScreen({super.key, this.from});
+  final String? from;
+  @override
+  State<WaterHistoryScreen> createState() => _WaterHistoryScreenState();
 }
 
-/// Water history sheet (Probid 2026-11-03 redesign): this week's numbers, then each week as a light bar chart, thin
+class _WaterHistoryScreenState extends State<WaterHistoryScreen> {
+  Map<String, dynamic>? _h;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final h = await Services.api.get<Map<String, dynamic>>('me/food-log/water-history/?weeks=12');
+      if (mounted) {
+        setState(() {
+          _h = h;
+          _error = null;
+        });
+      }
+    } on ApiError catch (e) {
+      if (mounted) setState(() => _error = e.offline ? 'You are offline. Connect to see your water history.' : 'Could not load your water history. Try again.');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final h = _h;
+    final goal = (h?['goal_ml'] as num?)?.toInt() ?? 3000;
+    final home = widget.from == 'home';
+    return RefreshIndicator(
+      color: AppColors.accent,
+      onRefresh: _load,
+      child: histPage(
+        context,
+        title: 'Water history',
+        sub: h == null ? 'How much you drank each day' : 'Target ${litres(goal)} a day (${glasses((goal / 250).round())}) · set by your coach',
+        backTip: home ? 'Home' : 'Food',
+        onBack: () => context.go(home ? '/home' : '/food'),
+        children: [
+          if (h == null && _error != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Column(spacing: 10, children: [
+                Text(_error!, textAlign: TextAlign.center, style: AppText.s(13.5, W.w5, color: AppColors.muted)),
+                CaButton('Try again', kind: CaBtnKind.out, small: true, expand: false, onPressed: _load),
+              ]),
+            )
+          else if (h == null)
+            const _WaterSkeleton()
+          else
+            WaterHistory(goal: goal, weeks: (h['weeks'] as List? ?? []).cast<Map>(), today: DateUtils0.dateOnly(DateTime.now())),
+        ],
+      ),
+    );
+  }
+}
+
+class _WaterSkeleton extends StatelessWidget {
+  const _WaterSkeleton();
+  @override
+  Widget build(BuildContext context) => Skeleton(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+          const Row(spacing: 10, children: [Expanded(child: SkelBox(height: 76, radius: 12)), Expanded(child: SkelBox(height: 76, radius: 12))]),
+          const SkelBox(height: 62, radius: 14),
+          const SkelBox(height: 170, radius: 14),
+          for (var i = 0; i < 3; i++) const SkelBox(height: 58, radius: 14),
+        ]),
+      );
+}
+
+/// Water history (Probid 2026-11-03 redesign, a page since 19 Nov): this week's numbers, then each week as a light bar chart, thin
 /// rounded bars, a dashed target line, the value only where water was logged, today's letter marked. Older weeks are
 /// folded, tap to open.
 class WaterHistory extends StatefulWidget {

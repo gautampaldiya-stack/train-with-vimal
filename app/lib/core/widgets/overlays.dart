@@ -233,9 +233,13 @@ Future<T?> showAppModal<T>(
   Widget Function(BuildContext)? content,
   List<Widget> Function(BuildContext)? actions,
   Widget? lead,
+  bool center = false,
 }) {
   if (!OpenGuard.pass()) return Future.value(null);
-  if (context.isPhone) {
+  // [center]: on the phone too it pops up in the middle of the screen, not as a bottom sheet (Probid 19 Nov: "kabhi
+  // sheet kabhi center"). Used for short, sharp questions like "Discard changes?".
+  final phoneCenter = center && context.isPhone;
+  if (context.isPhone && !center) {
     OpenGuard.same();
     return showAppSheet<T>(context, title: title, sub: body, builder: content ?? (_) => const SizedBox.shrink(), footer: actions);
   }
@@ -250,8 +254,8 @@ Future<T?> showAppModal<T>(
       child: Material(
         color: Colors.transparent,
         child: Container(
-          width: width ?? (wide ? 560 : 440),
-          margin: const EdgeInsets.all(24),
+          width: phoneCenter ? MediaQuery.sizeOf(ctx).width - 40 : (width ?? (wide ? 560 : 440)),
+          margin: EdgeInsets.all(phoneCenter ? 20 : 24),
           constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * .88),
           decoration: BoxDecoration(color: AppColors.card, borderRadius: AppRadius.all(AppRadius.modal), boxShadow: AppShadows.modal),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -272,7 +276,9 @@ Future<T?> showAppModal<T>(
             if (actions != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
-                child: Row(spacing: 8, children: [if (lead != null) Expanded(child: lead) else const Spacer(), ...actions(ctx)]),
+                child: phoneCenter
+                    ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: actions(ctx))
+                    : Row(spacing: 8, children: [if (lead != null) Expanded(child: lead) else const Spacer(), ...actions(ctx)]),
               ),
           ]),
         ),
@@ -283,13 +289,14 @@ Future<T?> showAppModal<T>(
 
 /// Confirm modal with a red or blue main action. Returns true when confirmed.
 Future<bool> confirmAction(BuildContext context,
-    {required String title, String? body, required String confirm, bool danger = false, AppIconData? icon, String cancel = 'Cancel'}) async {
+    {required String title, String? body, required String confirm, bool danger = false, AppIconData? icon, String cancel = 'Cancel', bool center = false}) async {
   final r = await showAppModal<bool>(
     context,
     title: title,
     body: body,
     icon: icon,
     danger: danger,
+    center: center,
     // Phone sheet: Cancel and the action side by side, not stacked (Probid 2026-10-30).
     actions: (ctx) => ctx.isPhone
         ? [

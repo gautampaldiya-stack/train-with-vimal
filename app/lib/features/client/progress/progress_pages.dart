@@ -155,7 +155,7 @@ class _ProgressHistoryScreenState extends State<ProgressHistoryScreen> {
       final web = !context.isPhone;
       final ri = HistoryController.ranges.indexWhere((r) => r.$1 == h.range);
       final head = [
-        ...pxHeader('Progress', () => context.go('/progress'), 'History', 'All your logs in one place${_rangeLbl.isEmpty ? '' : ' · $_rangeLbl'}'),
+        ...pxHeader('Progress', () => context.go('/progress'), 'All history', 'All your logs in one place${_rangeLbl.isEmpty ? '' : ' · $_rangeLbl'}'),
         PxTabs(
           labels: [for (final r in HistoryController.ranges) r.$2],
           index: ri,
@@ -177,11 +177,11 @@ class _ProgressHistoryScreenState extends State<ProgressHistoryScreen> {
         // phone: the Strong page like Train → History (Probid 19 Nov): Back in the bar, the big title scrolls up into it
         return CaPinned(
           titleTop: 2,
-          head: CaTopBar(title: 'History', onBack: () => context.go('/progress'), backTip: 'Back to Progress'),
+          head: CaTopBar(title: 'All history', onBack: () => context.go('/progress'), backTip: 'Back to Progress'),
           body: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 2, 16, 24),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-              CaPageTitle('History', sub: 'All your logs in one place${_rangeLbl.isEmpty ? '' : ' · $_rangeLbl'}'),
+              CaPageTitle('All history', sub: 'All your logs in one place${_rangeLbl.isEmpty ? '' : ' · $_rangeLbl'}'),
               ...head.sublist(2),
               if (empty) SizedBox(height: 240, child: pxLoading(h.loading ? null : h.error, h.load, 'your history')) else ...[_summary(), ..._days()],
             ]),
@@ -307,11 +307,11 @@ class _ProgressHistoryScreenState extends State<ProgressHistoryScreen> {
     final rl = HistoryController.ranges.firstWhere((r) => r.$1 == h.range).$2;
     return [
       for (final d in h.days)
-        Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 6, children: [
+        Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 2),
+            padding: const EdgeInsets.only(left: 2, right: 2, top: 6),
             child: Row(children: [
-              Text(pxWdm(d.date), style: AppText.s(13.5, W.w8)),
+              Text(pxWdm(d.date), style: AppText.s(16, W.w8, ls: -0.2)),
               if (DateUtils0.same(d.date, today)) Padding(padding: const EdgeInsets.only(left: 8), child: fdTag('Today')),
               if (DateUtils0.same(d.date, today.subtract(const Duration(days: 1)))) Padding(padding: const EdgeInsets.only(left: 8), child: fdTag('Yesterday')),
               const Spacer(),
@@ -322,27 +322,26 @@ class _ProgressHistoryScreenState extends State<ProgressHistoryScreen> {
           ),
           // each log opens on its own (Probid 19 Nov): a workout as its page (like Train → History), a meal, check-in
           // or weigh-in in a short sheet
-          Container(
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              for (final (i, e) in d.entries.indexed)
-                Semantics(
-                  button: true,
-                  label: 'Open ${e.title}',
-                  child: Hover(
-                    onTap: () => e.type == 'workout' && e.id.isNotEmpty
-                        ? context.go('/train/history/${e.id}?from=progress')
-                        : showHistoryEntry(context, d, e),
-                    builder: (_, hv, _) => Container(
-                      color: hv ? AppColors.sub : null,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: PxEntryRow(e, first: i == 0, chevron: true),
-                    ),
+          // one card per log, like Workout / Food / Check-in history (Probid 19 Nov)
+          for (final e in d.entries)
+            Semantics(
+              button: true,
+              label: 'Open ${e.title}',
+              child: Hover(
+                onTap: () => e.type == 'workout' && e.id.isNotEmpty
+                    ? context.go('/train/history/${e.id}?from=progress')
+                    : showHistoryEntry(context, d, e),
+                builder: (_, hv, _) => Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: hv ? AppColors.outlineHover : AppColors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: hv ? AppColors.line2 : AppColors.line),
                   ),
+                  child: PxEntryRow(e, first: true, chevron: true),
                 ),
-            ]),
-          ),
+              ),
+            ),
         ]),
       if (left > 0)
         Center(

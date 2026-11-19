@@ -310,6 +310,8 @@ class _EditPageState extends State<_EditPage> {
         confirm: 'Discard',
         cancel: 'Keep editing',
         danger: true,
+        icon: AppIcons.trash,
+        center: true,
       );
       if (!ok || !mounted) return;
     }
@@ -347,6 +349,8 @@ class _EditPageState extends State<_EditPage> {
         body: 'Only ticked sets are saved. Tick the sets you did, or save without them.',
         confirm: 'Save without them',
         cancel: 'Go back',
+        icon: AppIcons.alert,
+        center: true,
       );
       if (!ok || !mounted) return;
     }

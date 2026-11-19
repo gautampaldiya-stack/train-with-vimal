@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+## 2026-11-19 (2) · Food / Water / Check-in history pages, colourful Workout history, centre confirms, crash fix
+- **Pehle:** Workout history saada (sirf grey), loading par spinner; har confirm neeche sheet; Progress → History me Weight tab par crash (debug); Food ki history nahi thi; Water history sheet; Check-ins page par "Past check-ins" card; Food ke neeche "Ate something else"; sab history pages ka naam "History".
+- **Ab:** Workout history / workout page rangeen tiles + pills + skeleton. Discard / not ticked / photo delete confirm phone par beech me dialog. CaPinned scroll update layout ke dauran agle frame me (crash gaya). Food history (/food/history + /food/history/<date>), Water history page (/food/water), Check-in history page (/checkins/history, Weekly / Daily swipe). Past check-ins card aur "Ate something else" hataye. Naam: Workout history, Food history, Water history, Check-in history, All history (Progress). Stats saade: Food history averages, din page macros, Check-in history totals ek white card me; Check-in aur All history ke list items alag cards, bade icons.
+- **Kyun:** Probid 19 Nov.
+- **Updated:** core/widgets/client.dart (CaPinned), overlays.dart (showAppModal / confirmAction center), train_history.dart (HistPill, histTile, histPage, HistSkeleton), food_history.dart (new), checkins_history.dart (new), water.dart (WaterHistoryScreen), food_screen, home_screen, checkins_screen, progress_pages, progress_sheets, workout_edit, router; backend checkins/progress.py (meal entry kcal / protein / carbs / fat / logged / planned / foods); api-endpoints, WORK-TRACKER 53o–53w
+
 ### 2026-11-19 · Brand — dark-theme logo (white letters)
 - **Pehle:** Sirf ek logo tha (kaale letters). Black screen par letters gayab ho jaate the.
 - **Ab:** `assets/logo_dark.svg` (same logo, letters white) add hua. `TwvLogo` widget theme ke hisaab se light/dark logo chunta hai; sidebar, auth frame aur About me use hua. Dark theme abhi park hai, isliye abhi light logo hi dikhta hai.

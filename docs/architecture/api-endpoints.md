@@ -90,7 +90,7 @@ Generated from the Django URL config. Base: `/api/v1/`. Full request/response sh
 | `forms/counts/` | GET | FormViewSet |  |
 | `me/checkins/` | GET | MyCheckinsView | Check-ins page: the daily and weekly cards, `forms` (forms the coach sent: waiting + filled in 14 days, D-49), the numbers on top, and past check-ins (weekly or daily, |
 | `me/forms/<id>/` | GET | MyFormView | A form the coach sent: card fields, questions (`form`), and once filled `submission` {id, sent_at, answers}. Another client's request is 404 (D-49). |
-| `me/history/` | GET | MyHistoryView | Progress → History: every day's logs, newest first. ?range=week/month/3months &type=workout/meal/checkin/ |
+| `me/history/` | GET | MyHistoryView | Progress → History: every day's logs, newest first. ?range=week/month/3months &type=workout/meal/checkin/. Meal entries also carry kcal, protein, carbs, fat, logged, planned, foods (Food history page uses ?type=meal&range=3months). |
 | `me/measurements/` | GET, POST | MyMeasurementViewSet |  |
 | `me/measurements/<pk>/` | DELETE | MyMeasurementViewSet |  |
 | `me/photos/` | POST, DELETE | MyPhotoView | Add photos sheet: one pose into today's set (a file, or a data URL so it can wait in the offline outbox). DELETE `?id=` only for her own set on the day it was added (D-86); the empty set goes too. |
