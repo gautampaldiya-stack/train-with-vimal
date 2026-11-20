@@ -495,12 +495,6 @@ class _ClientFoodScreenState extends State<ClientFoodScreen> {
                 maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.s(12.5, W.w5, color: AppColors.muted)),
           ]),
         ),
-        if (tg > 0)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(color: AppColors.sub, borderRadius: BorderRadius.circular(8)),
-            child: Text('Goal ${inNum(tg)}', style: AppText.s(11.5, W.w7, color: AppColors.text2, tabular: true)),
-          ),
       ]),
       SizedBox(
         height: 120,

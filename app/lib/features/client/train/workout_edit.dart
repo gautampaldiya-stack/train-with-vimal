@@ -236,7 +236,7 @@ class _EditPageState extends State<_EditPage> {
         _start.toIso8601String(),
         _end.toIso8601String(),
         for (final e in _ex)
-          for (final s in e.sets) '${e.exId}|${s.kind.api}|${s.done}|${s.kg.text}|${s.reps.text}|${s.secs.text}|${s.bpm.text}|${s.rest}',
+          for (final s in e.sets) '${e.exId}|${s.kind.api}|${s.bw}|${s.done}|${s.kg.text}|${s.reps.text}|${s.secs.text}|${s.bpm.text}|${s.rest}',
       ].join(';');
 
   bool get _dirty => _ready && _snapshot() != _first;
@@ -350,7 +350,8 @@ class _EditPageState extends State<_EditPage> {
 
   Future<void> _close() async {
     FocusScope.of(context).unfocus();
-    if (_dirty) {
+    // Log yesterday always asks (Probid 20 Nov: X closed it with nothing asked); Edit asks when something changed
+    if (_dirty || _past) {
       final ok = await confirmAction(
         context,
         title: _past ? 'Discard this workout?' : 'Discard changes?',
@@ -398,6 +399,18 @@ class _EditPageState extends State<_EditPage> {
         confirm: 'Save without them',
         cancel: 'Go back',
         icon: AppIcons.alert,
+        center: true,
+      );
+      if (!ok || !mounted) return;
+    } else {
+      // ✓ asks before it saves (Probid 20 Nov: it saved straight away)
+      final ok = await confirmAction(
+        context,
+        title: _past ? 'Log this workout?' : 'Save changes?',
+        body: _past ? '${sets.length} ${sets.length == 1 ? 'set' : 'sets'} will be saved to yesterday.' : 'The workout is updated with what you changed here.',
+        confirm: _past ? 'Log workout' : 'Save',
+        cancel: 'Go back',
+        icon: AppIcons.check,
         center: true,
       );
       if (!ok || !mounted) return;
@@ -712,6 +725,15 @@ class _EditPageState extends State<_EditPage> {
           kind(SetKind.drop, AppColors.purpleText),
           kind(SetKind.failure, AppColors.badText),
           const Divider(height: 10, color: AppColors.line),
+          // like the logger: a weight set can be body weight + any added kg (Probid 20 Nov)
+          if (e.logType == 'weight_reps' && !e.body)
+            loggerMi(s.bw ? 'Use a weight' : 'Bodyweight', icon: AppIcons.person, sub: s.bw ? 'Type the kg again' : 'Body weight + any added kg', onTap: () {
+              close();
+              setState(() {
+                s.bw = !s.bw;
+                if (s.bw) s.kg.clear();
+              });
+            }),
           loggerMi('Rest after this set', icon: AppIcons.clockAlt, sub: s.rest == null ? 'No rest' : clockText(s.rest!), onTap: () {
             close();
             _restSheet(e, s);
@@ -880,14 +902,15 @@ class _EditPageState extends State<_EditPage> {
         child: TextField(
           controller: c,
           textAlign: TextAlign.center,
-          keyboardType: TextInputType.numberWithOptions(decimal: decimal, signed: e.body && j == 0),
+          keyboardType: TextInputType.numberWithOptions(decimal: decimal, signed: (e.body || s.bw) && j == 0),
           inputFormatters: [FilteringTextInputFormatter.allow(RegExp(decimal ? r'[0-9.,-]' : r'[0-9]')), LengthLimitingTextInputFormatter(6)],
           onChanged: (_) => setState(() {}),
           style: AppText.s(16, W.w6, tabular: true),
           decoration: InputDecoration(
             isDense: true,
             border: InputBorder.none,
-            hintText: j < pv.length && pv[j].isNotEmpty ? pv[j] : null,
+            // a Bodyweight set's KG box is the added load: it shows BW until a kg is typed
+            hintText: s.bw && !e.body && j == 0 ? 'BW' : (j < pv.length && pv[j].isNotEmpty ? pv[j] : null),
             hintStyle: AppText.s(16, W.w6, color: AppColors.valPh, tabular: true),
             contentPadding: const EdgeInsets.symmetric(vertical: 5),
           ),

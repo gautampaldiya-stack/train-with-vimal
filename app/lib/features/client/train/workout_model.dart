@@ -852,11 +852,13 @@ class WorkoutController extends SafeNotifier {
     final x = ex[i], xs = sets[i], s = xs[k];
     for (var m = k - 1; m >= 0; m--) {
       final o = xs[m];
-      if (o.wu != s.wu) continue;
+      if (o.wu != s.wu || (j == 0 && o.bw != s.bw)) continue;
       final v = value(x, o, j);
       if (v != null) return v;
     }
     if (s.wu) return null;
+    // a Bodyweight set's KG box is the added load: empty means just body weight, never the kg of a set above
+    if (x.kind == ExKind.weight && j == 0 && s.bw && !x.bodyweight) return null;
     final last = _prevVal(x, prevOf(i, k), j);
     switch (x.kind) {
       case ExKind.weight:

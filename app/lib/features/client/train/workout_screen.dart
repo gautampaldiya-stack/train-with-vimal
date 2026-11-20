@@ -1148,10 +1148,13 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         child: Text('0:${'$holdLeft'.padLeft(2, '0')}', style: AppText.s(15, W.w8, color: AppColors.accent, tabular: true)),
       );
     }
+    // a set switched to Bodyweight on a weight exercise reads "BW" / "BW+5" in its KG box, so the pick shows
+    // (Probid 20 Nov: "bodyweight select karta hu but nahi aa raha")
+    final bwSet = x.kind == ExKind.weight && j == 0 && s.bw && !x.bodyweight;
     if (s.done) {
       return SizedBox(
         height: 30,
-        child: Center(child: Text(c.fmt(x, j, v ?? ph ?? 0), style: AppText.s(16, W.w5, tabular: true))),
+        child: Center(child: Text(bwSet ? bwText(v ?? 0) : c.fmt(x, j, v ?? ph ?? 0), style: AppText.s(16, W.w5, tabular: true))),
       );
     }
     if (web) {
@@ -1181,10 +1184,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             borderRadius: BorderRadius.circular(6),
             border: Border.all(color: on ? AppColors.text : (h ? AppColors.line2 : Colors.transparent), width: on ? 1.5 : 1),
           ),
-          child: on ? _editing(text, ph == null ? '' : c.fmt(x, j, ph)) : Text(
-            text.isNotEmpty ? text : (ph == null ? '' : c.fmt(x, j, ph)),
+          child: on ? _editing(text, bwSet ? '+kg' : (ph == null ? '' : c.fmt(x, j, ph))) : Text(
+            bwSet ? (text.isEmpty ? 'BW' : 'BW+$text') : (text.isNotEmpty ? text : (ph == null ? '' : c.fmt(x, j, ph))),
             maxLines: 1,
-            style: AppText.s(16, W.w5, color: text.isNotEmpty ? AppColors.text : AppColors.valPh, tabular: true),
+            style: AppText.s(16, W.w5, color: text.isNotEmpty || bwSet ? AppColors.text : AppColors.valPh, tabular: true),
           ),
         ),
       ),
