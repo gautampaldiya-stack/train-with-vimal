@@ -152,7 +152,7 @@ final Map<String, Widget Function(GoRouterState)> screens = {
   '/more': (_) => const ClientMoreScreen(),
   '/more/:id': (st) => st.pathParameters['id'] == 'about'
       ? const ClientAboutScreen()
-      : ClientMoreScreen(key: ValueKey(st.uri.toString()), view: st.pathParameters['id']!),
+      : ClientMoreScreen(key: ValueKey(st.uri.toString()), view: st.pathParameters['id']!, from: st.uri.queryParameters['from']),
 };
 
 /// Trainer pages. Trainer and client paths overlap (/checkins, /calendar, /more, /habits), so each role has its own map.

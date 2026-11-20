@@ -6,6 +6,7 @@
 - In-app rows are written at once and sent over WebSocket after commit (realtime).
 - Push / email / WhatsApp go through Celery, respecting quiet hours (urgent=True skips them).
 """
+import logging
 from datetime import datetime, timedelta
 
 from django.db import transaction
@@ -13,6 +14,8 @@ from django.utils import timezone
 
 from .models import Channel, Delivery, MessageTemplate, Notification, NotificationSettings
 from .rendering import context_for, render
+
+log = logging.getLogger(__name__)
 
 
 # Client More → Notification settings: these switch off the push / email copy (the in-app row stays).
@@ -92,7 +95,10 @@ def notify(users, event, title, body="", *, data=None, channels=None, actor=None
             if n.in_app:
                 send_to_user(uid, "notification", payload)
             if external:
-                tasks.deliver_notification.delay(str(n.id), external, urgent, email_subject)
+                try:  # a broker hiccup must not turn the coach's save into a 500 (the bell row is already saved)
+                    tasks.deliver_notification.delay(str(n.id), external, urgent, email_subject)
+                except Exception:
+                    log.exception("could not queue notification %s", n.id)
 
         transaction.on_commit(_after_commit)
     return created

@@ -715,7 +715,7 @@ class ClientWorkoutLogViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, 
                 pd = program_day_for(pa, d)
                 logged.add(d)
                 rows.append({
-                    "id": None, "date": d, "name": (pd.name if pd else "") or "Workout", "status": "missed",
+                    "id": None, "date": d, "name": pd.title if pd else "Workout", "status": "missed",
                     "sets_done": 0, "sets_planned": 0, "volume": 0, "duration_seconds": 0, "effort": None,
                     "planned": [e.exercise.name for e in pd.exercises.select_related("exercise")] if pd else [],
                 })
@@ -792,7 +792,7 @@ class MyTrainView(APIView):
             "weeks": pa.effective_program.weeks if pa else None,
             "program": pa.effective_program.name if pa else None,
             "strip": strip,
-            "day": {"id": pd.id, "name": pd.name, "is_rest": pd.is_rest, "note": pd.rest_note,
+            "day": {"id": pd.id, "name": "" if pd.is_rest else pd.title, "is_rest": pd.is_rest, "note": pd.rest_note,
                     "minutes": _day_minutes(rows)} if pd else None,
             "exercises": exercises,
             "completed_today": WorkoutRowSerializer(done_today).data if done_today else None,

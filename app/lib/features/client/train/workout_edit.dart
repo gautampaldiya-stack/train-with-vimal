@@ -747,8 +747,7 @@ class _EditPageState extends State<_EditPage> {
 
   void _deleteSet(_Ex e, _Set s) => setState(() {
         e.sets.remove(s);
-        s.dispose();
-        if (e.sets.isEmpty) _ex.remove(e);
+        s.dispose(); // the exercise stays, with ADD SET, even when its last set goes (Probid 2026-11-20)
       });
 
   /// How long the client rested after a set (the logger's rest sheet, without a timer: this workout is over).

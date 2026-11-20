@@ -303,7 +303,10 @@ def tell_plan_changed(program, *, actor, assignments=None):
                         program.name, actor=actor, route="/train", daily_key=f"prog:{program.id}")
 
 
+@transaction.atomic
 def reset_to_master(assignment, *, actor):
+    """Back to the master plan. All or nothing: a half-done reset used to answer 500 and then 'work' on the
+    second tap (Probid 2026-11-20)."""
     custom = assignment.custom_program
     if not custom:
         return assignment
@@ -431,7 +434,7 @@ def start_workout(client, *, program_day=None, name=""):
     planned_sets = 0
     if program_day is not None:
         planned_sets = sum(e.sets for e in program_day.exercises.all())
-        name = name or program_day.name
+        name = name or program_day.title
     wl = WorkoutLog.objects.create(client=client, assignment=pa, program_day=program_day, name=name or "Workout",
                                    sets_planned=planned_sets)
     if program_day is not None:
@@ -747,7 +750,7 @@ def log_past_workout(user, *, day, program_day, name, started_at, finished_at, s
     pa, _, _, _ = today_plan(user, day)
     wl = WorkoutLog.objects.create(
         client=user, assignment=pa, program_day=program_day, date=day, started_at=started_at,
-        name=(name or (program_day.name if program_day else "Workout"))[:80],
+        name=(name or (program_day.title if program_day else "Workout"))[:80],
         status=WorkoutLog.Status.COMPLETED, finished_at=finished_at,
         sets_planned=sum(e.sets for e in program_day.exercises.all()) if program_day else 0)
     for row in sets:

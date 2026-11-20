@@ -304,7 +304,7 @@ def home_week(client, today, pa):
         completed = bool(w and w.status == WorkoutLog.Status.COMPLETED)
         cardio = bool(exs) and exs[0].exercise.muscle_group == "cardio"
         out.append({
-            "date": d, "today": d == today, "is_rest": not exs, "name": pd.name if pd and exs else "",
+            "date": d, "today": d == today, "is_rest": not exs, "name": pd.title if pd and exs else "",
             # no workout plan covers this day: "Plan not assigned yet", not "Rest and recover" (Probid 2026-11-04)
             "no_plan": pd is None,
             "rest_note": pd.rest_note if pd and pd.is_rest else "",
@@ -502,7 +502,7 @@ class ClientHomeView(APIView):
             "first_name": u.first_name, "initials": u.initials, "avatar_color": u.avatar_color,
             "goal": cp.get_goal_display() if cp.goal else "",
             "strip": home_week(u, today, pa),
-            "workout": {"day": {"id": pd.id, "name": pd.name, "is_rest": pd.is_rest, "rest_note": pd.rest_note}
+            "workout": {"day": {"id": pd.id, "name": "" if pd.is_rest else pd.title, "is_rest": pd.is_rest, "rest_note": pd.rest_note}
                         if pd else None, "exercises": exercises, "program": pa.effective_program.name if pa else None},
             "session": {"id": str(session.id), "kind": session.get_kind_display(), "start": session.start,
                         "end": session.end, "trainer": _person(session.trainer), "place": session.place,

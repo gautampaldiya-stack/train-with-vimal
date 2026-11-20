@@ -220,10 +220,11 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
   Widget _week(TrainData d, {required bool web}) {
     final narrow = MediaQuery.sizeOf(context).width < 1180;
     return Container(
-      padding: web ? const EdgeInsets.all(5) : const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      // Same box as the Food week strip (Probid 2026-11-20): "Today" label, 18 px marks, weekday / date / mark.
+      padding: EdgeInsets.all(web ? 5 : 8),
       decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
-      child: Row(spacing: web ? 4 : 2, children: [
-        for (final day in d.strip) Expanded(child: _weekDay(day, web: web, narrow: narrow)),
+      child: Row(spacing: web ? 4 : 0, children: [
+        for (final day in d.strip) Expanded(child: Padding(padding: EdgeInsets.symmetric(horizontal: web ? 0 : 2), child: _weekDay(day, web: web, narrow: narrow))),
       ]),
     );
   }
@@ -237,7 +238,8 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
     final real = DateUtils.isSameDay(day.date, DateTime.now());
     final wd = const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][day.date.weekday - 1];
     final ink = today ? AppColors.sessText : AppColors.text;
-    final size = web && !narrow ? 18.0 : 16.0;
+    final future = day.date.isAfter(DateTime.now());
+    final size = web && narrow ? 16.0 : 18.0;
     final Widget mark;
     if (day.done) {
       mark = Container(
@@ -254,15 +256,16 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
     } else {
       mark = Container(width: size, height: size, decoration: const BoxDecoration(color: AppColors.sub, shape: BoxShape.circle));
     }
-    final wdText = Text(wd, style: AppText.s(web ? 11 : 10.5, W.w6, color: today ? AppColors.sessText : AppColors.muted));
+    final wdText = Text(real ? 'Today' : wd, style: AppText.s(11, W.w6, color: today ? AppColors.sessText : AppColors.muted));
     // Weekday and date only (D-87): no workout names in the strip; the mark shows rest / done.
-    final name = Text('${day.date.day}', maxLines: 1, style: AppText.s(web ? (narrow ? 13 : 14) : 13, W.w7, color: rest && !today ? AppColors.muted : ink));
+    final dim = (rest || future) && !today;
+    final name = Text('${day.date.day}', maxLines: 1, style: AppText.s(web ? (narrow ? 12 : 12.5) : 11.5, dim ? W.w6 : W.w7, color: dim ? AppColors.muted : ink));
     return Semantics(
       button: true,
       selected: today,
       label: '$wd ${rest ? 'rest' : day.name}${day.done ? ', done' : ''}${real ? ', today' : ''}',
       child: Container(
-        padding: web ? EdgeInsets.symmetric(horizontal: narrow ? 6 : 10, vertical: 6) : const EdgeInsets.fromLTRB(0, 6, 0, 5),
+        padding: web ? EdgeInsets.symmetric(horizontal: narrow ? 6 : 10, vertical: 6) : const EdgeInsets.symmetric(horizontal: 2, vertical: 7),
         decoration: BoxDecoration(
           color: today ? AppColors.accentSoft : (hover ? AppColors.outlineHover : null),
           borderRadius: BorderRadius.circular(10),
@@ -273,7 +276,7 @@ class _ClientTrainScreenState extends State<ClientTrainScreen> {
                 mark,
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [wdText, name])),
               ])
-            : Column(children: [wdText, const SizedBox(height: 3), name, const SizedBox(height: 4), mark]),
+            : Column(spacing: 3, children: [wdText, name, mark]),
       ),
     );
   }

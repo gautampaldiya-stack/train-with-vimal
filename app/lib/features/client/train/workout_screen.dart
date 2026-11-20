@@ -1420,10 +1420,6 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             close();
             _guide(c, x);
           }),
-          _mi('Past workouts', icon: AppIcons.clock, sub: 'See and use sets from before', onTap: () {
-            close();
-            showExerciseHistory(context, x, onUse: (sets, from) => c.fillFrom(i, sets, from: from));
-          }),
           _mi('Rest timers', icon: AppIcons.clockAlt, sub: x.restLocked ? 'Set by ${c.plan.coachFirst}' : _restsLine(c.rests[i]), onTap: () {
             close();
             _restTimers(c, i);

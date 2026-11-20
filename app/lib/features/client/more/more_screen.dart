@@ -25,8 +25,10 @@ import '../../../core/widgets/tooltip.dart';
 /// `/more/notifications` and `/more/activity` are pages. Web ("My account"): Overview · Notifications ·
 /// My activity tabs on the same three paths; `/more/profile` shows the Overview.
 class ClientMoreScreen extends StatefulWidget {
-  const ClientMoreScreen({super.key, this.view = ''});
+  const ClientMoreScreen({super.key, this.view = '', this.from});
   final String view; // '' | profile | notifications | activity
+  /// 'home': opened from the Home bell (Probid 2026-11-20), so Back goes to Home, not More.
+  final String? from;
   @override
   State<ClientMoreScreen> createState() => _ClientMoreScreenState();
 }
@@ -128,7 +130,7 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
     return CaPinned(
       key: ValueKey(_view),
       titleTop: 2,
-      head: CaTopBar(title: h.title, onBack: h.onBack, backTip: 'Back to More', actions: h.actions),
+      head: CaTopBar(title: h.title, onBack: h.onBack, backTip: widget.from == 'home' ? 'Back to Home' : 'Back to More', actions: h.actions),
       body: list,
     );
   }
@@ -482,7 +484,7 @@ class _ClientMoreScreenState extends State<ClientMoreScreen> {
   /// A phone page's head (Strong, Probid 18 Nov): Back and the action icons go in the top bar, the title and its
   /// line go into the scrolling content.
   Widget _pageHead(String title, String sub, {List<Widget> actions = const []}) =>
-      _Head(title: title, sub: sub, actions: actions, onBack: () => context.go('/more'));
+      _Head(title: title, sub: sub, actions: actions, onBack: () => context.go(widget.from == 'home' ? '/home' : '/more'));
 
   Widget _details(MoData d) {
     final m = _me;

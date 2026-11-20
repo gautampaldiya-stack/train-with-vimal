@@ -18,6 +18,12 @@ Jab bhi pehle ka koi decision, design ya rule badle, yahan **sabse upar** ek nay
 - **Updated:** docs / screens / code ki list · Decision D-xx
 ```
 
+## 2026-11-20 · Reset to master fix, no 401s on load, workout names, Train strip, bell page
+- **Pehle:** Reset to master pehli baar 500 deta tha, doosri baar chal jaata; page load par console me laal 401; Log yesterday me aakhri set delete karne par exercise hi chali jaati; logger ⋯ me Past workouts; plan day ka naam khaali ho to Train / Home par workout ka naam nahi; Train strip Food se alag; Home bell sheet kholta tha.
+- **Ab:** reset_to_master ek transaction me (aadha kaam nahi), notification queue ki galti save ko 500 nahi banati; khatam hua access token request se pehle refresh; exercise 0 sets ke saath rehti hai (ADD SET); Past workouts option hataya; khaali naam ho to day ki muscle groups ("Chest & Back") naam banti hain (ProgramDay.title); Train strip Food jaisi ("Today", 18 px marks); Home bell → Notifications page (/more/notifications?from=home, Back → Home).
+- **Kyun:** Probid 20 Nov.
+- **Updated:** training/services.py, models.py, views.py, activity/dashboard.py, notifications/services.py, tests/test_reset_to_master.py; api_client.dart, workout_edit.dart, workout_screen.dart, train_screen.dart, home_screen.dart, more_screen.dart, router.dart; WORK-TRACKER 53zm
+
 ## 2026-11-19 (5) · Quick add card, Log food list section, This week card
 - **Pehle:** Quick add ke boxes grey aur saade; search bar aur tabs list card ke bahar, list card ke side margin; This week card me patli bars, rangeen din box aur do summary lines.
 - **Ab:** Quick add card naya (header band, rangeen boxes, Off-plan row, blue Quick add). Phone par foods ek full-width section (header, search, tabs andar). This week: tile header, gol track bars, chuna din kaala gola, ek line din ki.

@@ -18,8 +18,16 @@ class Api {
       headers: {'X-Client': kIsWeb ? 'web' : defaultTargetPlatform.name},
     ));
     _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (o, h) {
-        if (tokens.access != null && o.extra['auth'] != false) o.headers['Authorization'] = 'Bearer ${tokens.access}';
+      onRequest: (o, h) async {
+        if (o.extra['auth'] != false && tokens.access != null) {
+          // An access token that has run out (they last 15 min, e.g. a tab left open) is refreshed BEFORE the call,
+          // so page loads don't show red 401s in the console first (Probid 2026-11-20).
+          final exp = _expiry(tokens.access!);
+          if (exp != null && tokens.refresh != null && exp.difference(DateTime.now()) < const Duration(seconds: 20)) {
+            await _refresh();
+          }
+          if (tokens.access != null) o.headers['Authorization'] = 'Bearer ${tokens.access}';
+        }
         h.next(o);
       },
       onError: (e, h) async {

@@ -256,7 +256,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
             // the bare bell like More's top bar, no box behind it; a round splash on tap (Probid 19 Nov)
             CaBarIcon(
               tooltip: 'Notifications',
-              onTap: () => showNoticesSheet(context, c),
+              onTap: () => context.go('/more/notifications?from=home'), // a page, not a sheet (Probid 2026-11-20)
               icon: UnreadCount(
                 fallback: d.unread,
                 builder: (_, n) => Stack(alignment: Alignment.center, clipBehavior: Clip.none, children: [
@@ -847,7 +847,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
               Text('Hey ${d.firstName}', style: AppText.s(web ? 30 : 26, W.w8, ls: web ? -0.3 : -0.26)),
             ]),
           ),
-          UnreadCount(fallback: d.unread, builder: (bell, n) => ChBell(count: n, onTap: () => web ? _notesMenu(bell) : showNoticesSheet(context, c))),
+          UnreadCount(fallback: d.unread, builder: (bell, n) => ChBell(count: n, onTap: () => web ? _notesMenu(bell) : context.go('/more/notifications?from=home'))),
         ]),
       );
 

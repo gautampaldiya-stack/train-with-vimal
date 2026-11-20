@@ -119,6 +119,19 @@ class ProgramDay(models.Model):
         ordering = ["weekday"]
         constraints = [models.UniqueConstraint(fields=["week", "weekday"], name="uniq_week_weekday")]
 
+    @property
+    def title(self):
+        """What the client sees as today's workout: the coach's day name, or (left blank in the builder) the
+        muscle groups it works, "Chest & Back", never an empty heading (Probid 2026-11-20)."""
+        if self.name.strip():
+            return self.name.strip()
+        groups = []
+        for pe in self.exercises.select_related("exercise").order_by("order"):
+            g = pe.exercise.get_muscle_group_display()
+            if g not in groups:
+                groups.append(g)
+        return " & ".join(groups[:2]) or "Workout"
+
 
 class ProgramExercise(models.Model):
     day = models.ForeignKey(ProgramDay, on_delete=models.CASCADE, related_name="exercises")
